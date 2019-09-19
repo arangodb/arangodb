@@ -796,7 +796,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles);
 
-  // do not use TRI_AddGlobalVariableVocBase because it creates read-only
+  // do not use TRI_AddGlobalVariableVocbase because it creates read-only
   // variables!!
   context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
                          v8::True(_isolate));

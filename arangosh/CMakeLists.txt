@@ -276,7 +276,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(arangoimport
+add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp

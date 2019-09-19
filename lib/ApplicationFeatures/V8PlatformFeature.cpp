@@ -182,7 +182,9 @@ void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 
   if (0 < _v8MaxHeap) {
-    if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
+    // we have to compare against INT_MAX here, because the value is an int
+    // inside V8
+    if (_v8MaxHeap > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
       LOG_TOPIC("81a63", FATAL, arangodb::Logger::FIXME)
           << "value for '--javascript.v8-max-heap' exceeds maximum value "
           << (std::numeric_limits<int>::max)();

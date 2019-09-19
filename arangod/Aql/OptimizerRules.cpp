@@ -6880,6 +6880,49 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
   opt->addPlan(std::move(plan), rule, mod);
 }
 
+static bool isInnerPassthroughNode(ExecutionNode* node) {
+  switch (node->getType()) {
+    case ExecutionNode::CALCULATION:
+    case ExecutionNode::SUBQUERY:
+      return true;
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::SORT:
+    case ExecutionNode::COLLECT:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::NORESULTS:
+    case ExecutionNode::UPSERT:
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::RETURN:
+      return false;
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTESINGLE:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL_AQL,
+          "Invalid node type in sort-limit optimizer rule. Please report this "
+          "error. Try turning off the sort-limit rule to get your query "
+          "working.");
+    default:;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL_AQL,
+      "Unhandled node type in sort-limit optimizer rule. Please report this "
+      "error. Try turning off the sort-limit rule to get your query working.");
+}
+
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                   OptimizerRule const& rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -6892,21 +6935,14 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
     LimitNode* limit = nullptr;
 
     while (current) {
-      if (current->getType() == EN::LIMIT) {
+      if (isInnerPassthroughNode(current)) {
+        current = current->getFirstParent();  // inspect next node
+      } else if (current->getType() == EN::LIMIT) {
         limit = ExecutionNode::castTo<LimitNode*>(current);
         break;  // stop parsing after first LIMIT
-      } else if (current->getType() == EN::FILTER || current->getType() == EN::RETURN ||
-                 current->getType() == EN::ENUMERATE_COLLECTION ||
-                 current->getType() == EN::ENUMERATE_LIST ||
-                 current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
-                 current->getType() == EN::TRAVERSAL ||
-                 current->getType() == EN::SHORTEST_PATH ||
-                 current->getType() == EN::K_SHORTEST_PATHS ||
-                 current->getType() == EN::INDEX || current->getType() == EN::COLLECT) {
-        // TODO check other end conditions
-        break;  // stop parsing
+      }  else {
+        break;  // stop parsing on any other node
       }
-      current = current->getFirstParent();  // inspect next node
     }
 
     // if we found a limit and we meet the heuristic, make the sort node

@@ -137,6 +137,7 @@ These flags can be set in the first call to `cmake`:
 - `-DUSE_BACKTRACE=1` - Add backtraces to native code asserts & exceptions
 - `-DUSE_FAILURE_TESTS=1` - Adds JavaScript hook to crash the server for data integrity tests
 - `-DUSE_GOOGLE_TESTS=On` (default is On so this is set unless you explicitly disable it)
+- `-DUSE_IPO=AUTO` (Toggles interprocedural optimization; see below)
 
 Example flags for Windows:
 
@@ -170,6 +171,14 @@ At runtime arangod needs to be started with these options:
 ### Build with AddressSanitizer (or ASan)
 
     -DUSE_JEMALLOC=Off -DBASE_LD_FLAGS="-fsanitize=address" -DBASE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer"
+
+### Toggle interprocedural optimization
+
+    -DUSE_IPO=AUTO
+
+AUTO, which is the default, enables IPO for release builds without google tests.
+Look for `IPO_ENABLED` in the cmake output to see the result of the decision!
+Besides AUTO, it can be set to any cmake true/false value (e.g. ON or OFF).
 
 ### Debugging the build process
 
@@ -425,6 +434,26 @@ You can also generate core dumps from running processes without killing them by 
     Detaching from program: /bin/sleep, process 6942
     # ls -l core*
     -rw-r--r--  1 me users  352664 Nov 27 10:48  core.6942
+
+##### Installing GDB 8 on RedHat7 or Centos7
+
+RedHat7 and Centos7 have a package called `devtoolset-7` which contains
+a complete set of relative modern development tools. It can be installed
+by doing
+
+```
+sudo yum install devtoolset-7
+```
+
+These will be installed under some path under `/opt`. To actually use
+these tools, run
+
+```
+scl enable devtoolset-7 bash
+```
+
+to start a shell in which these are used. For example, you can pull a
+core dump with `gcore` using this version, even for ArangoDB >= 3.4.
 
 ##### Analyzing Core Dumps on Linux
 
