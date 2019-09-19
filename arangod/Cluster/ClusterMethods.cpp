@@ -22,6 +22,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "Cluster/ClusterTypes.h"
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
@@ -3578,9 +3580,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   // We keep the currently registered timestamps in Current/ServersRegistered,
   // such that we can wait until all have reregistered and are up:
-  ci->loadServers();
-  std::unordered_map<std::string, std::string> serverTimestamps =
-      ci->getServerTimestamps();
+  ci->loadCurrentDBServers();
+  auto const preServersKnown = ci->rebootIds();
 
   // Restore all db servers
   std::string previous;
@@ -3600,13 +3601,17 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Not all DBservers came back in time!");
     }
-    ci->loadServers();
-    std::unordered_map<std::string, std::string> newServerTimestamps =
-        ci->getServerTimestamps();
+    ci->loadCurrentDBServers();
+    auto const postServersKnown = ci->rebootIds();
+    if (ci->getCurrentDBServers().size() < dbServers.size()) {
+      LOG_TOPIC("8dce7", INFO, Logger::BACKUP) << "Waiting for all db servers to return";
+      continue;
+    }
+
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (serverTimestamps[dbs] != newServerTimestamps[dbs]) {
+      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
         ++good;
       }
     }
