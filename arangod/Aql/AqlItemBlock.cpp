@@ -118,11 +118,6 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     AqlValue a(it.value());
     it.next();
     try {
-      if (getFormatType() == SerializationFormat::CLASSIC) {
-        setValue(row, column, a);  // if this throws, a is destroyed again
-      } else {
-        TRI_ASSERT(getFormatType() == SerializationFormat::SHADOWROWS);
-      }
       if (column == 0) {
         if (!a.isEmpty()) {
           setShadowRowDepth(row, a);
@@ -148,8 +143,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
+    RegisterId startColumn = 0;
+    if (getFormatType() == SerializationFormat::CLASSIC) {
+      startColumn = 1;
+    }
 
-    for (RegisterId column = 0; column < internalNrRegs(); column++) {
+    for (RegisterId column = startColumn; column < internalNrRegs(); column++) {
       for (size_t i = 0; i < _nrItems; i++) {
         if (runLength > 0) {
           switch (runType) {
@@ -254,8 +253,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "found undefined data value");
           }
-          TRI_ASSERT(column != 0);
-          setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
+          if (column == 0) {
+            setShadowRowDepth(i, madeHere[static_cast<size_t>(n)]);
+          } else {
+            setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
+          }
+
           // If this throws, all is OK, because it was already put into
           // the block elsewhere.
         } else {
