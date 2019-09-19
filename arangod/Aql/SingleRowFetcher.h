@@ -89,7 +89,7 @@ class SingleRowFetcher {
   // TODO: atMost?
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-    size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 
@@ -190,6 +190,8 @@ class SingleRowFetcher {
     TRI_ASSERT(indexIsValid());
     return _rowIndex;
   }
+
+  ExecutionState returnState(bool isShadowRow) const;
 };
 }  // namespace aql
 }  // namespace arangodb

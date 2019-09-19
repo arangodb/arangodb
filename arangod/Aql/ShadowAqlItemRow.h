@@ -56,7 +56,7 @@ struct CreateInvalidShadowRowHint {
 class ShadowAqlItemRow {
  public:
   explicit ShadowAqlItemRow(CreateInvalidShadowRowHint)
-    : _block(nullptr), _baseIndex(0) {}
+      : _block(nullptr), _baseIndex(0) {}
 
   explicit ShadowAqlItemRow(
       // cppcheck-suppress passedByValue
@@ -70,12 +70,15 @@ class ShadowAqlItemRow {
   bool isRelevant() const noexcept { return getDepth() == 0; }
 
   inline bool isInitialized() const {
-    TRI_ASSERT(_block != nullptr);
-    // The value needs to always be a positive integer.
-    auto depthVal = block().getShadowRowDepth(_baseIndex);
-    TRI_ASSERT(depthVal.isNumber());
-    TRI_ASSERT(depthVal.toInt64() >= 0);
-    return true;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (_block != nullptr) {
+      // The value needs to always be a positive integer.
+      auto depthVal = block().getShadowRowDepth(_baseIndex);
+      TRI_ASSERT(depthVal.isNumber());
+      TRI_ASSERT(depthVal.toInt64() >= 0);
+    }
+#endif
+    return _block != nullptr;
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
