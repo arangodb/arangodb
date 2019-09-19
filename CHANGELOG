@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+
+* Obtain new unique IDs via a background thread.
+
 * Fixed a shutdown hanger because of a read/write lock race.
 
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
