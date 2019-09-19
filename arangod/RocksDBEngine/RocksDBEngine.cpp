@@ -896,7 +896,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
     //// check format id
-    VPackSlice idSlice = slice.get("id");
+    TRI_ASSERT(slice.isObject());
+    VPackSlice idSlice = slice.get(StaticStrings::DatabaseId);
     if (!idSlice.isString()) {
       LOG_TOPIC("099d7", ERR, arangodb::Logger::STARTUP)
           << "found invalid database declaration with non-string id: "
@@ -1178,6 +1179,7 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
 
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
+  LOG_DEVEL << "write database marker" << slice.toJson();
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   rocksdb::Status res = _db->GetRootDB()->Write(wo, &batch);
@@ -2017,6 +2019,9 @@ bool RocksDBEngine::systemDatabaseExists() {
   getDatabases(builder);
 
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
+    LOG_DEVEL << item.toJson();
+    TRI_ASSERT(item.isObject());
+    TRI_ASSERT(item.get("name").isString());
     if (item.get("name").copyString() == StaticStrings::SystemDatabase) {
       return true;
     }

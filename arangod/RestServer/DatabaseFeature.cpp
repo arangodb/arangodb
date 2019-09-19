@@ -641,14 +641,15 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
     int status = TRI_ERROR_NO_ERROR;
 
     //FIXME -- use info directly
-    VPackBuilder tmpOptions;
     {
-      VPackObjectBuilder guard(&tmpOptions);
-      info.toVelocyPack(tmpOptions);
+      VPackObjectBuilder guard(&builder);
+      info.toVelocyPack(builder);
     }
 
+    LOG_DEVEL << builder.slice();
+    TRI_ASSERT(!builder.slice().isNone());
 
-    vocbase = engine->createDatabase(info.getId(), tmpOptions.slice() /*args*/, status);
+    vocbase = engine->createDatabase(info.getId(), builder.slice() /*args*/, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 

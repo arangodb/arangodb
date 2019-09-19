@@ -124,9 +124,12 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-  builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(_minReplicationFactor));
-  builder.add(StaticStrings::Sharding, VPackValue(_sharding));
+
+  if(ServerState::instance()->isCoordinator()){
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_minReplicationFactor));
+    builder.add(StaticStrings::Sharding, VPackValue(_sharding));
+  }
 
   if(withUsers) {
     builder.add(VPackValue("users"));
