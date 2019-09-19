@@ -1,24 +1,13 @@
 #include "VocbaseInfo.h"
 
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/StringUtils.h"
-#include "Utils/Events.h"
-#include "Logger/LogMacros.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Utils/Events.h"
 
 namespace arangodb {
-
-  //  ID has to be created outside!!!
-  /// if (ServerState::instance()->isCoordinator()) {
-  ///   _id = ClusterInfo::instance()->uniqid();
-  /// } else {
-  ///   if (options.hasKey("id")) {
-  ///     _id = basics::VelocyPackHelper::stringUInt64(options, "id");
-  ///   } else {
-  ///     _id = 0; // TODO -- is this ok?
-  ///   }
-  /// }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   Result res;
@@ -26,16 +15,14 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   _name = name;
   _id = id;
 
-#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _vaild = true;
 #endif
 
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(VPackSlice const& options,
-                                VPackSlice const& users) {
-
+Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& users) {
   Result res = extractOptions(options, true /*getId*/, true /*getUser*/);
   if (!res.ok()) {
     return res;
@@ -46,14 +33,15 @@ Result CreateDatabaseInfo::load(VPackSlice const& options,
     return res;
   }
 
-#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _vaild = true;
 #endif
 
   return checkOptions();
 };
 
-Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options, VPackSlice const& users) {
+Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
+                                VPackSlice const& users) {
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, true /*getUser*/);
@@ -66,15 +54,14 @@ Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options, VPackSli
     return res;
   }
 
-#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _vaild = true;
 #endif
 
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string const& name,
-                                VPackSlice const& options,
+Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
   _name = name;
 
@@ -88,15 +75,15 @@ Result CreateDatabaseInfo::load(std::string const& name,
     return res;
   }
 
-#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _vaild = true;
 #endif
 
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string const& name, uint64_t id, VPackSlice const& options,
-                                VPackSlice const& users) {
+Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
+                                VPackSlice const& options, VPackSlice const& users) {
   _name = name;
   _id = id;
 
@@ -110,13 +97,12 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id, VPackSlice
     return res;
   }
 
-#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _vaild = true;
 #endif
 
   return checkOptions();
 };
-
 
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
   TRI_ASSERT(_vaildId);
@@ -125,13 +111,13 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
 
-  if(ServerState::instance()->isCoordinator()){
+  if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
     builder.add(StaticStrings::MinReplicationFactor, VPackValue(_minReplicationFactor));
     builder.add(StaticStrings::Sharding, VPackValue(_sharding));
   }
 
-  if(withUsers) {
+  if (withUsers) {
     builder.add(VPackValue("users"));
     UsersToVelocyPack(builder);
   }
@@ -139,12 +125,12 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
 
 void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder arrayGuard(&builder);
-  for(auto const& user : _users) {
+  for (auto const& user : _users) {
     VPackObjectBuilder objectGuard(&builder);
     builder.add("username", VPackValue(user.name));
     builder.add("passwd", VPackValue(user.password));
     builder.add("active", VPackValue(user.active));
-    if(user.extra) {
+    if (user.extra) {
       builder.add("extra", user.extra->slice());
     }
   }
@@ -166,7 +152,8 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
 
     std::string name;
     bool userSet = false;
-    for(std::string const& key : std::vector<std::string>{"username", "user"}) {
+    for (std::string const& key :
+         std::vector<std::string>{"username", "user"}) {
       auto slice = user.get(key);
       if (slice.isNone()) {
         continue;
@@ -202,17 +189,18 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
       extraBuilder->add(extra);
     }
 
-    if(userSet) {
-      _users.emplace_back(std::move(name), std::move(password), active, std::move(extraBuilder));
+    if (userSet) {
+      _users.emplace_back(std::move(name), std::move(password), active,
+                          std::move(extraBuilder));
     } else {
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
-
   }
   return Result();
 }
 
-Result CreateDatabaseInfo::extractOptions(VPackSlice const& options, bool extractId, bool extractName) {
+Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
+                                          bool extractId, bool extractName) {
   if (options.isNone() || options.isNull()) {
     return Result();
   } else if (!options.isObject()) {
@@ -225,43 +213,44 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options, bool extrac
   _minReplicationFactor = vocopts.minReplicationFactor;
   _sharding = vocopts.sharding;
 
-  if(extractName) {
+  if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
-    if(!nameSlice.isString()) {
+    if (!nameSlice.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
     }
     _name = nameSlice.copyString();
   }
 
-  if(extractId) {
+  if (extractId) {
     auto idSlice = options.get(StaticStrings::DatabaseId);
-      if(idSlice.isString()){
-        // improve once it works
-        // look for some nice internal helper this has proably been done before
-        auto idStr = idSlice.copyString();
-        _id = basics::StringUtils::uint64(idSlice.stringRef().data(), idSlice.stringRef().size());
+    if (idSlice.isString()) {
+      // improve once it works
+      // look for some nice internal helper this has proably been done before
+      auto idStr = idSlice.copyString();
+      _id = basics::StringUtils::uint64(idSlice.stringRef().data(),
+                                        idSlice.stringRef().size());
 
-      } else if ( idSlice.isUInt()) {
-        _id = idSlice.getUInt();
-      } else if ( idSlice.isNone()) {
-        //do nothing - can be set later - this sucks
-      } else {
-        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
-      }
+    } else if (idSlice.isUInt()) {
+      _id = idSlice.getUInt();
+    } else if (idSlice.isNone()) {
+      // do nothing - can be set later - this sucks
+    } else {
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+    }
   }
 
   return checkOptions();
 }
 
 Result CreateDatabaseInfo::checkOptions() {
-
-  if(_id != 0){
+  if (_id != 0) {
     _vaildId = true;
   } else {
     _vaildId = false;
   }
 
-  if (_name.empty() || !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name))) {
+  if (_name.empty() ||
+      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -288,34 +277,41 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
 
   {
     auto shardingSlice = options.get(StaticStrings::Sharding);
-    if(shardingSlice.isString()  && shardingSlice.compareString("single") == 0) {
-        vocbaseOptions.sharding = shardingSlice.copyString();
+    if (shardingSlice.isString() && shardingSlice.compareString("single") == 0) {
+      vocbaseOptions.sharding = shardingSlice.copyString();
     }
   }
 
-  auto cluster = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
+  auto cluster = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
+      "Cluster");
   {
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-    bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
+    bool isSatellite = (replicationSlice.isString() &&
+                        replicationSlice.compareString(StaticStrings::Satellite) == 0);
     bool isNumber = replicationSlice.isNumber();
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
-    if(!isSatellite && !isNumber){
-      if(cluster) {
+    if (!isSatellite && !isNumber) {
+      if (cluster) {
         vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
       } else {
-        LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
+        LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
+            << "Can not access ClusterFeature to determine database "
+               "replicationFactor";
       }
     } else if (isSatellite) {
       vocbaseOptions.replicationFactor = 0;
     } else if (isNumber) {
-      vocbaseOptions.replicationFactor = replicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
+      vocbaseOptions.replicationFactor =
+          replicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
     }
 #ifndef USE_ENTERPRISE
-    if(vocbaseOptions.replicationFactor == 0) {
-      if(cluster) {
+    if (vocbaseOptions.replicationFactor == 0) {
+      if (cluster) {
         vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
       } else {
-        LOG_TOPIC("eeeef", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
+        LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
+            << "Can not access ClusterFeature to determine database "
+               "replicationFactor";
         vocbaseOptions.replicationFactor = 1;
       }
     }
@@ -324,33 +320,40 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
 
   {
     VPackSlice minReplicationSlice = options.get(StaticStrings::MinReplicationFactor);
-    bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getNumber<int>() > 0 );
-    if(!isNumber){
-      if(cluster) {
+    bool isNumber =
+        (minReplicationSlice.isNumber() && minReplicationSlice.getNumber<int>() > 0);
+    if (!isNumber) {
+      if (cluster) {
         vocbaseOptions.minReplicationFactor = cluster->minReplicationFactor();
       } else {
-        LOG_TOPIC("eeeed", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database minReplicationFactor";
+        LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
+            << "Can not access ClusterFeature to determine database "
+               "minReplicationFactor";
       }
     } else if (isNumber) {
-      vocbaseOptions.minReplicationFactor = minReplicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
+      vocbaseOptions.minReplicationFactor =
+          minReplicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
     }
   }
 
   return vocbaseOptions;
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor) {
+void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
+                                   std::uint32_t replicationFactor,
+                                   std::uint32_t minReplicationFactor) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::Sharding, VPackValue(sharding));
-  if(replicationFactor) {
+  if (replicationFactor) {
     builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-  } else { // 0 is satellite
+  } else {  // 0 is satellite
     builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   }
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
 }
 
 void addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor, opt.minReplicationFactor);
+  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
+                                opt.minReplicationFactor);
 }
-}
+}  // namespace arangodb

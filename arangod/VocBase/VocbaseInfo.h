@@ -30,25 +30,24 @@
 #include "Basics/debugging.h"
 #include "VocBase/voc-types.h"
 
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-//TODO do we need to add some sort of coordinator?
-//builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
+// TODO do we need to add some sort of coordinator?
+// builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
 
 struct DBUser {
   DBUser() = default;
-  DBUser(DBUser const&) = default; // delete when info does not need to be copied anymore
+  DBUser(DBUser const&) = default;  // delete when info does not need to be copied anymore
 
   DBUser(std::string&& n, std::string&& p, bool a, std::shared_ptr<VPackBuilder> b)
-    : name(std::move(n)), password(std::move(p)), extra(std::move(b)), active(a) {}
+      : name(std::move(n)), password(std::move(p)), extra(std::move(b)), active(a) {}
 
   DBUser(std::string const& n, std::string const& p, bool a, std::shared_ptr<VPackBuilder> b)
-    : name(n), password(p), extra(std::move(b)), active(a) {}
+      : name(n), password(p), extra(std::move(b)), active(a) {}
 
-  DBUser& operator = (DBUser&& other) {
+  DBUser& operator=(DBUser&& other) {
     name = std::move(other.name);
     password = std::move(other.password);
     active = other.active;
@@ -56,40 +55,30 @@ struct DBUser {
     return *this;
   }
 
-  DBUser(DBUser&& other) {
-    operator = (std::move(other));
-  }
+  DBUser(DBUser&& other) { operator=(std::move(other)); }
 
   std::string name;
   std::string password;
-  std::shared_ptr<VPackBuilder> extra; // TODO - must be unique_ptr eventually
+  std::shared_ptr<VPackBuilder> extra;  // TODO - must be unique_ptr eventually
   bool active = false;
 };
 
 class CreateDatabaseInfo {
  public:
-
   CreateDatabaseInfo() = default;
-  //CreateDatabaseInfo(CreateDatabaseInfo &&) = delete; // TODO - then replace shared with unique ptr
-  Result load(std::string const& name,
-              uint64_t id);
+  // CreateDatabaseInfo(CreateDatabaseInfo &&) = delete; // TODO - then replace shared with unique ptr
+  Result load(std::string const& name, uint64_t id);
 
-  Result load(uint64_t id,
-              VPackSlice const& options,
-              VPackSlice const& users = VPackSlice::emptyArraySlice() );
+  Result load(uint64_t id, VPackSlice const& options,
+              VPackSlice const& users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string const& name,
-              VPackSlice const& options,
-              VPackSlice const& users = VPackSlice::emptyArraySlice() );
+  Result load(std::string const& name, VPackSlice const& options,
+              VPackSlice const& users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string const& name,
-              uint64_t id,
-              VPackSlice const& options,
+  Result load(std::string const& name, uint64_t id, VPackSlice const& options,
               VPackSlice const& users);
 
-  Result load(VPackSlice const& options,
-              VPackSlice const& users);
-
+  Result load(VPackSlice const& options, VPackSlice const& users);
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
@@ -100,9 +89,7 @@ class CreateDatabaseInfo {
     return _id;
   }
 
-  bool validId() const {
-    return _vaildId;
-  }
+  bool validId() const { return _vaildId; }
 
   // shold be created with vaild id
   void setId(uint64_t id) {
@@ -129,15 +116,12 @@ class CreateDatabaseInfo {
     return _sharding;
   }
 
-  void allowSystemDB(bool s) {
-    _isSystemDB = s;
-  }
-
+  void allowSystemDB(bool s) { _isSystemDB = s; }
 
  private:
-
   Result extractUsers(VPackSlice const& users);
-  Result extractOptions(VPackSlice const& options, bool extactId = true, bool extractName = true);
+  Result extractOptions(VPackSlice const& options, bool extactId = true,
+                        bool extractName = true);
   Result checkOptions();
 
  private:
@@ -150,7 +134,7 @@ class CreateDatabaseInfo {
   std::string _sharding = "flexible";
 
   bool _vaildId = false;
-  bool _vaild = false; // required because TRI_ASSERT needs variable in Release mode.
+  bool _vaild = false;  // required because TRI_ASSERT needs variable in Release mode.
   bool _isSystemDB = false;
 };
 
@@ -162,11 +146,10 @@ struct VocbaseOptions {
 
 VocbaseOptions getVocbaseOptions(velocypack::Slice const&);
 
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder,
-                                   std::string const& sharding,
+void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t minReplicationFactor);
 void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
 
-} //arangodb
+}  // namespace arangodb
 #endif
