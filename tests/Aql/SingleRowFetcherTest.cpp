@@ -212,6 +212,109 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_relevant_shadow_rows) {
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
+TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_irrelevant_shadow_rows) {
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    block->emplaceValue(0, 0, "a");
+    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(1, 0, "a");
+    block->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(2, 0, "a");
+    // Back to top level
+    block->emplaceValue(3, 0, "b");
+    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(4, 0, "b");
+    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(5, 0, "b");
+    block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(2ull)));
+    block->emplaceValue(6, 0, "b");
+
+    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+  }
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Will stay on HASMORE
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    EXPECT_FALSE(shadow.isInitialized());
+
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("b"));
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Will stay on DONE
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(shadow.isInitialized());
+
+    // Will not produce data row
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+  }  // testee is destroyed here
+  // testee must be destroyed before verify, because it may call returnBlock
+  // in the destructor
+  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
+}
+
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_done_immediately) {
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
