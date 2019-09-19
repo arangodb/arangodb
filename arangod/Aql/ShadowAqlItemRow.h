@@ -110,11 +110,11 @@ class ShadowAqlItemRow {
 
   /// @brief get the depthValue of the shadow row as int64_t >= 0
   ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
-  inline int64_t getDepth() const {
+  inline uint64_t getDepth() const {
     TRI_ASSERT(isInitialized());
     auto value = block().getShadowRowDepth(_baseIndex);
     TRI_ASSERT(value.toInt64() >= 0);
-    return value.toInt64();
+    return static_cast<uint64_t>(value.toInt64());
   }
 
  private:
