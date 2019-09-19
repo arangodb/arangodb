@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix strange shutdown hanger which came from the fact that currently
+  libgcc/libmusl wrongly detect multi-threadedness in statically linked
+  executables.
+
 * Remove operations documents in the cluster will now use an optimization, if all sharding keys 
   were specified. Should the sharding keys not match the values in the actual document
   a not found error will be returned.
