@@ -435,6 +435,26 @@ You can also generate core dumps from running processes without killing them by 
     # ls -l core*
     -rw-r--r--  1 me users  352664 Nov 27 10:48  core.6942
 
+##### Installing GDB 8 on RedHat7 or Centos7
+
+RedHat7 and Centos7 have a package called `devtoolset-7` which contains
+a complete set of relative modern development tools. It can be installed
+by doing
+
+```
+sudo yum install devtoolset-7
+```
+
+These will be installed under some path under `/opt`. To actually use
+these tools, run
+
+```
+scl enable devtoolset-7 bash
+```
+
+to start a shell in which these are used. For example, you can pull a
+core dump with `gcore` using this version, even for ArangoDB >= 3.4.
+
 ##### Analyzing Core Dumps on Linux
 
 We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.

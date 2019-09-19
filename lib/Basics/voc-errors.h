@@ -1369,13 +1369,13 @@ constexpr int TRI_ERROR_GRAPH_DUPLICATE                                         
 constexpr int TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         = 1926;
 
 /// 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
-/// "not a vertex collection"
+/// "collection not a vertex collection"
 /// the collection is not a vertex collection.
 constexpr int TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      = 1927;
 
 /// 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
-/// "not in orphan collection"
-/// Vertex collection not in orphan collection of the graph.
+/// "collection is not in list of orphan collections"
+/// Vertex collection not in list of orphan collections of the graph.
 constexpr int TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          = 1928;
 
 /// 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
