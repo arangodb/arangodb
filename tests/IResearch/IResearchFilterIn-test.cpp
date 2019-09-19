@@ -2057,7 +2057,7 @@ SECTION("BinaryNotIn") {
   // simple attribute
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
@@ -2069,7 +2069,7 @@ SECTION("BinaryNotIn") {
   // simple offset
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
@@ -2080,7 +2080,7 @@ SECTION("BinaryNotIn") {
   // complex attribute name
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
@@ -2093,7 +2093,7 @@ SECTION("BinaryNotIn") {
   // complex attribute name, offset
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("3");
@@ -2106,7 +2106,7 @@ SECTION("BinaryNotIn") {
   // complex attribute name, offset
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("2");
@@ -2120,7 +2120,7 @@ SECTION("BinaryNotIn") {
   // complex attribute name, offset, analyzer
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("2");
     root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("3");
@@ -2133,7 +2133,7 @@ SECTION("BinaryNotIn") {
   // complex attribute name, offset, analyzer, boost
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
     root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleString("a.b.c[323].e.f", "test_analyzer")).term("2");
@@ -2147,7 +2147,7 @@ SECTION("BinaryNotIn") {
   // heterogeneous array values
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("quick.brown.fox")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
@@ -2168,7 +2168,7 @@ SECTION("BinaryNotIn") {
   // heterogeneous array values, analyzer
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
@@ -2188,7 +2188,7 @@ SECTION("BinaryNotIn") {
   // heterogeneous array values, analyzer, boost
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
     root.add<irs::by_term>().field(mangleString("quick.brown.fox", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
@@ -2223,7 +2223,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("3");
@@ -2278,7 +2278,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
@@ -2302,7 +2302,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
@@ -2325,7 +2325,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(3.5);
     root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
@@ -2350,7 +2350,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
@@ -2378,7 +2378,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("3");
@@ -2406,7 +2406,7 @@ SECTION("BinaryNotIn") {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
     root.add<irs::by_term>().field(mangleString("a.b.c.e.f", "test_analyzer")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
@@ -2505,12 +2505,12 @@ SECTION("BinaryNotIn") {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -2534,7 +2534,7 @@ SECTION("BinaryNotIn") {
           CHECK(expected == *begin);
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -2619,12 +2619,12 @@ SECTION("BinaryNotIn") {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -2648,7 +2648,7 @@ SECTION("BinaryNotIn") {
           CHECK(expected == *begin);
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -2733,12 +2733,12 @@ SECTION("BinaryNotIn") {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -2762,7 +2762,7 @@ SECTION("BinaryNotIn") {
           CHECK(expected == *begin);
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -2847,13 +2847,13 @@ SECTION("BinaryNotIn") {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
-        CHECK(1.5f == andNode->boost());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
+        CHECK(1.5f == orNode->boost());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -2877,7 +2877,7 @@ SECTION("BinaryNotIn") {
           CHECK(expected == *begin);
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -2962,12 +2962,12 @@ SECTION("BinaryNotIn") {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -2990,7 +2990,7 @@ SECTION("BinaryNotIn") {
           CHECK(nullptr != dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -3073,11 +3073,11 @@ SECTION("BinaryNotIn") {
         CHECK(1 == actual.size());
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
-        auto begin = andNode->begin();
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3096,7 +3096,7 @@ SECTION("BinaryNotIn") {
           CHECK(irs::all() == *++begin);
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -3181,12 +3181,12 @@ SECTION("BinaryNotIn") {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         CHECK(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        CHECK(andNode);
-        CHECK(irs::And::type() == andNode->type());
-        CHECK(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        CHECK(orNode);
+        CHECK(irs::Or::type() == orNode->type());
+        CHECK(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3210,7 +3210,7 @@ SECTION("BinaryNotIn") {
           CHECK(irs::all() == *++begin);
         }
 
-        CHECK(andNode->end() == ++begin);
+        CHECK(orNode->end() == ++begin);
       }
     }
   }
@@ -3231,7 +3231,7 @@ SECTION("BinaryNotIn") {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("str");
     root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
@@ -3260,7 +3260,7 @@ SECTION("BinaryNotIn") {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("str");

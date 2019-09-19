@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,31 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_STORE_CALLBACK_H
-#define ARANGOD_CONSENSUS_STORE_CALLBACK_H 1
+#ifndef ARANGOD_REPLICATION_SYNCERID_H
+#define ARANGOD_REPLICATION_SYNCERID_H
 
-#include "Cluster/ClusterComm.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace consensus {
 
-class Agent;
+class GeneralRequest;
 
-class StoreCallback : public arangodb::ClusterCommCallback {
-public:
-  StoreCallback(std::string const&, query_t const&, Agent* agent);
+// Note that the value 0 is reserved and means unset.
+struct SyncerId {
+  TRI_voc_tick_t value;
 
-  bool operator()(arangodb::ClusterCommResult*) override final;
+  std::string toString() const;
+  static SyncerId fromRequest(GeneralRequest const& request);
 
-private:
-  std::string _url;
-  query_t _body;
-  Agent* _agent;
+  inline bool operator==(SyncerId other) const noexcept {
+    return value == other.value;
+  }
 };
-}  // namespace consensus
-}  // namespace arangodb
+}
 
-#endif
+#endif // ARANGOD_REPLICATION_SYNCERID_H

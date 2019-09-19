@@ -326,26 +326,32 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     // Callback
 
     for (auto const& url : urls) {
-      Builder body;  // host
+
+      auto body = std::make_shared<VPackBuilder>();  // host
       {
-        VPackObjectBuilder b(&body);
-        body.add("term", VPackValue(term));
-        body.add("index", VPackValue(index));
+        VPackObjectBuilder b(body.get());
+        body->add("term", VPackValue(term));
+        body->add("index", VPackValue(index));
+
         auto ret = in.equal_range(url);
-        std::map<std::string,std::map<std::string, std::string>> result;
+
         // key -> (modified -> op)
+        // using the map to make sure no double key entries end up in document
+        std::map<std::string,std::map<std::string, std::string>> result;
         for (auto it = ret.first; it != ret.second; ++it) {
           result[it->second->key][it->second->modified] = it->second->oper;
         }
+
+        // Work the map into JSON
         for (auto const& m : result) {
-          body.add(VPackValue(m.first));
+          body->add(VPackValue(m.first));
           {
-            VPackObjectBuilder guard(&body);
+            VPackObjectBuilder guard(body.get());
             for (auto const& m2 : m.second) {
-              body.add(VPackValue(m2.first));
+              body->add(VPackValue(m2.first));
               {
-                VPackObjectBuilder guard2(&body);
-                body.add("op", VPackValue(m2.second));
+                VPackObjectBuilder guard2(body.get());
+                body->add("op", VPackValue(m2.second));
               }
             }
           }
@@ -358,8 +364,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
         arangodb::ClusterComm::instance()->asyncRequest(
             "1", 1, endpoint, rest::RequestType::POST, path,
-            std::make_shared<std::string>(body.toString()), headerFields,
-            std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
+            std::make_shared<std::string>(body->toString()), headerFields,
+            std::make_shared<StoreCallback>(url, body, _agent), 1.0, true, 0.01);
 
       } else {
         LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;

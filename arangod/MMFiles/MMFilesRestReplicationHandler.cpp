@@ -30,6 +30,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -56,24 +57,18 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* req
                                                              GeneralResponse* response)
     : RestReplicationHandler(request, response) {}
 
-MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool found;
-  std::string const& value = _request->value("serverId", found);
+  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-  if (found && !value.empty() && value != "none") {
-    TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-
-    if (serverId > 0) {
-      _vocbase.updateReplicationClient(serverId, lastServedTick,
-                                       replutils::BatchInfo::DefaultTimeout);
-    }
-  }
+  _vocbase.replicationClients().track(syncerId, clientId, lastServedTick,
+                                      replutils::BatchInfo::DefaultTimeout);
 }
 
-// prevents datafiles from beeing removed while dumping the contents
+// prevents datafiles from being removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();

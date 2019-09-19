@@ -402,8 +402,10 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationApplier.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp
+  Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
+  Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
@@ -596,8 +598,8 @@ if (USE_ENTERPRISE)
     )
   else()
     target_link_libraries(arangoserver
-      ldap
-      lber
+      ${LDAP_LIB}
+      ${LBER_LIB}
       ${OPENSSL_LIBRARIES}
     )
   endif()
