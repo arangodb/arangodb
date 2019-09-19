@@ -171,6 +171,8 @@ struct Parameter {
   Parameter() = default;
   virtual ~Parameter() {}
 
+  virtual void flushValue() {}
+
   virtual bool requiresValue() const { return true; }
   virtual std::string name() const = 0;
   virtual std::string valueString() const = 0;
@@ -499,6 +501,10 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
+  void flushValue() {
+    ptr->clear();
+  }
+
   void toVPack(VPackBuilder& builder) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
@@ -515,8 +521,9 @@ struct VectorParameter : public Parameter {
 template <typename T>
 struct DiscreteValuesVectorParameter : public Parameter {
   explicit DiscreteValuesVectorParameter(std::vector<typename T::ValueType>* ptr,
-                          std::unordered_set<typename T::ValueType> const& allowed)
-      : ptr(ptr), allowed(allowed) {
+                                         std::unordered_set<typename T::ValueType> const& allowed)
+      : ptr(ptr),
+        allowed(allowed) {
     for (size_t i = 0; i < ptr->size(); ++i) {
       if (allowed.find(ptr->at(i)) == allowed.end()) {
         // default value is not in list of allowed values
@@ -533,6 +540,10 @@ struct DiscreteValuesVectorParameter : public Parameter {
     typename T::ValueType dummy;
     T param(&dummy);
     return std::string(param.name()) + "...";
+  }
+
+  void flushValue() {
+    ptr->clear();
   }
 
   std::string valueString() const override {
