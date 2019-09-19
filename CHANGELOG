@@ -1,6 +1,10 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fix strange shutdown hanger which came from the fact that currently
+  libgcc/libmusl wrongly detect multi-threadedness in statically linked
+  executables.
+
 * Fixed a shutdown hanger because of a read/write lock race.
 
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
