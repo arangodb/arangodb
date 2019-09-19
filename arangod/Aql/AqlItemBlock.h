@@ -385,7 +385,7 @@ class AqlItemBlock {
 
  private:
   // This includes the amount of internal registers that are not visible to the outside.
-  inline size_t internalNrRegs() const noexcept { return _nrRegs + 1; }
+  inline RegisterCount internalNrRegs() const noexcept { return _nrRegs + 1; }
 
   /// @brief get the computed address within the data vector
   inline size_t getAddress(size_t index, RegisterId varNr) const noexcept {
@@ -427,7 +427,7 @@ class AqlItemBlock {
   size_t _nrItems = 0;
 
   /// @brief _nrRegs, number of columns
-  RegisterId _nrRegs = 0;
+  RegisterCount _nrRegs = 0;
 
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;

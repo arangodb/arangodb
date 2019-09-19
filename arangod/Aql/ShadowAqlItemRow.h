@@ -57,10 +57,20 @@ class ShadowAqlItemRow {
     TRI_ASSERT(isInitialized());
   }
 
+  /// @brief get the number of data registers in the underlying block.
+  ///        Not all of these registers are necessarily filled by this
+  ///        ShadowRow. There might be empty registers on deeper levels.
   std::size_t getNrRegisters() const noexcept { return block().getNrRegs(); }
 
+  /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
+  ///        we are in right now. This will only be of importance on nested subqueries.
+  ///        Within the inner subquery all shadowrows of this inner are relavant. All shadowRows
+  ///        of the outer subquery are NOT relevant
+  ///        Also note: There is a guarantee that a non-relevant shadowrow, can only be encountered
+  ///        right after a shadowrow. And only in descending nesting level. (eg 1. inner most, 2. inner, 3. outer most)
   bool isRelevant() const noexcept { return getDepth() == 0; }
 
+  /// @brief Test if this shadow row is initialized, eg has a block and has a valid depth.
   inline bool isInitialized() const {
     TRI_ASSERT(_block != nullptr);
     // The value needs to always be a positive integer.
@@ -92,11 +102,14 @@ class ShadowAqlItemRow {
     return block().getValueReference(_baseIndex, registerId);
   }
 
+  /// @brief get the depthValue of the shadow row as AqlValue
   inline AqlValue const& getShadowDepthValue() const {
     TRI_ASSERT(isInitialized());
     return block().getShadowRowDepth(_baseIndex);
   }
 
+  /// @brief get the depthValue of the shadow row as int64_t >= 0
+  ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
   inline int64_t getDepth() const {
     TRI_ASSERT(isInitialized());
     auto value = block().getShadowRowDepth(_baseIndex);

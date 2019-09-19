@@ -259,9 +259,8 @@ class OutputAqlItemRow {
 
   void increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
     doCopyRow(sourceRow, false);
-    VPackBuilder b;
-    b.add(VPackValue(sourceRow.getDepth() + 1));
-    block().setShadowRowDepth(_baseIndex, AqlValue{b.slice()});
+    block().setShadowRowDepth(_baseIndex,
+                              AqlValue{AqlValueHintUInt{sourceRow.getDepth() + 1}});
     // We need to fake produced state
     _numValuesWritten = numRegistersToWrite();
     TRI_ASSERT(produced());
@@ -270,9 +269,8 @@ class OutputAqlItemRow {
   void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
     doCopyRow(sourceRow, false);
     TRI_ASSERT(!sourceRow.isRelevant());
-    VPackBuilder b;
-    b.add(VPackValue(sourceRow.getDepth() - 1));
-    block().setShadowRowDepth(_baseIndex, AqlValue{b.slice()});
+    block().setShadowRowDepth(_baseIndex,
+                              AqlValue{AqlValueHintUInt{sourceRow.getDepth() - 1}});
     // We need to fake produced state
     _numValuesWritten = numRegistersToWrite();
     TRI_ASSERT(produced());
@@ -366,7 +364,7 @@ class OutputAqlItemRow {
   inline void memorizeRow(ItemRowType const& sourceRow);
 
   template <class ItemRowType>
-  inline bool testIfWeMostClone(ItemRowType const& sourceRow) const;
+  inline bool testIfWeMustClone(ItemRowType const& sourceRow) const;
 
   template <class ItemRowType>
   inline void adjustShadowRowDepth(ItemRowType const& sourceRow);
@@ -383,12 +381,12 @@ inline void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow con
 }
 
 template <>
-inline bool OutputAqlItemRow::testIfWeMostClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
+inline bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
   return _baseIndex == 0 || _lastSourceRow != sourceRow;
 }
 
 template <>
-inline bool OutputAqlItemRow::testIfWeMostClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
+inline bool OutputAqlItemRow::testIfWeMustClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
   return true;
 }
 
@@ -406,8 +404,7 @@ inline void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignor
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(!_doNotCopyInputRow);
-  bool mustClone = testIfWeMostClone(sourceRow);
-  // TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+  bool mustClone = testIfWeMustClone(sourceRow);
 
   if (mustClone) {
     for (auto itemId : registersToKeep()) {
