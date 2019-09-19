@@ -83,5 +83,101 @@ std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(
   return res;
 }
 
+
+template <bool passBlocksThrough>
+bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost)
+{
+  // Fetch a new block iff necessary
+  if (!indexIsValid()) {
+    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
+    // new one, so we might reuse it immediately!
+    _currentBlock = nullptr;
+
+    ExecutionState state;
+    SharedAqlItemBlockPtr newBlock;
+    std::tie(state, newBlock) = fetchBlock(atMost);
+    if (state == ExecutionState::WAITING) {
+      return false;
+    }
+
+    _currentBlock = std::move(newBlock);
+    _rowIndex = 0;
+  }
+  return true;
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
+
+  if (!fetchBlockIfNecessary(atMost)) {
+    return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+  }
+
+  ExecutionState rowState;
+
+  if (_currentBlock == nullptr) {
+    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
+    _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    rowState = ExecutionState::DONE;
+  } else {
+    TRI_ASSERT(_currentBlock != nullptr);
+    if (_currentBlock->isShadowRow(_rowIndex)) {
+      _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      rowState = ExecutionState::DONE;
+    } else {
+      _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
+
+      TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
+      if (isLastRowInBlock()) {
+        if(_upstreamState == ExecutionState::DONE) {
+          rowState = ExecutionState::DONE;
+        } else {
+          rowState = ExecutionState::HASMORE;
+        }
+      } else {
+        if(_currentBlock->isShadowRow(_rowIndex+1)) {
+          rowState = ExecutionState::DONE;
+        } else {
+          rowState = ExecutionState::HASMORE;
+        }
+      }
+    }
+    _rowIndex++;
+  }
+  return {rowState, _currentRow};
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchShadowRow(size_t atMost) {
+
+  if (!fetchBlockIfNecessary(atMost)) {
+    return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  }
+
+  ExecutionState rowState;
+
+  if (_currentBlock == nullptr) {
+    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
+    _currentShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+    rowState = ExecutionState::DONE;
+  } else {
+    if (_currentBlock->isShadowRow(_rowIndex)) {
+      _currentShadowRow = ShadowAqlItemRow{_currentBlock, _rowIndex};
+      rowState = ExecutionState::HASMORE;
+      _rowIndex++;
+    } else {
+      _currentShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+      rowState = ExecutionState::HASMORE;
+    }
+  }
+
+  return {rowState, _currentShadowRow};
+}
+
+template <bool passBlocksThrough>
+bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
+  return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
+}
+
 template class ::arangodb::aql::SingleRowFetcher<false>;
 template class ::arangodb::aql::SingleRowFetcher<true>;
