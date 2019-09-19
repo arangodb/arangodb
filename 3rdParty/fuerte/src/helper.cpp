@@ -32,14 +32,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-StringMap sliceToStringMap(VPackSlice const& slice) {
-  StringMap rv;
-  assert(slice.isObject());
-  for (auto const& it : ::arangodb::velocypack::ObjectIterator(slice)) {
-    rv.insert({it.key.copyString(), it.value.copyString()});
-  }
-  return rv;
-}
 
 std::string to_string(VPackSlice const& slice) {
   std::stringstream ss;
@@ -107,9 +99,9 @@ std::string to_string(Message& message) {
       ss << std::endl;
     }
     
-    if (!req.header.meta.empty()) {
+    if (!req.header.meta().empty()) {
       ss << "meta:\n";
-      for (auto const& item : req.header.meta) {
+      for (auto const& item : req.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
       ss << std::endl;
@@ -131,15 +123,15 @@ std::string to_string(Message& message) {
       ss << "responseCode: " << res.header.responseCode << std::endl;
     }
     
-    if (!res.header.meta.empty()) {
+    if (!res.header.meta().empty()) {
       ss << "meta:\n";
-      for (auto const& item : res.header.meta) {
+      for (auto const& item : res.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
       ss << std::endl;
     }
     
-    ss << "contentType: " << res.header.contentTypeString() << std::endl;
+    ss << "contentType: " << to_string(res.header.contentType()) << std::endl;
   }
   /*  if (header.user) {
    ss << "user: " << header.user.get() << std::endl;

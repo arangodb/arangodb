@@ -32,7 +32,7 @@ namespace arangodb { namespace fuerte { namespace basics {
  */
 
 template<typename T> 
-inline T uintFromPersistentLittleEndian(uint8_t const* p) {
+inline T uintFromPersistentLE(uint8_t const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
   memcpy(&value, p, sizeof(T));
@@ -40,7 +40,7 @@ inline T uintFromPersistentLittleEndian(uint8_t const* p) {
 }
 
 template<typename T>
-inline void uintToPersistentLittleEndian(uint8_t* p, T value) {
+inline void uintToPersistentLE(uint8_t* p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToLittle(value);
   memcpy(p, &value, sizeof(T));

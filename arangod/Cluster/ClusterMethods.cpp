@@ -182,9 +182,9 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
 
 /// @brief begin a transaction on some leader shards
 template <typename ShardDocsMap>
-Result beginTransactionOnSomeLeaders(TransactionState& state,
-                                     LogicalCollection const& coll,
-                                     ShardDocsMap const& shards) {
+Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
+                                             LogicalCollection const& coll,
+                                             ShardDocsMap const& shards) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
@@ -206,7 +206,7 @@ Result beginTransactionOnSomeLeaders(TransactionState& state,
 }
 
 // begin transaction on shard leaders
-static Result beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards) {
+Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   std::vector<ServerID> leaders;
@@ -220,10 +220,9 @@ static Result beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap c
 }
 
 /// @brief add the correct header for the shard
-template<typename T>
-static void addTransactionHeaderForShard(transaction::Methods const& trx,
-                                         ShardMap const& shardMap, ShardID const& shard,
-                                         T& headers) {
+void addTransactionHeaderForShard(transaction::Methods const& trx,
+                                  ShardMap const& shardMap, ShardID const& shard,
+                                  network::Headers& headers) {
   TRI_ASSERT(trx.state()->isCoordinator());
   if (!ClusterTrxMethods::isElCheapo(trx)) {
     return;  // no need
@@ -307,17 +306,17 @@ static const char* notFoundSlice =
   "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
   "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
   "\x75\x6d\x29\xb2\x04\x03";
-} // namespace
-
-static void mergeResultsAllShards(std::vector<VPackSlice> const& results,
-                                  VPackBuilder& resultBody,
-                                  std::unordered_map<int, size_t>& errorCounter,
-                                  VPackValueLength const expectedResults) {
+  
+  
+void mergeResultsAllShards(std::vector<VPackSlice> const& results,
+                           VPackBuilder& resultBody,
+                           std::unordered_map<int, size_t>& errorCounter,
+                           VPackValueLength const expectedResults) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
-
+  
   resultBody.clear();
   resultBody.openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
@@ -340,7 +339,7 @@ static void mergeResultsAllShards(std::vector<VPackSlice> const& results,
       }
     }
     if (!foundRes) {
-      // Found none, use NOT_FOUND
+      // Found none, use static NOT_FOUND
       resultBody.add(VPackSlice(reinterpret_cast<uint8_t const*>(::notFoundSlice)));
       realNotFound++;
     }
@@ -350,6 +349,68 @@ static void mergeResultsAllShards(std::vector<VPackSlice> const& results,
     errorCounter.emplace(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, realNotFound);
   }
 }
+  
+template<typename F>
+OperationResult processShardResponses(F&& func,
+                                      size_t expectedLen,
+                                      OperationOptions options,
+                                      std::vector<Try<network::Response>> const& responses) {
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  if (expectedLen == 0) {  // Only one can answer, we react a bit differently
+    
+    int nrok = 0;
+    int commError = TRI_ERROR_NO_ERROR;
+    fuerte::StatusCode code;
+    for (size_t i = 0; i < responses.size(); i++) {
+      network::Response const& res = responses[i].get();
+      
+      if (res.error == fuerte::Error::NoError) {
+        // if no shard has the document, use NF answer from last shard
+        const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
+        if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
+          nrok++;
+          code = res.response->statusCode();
+          buffer = res.response->stealPayload();
+        }
+      } else {
+        commError = network::fuerteToArangoErrorCode(res);
+      }
+    }
+    
+    if (nrok == 0) {  // This can only happen, if a commError was encountered!
+      return OperationResult(commError);
+    } else if (nrok > 1) {
+      return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+    }
+    
+    return std::forward<F>(func)(code, std::move(buffer), std::move(options), {});
+  }
+  
+  // We select all results from all shards and merge them back again.
+  std::vector<VPackSlice> allResults;
+  allResults.reserve(responses.size());
+  
+  std::unordered_map<int, size_t> errorCounter;
+  // If no server responds we return 500
+  for (size_t i = 0; i < responses.size(); i++) {
+    network::Response const& res = responses[i].get();
+    if (res.error != fuerte::Error::NoError) {
+      return OperationResult(network::fuerteToArangoErrorCode(res));
+    }
+    
+    allResults.push_back(res.response->slice());
+    network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
+                                   /*includeNotFound*/ false);
+  }
+  VPackBuilder resultBody;
+  // If we get here we get exactly one result for every shard.
+  TRI_ASSERT(allResults.size() == responses.size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
+  return OperationResult(Result(), resultBody.steal(),
+                         std::move(options), std::move(errorCounter));
+}
+} // namespace
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Distribute one document onto a shard map. If this returns
@@ -955,7 +1016,7 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
       return res.errorNumber();
     }
@@ -1142,7 +1203,7 @@ static void collectResponsesFromAllShards(
       }
       
       resultMap.emplace(sId, std::move(tmpBuilder));
-      network::errorCodesFromHeaders(res.response->header.meta, errorCounter, true);
+      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter, true);
       code = res.response->statusCode();
     }
   }
@@ -1223,7 +1284,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   // lazily begin transactions on leaders
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged && shardMap.size() > 1) {
-    Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap);
+    Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap).get();
     if (res.fail()) {
       return makeFuture(OperationResult(std::move(res)));
     }
@@ -1371,7 +1432,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     // lazily begin transactions on leaders
     if (isManaged && shardMap.size() > 1) {
       // FIXME: make this async
-      Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap);
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap).get();
       if (res.fail()) {
         return makeFuture(OperationResult(std::move(res)));
       }
@@ -1441,7 +1502,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
   // lazily begin transactions on leaders
   if (isManaged && shardIds->size() > 1) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
       return makeFuture(OperationResult(std::move(res)));
     }
@@ -1472,61 +1533,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
                                                    std::move(headers), /*retryNotFound*/ true));
   }
   
-  size_t const shardNum = shardIds->size();
   auto cb = [=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
-    std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-    if (!useMultiple) {  // Only one can answer, we react a bit differently
-      
-      int nrok = 0;
-      int commError = TRI_ERROR_NO_ERROR;
-      fuerte::StatusCode code;
-      for (size_t i = 0; i < responses.size(); i++) {
-        network::Response const& res = responses[i].get();
-        
-        if (res.error == fuerte::Error::NoError) {
-          // if no shard has the document, use NF answer from last shard
-          const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
-          if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
-            nrok++;
-            code = res.response->statusCode();
-            buffer = res.response->stealPayload();
-          }
-        } else {
-          commError = network::fuerteToArangoErrorCode(res);
-        }
-      }
-      
-      if (nrok == 0) {  // This can only happen, if a commError was encountered!
-        return OperationResult(commError);
-      } else if (nrok > 1) {
-        return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-      }
-      
-      return network::clusterResultDelete(code, std::move(buffer), options, {});
-    }
-    
-    // We select all results from all shards and merge them back again.
-    std::vector<VPackSlice> allResults;
-    allResults.reserve(shardNum);
-    
-    std::unordered_map<int, size_t> errorCounter;
-    // If no server responds we return 500
-    for (size_t i = 0; i < responses.size(); i++) {
-      network::Response const& res = responses[i].get();
-      if (res.error != fuerte::Error::NoError) {
-        return OperationResult(network::fuerteToArangoErrorCode(res));
-      }
-      
-      allResults.push_back(res.response->slice());
-      network::errorCodesFromHeaders(res.response->header.meta, errorCounter,
-                                     /*includeNotFound*/ false);
-    }
-    VPackBuilder resultBody;
-    // If we get here we get exactly one result for every shard.
-    TRI_ASSERT(allResults.size() == shardNum);
-    mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
-    return OperationResult(Result(), resultBody.steal(),
-                           options, std::move(errorCounter));
+    return ::processShardResponses(network::clusterResultDelete, expectedLen, options, responses);
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1561,7 +1569,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res));
     }
@@ -1667,7 +1675,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
     // FIXME: make this async
     if (isManaged && shardMap.size() > 1) {  // lazily begin the transaction
-      Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap);
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap).get();
       if (res.fail()) {
         return makeFuture(OperationResult(std::move(res)));
       }
@@ -1752,7 +1760,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
       return makeFuture(OperationResult(res));
     }
@@ -1840,7 +1848,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       }
 
       allResults.push_back(res.response->slice());
-      network::errorCodesFromHeaders(res.response->header.meta, errorCounter,
+      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
                                      /*includeNotFound*/ false);
     }
     VPackBuilder resultBody;
@@ -2385,7 +2393,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
     if (isManaged && shardMap.size() > 1) {  // lazily begin transactions on leaders
       // FIXME: make this async
-      Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap);
+      Result res = beginTransactionOnSomeLeaders(*trx.state(), coll, shardMap).get();
       if (res.fail()) {
         return makeFuture(OperationResult(std::move(res)));
       }
@@ -2468,7 +2476,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
       return makeFuture(OperationResult(std::move(res)));
     }
@@ -2546,7 +2554,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
       
       allResults.push_back(res.response->slice());
-      network::errorCodesFromHeaders(res.response->header.meta, errorCounter,
+      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
                                      /*includeNotFound*/ false);
     }
     VPackBuilder resultBody;
