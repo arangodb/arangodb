@@ -1073,7 +1073,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
     arangodb::ServerState::instance()->setRole(before);
   });
 
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchAnalyzerFeature>();;
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   EXPECT_TRUE(
       (false == !feature.get("testVocbase::test_analyzer", "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice(),
