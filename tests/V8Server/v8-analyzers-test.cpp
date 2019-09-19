@@ -275,9 +275,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -325,9 +326,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -383,9 +385,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -433,9 +436,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+          .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -492,9 +496,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -546,9 +551,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -604,9 +610,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -654,9 +661,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -770,9 +778,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -827,9 +836,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -885,9 +895,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -943,9 +954,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1001,9 +1013,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1058,9 +1071,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1116,9 +1130,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1176,9 +1191,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1234,9 +1250,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1293,9 +1310,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1352,9 +1370,10 @@ TEST_F(V8AnalyzersTest, test_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1468,9 +1487,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1525,9 +1545,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1582,9 +1603,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1629,9 +1651,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1687,9 +1710,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO); 
@@ -1744,9 +1768,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
      
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO); 
@@ -1803,9 +1828,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1860,9 +1886,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1907,9 +1934,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -1964,9 +1992,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase("unknownVocbase", arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2011,9 +2040,10 @@ TEST_F(V8AnalyzersTest, test_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2128,9 +2158,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2194,9 +2225,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2260,9 +2292,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
@@ -2328,9 +2361,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
@@ -2395,9 +2429,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
@@ -2462,9 +2497,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
@@ -2609,9 +2645,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2665,9 +2702,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2721,9 +2759,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2784,9 +2823,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     ASSERT_TRUE((false == !inUseAnalyzer));
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2847,9 +2887,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     ASSERT_TRUE((false == !inUseAnalyzer));
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2896,9 +2937,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2945,9 +2987,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -2996,9 +3039,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase("testVocbase", arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
@@ -3054,9 +3098,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -3101,9 +3146,10 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database

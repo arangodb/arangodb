@@ -97,7 +97,7 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
-      "insufficient rights to get analyzer" // message
+      "insufficient rights to get analyzer '" + analyzer->name() + "'" // message
     );
   }
 
@@ -148,7 +148,7 @@ void JS_AnalyzerName(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
-      "insufficient rights to get analyzer" // message
+      "insufficient rights to get analyzer '" + analyzer->name() + "'" // message
     );
   }
 
@@ -186,7 +186,7 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
-      "insufficient rights to get analyzer" // message
+      "insufficient rights to get analyzer '" + analyzer->name() + "'" // message
     );
   }
 
@@ -224,7 +224,7 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
-      "insufficient rights to get analyzer" // message
+      "insufficient rights to get analyzer '" + analyzer->name() + "'" // message
     );
   }
 
@@ -477,7 +477,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
-      "insufficient rights to get analyzer" // message
+      "insufficient rights to get analyzer '" + name + "'" // message
     );
   }
 
