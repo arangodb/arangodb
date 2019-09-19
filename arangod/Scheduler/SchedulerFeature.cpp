@@ -337,9 +337,7 @@ bool CtrlHandler(DWORD eventType) {
     LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
-    if (application_features::ApplicationServer::server != nullptr) {
-      application_features::ApplicationServer::server->beginShutdown();
-    }
+    application_features::ApplicationServer::CTRL_C.store(true);
 
     seen = true;
     return true;
