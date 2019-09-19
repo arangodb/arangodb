@@ -125,7 +125,7 @@ struct Collections {
   static futures::Future<OperationResult> warmup(TRI_vocbase_t& vocbase,
                                                  LogicalCollection const& coll);
 
-  static futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionId(Context& ctxt);
+  static futures::Future<OperationResult> revisionId(Context& ctxt);
 
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,

@@ -2621,20 +2621,29 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
-    std::vector<std::pair<std::string, uint64_t>> counts;
-    return arangodb::countOnCoordinator(*this, collectionName, std::move(counts))
-        .thenValue(
-            [&cache, type](
-                std::pair<OperationResult, std::vector<std::pair<std::string, uint64_t>>>&& res) -> OperationResult {
-              if (res.first.fail()) {
-                return std::move(res.first);
-              }
+    return arangodb::countOnCoordinator(*this, collectionName)
+        .thenValue([&cache, type](OperationResult&& res) -> OperationResult {
+          if (res.fail()) {
+            return std::move(res);
+          }
 
-              int64_t total = 0;
-              OperationResult opRes = buildCountResult(res.second, type, total);
-              cache.store(total);
-              return opRes;
-            });
+          // reassemble counts from vpack
+          std::vector<std::pair<std::string, uint64_t>> counts;
+          TRI_ASSERT(res.slice().isArray());
+          for (VPackSlice count : VPackArrayIterator(res.slice())) {
+            TRI_ASSERT(count.isArray());
+            TRI_ASSERT(count[0].isString());
+            TRI_ASSERT(count[1].isNumber());
+            std::string key = count[0].copyString();
+            uint64_t value = count[1].getNumericValue<uint64_t>();
+            counts.emplace_back(key, value);
+          }
+
+          int64_t total = 0;
+          OperationResult opRes = buildCountResult(counts, type, total);
+          cache.store(total);
+          return opRes;
+        });
   }
 
   // cache hit!

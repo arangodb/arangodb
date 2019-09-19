@@ -200,21 +200,23 @@ RestStatus RestCollectionHandler::handleCommandGet() {
         } else if (sub == "revision") {
           // /_api/collection/<identifier>/revision
           skipGenerate = true;
-          methods::Collections::Context ctxt(_vocbase, *coll);
-          status = waitForFuture(methods::Collections::revisionId(ctxt).thenValue(
-              [this, coll](std::pair<OperationResult, TRI_voc_rid_t>&& res) {
-                if (res.first.fail()) {
-                  generateTransactionError(res.first);
+          _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll);
+          status = waitForFuture(methods::Collections::revisionId(*_ctxt).thenValue(
+              [this, coll](OperationResult&& res) {
+                if (res.fail()) {
+                  generateTransactionError(res);
                   return;
                 }
 
+                TRI_voc_rid_t rid = res.slice().isNumber()
+                                        ? res.slice().getNumber<TRI_voc_rid_t>()
+                                        : 0;
                 {
                   VPackObjectBuilder obj(&_builder, true);
-                  obj->add("revision", VPackValue(StringUtils::itoa(res.second)));
+                  obj->add("revision", VPackValue(StringUtils::itoa(rid)));
 
-                  methods::Collections::Context ctxt(_vocbase, *coll);
                   // no need to use async variant
-                  collectionRepresentation(ctxt, /*showProperties*/ true,
+                  collectionRepresentation(*_ctxt, /*showProperties*/ true,
                                            /*showFigures*/ false, /*showCount*/ false,
                                            /*detailedCount*/ true);
                 }

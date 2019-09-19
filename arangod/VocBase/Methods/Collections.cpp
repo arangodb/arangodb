@@ -787,7 +787,7 @@ futures::Future<OperationResult> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(OperationResult(res));
 }
 
-futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> Collections::revisionId(Context& ctxt) {
+futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
     auto cid = std::to_string(ctxt.coll()->id());
@@ -796,7 +796,11 @@ futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> Collections::revision
 
   TRI_voc_rid_t rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
-  return futures::makeFuture(std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), rid));
+  OperationResult result;
+  VPackBuilder builder(result.buffer);
+  builder.add(VPackValue(rid));
+
+  return futures::makeFuture(std::move(result));
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8

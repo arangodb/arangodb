@@ -110,74 +110,73 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
   return value;
 }
 
-void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builder) {
+void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
-  TRI_ASSERT(builder->slice().isObject());
-  TRI_ASSERT(builder->isClosed());
+  TRI_ASSERT(builder.slice().isObject());
+  TRI_ASSERT(builder.isClosed());
 
   VPackBuilder updated;
 
   updated.openObject();
 
   updated.add("alive", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"alive", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"alive", "size"})));
   updated.close();
 
   updated.add("dead", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"dead", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"dead", "size"})));
-  updated.add("deletion", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("deletion", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                         {"dead", "deletion"})));
   updated.close();
 
   updated.add("indexes", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"indexes", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"indexes", "size"})));
   updated.close();
 
   updated.add("datafiles", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"datafiles", "count"})));
   updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder->slice(),
+              VPackValue(addFigures<size_t>(value, builder.slice(),
                                             {"datafiles", "fileSize"})));
   updated.close();
 
   updated.add("journals", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"journals", "count"})));
   updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder->slice(),
+              VPackValue(addFigures<size_t>(value, builder.slice(),
                                             {"journals", "fileSize"})));
   updated.close();
 
   updated.add("compactors", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(),
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"compactors", "count"})));
   updated.add("fileSize",
-              VPackValue(addFigures<size_t>(value, builder->slice(),
+              VPackValue(addFigures<size_t>(value, builder.slice(),
                                             {"compactors", "fileSize"})));
   updated.close();
 
   updated.add("documentReferences",
-              VPackValue(addFigures<size_t>(value, builder->slice(), {"documentReferences"})));
+              VPackValue(addFigures<size_t>(value, builder.slice(), {"documentReferences"})));
 
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
   TRI_ASSERT(updated.isClosed());
 
-  builder.reset(new VPackBuilder(
-      VPackCollection::merge(builder->slice(), updated.slice(), true, false)));
-  TRI_ASSERT(builder->slice().isObject());
-  TRI_ASSERT(builder->isClosed());
+  builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
+  TRI_ASSERT(builder.slice().isObject());
+  TRI_ASSERT(builder.isClosed());
 }
 
 /// @brief begin a transaction on some leader shards
@@ -288,13 +287,29 @@ static void collectResponsesFromAllShards(
   }
 }
 
+/// @brief iterate over shard responses and compile a result
+/// This will take care of checking the fuerte responses. If the response has
+/// a body, then the callback will be called on the body, with access to the
+/// result-so-far. In particular, a VPackBuilder is initialized to empty before
+/// handling any response. It will be passed to the pre callback (default noop)
+/// for initialization, then it will be passed to each instantiation of the
+/// handler callback, reduce-style. Finally, it will be passed to the post
+/// callback and then returned via the OperationResult.
 OperationResult handleResponsesFromAllShards(
     std::vector<futures::Try<arangodb::network::Response>>& responses,
-    std::function<void(Result&, VPackSlice)> handler) {
+    std::function<void(Result&, VPackBuilder&, ShardID&, VPackSlice)> handler,
+    std::function<void(Result&, VPackBuilder&)> pre = [](Result&, VPackBuilder&) -> void {},
+    std::function<void(Result&, VPackBuilder&)> post = [](Result&, VPackBuilder&) -> void {}) {
   // If none of the shards responds we return a SERVER_ERROR;
   Result result;
+  VPackBuilder builder;
+  pre(result, builder);
+  if (result.fail()) {
+    return OperationResult(result, builder.steal());
+  }
   for (Try<arangodb::network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
+    ShardID sId = res.destinationShard();
     int commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       result.reset(commError);
@@ -303,41 +318,15 @@ OperationResult handleResponsesFromAllShards(
       std::vector<VPackSlice> const& slices = res.response->slices();
       if (!slices.empty()) {
         VPackSlice answer = slices[0];
-        handler(result, answer);
+        handler(result, builder, sId, answer);
         if (result.fail()) {
           break;
         }
       }
     }
   }
-  return OperationResult(result);
-}
-
-template <typename T>
-std::pair<OperationResult, T> handleResponsesFromAllShards(
-    std::vector<futures::Try<arangodb::network::Response>>& responses,
-    T initial, std::function<void(Result&, T&, VPackSlice)> handler) {
-  // If none of the shards responds we return a SERVER_ERROR;
-  Result result;
-  T data = initial;
-  for (Try<arangodb::network::Response> const& tryRes : responses) {
-    network::Response const& res = tryRes.get();  // throws exceptions upwards
-    int commError = network::fuerteToArangoErrorCode(res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      result.reset(commError);
-      break;
-    } else {
-      std::vector<VPackSlice> const& slices = res.response->slices();
-      if (!slices.empty()) {
-        VPackSlice answer = slices[0];
-        handler(result, data, answer);
-        if (result.fail()) {
-          break;
-        }
-      }
-    }
-  }
-  return std::make_pair(OperationResult(result), data);
+  post(result, builder);
+  return OperationResult(result, builder.steal());
 }
 }  // namespace
 
@@ -850,23 +839,21 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionOnCoordinator(
-    std::string const& dbname, std::string const& collname) {
-  TRI_voc_rid_t rid = 0;
+futures::Future<OperationResult> revisionOnCoordinator(std::string const& dbname,
+                                                       std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return futures::makeFuture(std::make_pair(OperationResult(TRI_ERROR_SHUTTING_DOWN), rid));
+    return futures::makeFuture(OperationResult(TRI_ERROR_SHUTTING_DOWN));
   }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(
-        std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), rid));
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
 
@@ -888,9 +875,9 @@ futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionOnCoordinator
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [rid](std::vector<Try<network::Response>>&& results) -> std::pair<OperationResult, TRI_voc_rid_t> {
-    return handleResponsesFromAllShards<TRI_voc_rid_t>(
-        results, rid, [](Result& result, TRI_voc_rid_t& rid, VPackSlice answer) -> void {
+  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
+    return handleResponsesFromAllShards(
+        results, [](Result& result, VPackBuilder& builder, ShardID&, VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
             if (r.isString()) {
@@ -898,9 +885,13 @@ futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionOnCoordinator
               char const* p = r.getString(len);
               TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
 
+              TRI_voc_rid_t rid = builder.slice().isNumber()
+                                      ? builder.slice().getNumber<TRI_voc_rid_t>()
+                                      : 0;
               if (cmp != UINT64_MAX && cmp > rid) {
                 // get the maximum value
-                rid = cmp;
+                builder.clear();
+                builder.add(VPackValue(cmp));
               }
             }
           } else {
@@ -954,9 +945,10 @@ futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
   }
 
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
-    return handleResponsesFromAllShards(results, [](Result&, VPackSlice) -> void {
-      // we don't care about response bodies, just that the requests succeeded
-    });
+    return handleResponsesFromAllShards(results,
+                                        [](Result&, VPackBuilder&, ShardID&, VPackSlice) -> void {
+                                          // we don't care about response bodies, just that the requests succeeded
+                                        });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -965,9 +957,8 @@ futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> figuresOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::shared_ptr<arangodb::velocypack::Builder> result) {
+futures::Future<OperationResult> figuresOnCoordinator(std::string const& dbname,
+                                                      std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1001,8 +992,9 @@ futures::Future<OperationResult> figuresOnCoordinator(
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [builder = result](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    return handleResponsesFromAllShards(results, [builder](Result& result, VPackSlice answer) mutable -> void {
+  auto cb = [](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [](Result& result, VPackBuilder& builder, ShardID&,
+                      VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
         if (figures.isObject()) {
@@ -1013,7 +1005,13 @@ futures::Future<OperationResult> figuresOnCoordinator(
         // didn't get the expected response
         result.reset(TRI_ERROR_INTERNAL);
       }
-    });
+    };
+    auto pre = [](Result&, VPackBuilder& builder) -> void {
+      // initialize to empty object
+      builder.openObject();
+      builder.close();
+    };
+    return handleResponsesFromAllShards(results, handler, pre);
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1022,19 +1020,16 @@ futures::Future<OperationResult> figuresOnCoordinator(
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<std::pair<OperationResult, std::vector<std::pair<std::string, uint64_t>>>> countOnCoordinator(
-    transaction::Methods& trx, std::string const& cname,
-    std::vector<std::pair<std::string, uint64_t>>&& counts) {
+futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
+                                                    std::string const& cname) {
   std::vector<std::pair<std::string, uint64_t>> result;
-  result.insert(result.end(), counts.begin(), counts.end());
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return futures::makeFuture(
-        std::make_pair(OperationResult(TRI_ERROR_SHUTTING_DOWN), result));
+    return futures::makeFuture(OperationResult(TRI_ERROR_SHUTTING_DOWN));
   }
 
   std::string const& dbname = trx.vocbase().name();
@@ -1042,8 +1037,7 @@ futures::Future<std::pair<OperationResult, std::vector<std::pair<std::string, ui
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(
-        std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), result));
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
@@ -1051,50 +1045,54 @@ futures::Future<std::pair<OperationResult, std::vector<std::pair<std::string, ui
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(trx, *shardIds);
     if (res.fail()) {
-      return futures::makeFuture(std::make_pair(OperationResult(res), result));
+      return futures::makeFuture(OperationResult(res));
     }
   }
 
-  std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>();
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(shardIds->size());
+
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], *headers);
-    requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              "/_api/collection/" +
-                              StringUtils::urlEncode(p.first) + "/count",
-                          body, std::move(headers));
+    network::Headers headers;
+    addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
+    auto future =
+        network::sendRequest("shard:" + p.first, fuerte::RestVerb::Get,
+                             "/_db/" + StringUtils::urlEncode(dbname) +
+                                 "/_api/collection/" +
+                                 StringUtils::urlEncode(p.first) + "/count",
+                             VPackBuffer<uint8_t>(),
+                             network::Timeout(CL_DEFAULT_TIMEOUT), headers);
+    futures.emplace_back(std::move(future));
   }
 
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::QUERIES,
-                      /*retryOnCollNotFound*/ true, /*retryOnBackUnvlbl*/ !isManaged);
-  for (auto& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        VPackSlice answer = res.answer->payload();
-
-        if (answer.isObject()) {
-          // add to the total
-          result.emplace_back(res.shardID,
-                              arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
-                                  answer, "count", 0));
-        } else {
-          return futures::makeFuture(
-              std::make_pair(OperationResult(TRI_ERROR_INTERNAL), result));
-        }
+  auto cb = [](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [](Result& result, VPackBuilder& builder, ShardID& shardId,
+                      VPackSlice answer) mutable -> void {
+      if (answer.isObject()) {
+        // add to the total
+        VPackArrayBuilder array(&builder);
+        array->add(VPackValue(shardId));
+        array->add(VPackValue(arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+            answer, "count", 0)));
       } else {
-        return futures::makeFuture(
-            std::make_pair(OperationResult(static_cast<int>(res.answer_code)), result));
+        // didn't get the expected response
+        result.reset(TRI_ERROR_INTERNAL);
       }
-    } else {
-      return futures::makeFuture(
-          std::make_pair(OperationResult(handleGeneralCommErrors(&req.result)), result));
-    }
-  }
-
-  return futures::makeFuture(std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), result));
+    };
+    auto pre = [](Result&, VPackBuilder& builder) -> void {
+      builder.openArray();
+    };
+    auto post = [](Result& result, VPackBuilder& builder) -> void {
+      if (builder.isOpenArray()) {
+        builder.close();
+      } else {
+        result.reset(TRI_ERROR_INTERNAL, "result was corrupted");
+        builder.clear();
+      }
+    };
+    return handleResponsesFromAllShards(results, handler, pre, post);
+  };
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1616,11 +1614,12 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   }
 
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
-    return handleResponsesFromAllShards(results, [](Result& result, VPackSlice answer) -> void {
-      if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
-        result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-      }
-    });
+    return handleResponsesFromAllShards(
+        results, [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
+          if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+            result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+          }
+        });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }

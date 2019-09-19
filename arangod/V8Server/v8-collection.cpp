@@ -1835,11 +1835,13 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
   methods::Collections::Context ctxt(collection->vocbase(), *collection);
   auto res = methods::Collections::revisionId(ctxt).get();
 
-  if (res.first.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.first.result);
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res.result);
   }
 
-  std::string ridString = TRI_RidToString(res.second);
+  TRI_voc_rid_t rid =
+      res.slice().isNumber() ? res.slice().getNumber<TRI_voc_rid_t>() : 0;
+  std::string ridString = TRI_RidToString(rid);
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }

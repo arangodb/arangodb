@@ -73,8 +73,8 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionOnCoordinator(
-    std::string const& dbname, std::string const& collname);
+futures::Future<OperationResult> revisionOnCoordinator(std::string const& dbname,
+                                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
@@ -88,16 +88,14 @@ futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> figuresOnCoordinator(std::string const& dbname,
-                                                      std::string const& collname,
-                                                      std::shared_ptr<arangodb::velocypack::Builder>);
+                                                      std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<std::pair<OperationResult, std::vector<std::pair<std::string, uint64_t>>>> countOnCoordinator(
-    transaction::Methods& trx, std::string const& collname,
-    std::vector<std::pair<std::string, uint64_t>>&& counts);
+futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
+                                                    std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
