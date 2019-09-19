@@ -3204,7 +3204,7 @@ int transaction::Methods::lockCollections() {
 }
 
 /// @brief Clone this transaction. Only works for selected sub-classes
-transaction::Methods* transaction::Methods::clone(transaction::Options const&) const {
+std::shared_ptr<transaction::Methods> transaction::Methods::clone(transaction::Options const&) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

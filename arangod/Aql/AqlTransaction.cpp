@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlTransaction.h"
-#include "Logger/Logger.h"
+
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
@@ -32,29 +32,32 @@
 #include "Enterprise/Transaction/IgnoreNoAccessAqlTransaction.h"
 #endif
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlTransaction* AqlTransaction::create(
+std::shared_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
     std::map<std::string, aql::Collection*> const* collections,
     transaction::Options const& options, bool isMainTransaction,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return new transaction::IgnoreNoAccessAqlTransaction(transactionContext, collections,
-                                                         options, isMainTransaction,
-                                                         inaccessibleCollections);
+    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(
+        transactionContext, collections, options, isMainTransaction, std::move(inaccessibleCollections));
   }
 #endif
-  return new AqlTransaction(transactionContext, collections, options, isMainTransaction);
+  return std::shared_ptr<AqlTransaction>(
+      new AqlTransaction(transactionContext, collections, options, isMainTransaction));
 }
 
 /// @brief clone, used to make daughter transactions for parts of a
 /// distributed AQL query running on the coordinator
-transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
+std::shared_ptr<transaction::Methods> AqlTransaction::clone(transaction::Options const& options) const {
   auto ctx = transaction::StandaloneContext::Create(vocbase());
-  return new AqlTransaction(ctx, &_collections, options, false);
+
+  return std::shared_ptr<AqlTransaction>(new AqlTransaction(ctx, &_collections, options, false));
 }
 
 /// @brief add a collection to the transaction

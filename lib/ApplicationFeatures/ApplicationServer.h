@@ -145,7 +145,7 @@ class ApplicationServer {
 
   static bool isPrepared() {
     if (server != nullptr) {
-      ServerState tmp = server->_state.load(std::memory_order_relaxed);
+      ServerState tmp = server->state();
       return tmp == ServerState::IN_START || tmp == ServerState::IN_WAIT ||
              tmp == ServerState::IN_STOP;
     }
@@ -186,7 +186,7 @@ class ApplicationServer {
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-  ~ApplicationServer();
+  TEST_VIRTUAL ~ApplicationServer();
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -234,7 +234,7 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  ServerState state() const { return _state; }
+  TEST_VIRTUAL ServerState state() const { return _state; }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);
