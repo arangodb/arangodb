@@ -1215,37 +1215,6 @@ if (USE_MAINTAINER_MODE)
 endif ()
 
 ################################################################################
-## MIMETYPES FILE
-################################################################################
-
-if (USE_MAINTAINER_MODE)
-  set(MIMETYPES_FILES
-    lib/Basics/voc-mimetypes.h
-    lib/Basics/voc-mimetypes.cpp
-  )
-
-  set(MIMETYPES_FILES_GEN)
-  set(MIMETYPES_DAT lib/Basics/mimetypes.dat)
-
-  foreach (m IN LISTS MIMETYPES_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateMimetypes.py ./${MIMETYPES_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT "Building mimetypes files ${m}"
-      VERBATIM
-    )
-
-    list(APPEND MIMETYPES_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
-
-  add_custom_target(mimetypes ALL DEPENDS ${MIMETYPES_FILES_GEN})
-endif ()
-
-################################################################################
 ## SUB-PROJECTS
 ################################################################################
 

@@ -41,8 +41,6 @@
 /// }
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_UNICODE_LRM "\xE2\x80\x8E"
-#define TRI_UNICODE_RLM "\xE2\x80\x8F"
 #define TRI_BYE_MESSAGE_CH "Uf wiederluege!"
 #define TRI_BYE_MESSAGE_CN "\xE5\x86\x8D\xE8\xA7\x81\xEF\xBC\x81"
 #define TRI_BYE_MESSAGE_CZ "Na shledanou!"
