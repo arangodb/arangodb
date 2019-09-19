@@ -84,35 +84,35 @@ class CreateDatabaseInfo {
   void UsersToVelocyPack(VPackBuilder& builder) const;
 
   uint64_t getId() const {
-    TRI_ASSERT(_vaild);
-    TRI_ASSERT(_vaildId);
+    TRI_ASSERT(_valid);
+    TRI_ASSERT(_validId);
     return _id;
   }
 
-  bool validId() const { return _vaildId; }
+  bool validId() const { return _validId; }
 
   // shold be created with vaild id
   void setId(uint64_t id) {
     _id = id;
-    _vaildId = true;
+    _validId = true;
   }
 
   std::string getName() const {
-    TRI_ASSERT(_vaild);
+    TRI_ASSERT(_valid);
     return _name;
   }
 
   std::uint32_t replicationFactor() const {
-    TRI_ASSERT(_vaild);
+    TRI_ASSERT(_valid);
     return _replicationFactor;
   }
 
   std::uint32_t minReplicationFactor() const {
-    TRI_ASSERT(_vaild);
+    TRI_ASSERT(_valid);
     return _minReplicationFactor;
   }
   std::string sharding() const {
-    TRI_ASSERT(_vaild);
+    TRI_ASSERT(_valid);
     return _sharding;
   }
 
@@ -133,8 +133,8 @@ class CreateDatabaseInfo {
   std::uint32_t _minReplicationFactor = 1;
   std::string _sharding = "flexible";
 
-  bool _vaildId = false;
-  bool _vaild = false;  // required because TRI_ASSERT needs variable in Release mode.
+  bool _validId = false;
+  bool _valid = false;  // required because TRI_ASSERT needs variable in Release mode.
   bool _isSystemDB = false;
 };
 

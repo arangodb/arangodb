@@ -16,7 +16,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   _id = id;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _vaild = true;
+  _valid = true;
 #endif
 
   return checkOptions();
@@ -34,7 +34,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _vaild = true;
+  _valid = true;
 #endif
 
   return checkOptions();
@@ -55,7 +55,7 @@ Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _vaild = true;
+  _valid = true;
 #endif
 
   return checkOptions();
@@ -76,7 +76,7 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& optio
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _vaild = true;
+  _valid = true;
 #endif
 
   return checkOptions();
@@ -98,14 +98,14 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _vaild = true;
+  _valid = true;
 #endif
 
   return checkOptions();
 };
 
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
-  TRI_ASSERT(_vaildId);
+  TRI_ASSERT(_validId);
   TRI_ASSERT(builder.isOpenObject());
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
@@ -244,9 +244,9 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 
 Result CreateDatabaseInfo::checkOptions() {
   if (_id != 0) {
-    _vaildId = true;
+    _validId = true;
   } else {
-    _vaildId = false;
+    _validId = false;
   }
 
   if (_name.empty() ||
