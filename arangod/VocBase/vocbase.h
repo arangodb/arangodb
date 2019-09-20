@@ -399,9 +399,6 @@ struct TRI_vocbase_t {
 /// @brief extract the _rev attribute from a slice
 TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
 
-/// @brief extract the _rev attribute from a slice as a slice
-arangodb::velocypack::Slice TRI_ExtractRevisionIdAsSlice(arangodb::velocypack::Slice const slice);
-
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,

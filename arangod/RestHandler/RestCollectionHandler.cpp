@@ -32,6 +32,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -59,8 +60,7 @@ RestStatus RestCollectionHandler::execute() {
       handleCommandPost();
       break;
     case rest::RequestType::PUT:
-      handleCommandPut();
-      break;
+      return handleCommandPut();
     case rest::RequestType::DELETE_REQ:
       handleCommandDelete();
       break;
@@ -69,6 +69,13 @@ RestStatus RestCollectionHandler::execute() {
   }
 
   return RestStatus::DONE;
+}
+
+void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
+  if (isFinalized) {
+    // reset the transaction so it releases all locks as early as possible
+    _activeTrx.reset();
+  }
 }
 
 void RestCollectionHandler::handleCommandGet() {
@@ -355,18 +362,18 @@ void RestCollectionHandler::handleCommandPost() {
   }
 }
 
-void RestCollectionHandler::handleCommandPut() {
+RestStatus RestCollectionHandler::handleCommandPut() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected PUT /_api/collection/<collection-name>/<action>");
-    return;
+    return RestStatus::DONE;
   }
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return;
+    return RestStatus::DONE;
   }
 
   std::string const& name = suffixes[0];
@@ -381,6 +388,8 @@ void RestCollectionHandler::handleCommandPut() {
 
   Result res;
   VPackBuilder builder;
+  RestStatus status = RestStatus::DONE;
+  bool generateResponse = true;
   auto found = methods::Collections::lookup(  // find collection
       _vocbase,                               // vocbase to search
       name,                                   // collection name to find
@@ -456,33 +465,52 @@ void RestCollectionHandler::handleCommandPut() {
             opts.isSynchronousReplicationFrom =
                 _request->value("isSynchronousReplication");
 
-            auto trx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
-            trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-            trx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-            res = trx->begin();
+            _activeTrx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
+            _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+            _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+            res = _activeTrx->begin();
 
             if (res.ok()) {
-              auto result = trx->truncate(coll->name(), opts);
-              res = trx->finish(result.result);
-            }
-          }
-          // wait for the transaction to finish first. only after that compact the
-          // data range(s) for the collection
-          // we shouldn't run compact() as part of the transaction, because the compact
-          // will be useless inside due to the snapshot the transaction has taken
-          coll->compact();
+              generateResponse = false;
+              status = waitForFuture(
+                  _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll](OperationResult&& opres) {
+                    // Will commit if no error occured.
+                    // or abort if an error occured.
+                    // result stays valid!
+                    Result res = _activeTrx->finish(opres.result);
+                    if (opres.fail()) {
+                      generateTransactionError(opres);
+                      return;
+                    }
 
-          if (res.ok()) {
-            if (ServerState::instance()->isCoordinator()) {  // ClusterInfo::loadPlan eventually
-                                                             // updates status
-              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
-            }
+                    if (res.fail()) {
+                      generateTransactionError(coll->name(), res, "");
+                      return;
+                    }
 
-            collectionRepresentation(builder, *coll,
-                                     /*showProperties*/ false,
-                                     /*showFigures*/ false,
-                                     /*showCount*/ false,
-                                     /*detailedCount*/ true);
+                    _activeTrx.reset();
+
+                    // wait for the transaction to finish first. only after that compact the
+                    // data range(s) for the collection
+                    // we shouldn't run compact() as part of the transaction, because the compact
+                    // will be useless inside due to the snapshot the transaction has taken
+                    coll->compact();
+
+                    if (ServerState::instance()->isCoordinator()) {  // ClusterInfo::loadPlan eventually
+                                                                     // updates status
+                      coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+                    }
+
+                    VPackBuilder builder;
+                    collectionRepresentation(builder, *coll,
+                                             /*showProperties*/ false,
+                                             /*showFigures*/ false,
+                                             /*showCount*/ false,
+                                             /*detailedCount*/ true);
+                    generateOk(rest::ResponseCode::OK, builder);
+                    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+                  }));
+            }
           }
         } else if (sub == "properties") {
           // replication checks
@@ -561,14 +589,19 @@ void RestCollectionHandler::handleCommandPut() {
         }
       });
 
-  if (found.fail()) {
-    generateError(found);
-  } else if (res.ok()) {
-    generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
-  } else {
-    generateError(res);
+  if (generateResponse) {
+    if (found.fail()) {
+      generateError(found);
+    } else if (res.ok()) {
+      // TODO react to status?
+      generateOk(rest::ResponseCode::OK, builder);
+      _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+    } else {
+      generateError(res);
+    }
   }
+
+  return status;
 }
 
 void RestCollectionHandler::handleCommandDelete() {

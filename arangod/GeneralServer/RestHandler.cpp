@@ -201,7 +201,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+    << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
@@ -209,7 +209,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
     << "caught velocypack exception in " << name() << ": "
-    << DIAGNOSTIC_INFORMATION(ex);
+    << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     bool const isParseError =
@@ -222,7 +222,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
     << "caught memory exception in " << name() << ": "
-    << DIAGNOSTIC_INFORMATION(ex);
+    << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
@@ -230,7 +230,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+    << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
@@ -401,7 +401,7 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+        << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
@@ -409,7 +409,7 @@ void RestHandler::executeEngine(bool isContinue) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbb", WARN, arangodb::Logger::FIXME)
         << "caught velocypack exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
+        << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     bool const isParseError =
@@ -422,7 +422,7 @@ void RestHandler::executeEngine(bool isContinue) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f5", WARN, arangodb::Logger::FIXME)
         << "caught memory exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
+        << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
@@ -430,7 +430,7 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+        << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);

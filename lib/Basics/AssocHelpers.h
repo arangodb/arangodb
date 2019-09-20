@@ -38,13 +38,6 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
   return i < len ? i : dummy;
 }
 
-static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
-  if ((i--) != 0) {
-    return i;
-  }
-  return len - 1;
-}
-
 /// @brief a trivial hash function for uint64_t to uint32_t
 static inline uint32_t TRI_64To32(uint64_t x) {
   return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
