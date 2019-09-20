@@ -281,7 +281,12 @@ asio_ns::const_buffer Response::payload() const {
 size_t Response::payloadSize() const {
   return _payload.byteSize() - _payloadOffset;
 }
+
+void Response::addSupportedAuth(std::string const& value) {
+  _supportedAuths.push_back(AuthenticationType_from_string(value));
+}
   
+
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
   buffer->append(_payload.data() + _payloadOffset,

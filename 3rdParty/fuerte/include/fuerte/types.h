@@ -154,7 +154,8 @@ std::string to_string(ContentType type);
 // -----------------------------------------------------------------------------
 
 enum class AuthenticationType { None, Basic, Jwt, Negotiate };
-std::string to_string(AuthenticationType type);
+std::string AuthenticationType_to_string(AuthenticationType type);
+AuthenticationType AuthenticationType_from_string(std::string const&  type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      Velocystream

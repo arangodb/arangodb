@@ -70,10 +70,17 @@ int HttpConnection<ST>::on_header_field(http_parser* parser, const char* at,
                                         size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
-    boost::algorithm::to_lower(self->_lastHeaderField);  // in-place
-    self->_response->header.addMeta(std::move(self->_lastHeaderField),
-                                    std::move(self->_lastHeaderValue));
-    self->_lastHeaderField.assign(at, len);
+    if ((parser->status_code == StatusUnauthorized) &&
+        (self->_lastHeaderField == "Www-Authenticate")) {
+      self->_response->addSupportedAuth(self->_lastHeaderValue);
+      self->_lastHeaderValue.clear();
+      self->_lastHeaderField.assign(at, len);
+    } else {
+      boost::algorithm::to_lower(self->_lastHeaderField);  // in-place
+      self->_response->header.addMeta(std::move(self->_lastHeaderField),
+                                      std::move(self->_lastHeaderValue));
+      self->_lastHeaderField.assign(at, len);
+    }
   } else {
     self->_lastHeaderField.append(at, len);
   }

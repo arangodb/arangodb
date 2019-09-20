@@ -202,7 +202,7 @@ std::string to_string(ContentType type) {
   throw std::logic_error("unknown content type");
 }
 
-std::string to_string(AuthenticationType type) {
+std::string AuthenticationType_to_string(AuthenticationType type) {
   switch (type) {
     case AuthenticationType::None:
       return "none";
@@ -214,6 +214,16 @@ std::string to_string(AuthenticationType type) {
       return "Negotiate";
   }
   return "unknown";
+}
+
+AuthenticationType AuthenticationType_from_string(std::string const&  type) {
+  if (type == "Basic")
+    return AuthenticationType::Basic;
+  if (type == "Bearer")
+    return AuthenticationType::Jwt;
+  if (type == "Negotiate")
+    return AuthenticationType::Negotiate;
+  return AuthenticationType::None;
 }
 
 std::string to_string(Error error) {

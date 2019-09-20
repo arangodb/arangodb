@@ -103,24 +103,13 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
       auto res = newConnection->sendRequest(std::move(req));
       _lastHttpReturnCode = res->statusCode();
       if (_lastHttpReturnCode == 401) {
-        auto const& headers = res->messageHeader().meta;
-        auto it = headers.find(StaticStrings::WwwAuthenticate);
-        if (it != headers.end()) {
-          auto value = (*it).second;
-          std::transform(value.begin(), value.end(), value.begin(), 
-                         [](unsigned char c){ return std::tolower(c); }
-                         );
-          if (value == "negotiate") {
-            // HTTP will return 401 
-            newConnection = spnego();
-            if (newConnection != nullptr) {
-              continue;
-            }
-            else {
-              return nullptr;
-            }
+        if (res->isMethodAllowed(fuerte::AuthenticationType::Negotiate)) {
+          newConnection = spnego();
+          if (newConnection != nullptr) {
+            continue;
           }
         }
+        return nullptr;
       }
       if (_lastHttpReturnCode >= 400) {
         auto const& headers = res->messageHeader().meta;

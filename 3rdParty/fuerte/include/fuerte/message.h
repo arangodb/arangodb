@@ -270,7 +270,14 @@ class Response final : public Message {
   void setPayload(velocypack::Buffer<uint8_t> buffer,
                   std::size_t payloadOffset);
 
+  void addSupportedAuth(std::string const& value);
+  bool isMethodAllowed(AuthenticationType meth) {
+    return std::find(_supportedAuths.begin(),
+                     _supportedAuths.end(),
+                     meth) != _supportedAuths.end();
+  }
  private:
+  std::vector<AuthenticationType> _supportedAuths;
   velocypack::Buffer<uint8_t> _payload;
   std::size_t _payloadOffset;
 };
