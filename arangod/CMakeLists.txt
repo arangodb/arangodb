@@ -919,9 +919,12 @@ if (USE_JEMALLOC)
 endif ()
 
 foreach(TARGET
+  arango_agency
   arango_aql
   arango_cache
   arango_cluster_engine
+  arango_cluster_methods
+  arango_common_rest_handler
   arango_graph
   arango_indexes
   arango_mmfiles
@@ -929,6 +932,7 @@ foreach(TARGET
   arango_replication
   arango_rocksdb
   arango_storage_engine
+  arango_storage_engine_common
   arango_utils
   arango_v8server
   arango_vocbase

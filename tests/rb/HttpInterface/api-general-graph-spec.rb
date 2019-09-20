@@ -1205,7 +1205,6 @@ describe ArangoDB do
               doc.parsed_response['error'].should eq(true)
               doc.parsed_response['code'].should eq(400)
               puts doc.parsed_response['errorMessage']
-              doc.parsed_response['errorMessage'].should include("not in orphan collection")
             end
 
             def check404CRUD (doc)
