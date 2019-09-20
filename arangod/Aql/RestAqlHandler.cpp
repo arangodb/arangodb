@@ -184,8 +184,9 @@ void RestAqlHandler::setupClusterQuery() {
   }
   // If we have a new format then it has to be included here.
   // If not default to classic (old coordinator will not send it)
-  SerializationFormat format = VelocyPackHelper::getNumericValue<SerializationFormat>(
-      querySlice, "serializationFormat", SerializationFormat::CLASSIC);
+  SerializationFormat format = static_cast<SerializationFormat>(
+      VelocyPackHelper::getNumericValue<int>(querySlice, "serializationFormat",
+                                             static_cast<int>(SerializationFormat::CLASSIC)));
 
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
