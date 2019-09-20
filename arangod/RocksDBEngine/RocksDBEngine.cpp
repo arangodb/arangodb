@@ -1179,7 +1179,6 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
 
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
-  LOG_DEVEL << "write database marker" << slice.toJson();
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   rocksdb::Status res = _db->GetRootDB()->Write(wo, &batch);
