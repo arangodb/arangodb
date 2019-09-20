@@ -52,6 +52,10 @@ fi
 
 if "${ARANGOSH}" --version | grep -q "^enterprise-version: enterprise$"; then
     ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
+    # arangobackup not available in v3.5.0
+    if [ -x "${BIN_PATH}/arangobackup${EXT}" ]; then
+        ALLPROGRAMS="arangobackup ${ALLPROGRAMS}"
+    fi
     for HELPPROGRAM in ${ALLPROGRAMS}; do
         echo "Dumping program options of ${HELPPROGRAM}"
         "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
