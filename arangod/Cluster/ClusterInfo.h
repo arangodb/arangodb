@@ -363,7 +363,7 @@ class ClusterInfo final {
      public:
       explicit constexpr KnownServer(RebootId rebootId) : _rebootId(rebootId) {}
 
-      RebootId rebootId() const noexcept { return _rebootId; }
+      RebootId rebootId() const { return _rebootId; }
 
      private:
       RebootId _rebootId;
@@ -371,7 +371,7 @@ class ClusterInfo final {
 
     std::unordered_map<ServerID, KnownServer> const& serversKnown() const noexcept;
 
-    std::unordered_map<ServerID, RebootId> rebootIds() const noexcept;
+    std::unordered_map<ServerID, RebootId> rebootIds() const;
 
    private:
     std::unordered_map<ServerID, KnownServer> _serversKnown;
@@ -795,6 +795,8 @@ class ClusterInfo final {
 
   std::unordered_map<ServerID, std::string> getServerTimestamps();
 
+  std::unordered_map<ServerID, RebootId> rebootIds() const;
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -908,7 +910,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    Mutex mutex;
+    mutable Mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     arangodb::basics::ReadWriteLock lock;
