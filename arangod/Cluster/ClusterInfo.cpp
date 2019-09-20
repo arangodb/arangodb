@@ -3569,7 +3569,7 @@ void ClusterInfo::loadServers() {
 /// @brief Hand out copy of reboot ids
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const noexcept {
+std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
   MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
   return _serversKnown.rebootIds();
 }
@@ -4626,7 +4626,7 @@ ClusterInfo::ServersKnown::serversKnown() const noexcept {
   return _serversKnown;
 }
 
-std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const noexcept {
+std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const {
   std::unordered_map<ServerID, RebootId> rebootIds;
   for (auto const& it : _serversKnown) {
     rebootIds.emplace(it.first, it.second.rebootId());
