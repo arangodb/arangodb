@@ -930,9 +930,7 @@ futures::Future<Result> warmupOnCoordinator(std::string const& dbname,
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.close();
+    buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
     network::Headers headers;
     auto future =
@@ -1056,6 +1054,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
     network::Headers headers;
+    ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future =
         network::sendRequest("shard:" + p.first, fuerte::RestVerb::Get,

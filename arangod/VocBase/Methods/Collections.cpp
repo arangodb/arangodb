@@ -797,8 +797,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   TRI_voc_rid_t rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
   OperationResult result;
-  VPackBuilder builder(result.buffer);
+  VPackBuilder builder;
   builder.add(VPackValue(rid));
+  result.buffer = builder.steal();
 
   return futures::makeFuture(std::move(result));
 }
