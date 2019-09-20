@@ -3,9 +3,16 @@ v3.4.9 (XXX-XX-XX)
 
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
+* Fix strange shutdown hanger which came from the fact that currently
+  libgcc/libmusl wrongly detect multi-threadedness in statically linked
+  executables.
 
-v3.4.8 (2019-08-29)
-=======
+* Obtain new unique IDs via a background thread.
+
+* Fixed a shutdown hanger because of a read/write lock race.
+
+* Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
+  This affected at least /_admin/cluster/health.
 
 * Harden database creation against spurious "duplicate name" errors that
   were caused by other parallel operations lazily creating required
@@ -50,7 +57,6 @@ v3.4.8 (2019-08-29)
   /_api/replication/batch, /_api/replication/logger-follow and the internal
   route /_api/replication/addFollower. The new field `syncerId` is also added to
   the response of /_api/replication/logger-state.
-
 
 v3.4.8 (2019-09-09)
 -------------------

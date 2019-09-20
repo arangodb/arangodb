@@ -25,6 +25,16 @@
 #include "src/objects-inl.h" // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h" // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 
+#ifdef _WIN32
+// V8 breaks several constants used by windows headers. This later introduces compile errors in other includes,
+// e.g. via
+// ShardingFeature.h -> ShardingStrategy.h -> ClusterInfo.h -> RebootTracker.h -> Scheduler.h -> Basics/asio_ns.h -> <asio/error.hpp>
+// which, at some point, includes mswsockdef.h and mswsock.h.
+// This fixes these errors.
+#define CONST const
+#define VOID void
+#endif
+
 #include "catch.hpp"
 #include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
