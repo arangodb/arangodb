@@ -190,7 +190,6 @@ add_library(arango STATIC
   Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
-  Basics/mimetypes.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/socket-utils.cpp
@@ -201,7 +200,6 @@ add_library(arango STATIC
   Basics/vector.cpp
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
-  Basics/voc-mimetypes.cpp
   Basics/xxhash.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp

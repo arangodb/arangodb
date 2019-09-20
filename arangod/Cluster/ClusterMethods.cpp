@@ -352,30 +352,6 @@ static void mergeResultsAllShards(std::vector<VPackSlice> const& results,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Extract all error baby-style error codes and store them in a map
-////////////////////////////////////////////////////////////////////////////////
-
-static void extractErrorCodes(ClusterCommResult const& res,
-                              std::unordered_map<int, size_t>& errorCounter,
-                              bool includeNotFound) {
-  auto const& resultHeaders = res.answer->headers();
-  auto codes = resultHeaders.find(StaticStrings::ErrorCodes);
-  if (codes != resultHeaders.end()) {
-    auto parsedCodes = VPackParser::fromJson(codes->second);
-    VPackSlice codesSlice = parsedCodes->slice();
-    TRI_ASSERT(codesSlice.isObject());
-    for (auto const& code : VPackObjectIterator(codesSlice)) {
-      VPackValueLength codeLength;
-      char const* codeString = code.key.getString(codeLength);
-      int codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);
-      if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-        errorCounter[codeNr] += code.value.getNumericValue<size_t>();
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Distribute one document onto a shard map. If this returns
 ///        TRI_ERROR_NO_ERROR the correct shard could be determined, if
 ///        it returns sth. else this document is NOT contained in the shardMap
@@ -508,47 +484,6 @@ static int distributeBabyOnShards(
     reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Collect the results from all shards (fastpath variant)
-///        All result bodies are stored in resultMap
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static void collectResultsFromAllShards(
-    std::unordered_map<ShardID, std::vector<T>> const& shardMap,
-    std::vector<ClusterCommRequest>& requests, std::unordered_map<int, size_t>& errorCounter,
-    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap,
-    rest::ResponseCode& responseCode) {
-  // If none of the shards responds we return a SERVER_ERROR;
-  responseCode = rest::ResponseCode::SERVER_ERROR;
-  for (auto const& req : requests) {
-    auto res = req.result;
-
-    int commError = handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
-      // If there was no answer whatsoever, we cannot rely on the shardId
-      // being present in the result struct:
-      ShardID sId = req.destination.substr(6);
-      auto weSend = shardMap.find(sId);
-      TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        tmpBuilder->openObject();
-        tmpBuilder->add(StaticStrings::Error, VPackValue(true));
-        tmpBuilder->add(StaticStrings::ErrorNum, VPackValue(commError));
-        tmpBuilder->close();
-      }
-      resultMap.emplace(sId, tmpBuilder);
-    } else {
-      TRI_ASSERT(res.answer != nullptr);
-      resultMap.emplace(res.shardID, res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
-      extractErrorCodes(res, errorCounter, true);
-      responseCode = res.answer_code;
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
