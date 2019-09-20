@@ -3565,6 +3565,15 @@ void ClusterInfo::loadServers() {
 }
 
 ////////////////////////////////////////////////////////////////////////
+/// @brief Hand out copy of reboot ids
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
+  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  return _serversKnown.rebootIds();
+}
+
+////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
@@ -4429,8 +4438,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
       !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 2) {
-    return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                            "invalid agency result while acuiring backup lock");
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      "invalid agency result while acquiring backup lock");
   }
   auto ar = rv->slice().get("results");
 
@@ -4483,6 +4493,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
 
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
   }
+
+  agencyHotBackupUnlock(backupId, timeout, supervisionOff);
 
   return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -4554,11 +4566,10 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1 ||
           !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {
-        return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL, std::
-                                                                       string("invalid JSON from agency, when desctivating supervision mode:") +
-                                                                   result
-                                                                       .slice()
-                                                                       .toJson());
+        return arangodb::Result(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          std::string("invalid JSON from agency, when deactivating supervision mode:") +
+          result.slice().toJson());
       }
 
       if (result.slice()[0].get(modepv).isEqualString("Normal")) {
@@ -4616,7 +4627,7 @@ ClusterInfo::ServersKnown::serversKnown() const noexcept {
   return _serversKnown;
 }
 
-std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const noexcept {
+std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const {
   std::unordered_map<ServerID, RebootId> rebootIds;
   for (auto const& it : _serversKnown) {
     rebootIds.emplace(it.first, it.second.rebootId());
