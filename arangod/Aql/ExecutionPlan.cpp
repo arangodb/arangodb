@@ -2356,6 +2356,13 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
+bool ExecutionPlan::fullCount() const noexcept {
+  LimitNode* lastLimitNode = _lastLimitNode == nullptr
+                             ? nullptr
+                             : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
+  return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include <iostream>
@@ -2389,13 +2396,6 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 void ExecutionPlan::show() {
   Shower shower;
   _root->walk(shower);
-}
-
-bool ExecutionPlan::fullCount() const noexcept {
-  LimitNode* lastLimitNode = _lastLimitNode == nullptr
-                                 ? nullptr
-                                 : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
-  return lastLimitNode != nullptr && lastLimitNode->fullCount();
 }
 
 #endif
