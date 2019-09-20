@@ -689,8 +689,7 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
 
-  //  options->addOption("--include-search",
-  //                     "whether to include ArangoSearch data (??? operation)",
+  //  options->addOption("--include-search", "whether to include ArangoSearch data",
   //                     new BooleanParameter(&_options.includeSearch));
 
   options->addOption(
@@ -708,12 +707,12 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "maximum time to wait in seconds for the server to restart after a "
       "restore operation before reporting an error; if zero, arangobackup will "
       "not wait to check that the server restarts and will simply return the "
-      "result of the restore request (create operation)",
+      "result of the restore request (restore operation)",
       new DoubleParameter(&_options.maxWaitForRestart));
 
   options->addOption("--save-current",
                      "whether to save the current state as a backup before "
-                     "restoring to another state (create operation)",
+                     "restoring to another state (restore operation)",
                      new BooleanParameter(&_options.saveCurrent));
 #ifdef USE_ENTERPRISE
   options->addOption("--status-id",
@@ -741,12 +740,11 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
         "remote", "Options detailing a remote connection to use for operations");
 
     options->addOption("--remote.credentials",
-                       "the credentials used for the remote endpoint. "
-                       "(upload/download??? operation)",
+                       "the credentials used for the remote endpoint",
                        new StringParameter(&_options.credentials));
 
     options->addOption("--remote.endpoint",
-                       "the remote endpoint (upload/download??? operation)",
+                       "the remote endpoint",
                        new StringParameter(&_options.endpoint));
   */
 }
