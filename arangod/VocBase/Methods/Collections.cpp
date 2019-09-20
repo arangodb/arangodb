@@ -796,12 +796,10 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
 
   TRI_voc_rid_t rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
-  OperationResult result;
   VPackBuilder builder;
   builder.add(VPackValue(rid));
-  result.buffer = builder.steal();
 
-  return futures::makeFuture(std::move(result));
+  return futures::makeFuture(OperationResult(Result(), builder.steal()));
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
