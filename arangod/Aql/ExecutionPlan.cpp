@@ -2391,4 +2391,11 @@ void ExecutionPlan::show() {
   _root->walk(shower);
 }
 
+bool ExecutionPlan::fullCount() const noexcept {
+  LimitNode* lastLimitNode = _lastLimitNode == nullptr
+                                 ? nullptr
+                                 : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
+  return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+
 #endif
