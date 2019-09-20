@@ -1939,15 +1939,6 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   return 0;
 }
 
-/// @brief extract the _rev attribute from a slice as a slice
-VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
-  if (!slice.isObject()) {
-    return VPackSlice();
-  }
-
-  return slice.get(StaticStrings::RevString);
-}
-
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 /// the result is the object excluding _id, _key and _rev

@@ -22,6 +22,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "Cluster/ClusterTypes.h"
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
@@ -3607,9 +3609,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   // We keep the currently registered timestamps in Current/ServersRegistered,
   // such that we can wait until all have reregistered and are up:
-  ci->loadServers();
-  std::unordered_map<std::string, std::string> serverTimestamps =
-      ci->getServerTimestamps();
+  ci->loadCurrentDBServers();
+  auto const preServersKnown = ci->rebootIds();
 
   // Restore all db servers
   std::string previous;
@@ -3629,13 +3630,17 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Not all DBservers came back in time!");
     }
-    ci->loadServers();
-    std::unordered_map<std::string, std::string> newServerTimestamps =
-        ci->getServerTimestamps();
+    ci->loadCurrentDBServers();
+    auto const postServersKnown = ci->rebootIds();
+    if (ci->getCurrentDBServers().size() < dbServers.size()) {
+      LOG_TOPIC("8dce7", INFO, Logger::BACKUP) << "Waiting for all db servers to return";
+      continue;
+    }
+
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (serverTimestamps[dbs] != newServerTimestamps[dbs]) {
+      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
         ++good;
       }
     }
@@ -3990,6 +3995,13 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     double timeout = (payload.isObject() && payload.hasKey("timeout"))
                          ? payload.get("timeout").getNumber<double>()
                          : 120.;
+    // unreasonably short even under allowInconsistent
+    if (timeout < 2.5) {
+      auto const tmp = timeout;
+      timeout = 2.5;
+      LOG_TOPIC("67ae2", WARN, Logger::BACKUP)
+        << "Backup timeout " << tmp << " is too short - raising to " << timeout;
+    }
 
     using namespace std::chrono;
     auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
@@ -4000,6 +4012,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     // We specifically want to make sure that no other backup is going on.
     bool supervisionOff = false;
     auto result = ci->agencyHotBackupLock(backupId, timeout, supervisionOff);
+
     if (!result.ok()) {
       // Failed to go to backup mode
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -4012,6 +4025,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       LOG_TOPIC("352d6", INFO, Logger::BACKUP)
           << "hot backup didn't get to locking phase within " << timeout << "s.";
       auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
                               "hot backup timeout before locking phase");
     }

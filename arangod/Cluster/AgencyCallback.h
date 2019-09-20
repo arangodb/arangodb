@@ -69,7 +69,7 @@ namespace arangodb {
 /// pseudocode does not miss events:
 ///
 /// create AgencyCallback object with a callback function and register it
-/// TRI_defer(unregister callback)
+/// TRI_DEFER(unregister callback)
 /// {
 ///   acquire mutex of condition variable
 ///   while true:

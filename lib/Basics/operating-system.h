@@ -432,8 +432,6 @@
 
 #define TRI_HAVE_POSIX 1
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
-
 #define TRI_HAVE_LINUX_PROC 1
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define TRI_HAVE_POSIX_MMAP 1
@@ -583,8 +581,6 @@
 
 // available features
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
-
 #define TRI_HAVE_POSIX 1
 
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
@@ -668,15 +664,6 @@
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
-// The following function just throws an exception and catches it. This is
-// used on Linux for the case that we link statically and the underlying
-// C-library is libmusl. This configuration has a bug in libgcc which
-// triggers a shutdown busy loop (after main), provided the very first
-// exception being thrown in the life of the process happens in two threads
-// at the same time. By throwing right at the beginning of main() when the
-// process is still single-threaded, we circumvent this problem.
-void ThrowSomeException();
-
 #endif
 
 // -----------------------------------------------------------------------------
@@ -758,7 +745,6 @@ void ThrowSomeException();
 #define YY_NO_UNISTD_H 1
 
 #define TRI_WIN32_CONSOLE 1
-#define TRI_WIN32_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_WIN32_CLOSE_ON_EXEC 1
 #define TRI_HAVE_WIN32_FILE_LOCKING 1
