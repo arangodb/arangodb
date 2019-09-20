@@ -92,16 +92,16 @@ function ahuacatlQueryOptimizerLimitClusterTestSuite() {
 
         const fullCount = extra.stats.fullCount;
 
-        assertEqual(10, values.length);
+        assert.assertEqual(10, values.length);
 
-        assertEqual(fullCount, 20);
+        assert.assertEqual(fullCount, 20);
 
         const sorts = getSorts(extra.plan);
-        assertEqual(sorts.length, 1);
+        assert.assertEqual(sorts.length, 1);
         // Temporarily disabled:
         // assertEqual(15, sorts[0].limit);
         // assertEqual('constrained-heap', sorts[0].strategy);
-        assertEqual('standard', sorts[0].strategy);
+        assert.assertEqual('standard', sorts[0].strategy);
       });
     },
   };
