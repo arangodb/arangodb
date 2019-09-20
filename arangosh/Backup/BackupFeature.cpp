@@ -681,8 +681,8 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      static_cast<std::underlying_type<Flags>::type>(Flags::Hidden));
 
   options->addOption("--allow-inconsistent",
-                     "whether to attempt to continue in face of errors. "
-                     "May result in inconsistent backup state (create operation)",
+                     "whether to attempt to continue in face of errors; "
+                     "may result in inconsistent backup state (create operation)",
                      new BooleanParameter(&_options.force));
 
   options->addOption("--identifier",
@@ -717,7 +717,7 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_options.saveCurrent));
 #ifdef USE_ENTERPRISE
   options->addOption("--status-id",
-                     "returns the status of a transfere process "
+                     "returns the status of a transfer process "
                      "(upload/download operation)",
                      new StringParameter(&_options.statusId));
 
@@ -832,7 +832,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     if (!_options.identifier.empty()) {
       if (_options.rcloneConfigFile.empty() || _options.remoteDirectory.empty()) {
-        LOG_TOPIC("6063d", FATAL, Logger::BACKUP) << "for data transfere --rclone-config-file"
+        LOG_TOPIC("6063d", FATAL, Logger::BACKUP) << "for data transfer --rclone-config-file"
                                             " and --remote-path must be set";
         FATAL_ERROR_EXIT();
       }
