@@ -402,8 +402,15 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
     }
   } else {
     this->_authToken = auth::TokenCache::Entry::Unauthenticated();
+    std::string methods;
+    for (auto meth : AuthenticationFeature::instance()->getAuthMethods()) {
+      if (methods.length() > 0) {
+        methods += ",";
+      }
+      methods += authToString(meth);
+    }
     this->addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
-                           mId, TRI_ERROR_HTTP_UNAUTHORIZED);
+                           mId, TRI_ERROR_HTTP_UNAUTHORIZED, methods);
 
   }
 }
