@@ -1723,10 +1723,11 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         }
         builder.close();
         // We send to Babies endpoint
-        futures.emplace_back(network::sendRequestRetry(feature, "feature, shard:" + it.first, restVerb,
-                                                       baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                                                       std::move(buffer), network::Timeout(CL_DEFAULT_TIMEOUT),
-                                                       headers, /*retryNotFound*/ true));
+        futures.emplace_back(
+            network::sendRequestRetry(feature, "shard:" + it.first, restVerb,
+                                      baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
+                                      std::move(buffer), network::Timeout(CL_DEFAULT_TIMEOUT),
+                                      headers, /*retryNotFound*/ true));
       }
     }
 
