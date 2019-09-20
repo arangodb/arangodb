@@ -26,6 +26,7 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 
 #include <utility>
@@ -181,9 +182,14 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
   size_t pos = 2;  // write position in raw
   // We use column == 0 to simulate a shadowRow
-  for (RegisterId column = 0; column < getNrRegisters() + 1; column++) {
+  // this is only relevant if all participants can use shadow rows
+  RegisterId startRegister = 0;
+  if (block().getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < getNrRegisters() + 1; column++) {
     AqlValue const& a = column == 0 ? AqlValue{} : getValue(column - 1);
-
     // determine current state
     if (a.isEmpty()) {
       currentState = Empty;

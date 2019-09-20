@@ -45,6 +45,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -67,11 +68,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "V8Server/V8DealerFeature.h"
-#include "Cluster/ClusterFeature.h"
 
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchMMFilesLink.h"
@@ -200,7 +200,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   {
@@ -354,7 +355,8 @@ TEST_F(IResearchViewNodeTest, construct) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no options
@@ -526,7 +528,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // missing 'viewId'
@@ -954,7 +957,8 @@ TEST_F(IResearchViewNodeTest, clone) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no filter condition, no sort condition, no shards, no options
@@ -998,7 +1002,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1025,7 +1030,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1097,7 +1103,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1124,7 +1131,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1193,7 +1201,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1223,7 +1232,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1297,7 +1307,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1327,7 +1338,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1365,7 +1377,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1549,7 +1562,8 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1777,7 +1791,8 @@ TEST_F(IResearchViewNodeTest, collections) {
   query.addCollection(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ);
 
   // prepare query
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1862,10 +1877,11 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(&query, arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1948,10 +1964,11 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(&query, arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::SingletonNode singleton(query.plan(), 0);
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1987,9 +2004,7 @@ class IResearchViewBlockTest : public ::testing::Test {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchViewBlockTest()
-      : engine(server),
-        server(nullptr, nullptr) {
+  IResearchViewBlockTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::tests::init(true);
 
@@ -2046,7 +2061,6 @@ class IResearchViewBlockTest : public ::testing::Test {
             "DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
 
-
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
@@ -2081,8 +2095,7 @@ class IResearchViewBlockTest : public ::testing::Test {
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,
-        EMPTY_VECTOR, EMPTY_VECTOR,
-        arangodb::transaction::Options());
+        EMPTY_VECTOR, EMPTY_VECTOR, arangodb::transaction::Options());
 
     EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already removed from collection)
@@ -2135,9 +2148,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
-                                  "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
@@ -2150,9 +2162,9 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollection) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
-                                  "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase,
+      "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());

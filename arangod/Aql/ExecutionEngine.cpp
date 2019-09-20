@@ -183,9 +183,9 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 }
 
 /// @brief create the engine
-ExecutionEngine::ExecutionEngine(Query* query)
+ExecutionEngine::ExecutionEngine(Query* query, SerializationFormat format)
     : _stats(),
-      _itemBlockManager(query->resourceMonitor()),
+      _itemBlockManager(query->resourceMonitor(), format),
       _blocks(),
       _root(nullptr),
       _query(query),
@@ -570,7 +570,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
       }
     } else {
       // instantiate the engine on a local server
-      engine = new ExecutionEngine(query);
+      engine = new ExecutionEngine(query, SerializationFormat::SHADOWROWS);
       Instanciator inst(engine);
       plan->root()->walk(inst);
       root = inst.root;

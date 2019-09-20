@@ -36,9 +36,9 @@
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -83,7 +83,7 @@ class HashedCollectExecutorTestNoRows : public ::testing::Test {
   NoStats stats;
 
   HashedCollectExecutorTestNoRows()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 2)},
@@ -155,7 +155,7 @@ class HashedCollectExecutorTestRowsNoCount : public ::testing::Test {
   NoStats stats;
 
   HashedCollectExecutorTestRowsNoCount()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -401,7 +401,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
 TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -498,7 +498,7 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
 TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -611,7 +611,7 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
 TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();

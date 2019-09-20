@@ -271,7 +271,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
 
   TraversalExecutorTestInputStartVertex()
       : fakedQuery(server.createFakeQuery()),
-        itemBlockManager(&monitor),
+        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
         trx(fakedQuery->trx()),
@@ -479,7 +479,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
-        itemBlockManager(&monitor),
+        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
         trx(fakedQuery->trx()),

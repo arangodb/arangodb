@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,22 +17,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MIMETYPES_H
-#define ARANGODB_BASICS_MIMETYPES_H 1
+#ifndef ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
+#define ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 
-/// @brief register a mimetype for an extension
-bool TRI_RegisterMimetype(char const*, char const*, bool);
+namespace arangodb {
+namespace aql {
 
-/// @brief gets the mimetype for an extension
-char const* TRI_GetMimetype(char const*);
+/// @brief Defines the serialization format of AQL item blocks
+enum class SerializationFormat {
+  // Format used in 3.5 and early. Not containing shadow rows
+  CLASSIC = 0,
+  // Use a hidden register for shadow rows. In classic versions all entries would be off by one.
+  SHADOWROWS = 1
+};
 
-/// @brief initializes mimetypes
-void TRI_InitializeMimetypes();
-
-/// @brief shuts down mimetypes
-void TRI_ShutdownMimetypes();
-
+}  // namespace aql
+}  // namespace arangodb
 #endif

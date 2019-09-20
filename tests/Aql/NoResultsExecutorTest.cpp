@@ -57,7 +57,7 @@ class NoResultsExecutorTest : public ::testing::Test {
   OutputAqlItemRow result;
 
   NoResultsExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(make_shared_unordered_set()),
         registersToClear(make_shared_unordered_set()),

@@ -44,7 +44,7 @@ namespace aql {
 class AqlShadowItemRowTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   void AssertResultRow(InputAqlItemRow const& input, VPackSlice result,
                        std::unordered_set<RegisterId> const& regsToIgnore = {}) {
@@ -79,7 +79,6 @@ class AqlShadowItemRowTest : public ::testing::Test {
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
-    // Let this go out of scope before assertions, to make sure no references are bound here.
     for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
       ASSERT_FALSE(testee.isFull());
       if (!inputBlock->isShadowRow(rowIdx)) {

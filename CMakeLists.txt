@@ -135,7 +135,7 @@ if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
     set(ARANGODB_DARWIN_REVISION "devel")
 
   # nightly
-  elseif (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
+  elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
     set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_DEBIAN_REVISION "1")
 
@@ -786,6 +786,42 @@ if (USE_FAILURE_TESTS)
 endif ()
 
 ################################################################################
+## INTERPROCEDURAL OPTIMIZATION (LINK TIME OPTIMIZATION)
+################################################################################
+
+set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
+
+set(IPO_ENABLED False)
+
+# Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
+if(USE_IPO STREQUAL "AUTO")
+  # When USE_IPO=AUTO, enable IPO for optimized / release builds.
+  # But to work around a g++ segfault triggered by using both -flto and
+  # -fno-devirtualize-functions, we disable IPO when using google tests, because
+  # this will set no-devirtualize. See
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+  # So this check may be removed later as soon as we use fixed gcc versions.
+  # - Tobias, 2019-08-08
+  if (NOT USE_GOOGLE_TESTS AND
+    (CMAKE_BUILD_TYPE STREQUAL "Release"
+    OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
+    set(IPO_ENABLED True)
+  else()
+    set(IPO_ENABLED False)
+  endif ()
+elseif(USE_IPO)
+  set(IPO_ENABLED True)
+else()
+  set(IPO_ENABLED False)
+endif()
+
+message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+
+################################################################################
 ## LIBRARY RESOLV
 ################################################################################
 
@@ -1176,37 +1212,6 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
-endif ()
-
-################################################################################
-## MIMETYPES FILE
-################################################################################
-
-if (USE_MAINTAINER_MODE)
-  set(MIMETYPES_FILES
-    lib/Basics/voc-mimetypes.h
-    lib/Basics/voc-mimetypes.cpp
-  )
-
-  set(MIMETYPES_FILES_GEN)
-  set(MIMETYPES_DAT lib/Basics/mimetypes.dat)
-
-  foreach (m IN LISTS MIMETYPES_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateMimetypes.py ./${MIMETYPES_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT "Building mimetypes files ${m}"
-      VERBATIM
-    )
-
-    list(APPEND MIMETYPES_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
-
-  add_custom_target(mimetypes ALL DEPENDS ${MIMETYPES_FILES_GEN})
 endif ()
 
 ################################################################################

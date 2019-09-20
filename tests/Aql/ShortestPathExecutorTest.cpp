@@ -55,9 +55,10 @@ namespace aql {
 
 class TokenTranslator : public TraverserCache {
  public:
-  TokenTranslator(Query* query) 
+  TokenTranslator(Query* query)
       : TraverserCache(query),
-         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(), arangodb::basics::VelocyPackHelper::VPackEqual()) {}
+        _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
+               arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() {}
 
   arangodb::velocypack::StringRef makeVertex(std::string const& id) {
@@ -248,7 +249,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
                            std::shared_ptr<VPackBuilder> const& input,
                            std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor};
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
     NoStats stats{};
@@ -296,7 +297,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
                               std::shared_ptr<VPackBuilder> const& input,
                               std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor};
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
     NoStats stats{};
@@ -331,7 +332,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   }
 
   void RunSimpleTest(bool waiting, ShortestPathExecutorInfos::InputVertex&& source,
-                            ShortestPathExecutorInfos::InputVertex&& target) {
+                     ShortestPathExecutorInfos::InputVertex&& target) {
     RegisterId vOutReg = 2;
     mocks::MockAqlServer server{};
     std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
