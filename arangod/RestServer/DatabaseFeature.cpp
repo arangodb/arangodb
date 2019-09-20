@@ -630,26 +630,17 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
       }
     }
 
-
-    //OK FUCK -- id must be string and database the numeric value
-    //ask steemann if we want to always use string
-
-    // builder.add("database", VPackValue(id));
-    // builder.add("id", VPackValue(std::to_string(id)));
-
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
 
-    //FIXME -- use info directly
+    // TODO -- use info directly
     {
       VPackObjectBuilder guard(&builder);
       info.toVelocyPack(builder);
     }
 
-    LOG_DEVEL << builder.slice();
-    TRI_ASSERT(!builder.slice().isNone());
-
-    vocbase = engine->createDatabase(info.getId(), builder.slice() /*args*/, status);
+    TRI_ASSERT(builder.slice().isObject());
+    vocbase = engine->createDatabase(info.getId(), builder.slice(), status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 
@@ -673,7 +664,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
       // enable deadlock detection
       vocbase->_deadlockDetector.enabled(!ServerState::instance()->isRunningInCluster());
 
-      // FIXME why do we not n this
       // create application directories
       V8DealerFeature* dealer =
           ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");

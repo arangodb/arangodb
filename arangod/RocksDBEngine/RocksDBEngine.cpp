@@ -2019,10 +2019,10 @@ bool RocksDBEngine::systemDatabaseExists() {
   getDatabases(builder);
 
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
-    LOG_DEVEL << item.toJson();
     TRI_ASSERT(item.isObject());
-    TRI_ASSERT(item.get("name").isString());
-    if (item.get("name").copyString() == StaticStrings::SystemDatabase) {
+    TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
+    if (item.get(StaticStrings::DatabaseName)
+            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
       return true;
     }
   }
@@ -2034,8 +2034,8 @@ void RocksDBEngine::addSystemDatabase() {
   TRI_voc_tick_t id = TRI_NewTickServer();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("id", VPackValue(std::to_string(id)));
-  builder.add("name", VPackValue(StaticStrings::SystemDatabase));
+  builder.add(StaticStrings::DatabaseId, VPackValue(std::to_string(id)));
+  builder.add(StaticStrings::DatabaseName, VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
   builder.close();
 
