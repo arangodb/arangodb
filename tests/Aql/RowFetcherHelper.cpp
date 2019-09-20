@@ -44,8 +44,7 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
-namespace {
-}  // namespace
+namespace {}  // namespace
 
 // -----------------------------------------
 // - SECTION SINGLEROWFETCHER              -
@@ -59,9 +58,9 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
                              vPackBufferToAqlItemBlock(manager, vPackBuffer)) {}
 
 template <bool passBlocksThrough>
-SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aql::AqlItemBlockManager& manager,
-                       size_t const blockSize, bool const returnsWaiting,
-                       ::arangodb::aql::SharedAqlItemBlockPtr input)
+SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
+    ::arangodb::aql::AqlItemBlockManager& manager, size_t const blockSize,
+    bool const returnsWaiting, ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
       _returnsWaiting(returnsWaiting),
       _nrItems(input == nullptr ? 0 : input->size()),
@@ -165,7 +164,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
       _nrRegs(0),
       _nrCalled(0),
       _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
+      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -233,7 +232,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
     if (nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       TRI_ASSERT(oneRow.isArray());
-      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
+      arangodb::aql::RegisterCount nrRegs =
+          static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);

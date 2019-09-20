@@ -24,6 +24,7 @@
 #include "AqlItemBlock.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -142,8 +143,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
+    RegisterId startColumn = 0;
+    if (getFormatType() == SerializationFormat::CLASSIC) {
+      startColumn = 1;
+    }
 
-    for (RegisterId column = 0; column < internalNrRegs(); column++) {
+    for (RegisterId column = startColumn; column < internalNrRegs(); column++) {
       for (size_t i = 0; i < _nrItems; i++) {
         if (runLength > 0) {
           switch (runType) {
@@ -248,8 +253,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "found undefined data value");
           }
-          TRI_ASSERT(column != 0);
-          setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
+          if (column == 0) {
+            setShadowRowDepth(i, madeHere[static_cast<size_t>(n)]);
+          } else {
+            setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
+          }
+
           // If this throws, all is OK, because it was already put into
           // the block elsewhere.
         } else {
@@ -265,6 +274,10 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
   TRI_ASSERT(runLength == 0);
   TRI_ASSERT(runType == NoRun);
+}
+
+SerializationFormat AqlItemBlock::getFormatType() const {
+  return _manager.getFormatType();
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere
@@ -615,7 +628,13 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < internalNrRegs(); column++) {
+
+  RegisterId startRegister = 0;
+  if (getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < internalNrRegs(); column++) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue const& a(_data[i * internalNrRegs() + column]);
 

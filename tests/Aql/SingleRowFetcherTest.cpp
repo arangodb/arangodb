@@ -59,7 +59,8 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
   static constexpr bool passBlocksThrough = true;
-  SingleRowFetcherTestPassBlocks() : itemBlockManager(&monitor) {}
+  SingleRowFetcherTestPassBlocks()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
@@ -68,7 +69,8 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
   static constexpr bool passBlocksThrough = false;
-  SingleRowFetcherTestDoNotPassBlocks() : itemBlockManager(&monitor) {}
+  SingleRowFetcherTestDoNotPassBlocks()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(SingleRowFetcherTestPassBlocks, there_are_no_blocks_upstream_the_producer_doesnt_wait) {

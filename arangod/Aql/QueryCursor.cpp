@@ -25,6 +25,7 @@
 #include "QueryCursor.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -44,8 +45,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
-                                     aql::QueryResult&& result,
+QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
                                      size_t batchSize, double ttl, bool hasCount)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
@@ -147,8 +147,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase,
-                                     std::string const& query,
+QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
                                      std::shared_ptr<VPackBuilder> bindVars,
                                      std::shared_ptr<VPackBuilder> opts, size_t batchSize,
                                      double ttl, bool contextOwnedByExterior,
@@ -159,12 +158,12 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase,
       _queryResultPos(0) {
   auto registry = QueryRegistryFeature::registry();
   TRI_ASSERT(registry != nullptr);
-        
+
   _query = std::make_unique<Query>(contextOwnedByExterior, _guard.database(),
                                    aql::QueryString(query), std::move(bindVars),
                                    std::move(opts), arangodb::aql::PART_MAIN);
   _query->setTransactionContext(std::move(ctx));
-  _query->prepare(registry);
+  _query->prepare(registry, SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query
@@ -186,12 +185,11 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase,
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-  int level = _query->trx()->state()->nestingLevel(); // should be level 0 or 1
+  int level = _query->trx()->state()->nestingLevel();  // should be level 0 or 1
   // things break if the Query outlives a V8 transaction
   _stateChangeCb = [this, level](transaction::Methods& trx, transaction::Status status) {
     if (trx.state()->nestingLevel() == level &&
-        (status == transaction::Status::COMMITTED ||
-         status == transaction::Status::ABORTED)) {
+        (status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED)) {
       this->setDeleted();
     }
   };
@@ -224,8 +222,9 @@ void QueryStreamCursor::kill() {
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
                                                           std::function<void()> const& ch) {
   TRI_ASSERT(batchSize() > 0);
-  LOG_TOPIC("9af59", TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
-                                    << _query->queryString().extract(1024) << "'";
+  LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
+      << "executing query " << _id << ": '"
+      << _query->queryString().extract(1024) << "'";
 
   // We will get a different RestHandler on every dump, so we need to update the
   // Callback
@@ -271,8 +270,9 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
-  LOG_TOPIC("9dada", TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
-                                    << _query->queryString().extract(1024) << "'";
+  LOG_TOPIC("9dada", TRACE, Logger::QUERIES)
+      << "executing query " << _id << ": '"
+      << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   // We will get a different RestHandler on every dump, so we need to update the

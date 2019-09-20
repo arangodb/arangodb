@@ -535,19 +535,6 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
 }
 #endif
 
-void TRI_LogProcessInfoSelf(char const* message) {
-  ProcessInfo info = TRI_ProcessInfoSelf();
-
-  if (message == nullptr) {
-    message = "";
-  }
-
-  LOG_TOPIC("5b37c", TRACE, Logger::MEMORY)
-      << message << "virtualSize: " << info._virtualSize
-      << ", residentSize: " << info._residentSize
-      << ", numberThreads: " << info._numberThreads;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////

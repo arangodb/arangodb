@@ -36,7 +36,7 @@ namespace aql {
 class AqlItemBlockTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
               "a",
@@ -210,6 +210,54 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
   }
 }
 
+TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 2)};
+
+  block->emplaceValue(0, 0, dummyData(0));
+  block->emplaceValue(0, 1, dummyData(1));
+
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  block->setShadowRowDepth(1, AqlValue(AqlValueHintInt(0)));
+
+  block->emplaceValue(2, 0, dummyData(2));
+  block->emplaceValue(2, 1, dummyData(4));
+
+  block->emplaceValue(3, 0, dummyData(2));
+  block->emplaceValue(3, 1, dummyData(4));
+  block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  ASSERT_TRUE(result.isOpenObject());
+  result.close();
+
+  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+  // Check exposed attributes
+  EXPECT_EQ(testee->size(), block->size());
+  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numEntries(), block->numEntries());
+  EXPECT_EQ(testee->capacity(), block->capacity());
+  // check data
+  EXPECT_FALSE(testee->isShadowRow(0));
+  compareWithDummy(testee, 0, 0, 0);
+  compareWithDummy(testee, 0, 1, 1);
+
+  EXPECT_TRUE(testee->isShadowRow(1));
+  compareWithDummy(testee, 1, 0, 0);
+  compareWithDummy(testee, 1, 1, 1);
+
+  EXPECT_FALSE(testee->isShadowRow(2));
+  compareWithDummy(testee, 2, 0, 2);
+  compareWithDummy(testee, 2, 1, 4);
+
+  EXPECT_TRUE(testee->isShadowRow(3));
+  compareWithDummy(testee, 3, 0, 2);
+  compareWithDummy(testee, 3, 1, 4);
+}
+
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
   block->emplaceValue(0, 0, dummyData(4));
@@ -254,6 +302,271 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  block->emplaceValue(0, 0, dummyData(4));
+  block->emplaceValue(0, 1, dummyData(5));
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  {
+    InputAqlItemRow input{block, 0};
+    VPackBuilder result;
+    result.openObject();
+    input.toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+  }
+
+  {
+    InputAqlItemRow input{block, 1};
+    VPackBuilder result;
+    result.openObject();
+    input.toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 0);
+    compareWithDummy(testee, 0, 1, 1);
+  }
+}
+
+class AqlItemBlockClassicTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::CLASSIC};
+  std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
+          [
+              "a",
+              "b",
+              "c",
+              "d",
+              {
+                  "a": "b",
+                  "this": "is to large to be inlined"
+              },
+              {
+                  "c": "d",
+                  "this": "is to large to be inlined"
+              }
+          ]
+      )")};
+
+  VPackSlice dummyData(size_t index) {
+    TRI_ASSERT(index < _dummyData->slice().length());
+    return _dummyData->slice().at(index);
+  }
+
+  void compareWithDummy(SharedAqlItemBlockPtr const& testee, size_t row,
+                        RegisterId column, size_t dummyIndex) {
+    EXPECT_EQ(VelocyPackHelper::compare(testee->getValueReference(row, column).slice(),
+                                        dummyData(dummyIndex), false),
+              0)
+        << testee->getValueReference(row, column).slice().toJson() << " vs "
+        << dummyData(dummyIndex).toJson();
+  }
+};
+
+TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_1) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+
+  block->emplaceValue(0, 0, dummyData(0));
+  block->emplaceValue(0, 1, dummyData(1));
+  block->emplaceValue(1, 0, dummyData(2));
+  block->emplaceValue(1, 1, dummyData(4));
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  ASSERT_TRUE(result.isOpenObject());
+  result.close();
+
+  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+  // Check exposed attributes
+  EXPECT_EQ(testee->size(), block->size());
+  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numEntries(), block->numEntries());
+  EXPECT_EQ(testee->capacity(), block->capacity());
+  // check data
+  compareWithDummy(testee, 0, 0, 0);
+  compareWithDummy(testee, 0, 1, 1);
+  compareWithDummy(testee, 1, 0, 2);
+  compareWithDummy(testee, 1, 1, 4);
+}
+
+TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_2) {
+  // Only write a single value in a single line with 3 registers.
+  // Use first, second and third position independently.
+  // All other positions remain empty
+  for (RegisterId dataPosition = 0; dataPosition < 3; ++dataPosition) {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
+
+    block->emplaceValue(0, dataPosition, dummyData(4));
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), block->size());
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numEntries(), block->numEntries());
+    EXPECT_EQ(testee->capacity(), block->capacity());
+    // check data
+    for (RegisterId i = 0; i < 3; ++i) {
+      if (i == dataPosition) {
+        compareWithDummy(testee, 0, i, 4);
+      } else {
+        EXPECT_TRUE(testee->getValueReference(0, i).isEmpty());
+      }
+    }
+  }
+}
+
+TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_3) {
+  // Only write a single value twice in a single line with 3 registers.
+  // Use first, second and third position as empty independently.
+  // All other positions use the value
+  for (RegisterId dataPosition = 0; dataPosition < 3; ++dataPosition) {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
+    for (RegisterId i = 0; i < 3; ++i) {
+      if (i != dataPosition) {
+        block->emplaceValue(0, i, dummyData(4));
+      }
+    }
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), block->size());
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numEntries(), block->numEntries());
+    EXPECT_EQ(testee->capacity(), block->capacity());
+    // check data
+    for (RegisterId i = 0; i < 3; ++i) {
+      if (i != dataPosition) {
+        compareWithDummy(testee, 0, i, 4);
+      } else {
+        EXPECT_TRUE(testee->getValueReference(0, i).isEmpty());
+      }
+    }
+  }
+}
+
+TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_shadowrows) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 2)};
+
+  block->emplaceValue(0, 0, dummyData(0));
+  block->emplaceValue(0, 1, dummyData(1));
+
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  block->setShadowRowDepth(1, AqlValue(AqlValueHintInt(0)));
+
+  block->emplaceValue(2, 0, dummyData(2));
+  block->emplaceValue(2, 1, dummyData(4));
+
+  block->emplaceValue(3, 0, dummyData(2));
+  block->emplaceValue(3, 1, dummyData(4));
+  block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  ASSERT_TRUE(result.isOpenObject());
+  result.close();
+
+  // The shadow row information will be lost!
+  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+  // Check exposed attributes
+  EXPECT_EQ(testee->size(), block->size());
+  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numEntries(), block->numEntries());
+  EXPECT_EQ(testee->capacity(), block->capacity());
+  // check data
+  EXPECT_FALSE(testee->isShadowRow(0));
+  compareWithDummy(testee, 0, 0, 0);
+  compareWithDummy(testee, 0, 1, 1);
+
+  EXPECT_FALSE(testee->isShadowRow(1));
+  compareWithDummy(testee, 1, 0, 0);
+  compareWithDummy(testee, 1, 1, 1);
+
+  EXPECT_FALSE(testee->isShadowRow(2));
+  compareWithDummy(testee, 2, 0, 2);
+  compareWithDummy(testee, 2, 1, 4);
+
+  EXPECT_FALSE(testee->isShadowRow(3));
+  compareWithDummy(testee, 3, 0, 2);
+  compareWithDummy(testee, 3, 1, 4);
+}
+
+TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_slices) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  block->emplaceValue(0, 0, dummyData(4));
+  block->emplaceValue(0, 1, dummyData(5));
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  {
+    auto slice = block->slice(0, 1);
+    VPackBuilder result;
+    result.openObject();
+    slice->toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+  }
+
+  {
+    auto slice = block->slice(1, 2);
+    VPackBuilder result;
+    result.openObject();
+    slice->toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 0);
+    compareWithDummy(testee, 0, 1, 1);
+  }
+}
+
+TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_input_row) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
   block->emplaceValue(0, 0, dummyData(4));
   block->emplaceValue(0, 1, dummyData(5));
