@@ -3,6 +3,9 @@ v3.4.9 (XXX-XX-XX)
 
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
+* Fixed a bug in the edge cache's internal memory accounting, which led
+  to the edge cache underreporting its current memory usage.
+
 * Fix strange shutdown hanger which came from the fact that currently
   libgcc/libmusl wrongly detect multi-threadedness in statically linked
   executables.

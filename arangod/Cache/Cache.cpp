@@ -350,13 +350,12 @@ void Cache::shutdown() {
     }
     _table->clear();
     _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
+    _metadata.writeLock();
+    _metadata.changeTable(0);
+    _metadata.writeUnlock();
     _manager->unregisterCache(_id);
     _table = nullptr;
   }
-  _metadata.writeLock();
-  _metadata.changeTable(0);
-  _metadata.writeUnlock();
-
   _taskLock.writeUnlock();
 }
 
