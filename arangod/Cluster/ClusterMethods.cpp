@@ -1055,7 +1055,6 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
-    addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future =
         network::sendRequest("shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
