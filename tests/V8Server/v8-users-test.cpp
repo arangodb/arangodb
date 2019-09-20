@@ -278,7 +278,9 @@ TEST_F(V8UsersTest, test_collection_auth) {
       TRI_V8_ASCII_STRING(isolate.get(), "*"),
   };
 
-  arangodb::ExecContext::AdminScope execContextScope;
+  std::unique_ptr<arangodb::ExecContext> userScope(
+    arangodb::ExecContext::create(arangodb::auth::AuthUser{userName}, arangodb::auth::DatabaseResource{}).release());
+  arangodb::ExecContext::Scope execContextScope(userScope.get());
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
