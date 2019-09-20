@@ -1214,7 +1214,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous, AstNode co
   } else {
     // operand is some misc expression
     if (expression->isTrue()) {
-      // filter expression is known to be always true, so 
+      // filter expression is known to be always true, so
       // remove the filter entirely
       return previous;
     }
@@ -2094,7 +2094,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   arangodb::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
-  
+
   VarUsageFinder(VarUsageFinder const&) = delete;
   VarUsageFinder& operator=(VarUsageFinder const&) = delete;
 
@@ -2404,13 +2404,6 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
-bool ExecutionPlan::fullCount() const noexcept {
-  LimitNode* lastLimitNode = _lastLimitNode == nullptr
-                             ? nullptr
-                             : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
-  return lastLimitNode != nullptr && lastLimitNode->fullCount();
-}
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include <iostream>
@@ -2452,5 +2445,4 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
 }
-
 #endif
