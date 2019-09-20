@@ -99,6 +99,19 @@ inline const char* authToString(AuthenticationMethod meth) {
   return "";
 }
 
+inline AuthenticationMethod stringToAuthMethod(std::string const &method) {
+  if (method == "Basic") {
+    return AuthenticationMethod::BASIC;
+  }
+  if (method == "Bearer") {
+    return AuthenticationMethod::JWT;
+  }
+  if (method == "Negotiate") {
+    return AuthenticationMethod::NEGOTIATE;
+  }
+  return AuthenticationMethod::NONE;
+}
+
 enum class ResponseCode {
   CONTINUE = 100,
   SWITCHING_PROTOCOLS = 101,

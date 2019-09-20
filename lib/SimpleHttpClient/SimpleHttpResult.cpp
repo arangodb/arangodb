@@ -173,19 +173,19 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   }
 
   else if (keyString[0] == 'c') {
-    if (keyLength == strlen("content-length") &&
-        keyString == "content-length") {
+    if (keyLength == StaticStrings::ContentLength.length() &&
+        keyString == StaticStrings::ContentLength.c_str()) {
       setContentLength(NumberUtils::atoi_zero<size_t>(value, value + valueLength));
-    } else if (keyLength == strlen("content-encoding") &&
-               keyString == "content-encoding") {
+    } else if (keyLength == StaticStrings::ContentEncoding.length() &&
+               keyString == StaticStrings::ContentEncoding.c_str()) {
       if (valueLength == strlen("deflate") && (value[0] == 'd' || value[0] == 'D') &&
           (value[1] == 'e' || value[1] == 'E') && (value[2] == 'f' || value[2] == 'F') &&
           (value[3] == 'l' || value[3] == 'L') && (value[4] == 'a' || value[4] == 'A') &&
           (value[5] == 't' || value[5] == 'T') && (value[6] == 'e' || value[6] == 'E')) {
         _deflated = true;
       }
-    } else if (keyLength == strlen("content-type") &&
-               keyString == "content-type") {
+    } else if (keyLength == StaticStrings::ContentTypeHeader.length() &&
+               keyString == StaticStrings::ContentTypeHeader.c_str()) {
       size_t const length = strlen("application/json");
 
       if (valueLength >= length && memcmp(value, "application/json", length) == 0) {
@@ -198,14 +198,21 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   }
 
   else if (keyString[0] == 't') {
-    if (keyLength == strlen("transfer-encoding") &&
-        keyString == "transfer-encoding") {
+    if (keyLength == StaticStrings::TransferEncoding.length() &&
+        keyString == StaticStrings::TransferEncoding.c_str()) {
       if (valueLength == strlen("chunked") && (value[0] == 'c' || value[0] == 'C') &&
           (value[1] == 'h' || value[1] == 'H') && (value[2] == 'u' || value[2] == 'U') &&
           (value[3] == 'n' || value[3] == 'N') && (value[4] == 'k' || value[4] == 'K') &&
           (value[5] == 'e' || value[5] == 'E') && (value[6] == 'd' || value[6] == 'D')) {
         _chunked = true;
       }
+    }
+  }
+
+  else if (keyString[0] == 'w') {
+    if (keyLength == StaticStrings::WwwAuthenticate.length() &&
+        keyString == StaticStrings::WwwAuthenticate.c_str()) {
+      addSupportedAuth(rest::stringToAuthMethod(std::string(value, valueLength)));
     }
   }
 

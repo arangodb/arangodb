@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
+#include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -233,6 +234,12 @@ class SimpleHttpResult {
 
   virtual void setHaveSentRequestFully(bool b) { _haveSentRequestFully = b; }
 
+  bool isMethodAllowed(rest::AuthenticationMethod meth) {
+    return std::find(_supportedMethods.begin(),
+                     _supportedMethods.end(),
+                     meth) != _supportedMethods.end();
+  }
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add header field
@@ -240,6 +247,9 @@ class SimpleHttpResult {
 
   void addHeaderField(char const*, size_t, char const*, size_t);
 
+  void addSupportedAuth(rest::AuthenticationMethod meth) {
+    _supportedMethods.push_back(meth);
+  }
  protected:
   // header informtion
   std::string _returnMessage;
@@ -260,6 +270,7 @@ class SimpleHttpResult {
   // header fields
   std::unordered_map<std::string, std::string> _headerFields;
 
+  std::vector<rest::AuthenticationMethod> _supportedMethods;
   // flag which indicates whether or not the complete request has already be
   // sent (to the operating system):
   bool _haveSentRequestFully;

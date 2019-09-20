@@ -1056,26 +1056,18 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
     }
 #ifndef _WIN32
     else if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::UNAUTHORIZED)) {
-      
-      auto hdrs = response->getHeaderFields();
-      auto it = hdrs.find(StaticStrings::WwwAuthenticate);
-      if (it != hdrs.end()) {
-        std::string value = it->second;
-        std::transform(value.begin(), value.end(), value.begin(), 
-                       [](unsigned char c){ return std::tolower(c); }
-                       );
-        if (value == "negotiate") {
-          std::string fqdn(getBareHostName(getEndpointSpecification()));
-          std::string realm;
-          realm = "HTTP@";
-          std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
-                 [](unsigned char c){ return std::toupper(c); }
-                 );
-          realm += fqdn;
+      if (response->isMethodAllowed(rest::AuthenticationMethod::NEGOTIATE)) {
+        std::string fqdn(getBareHostName(getEndpointSpecification()));
+        std::string realm;
+        realm = "HTTP@";
+        std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
+                       [](unsigned char c){ return std::toupper(c); }
+          );
+        realm += fqdn;
           
-          sockaddr_in source;
-          sockaddr_in dest;
-          /*
+        sockaddr_in source;
+        sockaddr_in dest;
+        /*
           dest.sin_family = AF_INET;
           dest.sin_port = htons(3490);
           inet_aton("192.168.173.88", (in_addr*)&dest.sin_addr.s_addr);
@@ -1083,48 +1075,47 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
           source.sin_family = AF_INET;
           source.sin_port = htons(3490);
           inet_aton("192.168.173.88", (in_addr*)&source.sin_addr.s_addr);
-          */
-          std::string error;
-          std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
-          if (token.length() == 0) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_HTTP_UNAUTHORIZED, "Kerberos error: " + error);
-          }
-          _params.setNegotiateToken(token);
-          std::unique_ptr<SimpleHttpResult> response(
-                                                     request(rest::RequestType::GET, "/_open/auth", nullptr, 0));
-          if (response == nullptr || !response->isComplete()) {
-            return "";
-          }
-          if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
-            std::string jwt;
+        */
+        std::string error;
+        std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
+        if (token.length() == 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_HTTP_UNAUTHORIZED, "Kerberos error: " + error);
+        }
+        _params.setNegotiateToken(token);
+        std::unique_ptr<SimpleHttpResult> response(
+          request(rest::RequestType::GET, "/_open/auth", nullptr, 0));
+        if (response == nullptr || !response->isComplete()) {
+          return "";
+        }
+        if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
+          std::string jwt;
 
-            arangodb::basics::StringBuffer const& body = response->getBody();
-            try {
-              std::shared_ptr<VPackBuilder> builder =
-                VPackParser::fromJson(body.c_str(), body.length());
+          arangodb::basics::StringBuffer const& body = response->getBody();
+          try {
+            std::shared_ptr<VPackBuilder> builder =
+              VPackParser::fromJson(body.c_str(), body.length());
 
-              VPackSlice slice = builder->slice();
-              if (slice.isObject()) {
-                  VPackSlice v = slice.get("jwt");
-                  if (v.isString()) {
-                    jwt = v.copyString();
-                    _params._jwt = jwt;
-                    _params._kerberosToken = "";
-                    continue;
-                  }
+            VPackSlice slice = builder->slice();
+            if (slice.isObject()) {
+              VPackSlice v = slice.get("jwt");
+              if (v.isString()) {
+                jwt = v.copyString();
+                _params._jwt = jwt;
+                _params._kerberosToken = "";
+                continue;
               }
-
-              if (errorCode != nullptr) {
-                *errorCode = TRI_ERROR_NO_ERROR;
-              }
-              
-            } catch (std::exception const& ex) {
-              setErrorMessage(ex.what(), false);
-              return "";
-            } catch (...) {
-              setErrorMessage("Unable to parse server response", false);
-              return "";
             }
+
+            if (errorCode != nullptr) {
+              *errorCode = TRI_ERROR_NO_ERROR;
+            }
+              
+          } catch (std::exception const& ex) {
+            setErrorMessage(ex.what(), false);
+            return "";
+          } catch (...) {
+            setErrorMessage("Unable to parse server response", false);
+            return "";
           }
         }
       }
