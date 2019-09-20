@@ -6924,6 +6924,13 @@ static bool isInnerPassthroughNode(ExecutionNode* node) {
 
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                   OptimizerRule const& rule) {
+  if (ServerState::instance()->isCoordinator() && plan->fullCount()) {
+    // Disable optimizer rule temporarily. SortingGather must be made aware of
+    // constrained sort for this to work.
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   bool mod = false;

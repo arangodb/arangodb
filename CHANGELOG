@@ -1,6 +1,9 @@
 v3.5.1 (2019-09-24)
 -------------------
 
+* Fix a problem with AQL constrained sort in the cluster, which might abort
+  queries.
+
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
   This affected at least /_admin/cluster/health.
 
