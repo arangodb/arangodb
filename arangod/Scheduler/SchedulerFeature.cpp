@@ -119,29 +119,29 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
   }
 }
 
-void SchedulerFeature::start() {
+void SchedulerFeature::prepare() {
   auto const N = TRI_numberProcessors();
 
   LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
-      << "Detected number of processors: " << N;
+  << "Detected number of processors: " << N;
 
   if (_nrMaximalThreads > 8 * N) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads
-        << ") is more than eight times the number of cores (" << N
-        << "), this might overload the server";
+    << "--server.threads (" << _nrMaximalThreads
+    << ") is more than eight times the number of cores (" << N
+    << "), this might overload the server";
   }
 
   if (_nrMinimalThreads < 2) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
+    << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
     _nrMinimalThreads = 2;
   }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads << ") should be at least "
-        << (_nrMinimalThreads + 1) << ", raising it";
+    << "--server.threads (" << _nrMaximalThreads << ") should be at least "
+    << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
   }
 
@@ -150,6 +150,11 @@ void SchedulerFeature::start() {
 
   ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
+  TRI_ASSERT(_scheduler != nullptr);
+}
+
+void SchedulerFeature::start() {
+  TRI_ASSERT(_scheduler != nullptr);
 
   bool ok = _scheduler->start();
 
