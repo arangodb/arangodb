@@ -111,6 +111,10 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
   if (!fetchBlockIfNecessary(atMost)) {
     return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
+  if (_currentShadowRow.isInitialized()) {
+    // Reset shadow rows as soon as we ask for data.
+    _currentShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  }
 
   if (_currentBlock == nullptr) {
     TRI_ASSERT(_upstreamState == ExecutionState::DONE);
@@ -139,6 +143,12 @@ std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>:
     _currentShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   } else {
     if (_currentBlock->isShadowRow(_rowIndex)) {
+      auto next = ShadowAqlItemRow{_currentBlock, _rowIndex};
+      if (_currentShadowRow.isInitialized() && next.isRelevant()) {
+        // Special case, we are in the return shadow row case, but the next row
+        // is relevant We are required that we call fetchRow in between
+        return {returnState(true), ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+      }
       _currentShadowRow = ShadowAqlItemRow{_currentBlock, _rowIndex};
       _rowIndex++;
     } else {
