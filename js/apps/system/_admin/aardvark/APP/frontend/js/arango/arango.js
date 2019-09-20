@@ -1150,18 +1150,25 @@
       });
     },
 
-    getFoxxFlag: function () {
-      var flag;
+    getFoxxFlags: function () {
+      var flags = {};
 
-      if ($('#new-app-replace').prop('checked')) {
-        flag = true;
-      } else {
-        if ($('#new-app-teardown').prop('checked')) {
-          flag = false;
-        }
+      var $replace = $('#new-app-flag-replace')[0];
+      if ($replace) {
+        flags.replace = Boolean($replace.checked);
       }
 
-      return flag;
+      var $teardown = $('#new-app-flag-teardown')[0];
+      if ($teardown) {
+        flags.teardown = Boolean($teardown.checked);
+      }
+
+      var $setup = $('#new-app-flag-setup')[0];
+      if ($setup) {
+        flags.setup = Boolean($setup.checked);
+      }
+
+      return flags;
     },
 
     createMountPointModal: function (callback, mode, mountpoint) {
@@ -1191,12 +1198,24 @@
         )
       );
 
+      if (window.App.replaceApp) {
+        tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-app-flag-teardown',
+            'Run teardown?',
+            true,
+            "Should the existing service's teardown script be executed before replacing the service?",
+            false
+          )
+        );
+      }
+
       tableContent.push(
         window.modalView.createCheckboxEntry(
-          'new-app-teardown',
+          'new-app-flag-setup',
           'Run setup?',
           true,
-          "Should this app's setup script be executed after installing the app?",
+          "Should this service's setup script be executed after installing the service?",
           true
         )
       );
@@ -1204,7 +1223,7 @@
       if (window.App.replaceApp) {
         tableContent.push(
           window.modalView.createCheckboxEntry(
-            'new-app-replace',
+            'new-app-flag-replace',
             'Discard configuration and dependency files?',
             true,
             "Should this service's existing configuration and settings be removed completely before replacing the service?",
