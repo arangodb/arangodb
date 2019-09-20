@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+
+#include "Agency/Store.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Agency/Store.h"
 #include "lib/Rest/HttpResponse.h"
 
 #include <velocypack/velocypack-aliases.h>

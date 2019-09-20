@@ -109,6 +109,7 @@ actions.defineHttp({
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
 
         try {
           global.ArangoAgency.write([[operations, preconditions]]);

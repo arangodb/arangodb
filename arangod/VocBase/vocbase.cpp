@@ -834,8 +834,20 @@ void TRI_vocbase_t::shutdown() {
   _cursorRepository->garbageCollect(true);
 
   // mark all collection keys as deleted so underlying collections can be freed
-  // soon
-  _collectionKeys->garbageCollect(true);
+  // soon, we have to retry, since some of these collection keys might currently
+  // still being in use:
+  auto lastTime = TRI_microtime();
+  while (true) {
+    if (!_collectionKeys->garbageCollect(true)) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (TRI_microtime() - lastTime > 1.0) {
+      LOG_TOPIC(WARN, Logger::STARTUP)
+        << "Have collection keys left over, keep trying to garbage collect...";
+      lastTime = TRI_microtime();
+    }
+  }
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 

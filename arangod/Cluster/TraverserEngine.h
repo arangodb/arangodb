@@ -94,7 +94,7 @@ class BaseEngine {
 
  protected:
   arangodb::aql::Query* _query;
-  transaction::Methods* _trx;
+  std::shared_ptr<transaction::Methods> _trx;
   arangodb::aql::Collections _collections;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };

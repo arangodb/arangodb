@@ -1,3 +1,5 @@
+include_directories(.)
+
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
@@ -54,7 +56,6 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/IResearchQueryAggregate-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
   IResearch/RestHandlerMock.cpp
-  IResearch/StorageEngineMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
   RestHandler/RestUsersHandler-test.cpp
@@ -127,6 +128,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoJsonTest.cpp
   Geo/GeoFunctionsTest.cpp
@@ -136,6 +138,8 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Mocks/Servers.cpp
+  IResearch/StorageEngineMock.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
