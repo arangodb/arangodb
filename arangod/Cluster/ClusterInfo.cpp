@@ -3522,7 +3522,7 @@ void ClusterInfo::loadServers() {
 /// @brief Hand out copy of reboot ids
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const noexcept {
+std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
   MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
   return _serversKnown.rebootIds();
 }
