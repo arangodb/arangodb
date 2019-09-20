@@ -19,6 +19,9 @@ devel
 * Fix a problem with AQL constrained sort in the cluster, which might abort
   queries.
 
+* Fix a problem with AQL constrained sort in the cluster, which might abort
+  queries.
+
 * Fix strange shutdown hanger which came from the fact that currently
   libgcc/libmusl wrongly detect multi-threadedness in statically linked
   executables.
