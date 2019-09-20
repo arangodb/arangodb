@@ -875,6 +875,272 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 7);
 }
 
+TEST_F(SingleRowFetcherTestPassBlocks, handling_of_relevant_shadow_rows) {
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    block->emplaceValue(0, 0, "a");
+    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(1, 0, "a");
+    block->emplaceValue(2, 0, "b");
+    block->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(3, 0, "b");
+    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+  }
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Will stay on HASMORE
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    EXPECT_FALSE(shadow.isInitialized());
+
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("b"));
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Will stay on DONE
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(shadow.isInitialized());
+
+    // Will not produce data row
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+  }  // testee is destroyed here
+  // testee must be destroyed before verify, because it may call returnBlock
+  // in the destructor
+  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
+}
+
+TEST_F(SingleRowFetcherTestPassBlocks, handling_of_irrelevant_shadow_rows) {
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    block->emplaceValue(0, 0, "a");
+    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(1, 0, "a");
+    block->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(2, 0, "a");
+    // Back to top level
+    block->emplaceValue(3, 0, "b");
+    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(4, 0, "b");
+    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(5, 0, "b");
+    block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(2ull)));
+    block->emplaceValue(6, 0, "b");
+
+    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+  }
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Will stay on HASMORE
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    EXPECT_FALSE(shadow.isInitialized());
+
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("b"));
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Can fetch shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Will stay on DONE
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(shadow.isInitialized());
+
+    // Will not produce data row
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+  }  // testee is destroyed here
+  // testee must be destroyed before verify, because it may call returnBlock
+  // in the destructor
+  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
+}
+
+TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    block->emplaceValue(0, 0, "a");
+    block->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(1, 0, "a");
+    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(2, 0, "b");
+    block->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(3, 0, "c");
+    block->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(0ull)));
+    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+  }
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+
+    // First no data row
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // but shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Second, non-relevant shadow row
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+    EXPECT_FALSE(shadow.isRelevant());
+
+    // Third, relevant shadow row.
+    // We cannot continue fetching shadowrows now.
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_FALSE(shadow.isInitialized());
+
+    // Require to fetch one data-row (done, empty)
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Now we can continue to fetch shadowrows
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // We cannot continue fetching shadowrows now.
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_FALSE(shadow.isInitialized());
+
+    // Require to fetch one data-row (done, empty)
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+
+    // Now we can continue to fetch shadowrows
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_TRUE(shadow.isInitialized());
+    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("c"));
+    EXPECT_TRUE(shadow.isRelevant());
+
+    // Will stay on done
+    std::tie(state, row) = testee.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(row.isInitialized());
+    // Will stay on done
+    std::tie(state, shadow) = testee.fetchShadowRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(shadow.isInitialized());
+  }  // testee is destroyed here
+  // testee must be destroyed before verify, because it may call returnBlock
+  // in the destructor
+  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
