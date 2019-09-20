@@ -24,9 +24,10 @@
 #ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_NODE_H
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_NODE_H 1
 
+#include <cstddef>
+#include <string>
 #include <unordered_set>
 #include <vector>
-#include <string>
 
 namespace arangodb {
 namespace velocypack {

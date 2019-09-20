@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_COST_ESTIMATE_H
 #define ARANGOD_AQL_COST_ESTIMATE_H 1
 
-#include <cstdint>
+#include <cstddef>
 
 namespace arangodb {
 namespace aql {

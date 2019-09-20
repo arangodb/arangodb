@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 
 #include <array>
+#include <cstddef>
 
 namespace arangodb {
 

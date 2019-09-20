@@ -28,6 +28,7 @@
 #include <Basics/Common.h>
 #include <Basics/Exceptions.h>
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {

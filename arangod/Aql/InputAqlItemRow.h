@@ -29,7 +29,7 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
-#include <cstdint>
+#include <cstddef>
 #include <unordered_set>
 
 namespace arangodb {

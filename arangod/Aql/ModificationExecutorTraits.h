@@ -30,6 +30,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstddef>
+#include <cstdint>
+
 namespace arangodb {
 namespace aql {
 enum class ModOperationType : uint8_t {
