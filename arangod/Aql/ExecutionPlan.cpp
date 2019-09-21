@@ -2404,8 +2404,14 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool ExecutionPlan::fullCount() const noexcept {
+  LimitNode* lastLimitNode = _lastLimitNode == nullptr
+                                 ? nullptr
+                                 : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
+  return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 
 /// @brief show an overview over the plan
@@ -2439,10 +2445,4 @@ void ExecutionPlan::show() {
   _root->walk(shower);
 }
 
-bool ExecutionPlan::fullCount() const noexcept {
-  LimitNode* lastLimitNode = _lastLimitNode == nullptr
-                                 ? nullptr
-                                 : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
-  return lastLimitNode != nullptr && lastLimitNode->fullCount();
-}
 #endif
