@@ -81,11 +81,6 @@ extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
-
 struct custom_sort : public irs::sort {
   DECLARE_SORT_TYPE();
 

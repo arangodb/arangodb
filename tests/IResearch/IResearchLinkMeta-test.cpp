@@ -115,8 +115,6 @@ REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::norma
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -189,13 +187,13 @@ class IResearchLinkMetaTest : public ::testing::Test {
         *sysvocbase,
         arangodb::tests::AnalyzerCollectionName, false);
 
-    
+
     TRI_vocbase_t* vocbase;
     dbFeature->createDatabase(testDBInfo(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
       *vocbase,
       arangodb::tests::AnalyzerCollectionName, false);
-    
+
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

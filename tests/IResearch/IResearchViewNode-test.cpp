@@ -83,10 +83,6 @@
 #include "velocypack/Iterator.h"
 
 namespace {
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class IResearchViewNodeTest : public ::testing::Test {
  protected:
@@ -2130,8 +2126,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
+  auto queryResult =
+    arangodb::tests::executeQuery(*vocbase,
                                   "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
@@ -2145,8 +2141,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollection) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
+  auto queryResult =
+    arangodb::tests::executeQuery(*vocbase,
                                   "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();

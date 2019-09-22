@@ -69,8 +69,6 @@
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();

@@ -70,8 +70,6 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   return result;
 }
 
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------

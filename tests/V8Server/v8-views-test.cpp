@@ -51,10 +51,6 @@
 #include "velocypack/Parser.h"
 
 namespace {
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
  public:

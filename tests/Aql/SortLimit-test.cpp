@@ -62,10 +62,6 @@ extern const char* ARGV0;  // defined in main.cpp
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class SortLimitTest : public ::testing::Test {
  protected:
