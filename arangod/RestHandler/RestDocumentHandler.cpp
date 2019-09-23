@@ -651,8 +651,11 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     return RestStatus::DONE;
   }
 
-  TRI_ASSERT(_request != nullptr);
-  VPackSlice search = _request->payload(_activeTrx->transactionContextPtr()->getVPackOptions());
+  bool success;
+  VPackSlice const search = this->parseVPackBody(success);
+  if (!success) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
   
   return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions)
                        .thenValue([=](OperationResult opRes) {

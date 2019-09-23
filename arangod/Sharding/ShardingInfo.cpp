@@ -116,7 +116,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
 #ifdef USE_ENTERPRISE
     else if (replicationFactorSlice.isString() &&
-             replicationFactorSlice.copyString() == "satellite") {
+             replicationFactorSlice.copyString() == StaticStrings::Satellite) {
       _replicationFactor = 0;
       _minReplicationFactor = 0;
       _numberOfShards = 1;
@@ -278,7 +278,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
   result.close();  // shards
 
   if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor, VPackValue("satellite"));
+    result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   } else {
     result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }

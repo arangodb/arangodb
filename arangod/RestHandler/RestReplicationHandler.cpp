@@ -1175,7 +1175,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
                                 (replFactorSlice.isString() &&
-                                 replFactorSlice.isEqualString("satellite"));
+                                 replFactorSlice.isEqualString(StaticStrings::Satellite));
 
   bool isValidMinReplFactorSlice =
       replFactorSlice.isInteger() && minReplFactorSlice.isInteger() &&
@@ -1192,7 +1192,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (!isValidMinReplFactorSlice) {
     if (replFactorSlice.isString() &&
-        replFactorSlice.isEqualString("satellite")) {
+        replFactorSlice.isEqualString(StaticStrings::Satellite)) {
       minReplicationFactor = 0;
     } else if (minReplicationFactor == 0) {
       minReplicationFactor = 1;
@@ -1248,7 +1248,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   s = parameters.get(StaticStrings::ReplicationFactor);
-  if (s.isString() && s.copyString() == "satellite") {
+  if (s.isString() && s.copyString() == StaticStrings::Satellite) {
     // set "satellite" replicationFactor to the default replication factor
     ClusterFeature& cl = _vocbase.server().getFeature<ClusterFeature>();
 

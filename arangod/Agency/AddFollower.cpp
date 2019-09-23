@@ -24,6 +24,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
@@ -147,12 +148,12 @@ bool AddFollower::start(bool&) {
   // First check that we still have too few followers for the current
   // `replicationFactor`:
   size_t desiredReplFactor = 1;
-  auto replFact = collection.hasAsUInt("replicationFactor");
+  auto replFact = collection.hasAsUInt(StaticStrings::ReplicationFactor);
   if (replFact.second) {
     desiredReplFactor = replFact.first;
   } else {
-    auto replFact2 = collection.hasAsString("replicationFactor");
-    if (replFact2.second && replFact2.first == "satellite") {
+    auto replFact2 = collection.hasAsString(StaticStrings::ReplicationFactor);
+    if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
       desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);

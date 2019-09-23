@@ -775,7 +775,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
         }
       }
     } else if (rfSl.isString()) {
-      if (rfSl.compareString("satellite") != 0) {
+      if (rfSl.compareString(StaticStrings::Satellite) != 0) {
         // only the string "satellite" is allowed here
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
       }
