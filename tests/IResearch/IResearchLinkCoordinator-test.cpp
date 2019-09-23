@@ -83,7 +83,7 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-  }
+    }
 
   ~IResearchLinkCoordinatorTest() {
   }

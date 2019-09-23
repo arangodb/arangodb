@@ -39,8 +39,8 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 
 ClusterTraverserCache::ClusterTraverserCache(
-    aql::Query* query, std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines)
-    : TraverserCache(query), _engines(engines) {}
+    aql::Query* query, std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* options)
+    : TraverserCache(query, options), _engines(engines) {}
 
 VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
   return VPackSlice(token.vpack());

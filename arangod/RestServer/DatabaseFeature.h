@@ -29,6 +29,7 @@
 #include "Basics/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Methods/Databases.h"
 
 struct TRI_vocbase_t;
 
@@ -110,7 +111,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  Result createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo const& , TRI_vocbase_t*& result);
+
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 

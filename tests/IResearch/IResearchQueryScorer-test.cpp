@@ -81,6 +81,8 @@ extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -146,13 +148,15 @@ class IResearchQueryScorerTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
-    dbFeature->loadDatabases(databases->slice());
+    dbFeature->loadDatabases(databases.slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -201,14 +205,14 @@ class IResearchQueryScorerTest : public ::testing::Test {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature->createDatabase(testDBInfo(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
-        *vocbase, 
+        *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", 
+                       "TestDelimAnalyzer",
                         VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
@@ -257,8 +261,7 @@ TEST_F(IResearchQueryScorerTest, test) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;

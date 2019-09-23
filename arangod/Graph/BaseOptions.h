@@ -110,6 +110,8 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
+  void setCollectionToShard(std::map<std::string, std::string>const&);
+
   transaction::Methods* trx() const;
 
   aql::Query* query() const;
@@ -130,6 +132,8 @@ struct BaseOptions {
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+
+  std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -172,6 +176,9 @@ struct BaseOptions {
 
   /// @brief the traverser cache
   std::unique_ptr<TraverserCache> _cache;
+
+  // @brief - translations for one-shard-databases
+  std::map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace graph
