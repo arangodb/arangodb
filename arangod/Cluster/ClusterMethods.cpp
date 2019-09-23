@@ -1058,12 +1058,12 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
     auto future =
-        network::sendRequest("shard:" + p.first, fuerte::RestVerb::Get,
-                             "/_db/" + StringUtils::urlEncode(dbname) +
-                                 "/_api/collection/" +
-                                 StringUtils::urlEncode(p.first) + "/count",
-                             VPackBuffer<uint8_t>(),
-                             network::Timeout(CL_DEFAULT_TIMEOUT), headers);
+        network::sendRequestRetry("shard:" + p.first, fuerte::RestVerb::Get,
+                                  "/_db/" + StringUtils::urlEncode(dbname) +
+                                      "/_api/collection/" +
+                                      StringUtils::urlEncode(p.first) + "/count",
+                                  VPackBuffer<uint8_t>(),
+                                  network::Timeout(CL_DEFAULT_TIMEOUT), headers, true);
     futures.emplace_back(std::move(future));
   }
 
