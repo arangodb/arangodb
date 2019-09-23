@@ -158,7 +158,6 @@ class ScatterNode : public ExecutionNode {
   }
 
   // Just temporary as long as we have two versions
-  // TODO REMOVE ME
   void addClient(std::string const& clientId) {
     // We cannot add the same distributeId twice, data is delivered exactly once for each id
     TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
