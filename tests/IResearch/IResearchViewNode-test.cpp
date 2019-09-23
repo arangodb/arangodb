@@ -2139,9 +2139,13 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult =
-    arangodb::tests::executeQuery(*vocbase,
-                                  "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
+<<<<<<< HEAD
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
+=======
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
+>>>>>>> b14cb49a892343c8b75f5d48e94749d7cf797789
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
@@ -2154,9 +2158,9 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollection) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult =
-    arangodb::tests::executeQuery(*vocbase,
-                                  "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase,
+      "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
