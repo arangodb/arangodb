@@ -62,7 +62,6 @@
 #include "src/objects/scope-info.h"
 
 namespace {
-
 class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
   virtual void* Allocate(size_t length) override {
@@ -151,7 +150,7 @@ class V8UsersTest : public ::testing::Test {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
+                                             systemDBInfo());
     features.emplace_back(new arangodb::ReplicationFeature(server), false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ShardingFeature(server),
                           false);  // required for LogicalCollection::LogicalCollection(...)
@@ -224,7 +223,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
       arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
           "Database");
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature->createDatabase(1, "testDatabase", vocbase).ok());
+  ASSERT_TRUE(databaseFeature->createDatabase(testDBInfo(), vocbase).ok());
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -298,7 +297,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -340,7 +339,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -386,7 +385,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -429,7 +428,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -474,7 +473,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -524,7 +523,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -576,7 +575,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
@@ -619,7 +618,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empy map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {

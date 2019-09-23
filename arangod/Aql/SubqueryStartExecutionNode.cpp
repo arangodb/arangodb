@@ -46,8 +46,9 @@ CostEstimate SubqueryStartNode::estimateCost() const {
   return estimate;
 }
 
-void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                           std::unordered_set<ExecutionNode const*>& seen) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
   nodes.close();
 }
 

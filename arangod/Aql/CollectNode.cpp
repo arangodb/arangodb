@@ -57,9 +57,10 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() {}
 
 /// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // group variables
   nodes.add(VPackValue("groups"));
@@ -328,8 +329,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
           std::move(groupRegisters), collectRegister, expressionRegister,
-          _expressionVariable, std::move(aggregateTypes),
-          std::move(variables), std::move(aggregateRegisters), trxPtr, _count);
+          _expressionVariable, std::move(aggregateTypes), std::move(variables),
+          std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));

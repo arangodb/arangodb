@@ -5001,7 +5001,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   size_t minLength = static_cast<size_t>(TRI_ObjectToUInt64(isolate, args[1], true));
 
-  size_t maxLength = 40;  // -> TRI_FULLTEXT_MAX_WORD_LENGTH;
+  size_t maxLength = 40;
   if (args.Length() > 2) {
     maxLength = static_cast<size_t>(TRI_ObjectToUInt64(isolate, args[2], true));
   }
@@ -5193,14 +5193,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const* filename,
                                      bool stripShebang) {
   return LoadJavaScriptFile(isolate, filename, stripShebang, true, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all files from a directory into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate, char const* path) {
-  return LoadJavaScriptDirectory(isolate, path, false, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -57,7 +57,7 @@ struct OperationResult {
 
   // move
   OperationResult(OperationResult&& other) = default;
-  OperationResult& operator=(OperationResult&& other) {
+  OperationResult& operator=(OperationResult&& other) noexcept {
     if (this != &other) {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
@@ -66,7 +66,7 @@ struct OperationResult {
     }
     return *this;
   }
-  
+
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   OperationOptions options = {},
@@ -85,11 +85,11 @@ struct OperationResult {
   ~OperationResult() = default;
 
   // Result-like interface
-  bool ok() const { return result.ok(); }
-  bool fail() const { return result.fail(); }
-  int errorNumber() const { return result.errorNumber(); }
-  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
-  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  bool ok() const noexcept { return result.ok(); }
+  bool fail() const noexcept { return result.fail(); }
+  int errorNumber() const noexcept { return result.errorNumber(); }
+  bool is(int errorNumber) const noexcept { return result.errorNumber() == errorNumber; }
+  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
   std::string errorMessage() const { return result.errorMessage(); }
 
   inline VPackSlice slice() const {

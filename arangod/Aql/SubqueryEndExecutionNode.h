@@ -47,7 +47,8 @@ class SubqueryEndNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,

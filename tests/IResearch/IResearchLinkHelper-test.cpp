@@ -66,14 +66,14 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     }
     {
       TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(1, "testVocbaseWithAnalyzer", vocbase);
+      dbFeature->createDatabase(testDBInfo("testVocbaseWithAnalyzer", 1), vocbase);
       arangodb::methods::Collections::createSystem(
-         *vocbase,
+        *vocbase,
          arangodb::tests::AnalyzerCollectionName, false);
     }
     {
       TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(2, "testVocbaseWithView", vocbase);
+      dbFeature->createDatabase(testDBInfo("testVocbaseWithView",2), vocbase);
       arangodb::methods::Collections::createSystem(
         *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);
@@ -81,7 +81,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
           "{ \"id\":102, \"name\": \"foo\" }");
       EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
     }
-  }
+    }
 
   ~IResearchLinkHelperTestSingle() {
   }
@@ -271,4 +271,3 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize_single) {
                                          "::testAnalyzer2")));
   }
 }
-

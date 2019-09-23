@@ -220,15 +220,16 @@ class ExecutionBlock {
       if (_profile >= PROFILE_LEVEL_TRACE_1) {
         ExecutionNode const* node = getPlanNode();
         LOG_TOPIC("d1950", INFO, Logger::QUERIES)
-        << "skipSome done type=" << node->getTypeString()
-        << " this=" << (uintptr_t)this << " id=" << node->id()
-        << " state=" << stateToString(state);
+            << "skipSome done type=" << node->getTypeString()
+            << " this=" << (uintptr_t)this << " id=" << node->id()
+            << " state=" << stateToString(state);
       }
     }
     return res;
   }
 
-  inline std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+  inline std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state,
+                                                            size_t skipped) {
     return traceSkipSomeEnd({state, skipped});
   }
 
@@ -268,6 +269,9 @@ class ExecutionBlock {
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep) {
     TRI_ASSERT(ep != nullptr);
+    // We can never have the same dependency twice
+    TRI_ASSERT(std::find(_dependencies.begin(), _dependencies.end(), ep) ==
+               _dependencies.end());
     _dependencies.emplace_back(ep);
     _dependencyPos = _dependencies.end();
   }
@@ -325,7 +329,6 @@ class ExecutionBlock {
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
 };
-
 
 }  // namespace aql
 }  // namespace arangodb

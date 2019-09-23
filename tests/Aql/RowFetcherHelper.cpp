@@ -44,8 +44,7 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
-namespace {
-}  // namespace
+namespace {}  // namespace
 
 // -----------------------------------------
 // - SECTION SINGLEROWFETCHER              -
@@ -59,9 +58,9 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
                              vPackBufferToAqlItemBlock(manager, vPackBuffer)) {}
 
 template <bool passBlocksThrough>
-SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aql::AqlItemBlockManager& manager,
-                       size_t const blockSize, bool const returnsWaiting,
-                       ::arangodb::aql::SharedAqlItemBlockPtr input)
+SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
+    ::arangodb::aql::AqlItemBlockManager& manager, size_t const blockSize,
+    bool const returnsWaiting, ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
       _returnsWaiting(returnsWaiting),
       _nrItems(input == nullptr ? 0 : input->size()),
@@ -233,7 +232,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
     if (nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       TRI_ASSERT(oneRow.isArray());
-      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
+      arangodb::aql::RegisterCount nrRegs =
+          static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
@@ -247,8 +247,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
 
 ConstFetcherHelper::~ConstFetcherHelper() = default;
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow() {
-  return ConstFetcher::fetchRow();
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow(size_t atMost) {
+  return ConstFetcher::fetchRow(atMost);
 };
 
 template class ::arangodb::tests::aql::SingleRowFetcherHelper<false>;

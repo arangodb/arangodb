@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -59,131 +60,6 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
-
-Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
-                                VPackSlice const& users) {
-  Result res;
-  _id = 0;
-  _name = name;
-
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
-
-  res = sanitizeUsers(users, _users);
-  if (!res.ok()) {
-    return res;
-  }
-  _userSlice = _users.slice();
-
-  res = sanitizeOptions(options, _options);
-  if (!res.ok()) {
-    return res;
-  }
-
-  // Obtain a unique id for the database to be created. Since this is different
-  // on Coordinator vs Other, we have to have an if here to keep the other code
-  // unified.
-  if (ServerState::instance()->isCoordinator()) {
-    _id = ClusterInfo::instance()->uniqid();
-  } else {
-    if (_options.slice().hasKey("id")) {
-      _id = basics::VelocyPackHelper::stringUInt64(options, "id");
-    } else {
-      _id = 0;
-    }
-  }
-
-  return Result();
-};
-
-Result CreateDatabaseInfo::buildSlice(VPackBuilder& builder) const {
-  try {
-    builder.openObject();
-    std::string const idString(basics::StringUtils::itoa(_id));
-    builder.add(StaticStrings::DatabaseId, VPackValue(idString));
-    builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-    builder.add(StaticStrings::DatabaseOptions, _options.slice());
-    // we intentionally do not close the object, because other functions,
-    // for example in the cluster code, might want to add stuff.
-  } catch (VPackException const& e) {
-    return Result(e.errorCode());
-  }
-  return Result();
-}
-
-Result CreateDatabaseInfo::sanitizeUsers(VPackSlice const& users, VPackBuilder& sanitizedUsers) {
-  if (users.isNone() || users.isNull()) {
-    sanitizedUsers.openArray();
-    sanitizedUsers.close();
-    return Result();
-  } else if (!users.isArray()) {
-    events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
-  }
-
-  sanitizedUsers.openArray();
-  for (VPackSlice const& user : VPackArrayIterator(users)) {
-    sanitizedUsers.openObject();
-    if (!user.isObject()) {
-      events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
-      return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
-    }
-
-    VPackSlice name;
-    if (user.hasKey("username")) {
-      name = user.get("username");
-    } else if (user.hasKey("user")) {
-      name = user.get("user");
-    }
-    if (!name.isString()) {  // empty names are silently ignored later
-      events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
-      return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
-    }
-    sanitizedUsers.add("username", name);
-
-    if (user.hasKey("passwd")) {
-      VPackSlice passwd = user.get("passwd");
-      if (!passwd.isString()) {
-        events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
-        return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
-      }
-      sanitizedUsers.add("passwd", passwd);
-    } else {
-      sanitizedUsers.add("passwd", VPackValue(""));
-    }
-
-    VPackSlice active = user.get("active");
-    if (!active.isBool()) {
-      sanitizedUsers.add("active", VPackValue(true));
-    } else {
-      sanitizedUsers.add("active", active);
-    }
-
-    VPackSlice extra = user.get("extra");
-    if (extra.isObject()) {
-      sanitizedUsers.add("extra", extra);
-    }
-    sanitizedUsers.close();
-  }
-  sanitizedUsers.close();
-  TRI_ASSERT(sanitizedUsers.slice().isArray());
-  return Result();
-}
-
-Result CreateDatabaseInfo::sanitizeOptions(VPackSlice const& options,
-                                           VPackBuilder& sanitizedOptions) {
-  if (options.isNone() || options.isNull()) {
-    sanitizedOptions.openObject();
-    sanitizedOptions.close();
-    return Result();
-  } else if (!options.isObject()) {
-    events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
-  }
-  sanitizedOptions.add(options);
-  return Result();
-}
 
 TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   if (DatabaseFeature::DATABASE != nullptr) {
@@ -275,7 +151,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
           entry.grantCollection(info.getName(), "*", auth::Level::RW);
           return TRI_ERROR_NO_ERROR;
         });
-        if (res.ok() || 
+        if (res.ok() ||
             !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
             std::chrono::steady_clock::now() > endTime) {
           break;
@@ -287,7 +163,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
-    } 
+    }
 
     LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
       << "current ExecContext's user() is empty. "
@@ -300,6 +176,10 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 // Create database on cluster;
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  if(!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))){
+    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  }
 
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
@@ -328,27 +208,29 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info, 5); 
+  res = grantCurrentUser(info, 5);
   if (!res.ok()) {
     return res;
   }
 
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, info.getName());
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, info);
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
 
-  UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, info.getUsers());
+  VPackBuilder userBuilder;
+  info.UsersToVelocyPack(userBuilder);
+  UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, userBuilder.slice());
   failureGuard.cancel();
 
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
     return ci->createFinalizeDatabaseCoordinator(info);
-  } 
-    
+  }
+
   // We leave this handling here to be able to capture
   // error messages and return
   // Cleanup entries in agency.
@@ -357,8 +239,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     // this should never happen as cancelCreateDatabaseCoordinator keeps retrying
     // until either cancellation is successful or the cluster is shut down.
     return res;
-  } 
-  
+  }
+
   return std::move(upgradeRes.result());
 }
 
@@ -372,7 +254,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   }
 
   TRI_vocbase_t* vocbase = nullptr;
-  Result createResult = databaseFeature->createDatabase(info.getId(), info.getName(), vocbase);
+  Result createResult = databaseFeature->createDatabase(info, vocbase);
   if (createResult.fail()) {
     return createResult;
   }
@@ -387,7 +269,9 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  UpgradeResult upgradeRes = methods::Upgrade::createDB(*vocbase, info.getUsers());
+  VPackBuilder userBuilder;
+  info.UsersToVelocyPack(userBuilder);
+  UpgradeResult upgradeRes = methods::Upgrade::createDB(*vocbase, userBuilder.slice());
 
   return std::move(upgradeRes.result());
 }
@@ -398,15 +282,12 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
 
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
+
   if (!exec.isAdminUser()) {
     events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
-  // Encapsulate and sanitize the input
-  // TODO: maybe this should just be a function that produces
-  //       a struct to avoid the try/catch
-  //       or the object could have a .valid() method?
   CreateDatabaseInfo createInfo;
   res = createInfo.load(dbName, options, users);
 
@@ -417,9 +298,15 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     return res;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
+    if(!createInfo.validId()){
+      createInfo.setId(ClusterInfo::instance()->uniqid());
+    }
     res = createCoordinator(createInfo);
   } else {  // Single, DBServer, Agency
+    if(!createInfo.validId()){
+      createInfo.setId(TRI_NewTickServer());
+    }
     res = createOther(createInfo);
   }
 
