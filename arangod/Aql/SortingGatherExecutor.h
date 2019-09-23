@@ -50,7 +50,7 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
                              std::unordered_set<RegisterId> registersToKeep,
                              std::vector<SortRegister>&& sortRegister,
                              arangodb::transaction::Methods* trx,
-                             GatherNode::SortMode sortMode);
+                             GatherNode::SortMode sortMode, size_t limit);
   SortingGatherExecutorInfos() = delete;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos&&);
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
@@ -60,12 +60,15 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
 
   arangodb::transaction::Methods* trx() { return _trx; }
 
-  GatherNode::SortMode sortMode() { return _sortMode; }
+  GatherNode::SortMode sortMode() const noexcept { return _sortMode; }
+
+  size_t limit() const noexcept { return _limit; }
 
  private:
   std::vector<SortRegister> _sortRegister;
   arangodb::transaction::Methods* _trx;
   GatherNode::SortMode _sortMode;
+  size_t _limit;
 };
 
 class SortingGatherExecutor {
@@ -140,6 +143,9 @@ class SortingGatherExecutor {
 
   // Counter for DONE states
   size_t _nrDone;
+
+  /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
+  size_t _limit;
 
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;

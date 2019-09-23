@@ -66,6 +66,8 @@ class SortNode : public ExecutionNode {
   /// @brief if non-zero, limits the number of elements that the node will return
   void setLimit(size_t limit) { _limit = limit; }
 
+  size_t limit() const noexcept { return _limit; }
+
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 

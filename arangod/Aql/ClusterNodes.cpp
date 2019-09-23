@@ -448,7 +448,8 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->trx(), sortMode());
+                                   _plan->getAst()->query()->trx(), sortMode(),
+                                   constrainedSortLimit());
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
                                                                      std::move(infos));
@@ -460,6 +461,14 @@ CostEstimate GatherNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
+
+void GatherNode::setConstrainedSortLimit(size_t limit) noexcept {
+  _limit = limit;
+}
+
+bool GatherNode::isConstrainedSort() const noexcept { return _limit > 0; }
+
+size_t GatherNode::constrainedSortLimit() const noexcept { return _limit; }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,

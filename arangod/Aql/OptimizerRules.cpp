@@ -4550,6 +4550,10 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           if (!collection || collection->numberOfShards() != 1) {
             gatherNode->elements(thisSortNode->elements());
           }
+          // TODO remove this in favour of setting it in sort-limit
+          if (thisSortNode->sorterType() == SortNode::SorterType::ConstrainedHeap) {
+            gatherNode->setConstrainedSortLimit(thisSortNode->limit());
+          }
 
           modified = true;
           // ready to rumble!
@@ -6924,6 +6928,7 @@ static bool isInnerPassthroughNode(ExecutionNode* node) {
 
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                   OptimizerRule const& rule) {
+  // TODO Make this run after the cluster rules, and set the limit in SortingGather, too.
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   bool mod = false;

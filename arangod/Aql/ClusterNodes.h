@@ -331,6 +331,12 @@ class GatherNode final : public ExecutionNode {
   SortMode sortMode() const noexcept { return _sortmode; }
   void sortMode(SortMode sortMode) noexcept { _sortmode = sortMode; }
 
+  void setConstrainedSortLimit(size_t limit) noexcept;
+
+  bool isConstrainedSort() const noexcept;
+
+  size_t constrainedSortLimit() const noexcept;
+
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
@@ -338,6 +344,10 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
+
+  /// @brief In case this was created from a constrained heap sorting node, this
+  /// is its limit (which is greater than zero). Otherwise, it's zero.
+  size_t _limit;
 };
 
 /// @brief class RemoteNode

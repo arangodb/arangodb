@@ -168,13 +168,14 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep, std::vector<SortRegister>&& sortRegister,
-    arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode)
+    arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode, size_t limit)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _sortRegister(std::move(sortRegister)),
       _trx(trx),
-      _sortMode(sortMode) {}
+      _sortMode(sortMode),
+      _limit(limit) {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) = default;
 SortingGatherExecutorInfos::~SortingGatherExecutorInfos() = default;
@@ -184,7 +185,10 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _initialized(false),
       _numberDependencies(0),
       _dependencyToFetch(0),
-      _nrDone() {
+      _inputRows(),
+      _nrDone(0),
+      _limit(infos.limit()),
+      _strategy(nullptr) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
       _strategy = std::make_unique<MinElementSorting>(infos.trx(), infos.sortRegister());
