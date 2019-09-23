@@ -24,6 +24,7 @@
 
 #include "Auth/DatabaseResource.h"
 
+#include <memory>
 #include <string>
 
 namespace arangodb {

@@ -28,6 +28,7 @@
 #include <set>
 
 #include "Auth/Common.h"
+#include "Auth/CollectionResource.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -83,6 +84,10 @@ class User {
   /// collection.  The combination of "*"/"*" is automatically used for
   /// the root
   void grantCollection(std::string const& dbname, std::string const& cname, auth::Level level);
+
+  void grantCollection(CollectionResource const& collection, auth::Level level) {
+    grantCollection(collection.database(), collection.collection(), level);
+  }
 
   /// Removes the collection right, returns true if entry existed
   bool removeCollection(std::string const& dbname, std::string const& collection);
