@@ -232,6 +232,8 @@ std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
 std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
+std::string const StaticStrings::Sharding("sharding");
+std::string const StaticStrings::Satellite("satellite");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
