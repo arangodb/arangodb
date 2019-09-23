@@ -703,11 +703,10 @@ ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
 
 void AqlItemBlock::copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
                                                  size_t sourceRow, size_t targetRow) const {
-  AqlValue const& d(_data[getSubqueryDepthAddress(sourceRow)]);
-  if (d.isNumber()) {
+  if (isShadowRow(sourceRow)) {
+    AqlValue const& d = getShadowRowDepth(sourceRow);
     // Value set, copy it over
     TRI_ASSERT(!d.requiresDestruction());
-    // TODO implement me!!
-    TRI_ASSERT(false);
+    target->setShadowRowDepth(targetRow, d);
   }
 }
