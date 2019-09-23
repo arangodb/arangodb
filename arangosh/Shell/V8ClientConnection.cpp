@@ -90,9 +90,6 @@ V8ClientConnection::~V8ClientConnection() {
 
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
-#ifdef _WIN32
-  return nullptr;
-#else
   auto newConnection = _builder.connect(_loop);
   while (true) {
     fuerte::StringMap params{{"details", "true"}};
@@ -193,7 +190,6 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
   
     return nullptr;
   }
-#endif
 }
 
 void V8ClientConnection::setHostName(std::string hostname) {
