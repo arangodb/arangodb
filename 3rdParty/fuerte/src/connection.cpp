@@ -60,10 +60,6 @@ std::unique_ptr<Response> Connection::sendRequest(
 
   FUERTE_LOG_TRACE << "sendRequest (sync): done" << std::endl;
 
-  if (error != Error::NoError) {
-    throw error;
-  }
-
   return rv;
 }
   

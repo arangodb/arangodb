@@ -226,6 +226,8 @@ class Response final : public Message {
   Response(ResponseHeader&& reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
 
+  Response(Response const& resp);
+  
   /// @brief request header
   ResponseHeader header;
 

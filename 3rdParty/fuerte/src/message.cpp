@@ -250,6 +250,13 @@ size_t Request::payloadSize() const { return _payload.byteSize(); }
 // class Response
 ///////////////////////////////////////////////
 
+Response::Response(Response const& resp) {
+  _supportedAuths = resp._supportedAuths;
+  _payload = resp._payload;
+  _payloadOffset = resp._payloadOffset;
+  header = resp.header;
+}
+
 std::vector<VPackSlice> Response::slices() const {
   std::vector<VPackSlice> slices;
   if (isContentTypeVPack()) {

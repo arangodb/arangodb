@@ -150,15 +150,48 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   item->_messageID = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   item->_expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
   auto self = Connection::shared_from_this();
-  item->_callback = [self](Error error, std::unique_ptr<Request>,
+  auto reqItem = item.get();
+  item->_callback = [reqItem, self](Error error,
+                           std::unique_ptr<Request> req,
                            std::unique_ptr<Response> resp) {
     auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
     if (error != Error::NoError || resp->statusCode() != StatusOK) {
-      thisPtr->_state.store(Connection::State::Failed,
-                            std::memory_order_release);
-      thisPtr->shutdownConnection(Error::VstUnauthorized,
-                                  "could not authenticate");
-      thisPtr->drainQueue(Error::VstUnauthorized);
+      std::string errorMessage;
+      if (resp->contentType() == fuerte::ContentType::VPack) {
+        std::shared_ptr<VPackBuilder> parsedBody;
+        VPackSlice body = resp->slice();
+        static char const* errMsgKey = "errorMessage";
+        if (body.isExternal()) {
+          body = VPackSlice(reinterpret_cast<uint8_t const*>(body.getExternal()));
+        }
+        // TRI_ASSERT(body.isObject());
+        if (body.hasKey(errMsgKey)) {
+          VPackSlice const sub = body.get(errMsgKey);
+          if (sub.isString()) {
+            errorMessage = sub.copyString();
+          }
+        }
+      }
+      if (!errorMessage.empty() && errorMessage.find(" ") == std::string::npos) {
+        size_t start = 0;
+        do {
+          auto at = errorMessage.find(",", start);
+          resp->addSupportedAuth(errorMessage.substr(start, at));
+          start = at;
+          if (start != std::string::npos) {
+            start ++;
+          }
+        } while (start != std::string::npos);
+      }
+
+      RequestItem* item = nullptr;
+      while (thisPtr->_writeQueue.pop(item)) {
+        std::unique_ptr<RequestItem> guard(item);
+        item->_response = std::make_unique<Response>(*resp.get());
+        thisPtr->_loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_release);
+        guard->invokeOnError(Error::VstUnauthorized);
+      }
+      return;
     } else {
       thisPtr->_state.store(Connection::State::Connected);
       thisPtr->startWriting();

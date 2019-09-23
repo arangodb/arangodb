@@ -62,8 +62,10 @@ struct RequestItem {
  public:
   
   inline MessageID messageID() { return _messageID; }
+  std::unique_ptr<Response> _response;
+
   inline void invokeOnError(Error e) {
-    _callback(e, std::move(_request), nullptr);
+    _callback(e, std::move(_request), std::move(_response));
   }
 
   /// prepareForNetwork prepares the internal structures for
