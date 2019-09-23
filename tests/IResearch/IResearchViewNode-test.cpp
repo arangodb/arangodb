@@ -2139,13 +2139,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-<<<<<<< HEAD
   auto queryResult = arangodb::tests::executeQuery(
       *vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
-=======
-  auto queryResult = arangodb::tests::executeQuery(
-      *vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
->>>>>>> b14cb49a892343c8b75f5d48e94749d7cf797789
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
