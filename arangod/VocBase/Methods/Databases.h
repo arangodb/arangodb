@@ -27,39 +27,14 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "VocBase/voc-types.h"
-
+#include "VocBase/VocbaseInfo.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace methods {
-
-
-class CreateDatabaseInfo {
- public:
-  CreateDatabaseInfo() = default;
-  Result load(std::string const& name,
-              VPackSlice const& options,
-              VPackSlice const& users);
-
-  Result buildSlice(VPackBuilder& builder) const;
-
-  uint64_t getId() const { return _id; };
-  std::string getName() const { return _name; };
-  VPackSlice const& getUsers() const { return _userSlice; }
-
- private:
-  Result sanitizeUsers(VPackSlice const& users, VPackBuilder& sanitizedUsers);
-  Result sanitizeOptions(VPackSlice const& options, VPackBuilder& sanitizedOptions);
-
- private:
-  uint64_t _id;
-  std::string _name;
-  VPackBuilder _options;
-  VPackBuilder _users;
-  VPackSlice _userSlice;
-};
 
 /// Common code for the db._database(),
 struct Databases {

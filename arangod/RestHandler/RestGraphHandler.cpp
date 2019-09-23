@@ -341,7 +341,7 @@ void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
 #if 0
   // TODO fix this in a major release upgrade
   if (wasSynchronous) {
-    code = rest::ResponseCode::CREATED; 
+    code = rest::ResponseCode::CREATED;
   }
 #endif
   resetResponse(code);

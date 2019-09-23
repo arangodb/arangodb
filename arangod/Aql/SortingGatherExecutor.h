@@ -121,7 +121,7 @@ class SortingGatherExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  ExecutionState init();
+  ExecutionState init(size_t atMost);
 
  private:
   Fetcher& _fetcher;

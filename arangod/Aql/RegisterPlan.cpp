@@ -241,6 +241,7 @@ void RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::GATHER:
     case ExecutionNode::REMOTE:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::NORESULTS: {
       // these node types do not produce any new registers
       break;

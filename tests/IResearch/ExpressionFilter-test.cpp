@@ -268,7 +268,7 @@ struct IResearchExpressionFilterSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
+                                                     systemDBInfo());
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
@@ -340,7 +340,6 @@ struct IResearchExpressionFilterSetup {
                                     arangodb::LogLevel::DEFAULT);
   }
 };  // TestSetup
-
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -391,8 +390,7 @@ TEST(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   // create view
   {

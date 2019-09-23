@@ -67,6 +67,8 @@
 #include "velocypack/Parser.h"
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -229,13 +231,15 @@ class IResearchIndexTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
-    dbFeature->loadDatabases(databases->slice());
+    dbFeature->loadDatabases(databases.slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -248,7 +252,7 @@ class IResearchIndexTest : public ::testing::Test {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature->createDatabase(testDBInfo(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
         *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);
@@ -298,8 +302,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -553,8 +556,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -903,8 +905,7 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());

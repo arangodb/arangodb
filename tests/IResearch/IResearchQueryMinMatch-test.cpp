@@ -160,7 +160,7 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
 
     auto sysVocBasePtr = sysVocBaseFeature->use();
     arangodb::methods::Collections::createSystem(
-        *sysVocBasePtr, 
+        *sysVocBasePtr,
         arangodb::tests::AnalyzerCollectionName, false);
 
     auto* analyzers =
@@ -168,12 +168,12 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature->createDatabase(testDBInfo(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
-        *vocbase, 
+        *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       VPackParser::fromJson("\"abc\"")->slice(), 
+                       VPackParser::fromJson("\"abc\"")->slice(),
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
@@ -181,7 +181,7 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
                        "TestDelimAnalyzer",
                        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
-    analyzers->emplace(result, "_system::test_analyzer", "TestAnalyzer", 
+    analyzers->emplace(result, "_system::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice(),
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
@@ -228,8 +228,7 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchQueryMinMatchTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
