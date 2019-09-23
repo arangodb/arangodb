@@ -126,6 +126,8 @@ class SortingGatherExecutor {
  private:
   ExecutionState init(size_t atMost);
 
+  std::pair<ExecutionState, InputAqlItemRow> produceNextRow(size_t atMost);
+
   bool constrainedSort() const noexcept;
 
   size_t rowsLeftToWrite() const noexcept;

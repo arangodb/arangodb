@@ -222,9 +222,29 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(_strategy != nullptr);
   size_t const atMost = constrainedSort() ? output.numRowsLeft()
                                           : ExecutionBlock::DefaultBatchSize();
+  ExecutionState state;
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  std::tie(state, row) = produceNextRow(atMost);
+
+  // HASMORE => row has to be initialized
+  TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
+  // WAITING => row may not be initialized
+  TRI_ASSERT(state != ExecutionState::WAITING || !row.isInitialized());
+
+  if (row) {
+    // NOTE: The original gatherBlock did referencing
+    // inside the outputblock by identical AQL values.
+    // This optimization is not in use anymore.
+    output.copyRow(row);
+  }
+
+  return {state, NoStats{}};
+}
+
+std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow(size_t atMost) {
+  TRI_ASSERT(_strategy != nullptr);
   assertConstrainedDoesntOverfetch(atMost);
   // We shouldn't be asked for more rows when we are allowed to skip
   TRI_ASSERT(!maySkip());
@@ -232,7 +252,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
     ExecutionState state = init(atMost);
     if (state != ExecutionState::HASMORE) {
       // Can be DONE(unlikely, no input) of WAITING
-      return {state, NoStats{}};
+      return {state, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
   } else {
     // Activate this assert as soon as all blocks follow the done == no call api
@@ -245,7 +265,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
                _inputRows[_dependencyToFetch].row) =
           _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
       if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, NoStats{}};
+        return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
       }
       if (!_inputRows[_dependencyToFetch].row) {
         TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
@@ -255,7 +275,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
   }
   if (_nrDone >= _numberDependencies) {
     // We cannot return a row, because all are done
-    return {ExecutionState::DONE, NoStats{}};
+    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
 // if we get here, we have a valid row for every not done dependency.
 // And we have atLeast 1 valid row left
@@ -278,16 +298,12 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
   _dependencyToFetch = val.dependencyIndex;
   // We can never pick an invalid row!
   TRI_ASSERT(val.row);
-  // NOTE: The original gatherBlock did referencing
-  // inside the outputblock by identical AQL values.
-  // This optimization is not in use anymore.
-  output.copyRow(val.row);
   ++_rowsReturned;
   adjustNrDone(_dependencyToFetch);
   if (_nrDone >= _numberDependencies) {
-    return {ExecutionState::DONE, NoStats{}};
+    return {ExecutionState::DONE, val.row};
   }
-  return {ExecutionState::HASMORE, NoStats{}};
+  return {ExecutionState::HASMORE, val.row};
 }
 
 void SortingGatherExecutor::adjustNrDone(size_t dependency) {
