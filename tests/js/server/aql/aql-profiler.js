@@ -664,7 +664,6 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortLimitBlock2 : function () {
-      // TODO re-enable this. This TODO note should introduce a merge conflict as soon as #10047 is merged.
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
       const remainder = rows => rows - limit(rows);
       const remainderBatches = rows => remainder(rows) === 0 ? 0 : 1;

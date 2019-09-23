@@ -245,6 +245,8 @@ class ExecutionPlan {
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
+  bool fullCount() const noexcept;
+
  private:
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*, ExecutionNode*);

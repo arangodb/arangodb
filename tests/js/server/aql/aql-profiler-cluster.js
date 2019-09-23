@@ -193,7 +193,6 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoteAndSortingGatherBlock : function () {
-      // TODO re-enable this. This TODO note should introduce a merge conflict as soon as #10047 is merged.
       const query = `FOR doc IN ${cn} SORT doc.i RETURN doc`;
       // Number of local getSome calls that do not return WAITING.
       // This is at least 1.

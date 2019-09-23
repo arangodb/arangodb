@@ -6924,7 +6924,6 @@ static bool isInnerPassthroughNode(ExecutionNode* node) {
 
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                   OptimizerRule const& rule) {
-  // TODO re-enable this. This TODO note should introduce a merge conflict as soon as #10047 is merged.
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   bool mod = false;
