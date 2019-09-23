@@ -857,9 +857,10 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
 }
 
 /// @brief toVelocyPack, for EnumerateViewNode
-void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                           std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // system info
   nodes.add("database", VPackValue(_vocbase.name()));

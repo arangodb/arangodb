@@ -75,8 +75,7 @@ void assertOrder(bool parseOk, bool execOk, std::string const& queryString,
                  arangodb::aql::ExpressionContext* exprCtx = nullptr,
                  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                  std::string const& refName = "d") {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
                              std::make_shared<arangodb::velocypack::Builder>(),
@@ -183,8 +182,7 @@ void assertOrderExecutionFail(std::string const& queryString,
 }
 
 void assertOrderParseFail(std::string const& queryString, int parseCode) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              nullptr, nullptr, arangodb::aql::PART_MAIN);

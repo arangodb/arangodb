@@ -127,7 +127,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
   ReNormalizingAnalyzer() : irs::analysis::analyzer(ReNormalizingAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  
+
   virtual irs::attribute_view const& attributes() const NOEXCEPT override {
     return _attrs;
   }
@@ -378,6 +378,9 @@ struct StorageEngineWrapper {
   StorageEngineMock& operator*() { return instance; }
 };
 
+
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -441,12 +444,15 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "\" } ]"));
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
-    dbFeature->loadDatabases(databases->slice());
+    dbFeature->loadDatabases(databases.slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -541,15 +547,13 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RW));
 }
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -559,8 +563,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
 
 // no collection read access (vocbase read access, no user)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -570,8 +573,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_u
 
 // no collection read access (vocbase read access)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
@@ -580,13 +582,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
 
-  EXPECT_FALSE(
-      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
+  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -597,8 +597,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -609,8 +608,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -622,8 +620,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -983,7 +980,8 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     ASSERT_NE(_sysVocbase, nullptr);
 
     _vocbase = nullptr;
-    ASSERT_TRUE(_dbFeature->createDatabase(1, dbName, _vocbase).ok());
+                                                            //same id?
+    ASSERT_TRUE(_dbFeature->createDatabase(createInfo(dbName,1), _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
                                                  false);
@@ -1239,7 +1237,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     _system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                      0, TRI_VOC_SYSTEM_DATABASE);
+                                                      systemDBInfo());
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, _system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
@@ -1364,10 +1362,12 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.openArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       auto system =
           arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>(
               "SystemDatabase");
@@ -1375,7 +1375,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     }
 
     _vocbase = nullptr;
-    ASSERT_TRUE(dbFeature->createDatabase(1, _dbName, _vocbase).ok());
+    ASSERT_TRUE(dbFeature->createDatabase(createInfo(_dbName,1), _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
 
     // Prepare analyzers
@@ -1599,8 +1599,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
-  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "active");
-  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "system");
+  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo("active",2));
+  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
 
   // normalize 'identity' (with prefix)
   {
@@ -1608,7 +1608,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("identity") == normalized));
+    EXPECT_EQ(std::string("identity"), normalized);
   }
 
   // normalize 'identity' (without prefix)
@@ -1617,7 +1617,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("identity") == normalized));
+    EXPECT_EQ(std::string("identity"), normalized);
   }
 
   // normalize NIL (with prefix)
@@ -1626,7 +1626,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::") == normalized));
+    EXPECT_EQ(std::string("active::"), normalized);
   }
 
   // normalize NIL (without prefix)
@@ -1635,7 +1635,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("") == normalized));
+    EXPECT_EQ(std::string(""), normalized);
   }
 
   // normalize EMPTY (with prefix)
@@ -1644,7 +1644,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::") == normalized));
+    EXPECT_EQ(std::string("active::"), normalized);
   }
 
   // normalize EMPTY (without prefix)
@@ -1653,7 +1653,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("") == normalized));
+    EXPECT_EQ(std::string(""), normalized);
   }
 
   // normalize delimiter (with prefix)
@@ -1662,7 +1662,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::") == normalized));
+    EXPECT_EQ(std::string("_system::"), normalized);
   }
 
   // normalize delimiter (without prefix)
@@ -1671,7 +1671,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::") == normalized));
+    EXPECT_EQ(std::string("::"), normalized);
   }
 
   // normalize delimiter + name (with prefix)
@@ -1680,7 +1680,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::name") == normalized));
+    EXPECT_EQ(std::string("_system::name"), normalized);
   }
 
   // normalize delimiter + name (without prefix)
@@ -1689,7 +1689,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::name") == normalized));
+    EXPECT_EQ(std::string("::name"), normalized);
   }
 
   // normalize no-delimiter + name (with prefix)
@@ -1698,7 +1698,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::name") == normalized));
+    EXPECT_EQ(std::string("active::name"), normalized);
   }
 
   // normalize no-delimiter + name (without prefix)
@@ -1707,25 +1707,25 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("name") == normalized));
+    EXPECT_EQ(std::string("name"), normalized);
   }
 
   // normalize system + delimiter (with prefix)
   {
-    irs::string_ref analyzer = "system::";
+    irs::string_ref analyzer = "_system::";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::") == normalized));
+    EXPECT_EQ(std::string("_system::"), normalized);
   }
 
   // normalize system + delimiter (without prefix)
   {
-    irs::string_ref analyzer = "system::";
+    irs::string_ref analyzer = "_system::";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::") == normalized));
+    EXPECT_EQ(std::string("::"), normalized);
   }
 
   // normalize vocbase + delimiter (with prefix)
@@ -1734,7 +1734,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::") == normalized));
+    EXPECT_EQ(std::string("active::"), normalized);
   }
 
   // normalize vocbase + delimiter (without prefix)
@@ -1743,34 +1743,34 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("") == normalized));
+    EXPECT_EQ(std::string(""), normalized);
   }
 
   // normalize system + delimiter + name (with prefix)
   {
-    irs::string_ref analyzer = "system::name";
+    irs::string_ref analyzer = "_system::name";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::name") == normalized));
+    EXPECT_EQ(std::string("_system::name"), normalized);
   }
 
   // normalize system + delimiter + name (without prefix)
   {
-    irs::string_ref analyzer = "system::name";
+    irs::string_ref analyzer = "_system::name";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::name") == normalized));
+    EXPECT_EQ(std::string("::name"), normalized);
   }
 
   // normalize system + delimiter + name (without prefix) in system
   {
-    irs::string_ref analyzer = "system::name";
+    irs::string_ref analyzer = "_system::name";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system,
                                                                  system, false);
-    EXPECT_TRUE((std::string("name") == normalized));
+    EXPECT_EQ(std::string("name"), normalized);
   }
 
   // normalize vocbase + delimiter + name (with prefix)
@@ -1779,7 +1779,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::name") == normalized));
+    EXPECT_EQ(std::string("active::name"), normalized);
   }
 
   // normalize vocbase + delimiter + name (without prefix)
@@ -1788,7 +1788,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("name") == normalized));
+    EXPECT_EQ(std::string("name"), normalized);
   }
 }
 
@@ -2303,10 +2303,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.openArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       sysDatabase->start();  // get system database from DatabaseFeature
     }
 
@@ -2385,10 +2386,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.openArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       sysDatabase->start();  // get system database from DatabaseFeature
     }
 
@@ -2468,7 +2470,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     TRI_vocbase_t* vocbase;
-    ASSERT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    ASSERT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     ASSERT_TRUE((nullptr != dbFeature->lookupDatabase("testVocbase")));
 
     EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
@@ -2774,10 +2776,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, dbfeature->loadDatabases(databases->slice()));
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbfeature->loadDatabases(databases.slice())));
+
     systemdb->start();  // get system database from DatabaseFeature
   }
 
@@ -2900,6 +2904,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       auto entry = result->at(i, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isString());
       EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
+
     }
   }
   // test integer data type
@@ -3320,8 +3325,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3363,7 +3367,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     sysDatabase->unprepare();  // unset system vocbase
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // collections are not created in upgrade tasks within iresearch anymore. For that reason, we have
@@ -3381,8 +3385,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3425,7 +3428,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3464,8 +3467,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3513,7 +3515,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
@@ -3527,8 +3529,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3577,7 +3578,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3615,8 +3616,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, with legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3679,7 +3680,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
@@ -3693,8 +3694,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3743,7 +3743,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3865,10 +3865,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
     arangodb::methods::Collections::createSystem(*sysDatabase->use(),
                                                  arangodb::tests::AnalyzerCollectionName, false);
@@ -3967,9 +3968,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   TRI_vocbase_t* vocbase0;
   TRI_vocbase_t* vocbase1;
   TRI_vocbase_t* vocbase2;
-  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase0", vocbase0).ok());
-  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase1", vocbase1).ok());
-  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase2", vocbase2).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(createInfo("vocbase0",1), vocbase0).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(createInfo("vocbase1",1), vocbase1).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(createInfo("vocbase2",1), vocbase2).ok());
   arangodb::methods::Collections::createSystem(*vocbase0, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase1, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName, false);
@@ -4139,10 +4140,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);

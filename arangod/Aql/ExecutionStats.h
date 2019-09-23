@@ -84,6 +84,10 @@ struct ExecutionStats {
     peakMemoryUsage = 0;
   }
 
+  void addAliases(std::unordered_map<size_t, size_t>&& aliases) {
+    _nodeAliases = std::move(aliases);
+  }
+
   /// @brief number of successfully executed write operations
   int64_t writesExecuted;
 
@@ -117,6 +121,13 @@ struct ExecutionStats {
 
   ///  @brief statistics per ExecutionNodes
   std::map<size_t, ExecutionStats::Node> nodes;
+
+ private:
+  /// @brief Node aliases, source => target.
+  ///        Every source node in the this aliases list
+  ///        will be counted as the target instead
+  ///        within nodes.
+  std::unordered_map<size_t, size_t> _nodeAliases;
 };
 }  // namespace aql
 }  // namespace arangodb

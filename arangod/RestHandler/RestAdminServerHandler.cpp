@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,6 +48,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleRole();
   } else if (suffixes.size() == 1 && suffixes[0] == "availability") {
     handleAvailability();
+  } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
+    handleDatabaseDefaults();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, 404);
   }
@@ -202,3 +205,14 @@ void RestAdminServerHandler::handleMode() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }
+
+
+void RestAdminServerHandler::handleDatabaseDefaults() {
+  auto defaults = getVocbaseOptions(VPackSlice::emptyObjectSlice());
+  VPackBuilder builder;
+  builder.openObject();
+  addVocbaseOptionsToOpenObject(builder, defaults);
+  builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+

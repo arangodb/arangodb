@@ -67,7 +67,7 @@ class IdExecutorTest : public ::testing::Test {
 
 TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
   ConstFetcherHelper fetcher(itemBlockManager, nullptr);
-  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  IdExecutor<true, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
@@ -78,23 +78,12 @@ TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
 TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
-  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  IdExecutor<true, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
+  // This block consumes all rows at once.
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_TRUE(state == ExecutionState::DONE);

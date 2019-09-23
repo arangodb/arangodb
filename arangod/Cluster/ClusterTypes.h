@@ -25,6 +25,7 @@
 
 #include <limits>
 #include <string>
+#include <iostream>
 
 namespace arangodb {
 
@@ -66,10 +67,19 @@ class RebootId {
     return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
 
+  std::ostream& print(std::ostream& o) const {
+    o << _value;
+    return o;
+  }
+
  private:
   uint64_t _value;
 };
 
 }  // namespace arangodb
+
+inline std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
+  return r.print(o);
+}
 
 #endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H

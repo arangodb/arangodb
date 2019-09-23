@@ -25,7 +25,6 @@
 #include "Aql/Ast.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Meta/static_assert_size.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
