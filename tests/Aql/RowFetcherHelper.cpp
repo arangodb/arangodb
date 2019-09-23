@@ -92,7 +92,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   auto res = SingleRowFetcher<passBlocksThrough>::fetchRow();
-  _curRowIndex++;
+  nextRow();
   if (res.first == ExecutionState::DONE) {
     _returnedDone = true;
   }
@@ -168,7 +168,6 @@ SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const
   bool const done = isLastBlock && askingForMore;
 
   ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
-
   return {state, _itemBlock->slice(from, to)};
 }
 
