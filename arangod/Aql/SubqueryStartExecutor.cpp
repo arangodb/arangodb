@@ -38,22 +38,32 @@ SubqueryStartExecutor::~SubqueryStartExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
   while (!output.isFull()) {
+    TRI_ASSERT(!output.produced());
     if (_state == ExecutionState::DONE && !_input.isInitialized()) {
-      // Short cut, we are done, do not fetch further
-      return {ExecutionState::DONE, NoStats{}};
-    }
-    // This loop alternates between data row and shadow row
-    if (_input.isInitialized()) {
-      output.createShadowRow(_input);
-      _input = InputAqlItemRow(CreateInvalidInputRowHint{});
-    } else {
-      std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
-      if (!_input.isInitialized()) {
+      // We need to handle shadowRows now. It is the job of this node to
+      // increase the shadow row depth
+      ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
+      std::tie(_state, shadowRow) = _fetcher.fetchShadowRow(output.numRowsLeft() / 2);
+      if (!shadowRow.isInitialized()) {
         TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
+        // We are either fully DONE, or WAITING
         return {_state, NoStats{}};
       }
-      TRI_ASSERT(!output.isFull());
-      output.copyRow(_input);
+      output.increaseShadowRowDepth(shadowRow);
+    } else {
+      // This loop alternates between data row and shadow row
+      if (_input.isInitialized()) {
+        output.createShadowRow(_input);
+        _input = InputAqlItemRow(CreateInvalidInputRowHint{});
+      } else {
+        std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
+        if (!_input.isInitialized()) {
+          TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
+          return {_state, NoStats{}};
+        }
+        TRI_ASSERT(!output.isFull());
+        output.copyRow(_input);
+      }
     }
     output.advanceRow();
   }

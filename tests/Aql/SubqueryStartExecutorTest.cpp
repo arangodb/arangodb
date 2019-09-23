@@ -57,7 +57,7 @@ void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isReleva
 class SubqueryStartExecutorTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 };
 
 TEST_F(SubqueryStartExecutorTest, check_properties) {
@@ -184,7 +184,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
 
 // TODO:
 // This test can be enabled and should work as soon as the Fetcher skips non-relevant Subqueries
-TEST_F(SubqueryStartExecutorTest, DISABLED_does_only_add_shadowrows_on_data_rows) {
+TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
   auto input = VPackParser::fromJson(R"([
       ["a"],
@@ -218,6 +218,7 @@ TEST_F(SubqueryStartExecutorTest, DISABLED_does_only_add_shadowrows_on_data_rows
   {
     SingleRowFetcherHelper<false> fetcher(itemBlockManager, 6, false, block);
     SubqueryStartExecutor testee(fetcher, infos);
+    block.reset(new AqlItemBlock(itemBlockManager, 1000, 1));
 
     NoStats stats{};
     ExecutionState state{ExecutionState::HASMORE};
