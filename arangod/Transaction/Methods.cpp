@@ -2636,7 +2636,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
             TRI_ASSERT(count[1].isNumber());
             std::string key = count[0].copyString();
             uint64_t value = count[1].getNumericValue<uint64_t>();
-            counts.emplace_back(key, value);
+            counts.emplace_back(std::move(key), value);
           }
 
           int64_t total = 0;
