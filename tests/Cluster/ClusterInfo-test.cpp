@@ -46,6 +46,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Slice.h"
 #include "velocypack/Parser.h"
 
 namespace {
@@ -166,18 +167,18 @@ class ClusterInfoTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
 
     // setup required application features
-    features.emplace_back(addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
-    features.emplace_back(addFeature<arangodb::DatabaseFeature>(), false);
-    features.emplace_back(addFeature<arangodb::application_features::CommunicationFeaturePhase>(),
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(),
                           false);
-    features.emplace_back(addFeature<arangodb::ClusterFeature>(),
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
                           false);  // required for ClusterInfo::instance()
-    features.emplace_back(addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(addFeature<arangodb::LdapFeature>(),
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(),
                           false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
@@ -241,7 +242,7 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     // create database
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
 
     // simulate heartbeat thread

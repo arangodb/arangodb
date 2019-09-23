@@ -34,9 +34,11 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
@@ -173,7 +175,7 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-  
+
           auto queryRegistry = QueryRegistryFeature::registry();
           if (queryRegistry != nullptr) {
             // destroy all items in the QueryRegistry for this database
@@ -429,10 +431,10 @@ void DatabaseFeature::stop() {
   p.maxResultsSize = 0;
   p.includeSystem = false;
   p.showBindVars = false;
-  
+
   arangodb::aql::QueryCache::instance()->properties(p);
   arangodb::aql::QueryCache::instance()->invalidate();
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->cleanupReplicationContexts();
 
@@ -445,10 +447,10 @@ void DatabaseFeature::stop() {
     TRI_ASSERT(queryRegistry->numberRegisteredQueries() == 0);
   }
 #endif
-  
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
-    
+
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
@@ -462,8 +464,8 @@ void DatabaseFeature::stop() {
     static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
     static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
     static size_t currentQueriesCount = currentVocbase->queryList()->count();
-    
-    LOG_TOPIC("840a4", DEBUG, Logger::FIXME) 
+
+    LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
         << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
         << ", cursors: " << currentCursorCount
         << ", keys: " << currentKeysCount
@@ -479,14 +481,14 @@ void DatabaseFeature::stop() {
               [collection]() { collection->close(); });
         },
         true);
-   
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // i am here for debugging only. 
-    LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME) 
+    // i am here for debugging only.
+    LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME)
         << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase << " successful";
 #endif
   }
-  
+
   // flush again so we are sure no query is left in the cache here
   arangodb::aql::QueryCache::instance()->invalidate();
 }
@@ -593,8 +595,9 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 }
 
 /// @brief create a new database
-Result DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
-                                       TRI_vocbase_t*& result) {
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result){
+
+  std::string name = info.getName();
   result = nullptr;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
@@ -602,18 +605,14 @@ Result DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& nam
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 
-  if (id == 0) {
-    TRI_ASSERT(!ServerState::instance()->isCoordinator());
-    id = TRI_NewTickServer();
-  }
-
   std::unique_ptr<TRI_vocbase_t> vocbase;
+  // a new builder is created to prevent blind copying of options
   VPackBuilder builder;
 
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-        
+
   // the create lock makes sure no one else is creating a database while we're
   // inside this function
   MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
@@ -630,15 +629,17 @@ Result DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& nam
       }
     }
 
-    builder.openObject();
-    builder.add("database", VPackValue(id));
-    builder.add("id", VPackValue(std::to_string(id)));
-    builder.add("name", VPackValue(name));
-    builder.close();
-
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
-    vocbase = engine->createDatabase(id, builder.slice(), status);
+
+    // TODO -- use info directly
+    {
+      VPackObjectBuilder guard(&builder);
+      info.toVelocyPack(builder);
+    }
+
+    TRI_ASSERT(builder.slice().isObject());
+    vocbase = engine->createDatabase(info.getId(), builder.slice(), status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 
@@ -646,13 +647,13 @@ Result DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& nam
       try {
         vocbase->addReplicationApplier();
       } catch (basics::Exception const& ex) {
-        std::string msg = "initializing replication applier for database '" + 
+        std::string msg = "initializing replication applier for database '" +
             vocbase->name() + "' failed: " + ex.what();
         LOG_TOPIC("e7444", ERR, arangodb::Logger::FIXME) << msg;
         events::CreateDatabase(name, ex.code());
         return Result(ex.code(), std::move(msg));
       } catch (std::exception const& ex) {
-        std::string msg = "initializing replication applier for database '" + 
+        std::string msg = "initializing replication applier for database '" +
             vocbase->name() + "' failed: " + ex.what();
         LOG_TOPIC("56c41", ERR, arangodb::Logger::FIXME) << msg;
         events::CreateDatabase(name, TRI_ERROR_INTERNAL);
@@ -662,7 +663,6 @@ Result DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& nam
       // enable deadlock detection
       vocbase->_deadlockDetector.enabled(!ServerState::instance()->isRunningInCluster());
 
-      // FIXME why do we not n this
       // create application directories
       V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
       auto appPath = dealer.appPath();
@@ -715,7 +715,7 @@ Result DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& nam
   int res = TRI_ERROR_NO_ERROR;
 
   if (!engine->inRecovery()) {
-    res = engine->writeCreateDatabaseMarker(id, builder.slice());
+    res = engine->writeCreateDatabaseMarker(info.getId(), builder.slice());
   }
 
   result = vocbase.release();

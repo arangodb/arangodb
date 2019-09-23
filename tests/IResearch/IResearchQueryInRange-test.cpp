@@ -37,6 +37,10 @@ extern const char* ARGV0;  // defined in main.cpp
 
 NS_LOCAL
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -50,8 +54,7 @@ NS_END
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchQueryInRangeTest, test) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   std::shared_ptr<arangodb::LogicalCollection> collection1;

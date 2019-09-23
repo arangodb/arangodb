@@ -431,8 +431,8 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
   }
 
   TRI_ASSERT(cur);
-  return cur->getType() == aql::ExecutionNode::SINGLETON
-      && cur->id() != 1; // SIGNLETON nodes in subqueries have id != 1
+  return cur->getType() == aql::ExecutionNode::SINGLETON &&
+         cur->id() != 1;  // SIGNLETON nodes in subqueries have id != 1
 }
 
 /// negative value - value is dirty
@@ -753,8 +753,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   if (!::fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "failed to parse 'IResearchViewNode' options: " + options.toString());
+        TRI_ERROR_BAD_PARAMETER,
+        "failed to parse 'IResearchViewNode' options: " + options.toString());
   }
 
   // volatility mask
@@ -772,20 +772,20 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     IResearchViewSort sort;
     if (!sort.fromVelocyPack(primarySortSlice, error)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "failed to parse 'IResearchViewNode' primary sort: "
-          + primarySortSlice.toString() + ", error: '" + error + "'");
+          TRI_ERROR_BAD_PARAMETER,
+          "failed to parse 'IResearchViewNode' primary sort: " +
+              primarySortSlice.toString() + ", error: '" + error + "'");
     }
 
     TRI_ASSERT(_view);
     auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
 
     if (sort != primarySort) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "primary sort " + primarySortSlice.toString()
-          + " for 'IResearchViewNode' doesn't match the one specified in view '"
-          + _view->name() + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "primary sort " + primarySortSlice.toString() +
+                                         " for 'IResearchViewNode' doesn't "
+                                         "match the one specified in view '" +
+                                         _view->name() + "'");
     }
 
     if (!primarySort.empty()) {
@@ -796,18 +796,23 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       if (!primarySortBucketsSlice.isNone()) {
         if (!primarySortBucketsSlice.isNumber()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid vpack format: 'primarySortBuckets' attribute is intended to be a number");
+              TRI_ERROR_BAD_PARAMETER,
+              "invalid vpack format: 'primarySortBuckets' attribute is "
+              "intended to be a number");
         }
 
         primarySortBuckets = primarySortBucketsSlice.getNumber<size_t>();
 
         if (primarySortBuckets > primarySort.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid vpack format: value of 'primarySortBuckets' attribute '" + std::to_string(primarySortBuckets) +
-            "' is greater than number of buckets specified in 'primarySort' attribute '" + std::to_string(primarySort.size()) +
-            "' of the view '" + _view->name() + "'");
+              TRI_ERROR_BAD_PARAMETER,
+              "invalid vpack format: value of 'primarySortBuckets' attribute "
+              "'" +
+                  std::to_string(primarySortBuckets) +
+                  "' is greater than number of buckets specified in "
+                  "'primarySort' attribute '" +
+                  std::to_string(primarySort.size()) + "' of the view '" +
+                  _view->name() + "'");
         }
       }
 
@@ -855,9 +860,10 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
 }
 
 /// @brief toVelocyPack, for EnumerateViewNode
-void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                           std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // system info
   nodes.add("database", VPackValue(_vocbase.name()));
@@ -906,7 +912,6 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
     nodes.add("primarySortBuckets", VPackValue(_sort.second));
   }
 
-
   nodes.close();
 }
 
@@ -944,8 +949,7 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 }
 
 /// @brief clone ExecutionNode recursively
-aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
-                                             bool withDependencies,
+aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool withDependencies,
                                              bool withProperties) const {
   TRI_ASSERT(plan);
 
@@ -1070,7 +1074,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "cannot use waitForSync with "
                                    "views and transactions");
   }
-  
+
   // we manage snapshot differently in single-server/db server,
   // see description of functions below to learn how
   if (ServerState::instance()->isDBServer()) {
@@ -1133,7 +1137,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
-  aql::ExecutorInfos infos = createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
+  aql::ExecutorInfos infos =
+      createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
 
   aql::IResearchViewExecutorInfos executorInfos{std::move(infos),
                                                 reader,
@@ -1150,7 +1155,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 getDepth()};
 
   if (_sort.first) {
-    TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule
+    TRI_ASSERT(!_sort.first->empty());  // guaranteed by optimizer rule
 
     if (!ordered) {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false>>>(

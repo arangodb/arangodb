@@ -315,8 +315,10 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
+void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                       std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  GraphNode::toVelocyPackHelper(nodes, flags, seen);
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -393,9 +395,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
     }
     nodes.close();
   }
-
-  nodes.add(VPackValue("indexes"));
-  _options->toVelocyPackIndexes(nodes);
 
   if (_pruneExpression != nullptr) {
     // The Expression constructor expects only this name

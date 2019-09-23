@@ -52,6 +52,9 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 // -----------------------------------------------------------------------------
@@ -61,6 +64,10 @@ extern const char* ARGV0;  // defined in main.cpp
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class SortLimitTest : public ::testing::Test {
  protected:
@@ -78,8 +85,7 @@ class SortLimitTest : public ::testing::Test {
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
 
-    vocbase = std::make_unique<TRI_vocbase_t>(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              1, "testVocbase");
+    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     CreateCollection();
   }

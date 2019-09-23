@@ -113,7 +113,7 @@ bool ApplicationServer::isStoppingState(State state) {
          state == State::IN_STOP ||
          state == State::IN_UNPREPARE ||
          state == State::STOPPED ||
-         state == State::ABORTED; 
+         state == State::ABORTED;
 }
 
 void ApplicationServer::throwFeatureNotFoundException(char const* name) {
@@ -248,17 +248,17 @@ void ApplicationServer::beginShutdown() {
     }
     // try to enter the new state, but make sure nobody changed it in between
   } while (!_state.compare_exchange_weak(old, State::IN_SHUTDOWN, std::memory_order_relaxed));
-  
+
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
   // make sure that we advance the state when we get out of here
-  auto waitAborter = scopeGuard([this]() { 
+  auto waitAborter = scopeGuard([this]() {
     CONDITION_LOCKER(guard, _shutdownCondition);
 
     _abortWaiting = true;
     guard.signal();
   });
-  
+
   // now we can execute the actual shutdown sequence
 
   // fowards the begin shutdown signal to all features
@@ -824,9 +824,9 @@ void ApplicationServer::reportFeatureProgress(State state, std::string const& na
   }
 }
 
-char const* ApplicationServer::stringifyState() const { 
+char const* ApplicationServer::stringifyState() const {
   switch (_state.load()) {
-    case State::UNINITIALIZED: 
+    case State::UNINITIALIZED:
       return "uninitialized";
     case State::IN_COLLECT_OPTIONS:
       return "in collect options";

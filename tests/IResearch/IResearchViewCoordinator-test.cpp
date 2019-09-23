@@ -90,6 +90,11 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -101,25 +106,18 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   arangodb::consensus::Store& _agencyStore;
 
   IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
-/*
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    // register factories & normalizers
-    auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
-    indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-                         arangodb::iresearch::IResearchLinkCoordinator::factory());
-*/
     arangodb::tests::init();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-  }
+    }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-  }
+    }
 
   ~IResearchViewCoordinatorTest() {
   }
@@ -139,8 +137,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                  "testVocbase");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
@@ -237,8 +234,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                          1, "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
         (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
@@ -5264,7 +5260,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     );
     node.addDependency(&singleton);
 
-    arangodb::aql::ExecutionEngine engine(&query);
+    arangodb::aql::ExecutionEngine engine(query);
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
     singleton.setVarUsageValid();
     node.setVarUsageValid();

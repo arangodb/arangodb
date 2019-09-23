@@ -49,6 +49,8 @@
 #include "utils/misc.hpp"
 
 namespace {
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct dummy_scorer : public irs::sort {
   static std::function<bool(irs::string_ref const&)> validateArgs;
@@ -75,8 +77,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
                  arangodb::aql::ExpressionContext* exprCtx = nullptr,
                  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                  std::string const& refName = "d") {
-  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
                              std::make_shared<arangodb::velocypack::Builder>(),
@@ -187,8 +188,7 @@ void assertOrderExecutionFail(arangodb::application_features::ApplicationServer&
 
 void assertOrderParseFail(arangodb::application_features::ApplicationServer& server,
                           std::string const& queryString, int parseCode) {
-  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              nullptr, nullptr, arangodb::aql::PART_MAIN);

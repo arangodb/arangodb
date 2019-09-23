@@ -129,8 +129,16 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_myAdvertisedEndpoint));
 
   options->addOption("--cluster.system-replication-factor",
-                     "replication factor for system collections",
+                     "default replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
+
+  options->addOption("--cluster.default-replication-factor",
+                     "default replication factor for non-system collections",
+                     new UInt32Parameter(&_defaultReplicationFactor)).setIntroducedIn(30600);
+
+  options->addOption("--cluster.min-replication-factor",
+                     "minimum replication factor for collections",
+                     new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30600);
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",

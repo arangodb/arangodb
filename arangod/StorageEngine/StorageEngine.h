@@ -57,6 +57,10 @@ enum class RecoveryState : uint32_t {
   DONE
 };
 
+namespace aql {
+class OptimizerRulesFeature;
+}
+
 class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
@@ -352,7 +356,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() {}
+  virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() {}

@@ -40,6 +40,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
@@ -113,7 +114,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
-  
+
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -315,7 +316,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-  
+
   options->addOption("--rocksdb.wal-archive-size-limit",
                      "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
                      new UInt64Parameter(&_maxWalArchiveSizeLimit),
@@ -381,7 +382,7 @@ void RocksDBEngine::start() {
           "rocksdb.wal-file-timeout-initial")) {
     // reduce --rocksb.wal-file-timeout-initial to 15 seconds for agency nodes
     // as we probably won't need the WAL for WAL tailing and replication here
-    _pruneWaitTimeInitial = 15; 
+    _pruneWaitTimeInitial = 15;
   }
 
   LOG_TOPIC("107fd", TRACE, arangodb::Logger::ENGINES)
@@ -600,7 +601,7 @@ void RocksDBEngine::start() {
   rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
   fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
       rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-  
+
   // construct column family options with prefix containing indexed value
   rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
   dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
@@ -754,7 +755,7 @@ void RocksDBEngine::start() {
   if (opts._limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
-    
+
   {
     auto& feature = server().getFeature<FlushFeature>();
     _useReleasedTick = feature.isEnabled();
@@ -807,7 +808,7 @@ void RocksDBEngine::beginShutdown() {
 
 void RocksDBEngine::stop() {
   TRI_ASSERT(isEnabled());
-  
+
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
@@ -894,7 +895,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
     //// check format id
-    VPackSlice idSlice = slice.get("id");
+    TRI_ASSERT(slice.isObject());
+    VPackSlice idSlice = slice.get(StaticStrings::DatabaseId);
     if (!idSlice.isString()) {
       LOG_TOPIC("099d7", ERR, arangodb::Logger::STARTUP)
           << "found invalid database declaration with non-string id: "
@@ -1142,19 +1144,24 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::velocypack:
   VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id =
       static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
-  std::string const name = args.get("name").copyString();
-
   status = TRI_ERROR_NO_ERROR;
 
-  return openExistingDatabase(id, name, true, isUpgrade);
+  return openExistingDatabase(id, args, true, isUpgrade);
 }
 
+//TODO -- should take info
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  status = TRI_ERROR_NO_ERROR;
+  status = TRI_ERROR_INTERNAL;
 
-  return std::make_unique<TRI_vocbase_t>(server(), TRI_VOCBASE_TYPE_NORMAL, id,
-                                         args.get("name").copyString());
+  arangodb::CreateDatabaseInfo info(server());
+  auto rv = info.load(id, args, VPackSlice::emptyArraySlice());
+  if(rv.fail()){
+    THROW_ARANGO_EXCEPTION(rv);
+  }
+
+  status = TRI_ERROR_NO_ERROR;
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
 }
 
 int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
@@ -1257,7 +1264,7 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   return std::string();  // no need to return a path
 }
 
@@ -1566,8 +1573,8 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
 }
 
 /// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules() {
-  RocksDBOptimizerRules::registerResources();
+void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
+  RocksDBOptimizerRules::registerResources(feature);
 }
 
 /// @brief Add engine-specific V8 functions
@@ -1749,7 +1756,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // we need to take its start tick into account as well, because the following
     // file's start tick can be assumed to be the end tick of the current file!
     if (f->StartSequence() < minTickToKeep &&
-        current < files.size() - 1) {      
+        current < files.size() - 1) {
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
@@ -1763,7 +1770,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
     }
   }
-  
+
   if (_maxWalArchiveSizeLimit == 0) {
     // size of the archive is not restricted. done!
     return;
@@ -1771,7 +1778,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
   // print current archive size
   LOG_TOPIC("8d71b", TRACE, Logger::ENGINES) << "total size of the RocksDB WAL file archive: " << totalArchiveSize;
-    
+
   if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
     // archive is smaller than allowed. all good
     return;
@@ -2010,7 +2017,10 @@ bool RocksDBEngine::systemDatabaseExists() {
   getDatabases(builder);
 
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
-    if (item.get("name").copyString() == StaticStrings::SystemDatabase) {
+    TRI_ASSERT(item.isObject());
+    TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
+    if (item.get(StaticStrings::DatabaseName)
+            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
       return true;
     }
   }
@@ -2022,8 +2032,8 @@ void RocksDBEngine::addSystemDatabase() {
   TRI_voc_tick_t id = TRI_NewTickServer();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("id", VPackValue(std::to_string(id)));
-  builder.add("name", VPackValue(StaticStrings::SystemDatabase));
+  builder.add(StaticStrings::DatabaseId, VPackValue(std::to_string(id)));
+  builder.add(StaticStrings::DatabaseName, VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
   builder.close();
 
@@ -2038,9 +2048,17 @@ void RocksDBEngine::addSystemDatabase() {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
-    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
-  auto vocbase =
-      std::make_unique<TRI_vocbase_t>(server(), TRI_VOCBASE_TYPE_NORMAL, id, name);
+    TRI_voc_tick_t id, VPackSlice args, bool wasCleanShutdown, bool isUpgrade) {
+  arangodb::CreateDatabaseInfo info(server());
+  TRI_ASSERT(args.get("name").isString());
+  // when loading we allow system database names
+  info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
+  auto res = info.load(id, args, VPackSlice::emptyArraySlice());
+  if(res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
 
   // scan the database path for views
   try {
@@ -2307,7 +2325,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
   // "clients" part
   builder.add("clients", VPackValue(VPackValueType::Array));  // open
-  if (vocbase != nullptr) {    
+  if (vocbase != nullptr) {
     vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients

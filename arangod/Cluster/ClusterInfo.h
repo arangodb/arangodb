@@ -44,7 +44,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Databases.h"
+#include "VocBase/VocbaseInfo.h"
 
 
 namespace arangodb {
@@ -532,13 +532,13 @@ class ClusterInfo final {
   /// If any error happens on the way, a pending database will be cleaned up
   ///
   //////////////////////////////////////////////////////////////////////////////
-  Result createIsBuildingDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
-  Result createFinalizeDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
+  Result createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database);
+  Result createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes database and collection entries within the agency plan
   //////////////////////////////////////////////////////////////////////////////
-  Result cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
+  Result cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
@@ -845,12 +845,13 @@ class ClusterInfo final {
   }
 
  private:
-  Result buildIsBuildingSlice(methods::CreateDatabaseInfo const& database,
+  void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
-  Result buildFinalSlice(methods::CreateDatabaseInfo const& database,
+
+  void buildFinalSlice(CreateDatabaseInfo const& database,
                          VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& database);
+  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////

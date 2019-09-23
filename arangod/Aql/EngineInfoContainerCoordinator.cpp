@@ -66,7 +66,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(!_nodes.empty());
   {
-    auto uniqEngine = std::make_unique<ExecutionEngine>(&query);
+    auto uniqEngine = std::make_unique<ExecutionEngine>(query);
     query.setEngine(uniqEngine.release());
   }
 

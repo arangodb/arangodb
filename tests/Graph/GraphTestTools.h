@@ -78,10 +78,8 @@ struct GraphTestSetup {
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
-                              system.get()),
+    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
                           false);  // must be before AqlFeature
@@ -130,7 +128,7 @@ struct MockGraphDatabase {
   std::vector<arangodb::graph::ShortestPathOptions*> spos;
 
   MockGraphDatabase(application_features::ApplicationServer& server, std::string name)
-      : vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, name) {}
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {
     for (auto& q : queries) {
@@ -209,6 +207,7 @@ struct MockGraphDatabase {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+
                                               *edges, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 

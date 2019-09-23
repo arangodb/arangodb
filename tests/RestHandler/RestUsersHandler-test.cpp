@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
@@ -137,7 +138,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   static const std::string userName("testUser");
   auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature.createDatabase(1, "testDatabase", vocbase).ok());
+  ASSERT_TRUE(databaseFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
   auto grantResponcePtr = std::make_unique<GeneralResponseMock>();

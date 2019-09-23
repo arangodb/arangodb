@@ -39,14 +39,14 @@ class QueryRegistry;
 class ExecutionEngine {
  public:
   /// @brief create the engine
-  explicit ExecutionEngine(Query* query);
+  explicit ExecutionEngine(Query& query);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
 
  public:
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*, ExecutionPlan*, bool);
+  static ExecutionEngine* instantiateFromPlan(QueryRegistry&, Query&, ExecutionPlan&, bool);
 
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    std::unordered_set<std::string> const& restrictToShards,
@@ -65,7 +65,7 @@ class ExecutionEngine {
   }
 
   /// @brief get the query
-  TEST_VIRTUAL Query* getQuery() const { return _query; }
+  TEST_VIRTUAL Query* getQuery() const { return &_query; }
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
@@ -88,11 +88,8 @@ class ExecutionEngine {
   bool initializeCursorCalled() const { return _initializeCursorCalled; }
 
   /// @brief add a block to the engine
-  TEST_VIRTUAL void addBlock(ExecutionBlock*);
-
-  /// @brief add a block to the engine
   /// @returns added block
-  ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>&&);
+  ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>);
 
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister) {
@@ -123,7 +120,7 @@ class ExecutionEngine {
   ExecutionBlock* _root;
 
   /// @brief a pointer to the query
-  Query* _query;
+  Query& _query;
 
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;

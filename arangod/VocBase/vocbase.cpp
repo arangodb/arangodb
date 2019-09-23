@@ -421,7 +421,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   auto it = _dataSourceByName.find(name);
 
   if (it != _dataSourceByName.end()) {
-    events::CreateCollection(this->name(), name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    events::CreateCollection(_name, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
@@ -435,7 +435,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
     // Let's try to persist it.
     collection->persistPhysicalCollection();
 
-    events::CreateCollection(this->name(), name, TRI_ERROR_NO_ERROR);
+    events::CreateCollection(_name, name, TRI_ERROR_NO_ERROR);
 
     return collection;
   } catch (...) {
@@ -691,11 +691,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
           engine->changeCollection(*this, *collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
-          events::DropCollection(name(), colName, ex.code());
+          events::DropCollection(_name, colName, ex.code());
           return ex.code();
         } catch (std::exception const&) {
           collection->deleted(false);
-          events::DropCollection(name(), colName, TRI_ERROR_INTERNAL);
+          events::DropCollection(_name, colName, TRI_ERROR_INTERNAL);
           return TRI_ERROR_INTERNAL;
         }
       }
@@ -726,7 +726,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
                                         false);  // always a full-update
 
       if (!res.ok()) {
-        events::DropCollection(name(), colName, res.errorNumber());
+        events::DropCollection(_name, colName, res.errorNumber());
         return res.errorNumber();
       }
 
@@ -742,11 +742,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     }
     default: {
       // unknown status
-      events::DropCollection(name(), colName, TRI_ERROR_INTERNAL);
+      events::DropCollection(_name, colName, TRI_ERROR_INTERNAL);
       return TRI_ERROR_INTERNAL;
     }
   }
-  events::DropCollection(name(), colName, TRI_ERROR_NO_ERROR);
+  events::DropCollection(_name, colName, TRI_ERROR_NO_ERROR);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1103,7 +1103,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
       name = VelocyPackHelper::getStringValue(parameters,
                                               StaticStrings::DataSourceName, "");
     }
-    events::CreateCollection(this->name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    events::CreateCollection(this->_name, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1216,14 +1216,14 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
   auto collection = lookupCollection(cid);
 
   if (!collection) {
-    events::DropCollection(name(), "", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    events::DropCollection(_name, "", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   if (!engine) {
-    events::DropCollection(name(), collection->name(), TRI_ERROR_INTERNAL);
+    events::DropCollection(_name, collection->name(), TRI_ERROR_INTERNAL);
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string(
@@ -1233,7 +1233,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
 
   if (!allowDropSystem && collection->system() && !engine->inRecovery()) {
     // prevent dropping of system collections
-    events::DropCollection(name(), collection->name(), TRI_ERROR_FORBIDDEN);
+    events::DropCollection(_name, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1260,7 +1260,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
     }
 
     if (state == DROP_PERFORM || state == DROP_EXIT) {
-      events::DropCollection(name(), collection->name(), res);
+      events::DropCollection(_name, collection->name(), res);
       return res;
     }
 
@@ -1283,7 +1283,7 @@ arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const&
     return Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to find feature 'Database' while renaming view '") +
-            view->name() + "' in database '" + name() + "'");
+            view->name() + "' in database '" + _name + "'");
   }
   auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
@@ -1292,7 +1292,7 @@ arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const&
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to find StorageEngine while renaming view '") +
-            view->name() + "' in database '" + name() + "'");
+            view->name() + "' in database '" + _name + "'");
   }
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
@@ -1533,7 +1533,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
       n = VelocyPackHelper::getStringValue(parameters,
                                            StaticStrings::DataSourceName, "");
     }
-    events::CreateView(name(), n, TRI_ERROR_INTERNAL);
+    events::CreateView(_name, n, TRI_ERROR_INTERNAL);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "failure to get storage engine during creation of view");
@@ -1546,7 +1546,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
       n = VelocyPackHelper::getStringValue(parameters,
                                            StaticStrings::DataSourceName, "");
     }
-    events::CreateView(name(), n, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    events::CreateView(_name, n, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1559,7 +1559,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
       n = VelocyPackHelper::getStringValue(parameters,
                                            StaticStrings::DataSourceName, "");
     }
-    events::CreateView(name(), n, res.errorNumber());
+    events::CreateView(_name, n, res.errorNumber());
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
         res.errorMessage().empty()
@@ -1572,7 +1572,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   auto itr = _dataSourceByName.find(view->name());
 
   if (itr != _dataSourceByName.end()) {
-    events::CreateView(name(), view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    events::CreateView(_name, view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
@@ -1587,11 +1587,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
     }
   } catch (...) {
     unregisterView(*view);
-    events::CreateView(name(), view->name(), TRI_ERROR_INTERNAL);
+    events::CreateView(_name, view->name(), TRI_ERROR_INTERNAL);
     throw;
   }
 
-  events::CreateView(name(), view->name(), TRI_ERROR_NO_ERROR);
+  events::CreateView(_name, view->name(), TRI_ERROR_NO_ERROR);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1609,14 +1609,14 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   auto const view = lookupView(cid);
 
   if (!view) {
-    events::DropView(name(), "", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    events::DropView(_name, "", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   if (!engine) {
-    events::DropView(name(), view->name(), TRI_ERROR_INTERNAL);
+    events::DropView(_name, view->name(), TRI_ERROR_INTERNAL);
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to find StorageEngine while dropping view '") +
@@ -1624,7 +1624,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   }
 
   if (!allowDropSystem && view->system() && !engine->inRecovery()) {
-    events::DropView(name(), view->name(), TRI_ERROR_FORBIDDEN);
+    events::DropView(_name, view->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;  // prevent dropping of system views
   }
 
@@ -1667,7 +1667,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   auto res = engine->dropView(*this, *view);
 
   if (!res.ok()) {
-    events::DropView(name(), view->name(), res.errorNumber());
+    events::DropView(_name, view->name(), res.errorNumber());
     return res;
   }
 
@@ -1682,7 +1682,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   locker.unlock();
   writeLocker.unlock();
 
-  events::DropView(name(), view->name(), TRI_ERROR_NO_ERROR);
+  events::DropView(_name, view->name(), TRI_ERROR_NO_ERROR);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1692,21 +1692,25 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   return TRI_ERROR_NO_ERROR;
 }
 
+/// todo add tick od
 /// @brief create a vocbase object
-TRI_vocbase_t::TRI_vocbase_t(application_features::ApplicationServer& server,
-                             TRI_vocbase_type_e type, TRI_voc_tick_t id,
-                             std::string const& name)
-    : _server(server),
-      _id(id),
-      _name(name),
-      _type(type),
-      _refCount(0),
-      _state(TRI_vocbase_t::State::NORMAL),
-      _isOwnAppsDirectory(true),
-      _deadlockDetector(false),
-      _userStructures(nullptr) {
-  auto& queryRegistry = server.getFeature<QueryRegistryFeature>();
-  _queries.reset(new arangodb::aql::QueryList(queryRegistry, this));
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
+                           arangodb::CreateDatabaseInfo const& info)
+  : _server(info.server()),
+    _id(info.getId()),
+    _name(info.getName()),
+    _type(type),
+    _refCount(0),
+    _state(TRI_vocbase_t::State::NORMAL),
+    _isOwnAppsDirectory(true),
+    _replicationFactor(info.replicationFactor()) ,
+    _minReplicationFactor(info.minReplicationFactor()) ,
+    _sharding(info.sharding()),
+    _deadlockDetector(false),
+    _userStructures(nullptr) {
+
+  QueryRegistryFeature& feature = info.server().getFeature<QueryRegistryFeature>();
+  _queries.reset(new arangodb::aql::QueryList(feature, this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
@@ -1744,6 +1748,18 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 std::string TRI_vocbase_t::path() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return engine->databasePath(this);
+}
+
+std::string const& TRI_vocbase_t::sharding() const {
+  return _sharding;
+}
+
+std::uint32_t TRI_vocbase_t::replicationFactor() const {
+  return _replicationFactor;
+}
+
+std::uint32_t TRI_vocbase_t::minReplicationFactor() const {
+  return _minReplicationFactor;
 }
 
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
@@ -1789,6 +1805,24 @@ void TRI_vocbase_t::addReplicationApplier() {
   TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
   _replicationApplier.reset(applier);
+}
+
+arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
+  {
+    VPackObjectBuilder b(&result);
+
+    result.add("name", VPackValue(_name));
+    result.add("id", VPackValue(std::to_string(_id)));
+    result.add("isSystem", VPackValue(isSystem()));
+
+    if (ServerState::instance()->isCoordinator()) {
+      result.add("path", VPackValue(path()));
+      arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _minReplicationFactor);
+    } else {
+      result.add("path", VPackValue("none"));
+    }
+  }
+  return Result();
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {

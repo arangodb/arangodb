@@ -33,6 +33,10 @@
 #include <velocypack/Iterator.h>
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct TestTermAttribute : public irs::term_attribute {
  public:
@@ -147,8 +151,7 @@ class IResearchQueryTokensTest : public IResearchQueryTest {};
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchQueryTokensTest, test) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 

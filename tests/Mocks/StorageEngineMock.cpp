@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngineMock.h"
-
 #include "Aql/AstNode.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
@@ -253,7 +252,7 @@ class EdgeIndexMock final : public arangodb::Index {
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
       arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-      size_t itemsInIndex) const override {
+                                             size_t itemsInIndex) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
     return matcher.matchOne(this, node, reference, itemsInIndex);
   }
@@ -312,7 +311,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   std::unique_ptr<arangodb::IndexIterator> createEqIterator(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-      arangodb::aql::AstNode const* valNode) const {
+                                                            arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -335,7 +334,7 @@ class EdgeIndexMock final : public arangodb::Index {
   /// @brief create the iterator
   std::unique_ptr<arangodb::IndexIterator> createInIterator(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-      arangodb::aql::AstNode const* valNode) const {
+                                                            arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -959,7 +958,7 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
                     std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
-      vocbaseCount(0),
+      vocbaseCount(1),
       _releasedTick(0) {}
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
@@ -967,7 +966,7 @@ arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   return nullptr;
 }
 
-void StorageEngineMock::addOptimizerRules() {
+void StorageEngineMock::addOptimizerRules(arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
   // NOOP
 }
@@ -1019,13 +1018,13 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
-  std::string cname = args.get("name").copyString();
+  arangodb::CreateDatabaseInfo info(server());
+  info.load(id, args, VPackSlice::emptyArraySlice());
+
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                                           id, cname);
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, info);
   }
-  return std::make_unique<TRI_vocbase_t>(server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         id, cname);
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, info);
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
@@ -1242,8 +1241,18 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
-  return std::make_unique<TRI_vocbase_t>(server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         vocbaseCount++, args.get("name").copyString());
+  arangodb::CreateDatabaseInfo info(server());
+  info.allowSystemDB(true);
+  auto rv = info.load(++vocbaseCount, args, VPackSlice::emptyArraySlice());
+  if(rv.fail()) {
+    THROW_ARANGO_EXCEPTION(rv);
+  }
+
+
+  return std::make_unique<TRI_vocbase_t>(
+    TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    info
+  );
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,

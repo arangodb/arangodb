@@ -86,6 +86,10 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+
+
 namespace {
 struct ClusterCommResetter : public arangodb::ClusterComm {
   static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }

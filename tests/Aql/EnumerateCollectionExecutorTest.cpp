@@ -25,6 +25,7 @@
 
 #include "gtest/gtest.h"
 
+#include "IResearch/common.h"
 #include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
 #include "fakeit.hpp"
@@ -94,8 +95,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   EnumerateCollectionExecutorTestNoRowsUpstream()
       : itemBlockManager(&monitor),
         server(),
-        vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                TRI_VOC_SYSTEM_DATABASE),
+        vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server())),
         json(arangodb::velocypack::Parser::fromJson(
             "{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }")),
         collection(vocbase, json->slice(), true),

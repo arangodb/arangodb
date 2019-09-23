@@ -159,19 +159,19 @@ TEST_F(IResearchFeatureTest, test_start) {
   enum class FunctionType { FILTER = 0, SCORER };
 
   std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
-      // filter functions
-      {"EXISTS", {".|.,.", FunctionType::FILTER}},
-      {"PHRASE", {".,.|.+", FunctionType::FILTER}},
-      {"STARTS_WITH", {".,.|.", FunctionType::FILTER}},
-      {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
+    // filter functions
+    { "EXISTS", { ".|.,.", FunctionType::FILTER } },
+    { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
+    { "STARTS_WITH", { ".,.|.", FunctionType::FILTER } },
+    { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
 
-      // context functions
-      {"ANALYZER", {".,.", FunctionType::FILTER}},
-      {"BOOST", {".,.", FunctionType::FILTER}},
+    // context functions
+    { "ANALYZER", { ".,.", FunctionType::FILTER } },
+    { "BOOST", { ".,.", FunctionType::FILTER } },
 
-      // scorer functions
-      {"BM25", {".|+", FunctionType::SCORER}},
-      {"TFIDF", {".|+", FunctionType::SCORER}},
+    // scorer functions
+    { "BM25", { ".|+", FunctionType::SCORER } },
+    { "TFIDF", { ".|+", FunctionType::SCORER } },
   };
 
   functions.prepare();
@@ -231,8 +231,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -317,8 +316,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -828,7 +826,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   auto& database = server.getFeature<arangodb::DatabaseFeature>();
-  ASSERT_TRUE(database.createDatabase(1, "testDatabase", vocbase).ok());
+  ASSERT_TRUE(database.createDatabase(testDBInfo(server.server()), vocbase).ok());
 
   // simulate heartbeat thread (create database in current)
   // this is stupid.
@@ -1045,8 +1043,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice());
@@ -1120,8 +1117,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice());

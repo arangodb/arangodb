@@ -245,9 +245,12 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
   auto& request = *requestPtr;
+
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
+
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(),
+                                                   requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openArray();
@@ -791,8 +794,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_author
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
 
   // TODO
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "unknownVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -824,8 +826,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_au
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
 
   // TODO
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "unknownVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1381,7 +1382,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   ASSERT_EQ(nullptr, analyzer);
 }
 
-// removal with db name in analyzer name
+//  removal with  db name in analyzer name
 TEST_F(RestAnalyzerHandlerTest, test_remove_with_db_name) {
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 

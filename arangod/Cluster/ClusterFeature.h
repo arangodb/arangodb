@@ -67,7 +67,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myRole;
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
-  uint32_t _systemReplicationFactor = 2;
+  std::uint32_t _systemReplicationFactor = 2;
+  std::uint32_t _defaultReplicationFactor = 1; // default replication factor for non-system collections
+  std::uint32_t _minReplicationFactor = 1;     // default minimum replication factor
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
 
@@ -89,7 +91,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _createWaitsForSyncReplication;
   };
   double indexCreationTimeout() const { return _indexCreationTimeout; }
-  uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
+  std::uint32_t systemReplicationFactor() const { return _systemReplicationFactor; };
+  std::uint32_t defaultReplicationFactor() const { return _defaultReplicationFactor; };
+  std::uint32_t minReplicationFactor() const { return _minReplicationFactor; };
 
   void stop() override final;
 

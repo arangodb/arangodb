@@ -253,6 +253,8 @@ struct CustomScorer : public irs::sort {
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 namespace arangodb {
@@ -334,7 +336,8 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
-    expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
+    arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
+    expectedRules.emplace(translated.toString());
   }
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
@@ -743,6 +746,29 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.fail());
 }
+
+arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id, bool allowSystem) {
+  arangodb::CreateDatabaseInfo info(server);
+  info.allowSystemDB(allowSystem);
+  auto rv = info.load(name, id);
+  if(rv.fail()) {
+    throw std::runtime_error(rv.errorMessage());
+  }
+  return info;
+};
+
+arangodb::CreateDatabaseInfo systemDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
+  auto rv =  createInfo(server, name, id, true);
+  return rv;
+};
+
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
+  return createInfo(server, name, id);
+};
+
+arangodb::CreateDatabaseInfo unknownDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
+  return createInfo(server, name, id);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

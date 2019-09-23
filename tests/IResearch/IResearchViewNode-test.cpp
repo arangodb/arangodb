@@ -84,6 +84,10 @@
 #include "velocypack/Iterator.h"
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class IResearchViewNodeTest : public ::testing::Test {
  protected:
@@ -123,8 +127,7 @@ class IResearchViewNodeTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(IResearchViewNodeTest, constructSortedView) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ "
@@ -283,8 +286,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, construct) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -455,8 +457,7 @@ TEST_F(IResearchViewNodeTest, construct) {
 }
 
 TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -883,8 +884,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, clone) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -1294,8 +1294,7 @@ TEST_F(IResearchViewNodeTest, clone) {
 }
 
 TEST_F(IResearchViewNodeTest, serialize) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -1474,8 +1473,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
 }
 
 TEST_F(IResearchViewNodeTest, serializeSortedView) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"primarySort\" : "
@@ -1663,8 +1661,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, collections) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   std::shared_ptr<arangodb::LogicalCollection> collection1;
@@ -1751,8 +1748,7 @@ TEST_F(IResearchViewNodeTest, collections) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
@@ -1806,7 +1802,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   query.prepare(arangodb::QueryRegistryFeature::registry());
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(query);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1878,8 +1874,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
-  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
@@ -1892,7 +1887,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   query.prepare(arangodb::QueryRegistryFeature::registry());
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(query);
   arangodb::aql::SingletonNode singleton(query.plan(), 0);
   arangodb::aql::Variable const outVariable("variable", 0);
 

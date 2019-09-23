@@ -46,7 +46,7 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Methods/Databases.h"
+#include "VocBase/VocbaseInfo.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -621,7 +621,10 @@ void ClusterInfo::loadPlan() {
               arangodb::basics::VelocyPackHelper::stringUInt64(database.value,
                                                                StaticStrings::DatabaseId);
           // create a local database object...
-          Result res = databaseFeature.createDatabase(id, name, vocbase);
+          arangodb::CreateDatabaseInfo info(_server);
+          info.load(name, id);
+
+          Result res = databaseFeature.createDatabase(info, vocbase);
 
           if (res.fail()) {
             LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
@@ -1454,32 +1457,28 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry
-Result ClusterInfo::buildIsBuildingSlice(methods::CreateDatabaseInfo const& database,
+void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                          VPackBuilder& builder) {
-  database.buildSlice(builder);
+  VPackObjectBuilder guard(&builder);
+  database.toVelocyPack(builder);
 
   builder.add(StaticStrings::DatabaseCoordinator,
               VPackValue(ServerState::instance()->getId()));
   builder.add(StaticStrings::DatabaseCoordinatorRebootId,
               VPackValue(ServerState::instance()->getRebootId()));
   builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(true));
-
-  builder.close();
-
-  return Result();
 }
 
 // Build the VPackSlice that does not contain  the `isBuilding` entry
-Result ClusterInfo::buildFinalSlice(methods::CreateDatabaseInfo const& database,
+void ClusterInfo::buildFinalSlice(CreateDatabaseInfo const& database,
                                     VPackBuilder& builder) {
-  database.buildSlice(builder);
-  builder.close();
-  return Result();
+  VPackObjectBuilder guard(&builder);
+  database.toVelocyPack(builder);
 }
 
 // This waits for the database described in `database` to turn up in `Current`
 // and no DBServer is allowed to report an error.
-Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& database) {
+Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database) {
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1578,7 +1577,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& 
 
 // Start creating a database in a coordinator by entering it into Plan/Databases with,
 // status flag `isBuilding`; this makes the database invisible to the outside world.
-Result ClusterInfo::createIsBuildingDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
+Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database) {
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1631,7 +1630,7 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(methods::CreateDatabaseI
 
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
 // as precondition that the entry we put in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
-Result ClusterInfo::createFinalizeDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
+Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database) {
   AgencyComm ac;
 
   VPackBuilder pcBuilder;
@@ -1668,7 +1667,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(methods::CreateDatabaseInf
 }
 
 // This function can only return on success or when the cluster is shutting down.
-Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
+Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database) {
   AgencyComm ac;
 
   VPackBuilder builder;

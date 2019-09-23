@@ -35,11 +35,11 @@ bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
 
   if (res->status == CL_COMM_ERROR) {
     LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-        << _url << "(" << res->status << ", " << res->errorMessage
-        << "): " << _body->toJson();
+      << _url << "(" << res->status << ", " << res->errorMessage
+      << "): " << _body->toJson();
 
     if (res->result->getHttpReturnCode() == 404 && _agent != nullptr) {
-      LOG_TOPIC("9ebf0", DEBUG, Logger::AGENCY) << "dropping dead callback at " << _url;
+      LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << _url;
       _agent->trashStoreCallback(_url, _body);
     }
   }

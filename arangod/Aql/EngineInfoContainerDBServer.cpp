@@ -366,7 +366,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     // we need to count nodes by type ourselves, as we will set the
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
-    
+
     if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
       auto x = dynamic_cast<CollectionAccessingNode*>(clone);
       auto const* prototype = x->prototypeCollection();
@@ -419,7 +419,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
   plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
 
-  // remove shard id hack for all participating collections 
+  // remove shard id hack for all participating collections
   for (auto& it : cleanup) {
     it->resetCurrentShard();
   }
@@ -440,7 +440,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: 
+    case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX: {
       auto* scatter = findFirstScatter(*node);
       auto const* colNode = dynamic_cast<CollectionAccessingNode const*>(node);
@@ -549,7 +549,7 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
   // What if we have an empty shard list here?
   if (shards->empty()) {
     // TODO FIXME
-    LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
+    LOG_TOPIC("0197e", WARN, arangodb::Logger::AQL)
         << "TEMPORARY: A collection access of a query has no result in any "
            "shard";
   }
@@ -1054,7 +1054,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
-    LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
+    LOG_TOPIC("41be6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
     infoBuilder.clear();
     it.second.buildMessage(it.first, *this, _query, infoBuilder);
     LOG_TOPIC("2f1fd", DEBUG, arangodb::Logger::AQL)
@@ -1063,7 +1063,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
-    
+
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
@@ -1075,10 +1075,10 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
+      LOG_TOPIC("f9a7a", DEBUG, Logger::AQL)
           << it.first << " responded with " << res->getErrorCode() << " -> "
           << res->stringifyErrorMessage();
-      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoBuilder.toJson();
+      LOG_TOPIC("4108a", TRACE, Logger::AQL) << infoBuilder.toJson();
       return {res->getErrorCode(), res->stringifyErrorMessage()};
     }
 
@@ -1086,7 +1086,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     VPackSlice response = builder->slice();
 
     if (!response.isObject() || !response.get("result").isObject()) {
-      LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
+      LOG_TOPIC("0c3fa", ERR, Logger::AQL) << "Received error information from "
                                   << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
@@ -1215,16 +1215,16 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
       }
     }
   }
-  
+
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
         "/_internal/traverser/";
   std::unordered_map<std::string, std::string> headers;
   std::shared_ptr<std::string> noBody;
-  
+
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto cb = std::make_shared<::NoopCb>();
-  
+
   constexpr double shortTimeout = 10.0;  // Picked arbitrarily
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
@@ -1235,6 +1235,6 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
     }
     _query.incHttpRequests(allEngines->size());
   }
-  
+
   queryIds.clear();
 }

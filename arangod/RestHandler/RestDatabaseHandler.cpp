@@ -87,8 +87,8 @@ RestStatus RestDatabaseHandler::getDatabases() {
       builder.add(VPackValue(name));
     }
     builder.close();
-  } else if (suffixes[0] == "current") {
-    res = methods::Databases::info(&_vocbase, builder);
+  } else if (suffixes[0] == "current" || suffixes[0] == "properties") {
+    res = _vocbase.toVelocyPack(builder);
   }
 
   if (res.fail()) {
