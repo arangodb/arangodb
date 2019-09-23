@@ -2359,6 +2359,13 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
+bool ExecutionPlan::fullCount() const noexcept {
+  LimitNode* lastLimitNode = _lastLimitNode == nullptr
+                             ? nullptr
+                             : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
+  return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+
 bool ExecutionPlan::empty() const { return (_root == nullptr); }
 
 void ExecutionPlan::addAppliedRule(int level) {
@@ -2419,7 +2426,6 @@ void ExecutionPlan::clearVarUsageComputed() { _varUsageComputed = false; }
 void ExecutionPlan::planRegisters() { _root->planRegisters(); }
 
 Ast* ExecutionPlan::getAst() const { return _ast; }
-
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
