@@ -817,6 +817,8 @@ class LimitNode : public ExecutionNode {
   /// @brief tell the node to fully count what it will limit
   void setFullCount() { _fullCount = true; }
 
+  bool fullCount() const noexcept { return _fullCount; }
+
   /// @brief return the offset value
   size_t offset() const { return _offset; }
 
