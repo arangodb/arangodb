@@ -280,8 +280,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
 
 ConstFetcherHelper::~ConstFetcherHelper() = default;
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow() {
-  return ConstFetcher::fetchRow();
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow(size_t atMost) {
+  return ConstFetcher::fetchRow(atMost);
 };
 
 template class ::arangodb::tests::aql::SingleRowFetcherHelper<false>;

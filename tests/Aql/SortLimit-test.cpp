@@ -50,6 +50,9 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 // -----------------------------------------------------------------------------
@@ -88,7 +91,7 @@ class SortLimitTest : public ::testing::Test {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
+                                             systemDBInfo());
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
@@ -114,8 +117,7 @@ class SortLimitTest : public ::testing::Test {
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
             "DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
     CreateCollection();
   }

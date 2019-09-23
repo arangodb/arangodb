@@ -256,17 +256,21 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
+
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
 
     if (info.name.empty()) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-    } else if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-               info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    }
+
+    if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+        info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
     }
+
     TRI_ASSERT(info.properties.isObject());
     helper.clear();
     helper.openObject();
@@ -274,7 +278,49 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                arangodb::velocypack::Value(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
+
+    if (ServerState::instance()->isCoordinator()) {
+      auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+      if (replicationFactorSlice.isNone()) {
+        auto factor = vocbase.replicationFactor();
+        if (factor > 0 && vocbase.IsSystemName(info.name)) {
+          auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
+          factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
+        }
+        helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
+      }
+
+      bool hasDistribute = false;
+      auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
+      if (!distribute.isNone()) {
+        hasDistribute = true;
+      }
+
+      // system collections will be sharded normally - we avoid a self reference when creating _graphs
+      if (vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
+        if(!hasDistribute) {
+          helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+          hasDistribute = true;
+        } else if (distribute.isString() && distribute.compareString("") == 0) {
+          helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+        }
+      }
+
+      if (!hasDistribute) {
+        auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+        if (minReplicationFactorSlice.isNone()) {
+          auto factor = vocbase.minReplicationFactor();
+          helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
+        }
+      }
+    } else  { // single server
+      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+      helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());
+    }
+
     helper.close();
+
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
@@ -292,6 +338,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
     builder.add(merged.slice());
   }
+
   TRI_ASSERT(builder.isOpenArray());
   builder.close();
 
@@ -394,26 +441,29 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 }
 
 void Collections::createSystemCollectionProperties(std::string collectionName,
-                                                   VPackBuilder& bb, bool isSystem) {
-  uint32_t defaultReplFactor = 1;
-  uint32_t defaultMinReplFactor = 1;
+                                                   VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
 
-  auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
-      "Cluster");
+  uint32_t defaultReplFactor = vocbase.replicationFactor();
+  uint32_t defaultMinReplFactor = vocbase.minReplicationFactor();
 
+  //TODO get options form builder
+
+  auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
   if (cl != nullptr) {
-    defaultReplFactor = cl->systemReplicationFactor();
+    defaultReplFactor = std::max(defaultReplFactor,cl->systemReplicationFactor());
   }
+
 
   {
     VPackObjectBuilder scope(&bb);
     bb.add("isSystem", VPackSlice::trueSlice());
     bb.add("waitForSync", VPackSlice::falseSlice());
     bb.add("journalSize", VPackValue(1024 * 1024));
-    bb.add("replicationFactor", VPackValue(defaultReplFactor));
-    bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
+    bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplFactor));
+    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultMinReplFactor));
+
     // that forces all collections to be on the same physical DBserver
-    if (isSystem) {
+    if (vocbase.isSystem()) {
       if (collectionName != StaticStrings::UsersCollection) {
         bb.add("distributeShardsLike", VPackValue(StaticStrings::UsersCollection));
       }
@@ -444,7 +494,7 @@ void Collections::createSystemCollectionProperties(std::string collectionName,
     return {res, createdCollection};
   } else if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     VPackBuilder bb;
-    createSystemCollectionProperties(name, bb, vocbase.isSystem());
+    createSystemCollectionProperties(name, bb, vocbase);
 
     res = Collections::create(vocbase,  // vocbase to create in
                               name,     // collection name top create
@@ -703,7 +753,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     bool allowDropSystem,  // allow dropping system collection
     double timeout         // single-server drop timeout
 ) {
-  
+
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(coll.vocbase().name(), auth::Level::RW) || // vocbase modifiable
       !exec.canUseCollection(coll.name(), auth::Level::RW)) { // collection modifiable
@@ -766,7 +816,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
   auto poster = [](std::function<void()> fn) -> bool {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
-  
+
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
   auto idxs = coll.getIndexes();

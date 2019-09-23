@@ -154,8 +154,7 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
-void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
+void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 
 /// @brief try to restrict fragments to a single shard if possible

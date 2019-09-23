@@ -38,12 +38,14 @@ class WalkerWorker {
 
   virtual ~WalkerWorker() = default;
 
+  /// @brief return true to abort walking, false otherwise
   virtual bool before(T*) {
     return false;  // true to abort the whole walking process
   }
 
   virtual void after(T*) {}
 
+  /// @brief return true to enter subqueries, false otherwise
   virtual bool enterSubquery(T*, T*) {  // super, sub
     return true;
   }
@@ -52,9 +54,9 @@ class WalkerWorker {
                              T*   // sub
   ) {}
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-
-  bool done(T* en) {
+  virtual bool done(T* en) {
+    // this is a no-op in non-maintainer mode
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // make sure a node is only processed once
     if (_done.emplace(en).second) {
       return false;
@@ -64,22 +66,20 @@ class WalkerWorker {
     TRI_ASSERT(false);
 
     return true;
+#else
+    return false;
+#endif
   }
 
-  void reset() { _done.clear(); }
-
-#else
-
-  // this is a no-op in non-failure mode
-  bool done(T*) { return false; }
-
-  // this is a no-op in non-failure mode
-  void reset() {}
-
+  void reset() {
+    // this is a no-op in non-failure mode
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _done.clear();
 #endif
+  }
 
  private:
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   arangodb::HashSet<T*> _done;
 #endif
 };

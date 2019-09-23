@@ -47,9 +47,10 @@ ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Sl
                            : true) {}
 
 /// @brief toVelocyPack
-void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
+void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
+                                          std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
@@ -91,14 +92,16 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
     c->disableStatistics();
   }
   c->producesResults(_producesResults);
+  CollectionAccessingNode::cloneInto(*c);
 }
 
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
-void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags);
+void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags, seen);
   ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
@@ -166,8 +169,9 @@ InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack
-void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags);  // call base class method
+void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
 
   // Now put info about vocbase and cid in there
   nodes.add(VPackValue("inVariable"));
@@ -245,8 +249,9 @@ UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
       _inKeyVariable(
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", true)) {}
 
-void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags);
+void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                           std::unordered_set<ExecutionNode const*>& seen) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags, seen);
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 
@@ -261,8 +266,9 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : UpdateReplaceNode(plan, base) {}
 
 /// @brief toVelocyPack
-void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  UpdateReplaceNode::toVelocyPackHelper(nodes, flags);
+void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
+  UpdateReplaceNode::toVelocyPackHelper(nodes, flags, seen);
   ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
   nodes.close();
 }
@@ -335,8 +341,9 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan, arangodb::velocypack::Slice const&
     : UpdateReplaceNode(plan, base) {}
 
 /// @brief toVelocyPack
-void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  UpdateReplaceNode::toVelocyPackHelper(nodes, flags);
+void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                     std::unordered_set<ExecutionNode const*>& seen) const {
+  UpdateReplaceNode::toVelocyPackHelper(nodes, flags, seen);
   ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
   nodes.close();
 }
@@ -416,8 +423,9 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
-void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags);
+void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags, seen);
   ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   nodes.add(VPackValue("inDocVariable"));
