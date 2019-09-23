@@ -69,7 +69,7 @@
 // -----------------------------------------------------------------------------
 
 class V8UsersTest : public ::testing::Test {
-public:
+ public:
   static std::string const COLLECTION_NAME;
   static std::string const DB_NAME;
   static std::string const USERNAME;
@@ -112,12 +112,13 @@ TEST_F(V8UsersTest, test_collection_auth) {
   auto v8g = helper.v8Globals();
   v8::Context::Scope contextScope(helper.v8Context());
 
-  auto exec = helper.createExecContext(arangodb::auth::AuthUser{V8UsersTest::USERNAME},
-			   arangodb::auth::DatabaseResource{V8UsersTest::DB_NAME});
+  auto exec =
+      helper.createExecContext(arangodb::auth::AuthUser{V8UsersTest::USERNAME},
+                               arangodb::auth::DatabaseResource{V8UsersTest::DB_NAME});
   arangodb::ExecContext::Scope execContextScope(exec.get());
 
   arangodb::auth::CollectionResource const collectionResource{V8UsersTest::DB_NAME,
-                                                        V8UsersTest::COLLECTION_NAME};
+                                                              V8UsersTest::COLLECTION_NAME};
   auto const RW = arangodb::auth::Level::RW;
   auto const RO = arangodb::auth::Level::RO;
 
