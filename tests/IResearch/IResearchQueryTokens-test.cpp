@@ -35,8 +35,6 @@
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct TestTermAttribute : public irs::term_attribute {
  public:

@@ -64,9 +64,6 @@
 #include "src/objects/scope-info.h"
 
 namespace {
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-
 class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
   virtual void* Allocate(size_t length) override {

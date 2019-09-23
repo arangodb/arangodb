@@ -115,8 +115,6 @@ REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::norma
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 // -----------------------------------------------------------------------------

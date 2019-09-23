@@ -32,8 +32,6 @@
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
 
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------

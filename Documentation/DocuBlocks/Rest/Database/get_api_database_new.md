@@ -11,10 +11,10 @@ Has to contain a valid database name.
 Optional object which can contain the following attributes:
 
 @RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
-The sharding method to use for new collections in this databse. Valid values
-are: "", "flexible", or "single". The first two are equivalent
+The sharding method to use for new collections in this database. Valid values
+are: "", "flexible", or "single". The first two are equivalent.
 
-@RESTSTRUC{replicationFactor,get_api_database_new_USERS,string,optional,number}
+@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,number}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
 every DB-server, and 1, which disables replication.

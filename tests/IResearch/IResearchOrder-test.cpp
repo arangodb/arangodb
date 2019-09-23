@@ -49,8 +49,6 @@
 #include "utils/misc.hpp"
 
 namespace {
-static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct dummy_scorer : public irs::sort {
   static std::function<bool(irs::string_ref const&)> validateArgs;
