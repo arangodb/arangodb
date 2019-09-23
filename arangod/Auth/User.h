@@ -25,9 +25,10 @@
 #ifndef ARANGOD_AUTHENTICATION_USER_H
 #define ARANGOD_AUTHENTICATION_USER_H 1
 
+#include "Auth/Common.h"
+
 #include <set>
 
-#include "Auth/Common.h"
 #include "Auth/CollectionResource.h"
 #include "VocBase/voc-types.h"
 
