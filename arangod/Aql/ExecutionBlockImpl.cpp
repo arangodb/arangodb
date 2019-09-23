@@ -75,18 +75,15 @@ using namespace arangodb::aql;
 #define CREATE_HAS_MEMBER_CHECK(methodName, checkName)     \
   template <typename T>                                    \
   class checkName {                                        \
-    typedef char yes[1];                                   \
-    typedef char no[2];                                    \
-                                                           \
     template <typename C>                                  \
-    static yes& test(decltype(&C::methodName));            \
+    static std::true_type test(decltype(&C::methodName));  \
     template <typename C>                                  \
-    static yes& test(decltype(&C::template methodName<>)); \
+    static std::true_type test(decltype(&C::template methodName<>)); \
     template <typename>                                    \
-    static no& test(...);                                  \
+    static std::false_type test(...);                      \
                                                            \
    public:                                                 \
-    enum { value = sizeof(test<T>(0)) == sizeof(yes) };    \
+    static constexpr bool value = decltype(test<T>(0))::value;    \
   }
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
