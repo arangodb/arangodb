@@ -113,7 +113,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   if (_prototypeCollection != nullptr) {
     builder.add("prototype", VPackValue(_prototypeCollection->name()));
   }
-  builder.add("satellite", VPackValue(_collection->isSatellite()));
+  builder.add(StaticStrings::Satellite, VPackValue(_collection->isSatellite()));
 
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
@@ -123,6 +123,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
 #ifdef USE_ENTERPRISE
+  // why do we have _isSatellite and _collection->isSatellite()?
   builder.add("isSatellite", VPackValue(_isSatellite));
 #endif
 }

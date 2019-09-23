@@ -1286,10 +1286,10 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))](Result r) -> Future<OperationResult> {
     std::string const& dbname = trx.vocbase().name();
     std::string const baseUrl =
-    "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=";
+    "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
     
     std::string const optsUrlPart =
-    std::string("&waitForSync=") + (options.waitForSync ? "true" : "false") +
+    std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
     "&returnNew=" + (options.returnNew ? "true" : "false") +
     "&returnOld=" + (options.returnOld ? "true" : "false") +
     "&isRestore=" + (options.isRestore ? "true" : "false") + "&" +
@@ -1670,6 +1670,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     }
     
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result r) -> Future<OperationResult> {
+      if (r.fail()) {
+        return OperationResult(std::move(r));
+      }
       
       // Now prepare the requests:
       std::vector<Future<network::Response>> futures;
