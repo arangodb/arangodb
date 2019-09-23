@@ -54,12 +54,10 @@ void MessageHeader::addMeta(StringMap const& map) {
 
 void MessageHeader::setMeta(StringMap map) {
   if (!this->_meta.empty()) {
-    for (auto& pair : this->_meta) {
-      std::cout << pair.first << " : " << pair.second << std::endl;
-    }
-    abort();
+    addMeta(map);
+  } else {
+    this->_meta = std::move(map);
   }
-  this->_meta = std::move(map);
 }
 
 // Get value for header metadata key, returns empty string if not found.
