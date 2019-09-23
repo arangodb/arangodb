@@ -410,7 +410,7 @@ void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t const atMost
 }
 
 bool SortingGatherExecutor::maySkip() const noexcept {
-  TRI_ASSERT(_rowsReturned <= _limit);
+  TRI_ASSERT(!constrainedSort() || _rowsReturned <= _limit);
   return constrainedSort() && _rowsReturned >= _limit;
 }
 
