@@ -207,7 +207,7 @@ class IResearchQueryStringTermTest : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchQueryStringTermTest, test) {
+TEST_F(IResearchQueryStringTermTest, DISABLED_test) {
   // ArangoDB specific string comparer
   struct StringComparer {
     bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
