@@ -104,7 +104,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
       LOG_TOPIC("775bd", ERR, _topic) << "Could not connect to endpoint '"
                              << client->endpoint() << "', database: '" << dbName
                              << "', username: '" << client->username() << "'";
-      LOG_TOPIC("b1ad6", ERR, _topic) << "Error message: '" << httpClient->getErrorMessage() << "'";
+      LOG_TOPIC("b1ad6", ERR, _topic) << "Server Error message: '" << httpClient->getErrorMessage() << "'";
     }
 
     return {errorCode};

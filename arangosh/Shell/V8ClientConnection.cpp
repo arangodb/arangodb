@@ -72,6 +72,7 @@ V8ClientConnection::V8ClientConnection()
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
+  /*
   _builder.onFailure([this](fuerte::Error error, std::string const& msg) {
     std::unique_lock<std::recursive_mutex> guard(_lock, std::try_to_lock);
     if (guard) {
@@ -79,6 +80,7 @@ V8ClientConnection::V8ClientConnection()
       _lastErrorMessage = msg;
     }
   });
+  */
 }
 
 V8ClientConnection::~V8ClientConnection() {
@@ -105,8 +107,26 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
           if (newConnection != nullptr) {
             continue;
           }
+        } else {
+          std::shared_ptr<VPackBuilder> parsedBody;
+          VPackSlice body;
+          if (res->contentType() == fuerte::ContentType::VPack) {
+            body = res->slice();
+          } else {
+            parsedBody =
+              VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
+                                    res->payload().size());
+            body = parsedBody->slice();
+          }
+          if (!body.isObject()) {
+            _lastErrorMessage = "invalid response";
+            _lastHttpReturnCode = 503;
+          } else {
+            _lastErrorMessage = VelocyPackHelper::getStringValue(body, "errorMessage", "");
+            _lastHttpReturnCode = 401;
+            return nullptr;
+          }
         }
-        return nullptr;
       }
       if (_lastHttpReturnCode >= 400) {
         auto const& headers = res->messageHeader().meta;
@@ -414,7 +434,8 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     if (client->getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
           << "Could not connect to endpoint '" << client->endpoint()
-          << "', username: '" << client->username() << "'";
+          << "', username: '" << client->username() << "' - Servermessage: " <<
+        _lastErrorMessage;
     }
 
     std::string errorMsg = "could not connect";

@@ -372,7 +372,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         auto client = server()->getFeature<ClientFeature>("Client");
         is << "Could not connect to endpoint '" << client->endpoint()
            << "', database: '" << v8connection->databaseName()
-           << "', username: '" << v8connection->username() << "'";
+           << "', username: '" << v8connection->username() << "' "
+           << " server error message: " << v8connection->lastErrorMessage();
 
         _console->printErrorLine(is.str());
 
