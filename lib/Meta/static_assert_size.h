@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,32 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCKING_H
-#define ARANGODB_BASICS_LOCKING_H 1
-
-#include "Basics/Common.h"
-
-#undef ARANGODB_SHOW_LOCK_TIME
-#define TRI_SHOW_LOCK_THRESHOLD 0.000199
+#ifndef ARANGODB_META_STATIC_ASSERT_SIZE_H
+#define ARANGODB_META_STATIC_ASSERT_SIZE_H 1
 
 namespace arangodb {
-namespace basics {
+namespace meta {
+namespace details {
 
-enum class LockerType {
-  BLOCKING,  // always lock, blocking if the lock cannot be acquired instantly
-  EVENTUAL,  // always lock, sleeping while the lock is not acquired
-  TRY  // try to acquire the lock and give up instantly if it cannot be acquired
-};
+// This template function allows to statically assert the size of a type, while giving
+// useful error messages about the actual sizes in question.
+//
+// This is for example useful to make sure methods are checked if someone adds member
+// variables to classes or structs
+template <typename Scrutinee, std::size_t ExpectedSize, std::size_t Size = sizeof(Scrutinee)>
+void static_assert_size() {
+    static_assert(ExpectedSize == Size, "Type does not have the expected size.");
+}
 
-namespace ConditionalLocking {
-static constexpr bool DoLock = true;
-static constexpr bool DoNotLock = false;
-}  // namespace ConditionalLocking
-
-}  // namespace basics
+}  // namespace details
+}  // namespace meta
 }  // namespace arangodb
 
 #endif

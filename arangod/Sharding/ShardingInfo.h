@@ -90,7 +90,7 @@ class ShardingInfo {
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           ShardID& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "");
+                          arangodb::velocypack::StringRef const&);
 
  private:
   // @brief the logical collection we are working for

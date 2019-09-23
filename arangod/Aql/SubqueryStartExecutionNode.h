@@ -21,86 +21,40 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H
 #define ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
+
+namespace arangodb {
+namespace aql {
 
 class SubqueryStartNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
 
  public:
-  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  SubqueryStartNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
-  SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery, Variable const* outVariable)
-      : ExecutionNode(plan, id), _subquery(subquery), _outVariable(outVariable) {
-    TRI_ASSERT(_subquery != nullptr);
-    TRI_ASSERT(_outVariable != nullptr);
-  }
+  CostEstimate estimateCost() const override final;
 
-  /// @brief return the type of the node
-  NodeType getType() const override final { return SUBQUERY; }
+  NodeType getType() const override final { return SUBQUERY_START; }
 
-  /// @brief invalidate the cost estimate for the node and its dependencies
-  void invalidateCost() override;
-
-  /// @brief return the out variable
-  Variable const* outVariable() const { return _outVariable; }
-
-  /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
-  /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
-  /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  /// @brief whether or not the subquery is a data-modification operation
-  bool isModificationSubquery() const;
-
-  /// @brief getter for subquery
-  ExecutionNode* getSubquery() const { return _subquery; }
-
-  /// @brief setter for subquery
-  void setSubquery(ExecutionNode* subquery, bool forceOverwrite) {
-    TRI_ASSERT(subquery != nullptr);
-    TRI_ASSERT((forceOverwrite && _subquery != nullptr) ||
-               (!forceOverwrite && _subquery == nullptr));
-    _subquery = subquery;
-  }
-
-  /// @brief estimateCost
-  CostEstimate estimateCost() const override final;
-
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
-
-  /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    return std::vector<Variable const*>{_outVariable};
-  }
-
-  /// @brief replace the out variable, so we can adjust the name.
-  void replaceOutVariable(Variable const* var);
-
-  bool isDeterministic() override final;
-
-  bool isConst();
-  bool mayAccessCollections();
-
- private:
-  /// @brief we need to have an expression and where to write the result
-  ExecutionNode* _subquery;
-
-  /// @brief variable to write to
-  Variable const* _outVariable;
+  bool isEqualTo(ExecutionNode const& other) const override final;
 };
 
-#endif
+}  // namespace aql
+}  // namespace arangodb
 
+#endif

@@ -1,6 +1,12 @@
 devel
 -----
 
+* Remove operations documents in the cluster will now use an optimization, if all sharding keys 
+  were specified. Should the sharding keys not match the values in the actual document
+  a not found error will be returned.
+
+* Fixed AQL constrained-heap sort in conjunction with fullCount.
+
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
   This affected at least /_admin/cluster/health.
 

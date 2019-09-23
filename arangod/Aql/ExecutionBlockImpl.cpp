@@ -190,7 +190,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   TRI_ASSERT(state == ExecutionState::HASMORE);
   // When we're passing blocks through we have no control over the size of the
   // output block.
-  if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough) {
+  // Plus, the ConstrainedSortExecutor will report an expectedNumberOfRows
+  // according to its heap size, thus resulting in a smaller allocated output
+  // block. However, it won't report DONE after, because a LIMIT block with
+  // fullCount must continue to count after the sorted output.
+  if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough &&
+                      !std::is_same<Executor, ConstrainedSortExecutor>::value) {
     TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
   }
 
@@ -281,11 +286,13 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-                     std::is_same<Executor, LimitExecutor>::value),
+                     std::is_same<Executor, LimitExecutor>::value ||
+                     std::is_same<Executor, ConstrainedSortExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
-  static_assert(!std::is_same<Executor, LimitExecutor>::value || useFetcher,
+  static_assert(
+      !std::is_same<Executor, LimitExecutor>::value || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
 
   if (useExecutor) {
@@ -511,7 +518,11 @@ namespace arangodb {
 namespace aql {
 
 // The constant "PASSTHROUGH" is somehow reserved with MSVC.
-enum class RequestWrappedBlockVariant { DEFAULT , PASS_THROUGH , INPUTRESTRICTED };
+enum class RequestWrappedBlockVariant {
+  DEFAULT,
+  PASS_THROUGH,
+  INPUTRESTRICTED
+};
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
@@ -546,9 +557,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
       typename Executor::Infos const& infos,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(
-        Executor::Properties::allowsBlockPassthrough,
-        "This function can only be used with executors supporting `allowsBlockPassthrough`");
+    static_assert(Executor::Properties::allowsBlockPassthrough,
+                  "This function can only be used with executors supporting "
+                  "`allowsBlockPassthrough`");
     static_assert(hasFetchBlockForPassthrough<Executor>::value,
                   "An Executor with allowsBlockPassthrough must implement "
                   "fetchBlockForPassthrough");
@@ -602,9 +613,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
       typename Executor::Infos const&,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(
-        Executor::Properties::inputSizeRestrictsOutputSize,
-        "This function can only be used with executors supporting `inputSizeRestrictsOutputSize`");
+    static_assert(Executor::Properties::inputSizeRestrictsOutputSize,
+                  "This function can only be used with executors supporting "
+                  "`inputSizeRestrictsOutputSize`");
     static_assert(hasExpectedNumberOfRows<Executor>::value,
                   "An Executor with inputSizeRestrictsOutputSize must "
                   "implement expectedNumberOfRows");

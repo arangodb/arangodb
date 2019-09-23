@@ -458,7 +458,7 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
 
 int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
                                       ShardID& shardID, bool& usesDefaultShardKeys,
-                                      std::string const& key) {
+                                      VPackStringRef const& key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
 }

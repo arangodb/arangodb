@@ -1452,7 +1452,7 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int64_t int64(std::string const& value) {
   try {
     return std::stoll(value, nullptr, 10);
@@ -1538,7 +1538,7 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;

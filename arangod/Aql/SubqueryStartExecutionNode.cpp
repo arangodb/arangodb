@@ -21,5 +21,58 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Aql/SubqueryStartExecutionNode.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
+#include "Meta/static_assert_size.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+namespace arangodb {
+namespace aql {
+
+SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
+                                     arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {}
+
+CostEstimate SubqueryStartNode::estimateCost() const {
+  TRI_ASSERT(!_dependencies.empty());
+
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  return estimate;
+}
+
+void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  nodes.close();
+}
+
+std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+  TRI_ASSERT(false);
+
+  return nullptr;
+}
+
+ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                        bool withProperties) const {
+  auto c = std::make_unique<SubqueryStartNode>(plan, _id);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
+  try {
+    SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
+    return ExecutionNode::isEqualTo(p);
+  } catch (const std::bad_cast& e) {
+    return false;
+  }
+}
+
+}  // namespace aql
+}  // namespace arangodb

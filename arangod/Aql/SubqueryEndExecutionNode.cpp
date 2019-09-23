@@ -22,3 +22,76 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/IdExecutor.h"
+#include "Aql/NodeFinder.h"
+#include "Aql/Query.h"
+#include "Meta/static_assert_size.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+namespace arangodb {
+namespace aql {
+
+SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base),
+      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
+
+void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
+
+  nodes.close();
+}
+
+std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+  TRI_ASSERT(false);
+
+  return nullptr;
+}
+
+ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                      bool withProperties) const {
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+  auto c = std::make_unique<SubqueryEndNode>(plan, _id, outVariable);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void SubqueryEndNode::replaceOutVariable(Variable const* var) {
+  _outVariable = var;
+}
+
+CostEstimate SubqueryEndNode::estimateCost() const {
+  TRI_ASSERT(_dependencies.size() == 1);
+
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  return estimate;
+}
+
+bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
+  TRI_ASSERT(_outVariable != nullptr);
+
+  try {
+    SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
+    TRI_ASSERT(p._outVariable != nullptr);
+    return ExecutionNode::isEqualTo(p) && _outVariable->isEqualTo(*(p._outVariable));
+  } catch (const std::bad_cast& e) {
+    return false;
+  }
+}
+
+}  // namespace aql
+}  // namespace arangodb

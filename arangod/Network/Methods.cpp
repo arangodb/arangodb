@@ -132,14 +132,14 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(DestinationId const& destination, RestVerb type,
-                std::string const& path, velocypack::Buffer<uint8_t>&& payload,
-                Timeout timeout, Headers const& headers, bool retryNotFound)
-      : _destination(destination),
+  RequestsState(DestinationId destination, RestVerb type,
+                std::string path, velocypack::Buffer<uint8_t> payload,
+                Timeout timeout, Headers headers, bool retryNotFound)
+    : _destination(std::move(destination)),
         _type(type),
-        _path(path),
+        _path(std::move(path)),
         _payload(std::move(payload)),
-        _headers(headers),
+        _headers(std::move(headers)),
         _workItem(nullptr),
         _promise(),
         _startTime(std::chrono::steady_clock::now()),
@@ -254,7 +254,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        TRI_ASSERT(res == nullptr);
         callResponse(err, std::move(res));
         break;
     }

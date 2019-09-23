@@ -310,11 +310,6 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
-std::shared_ptr<std::vector<ShardID>> LogicalCollection::shardListAsShardID() const {
-  TRI_ASSERT(_sharding != nullptr);
-  return _sharding->shardListAsShardID();
-}
-
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(map);
@@ -329,7 +324,7 @@ int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID,
                                            bool& usesDefaultShardKeys,
-                                           std::string const& key) {
+                                           VPackStringRef const& key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);

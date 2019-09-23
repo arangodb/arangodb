@@ -134,7 +134,7 @@ void RestTransactionHandler::executeBegin() {
   // figure out the transaction ID
   TRI_voc_tid_t tid = 0;
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (found) {
     if (!ServerState::isDBServer(role)) {

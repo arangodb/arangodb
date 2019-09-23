@@ -36,6 +36,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
@@ -50,6 +51,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
   Aql/SortedCollectExecutorTest.cpp
+  Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
