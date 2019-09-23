@@ -253,7 +253,7 @@ class ClusterInfo {
 
     std::unordered_map<ServerID, KnownServer> const& serversKnown() const noexcept;
 
-    std::unordered_map<ServerID, RebootId> rebootIds() const noexcept;
+    std::unordered_map<ServerID, RebootId> rebootIds() const;
 
    private:
     std::unordered_map<ServerID, KnownServer> _serversKnown;

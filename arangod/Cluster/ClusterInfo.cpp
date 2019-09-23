@@ -3932,7 +3932,7 @@ ClusterInfo::ServersKnown::serversKnown() const noexcept {
   return _serversKnown;
 }
 
-std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const noexcept {
+std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const {
   std::unordered_map<ServerID, RebootId> rebootIds;
   for (auto const& it : _serversKnown) {
     rebootIds.emplace(it.first, it.second.rebootId());
