@@ -1311,16 +1311,16 @@ Future<OperationResult> addTracking(Future<OperationResult> f,
                                     VPackSlice value,
                                     F&& func) {
 #ifdef USE_ENTERPRISE
-  std::string key;
-  if (value.isObject()) {
-    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
-    if (keySlice.isString()) {
-      key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-    }
-  }
-  return std::move(f).thenValue([func = std::forward<F>(func),
-                      key = std::move(key)](OperationResult opRes) {
-    func(opRes, VPackSlice(reinterpret_cast<uint8_t const*>(key.c_str())));
+//  std::string key;
+//  if (value.isObject()) {
+//    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
+//    if (keySlice.isString()) {
+//      key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
+//    }
+//  }
+  return std::move(f).thenValue([func = std::forward<F>(func), value](OperationResult opRes) {
+//    func(opRes, VPackSlice(reinterpret_cast<uint8_t const*>(key.c_str())));
+    func(opRes, value);
     return opRes;
   });
 #else
