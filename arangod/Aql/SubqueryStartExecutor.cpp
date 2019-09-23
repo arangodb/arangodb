@@ -74,3 +74,12 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
   // Take state from dependency.
   return {_state, NoStats{}};
 }
+
+std::pair<ExecutionState, size_t> SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const {
+  ExecutionState state{ExecutionState::HASMORE};
+  size_t expected = 0;
+  std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
+  // We will write one shadow row per input data row.
+  // We might write less on all shadow rows in input, right now we do not figure this out yes.
+  return {state, expected * 2};
+}

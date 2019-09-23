@@ -59,6 +59,15 @@ class SubqueryStartExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief Estimate of expected number of rows.
+   *
+   * @return ExecutionState, merely taken from upstream,
+   *         size_t number of rows we are likely to produce (at most)
+   *
+   */
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+
  private:
   // Fetcher to get data.
   Fetcher& _fetcher;
