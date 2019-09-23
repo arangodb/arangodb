@@ -126,7 +126,7 @@ class SortingGatherExecutor {
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
 
  private:
-  ExecutionState initNumDepsIfNecessary();
+  void initNumDepsIfNecessary();
   ExecutionState init(size_t atMost);
 
   std::pair<ExecutionState, InputAqlItemRow> produceNextRow(size_t atMost);

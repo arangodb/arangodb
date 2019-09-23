@@ -320,7 +320,7 @@ void SortingGatherExecutor::adjustNrDone(size_t const dependency) {
   }
 }
 
-ExecutionState SortingGatherExecutor::initNumDepsIfNecessary() {
+void SortingGatherExecutor::initNumDepsIfNecessary() {
   if (_numberDependencies == 0) {
     // We need to initialize the dependencies once, they are injected
     // after the fetcher is created.
