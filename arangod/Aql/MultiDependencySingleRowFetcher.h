@@ -147,7 +147,7 @@ class MultiDependencySingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize()) {
+      size_t const dependency, size_t const atMost = ExecutionBlock::DefaultBatchSize()) {
     TRI_ASSERT(dependency < _dependencyInfos.size());
     auto& depInfo = _dependencyInfos[dependency];
     // Fetch a new block iff necessary
@@ -191,6 +191,31 @@ class MultiDependencySingleRowFetcher {
     return {rowState, row};
   }
 
+  std::pair<ExecutionState, size_t> skipRowsForDependency(
+      size_t const dependency, size_t const atMost) {
+    TRI_ASSERT(dependency < _dependencyInfos.size());
+    auto& depInfo = _dependencyInfos[dependency];
+
+    if (indexIsValid(depInfo)) {
+      std::size_t const rowsLeft = depInfo._currentBlock->size() - depInfo._rowIndex;
+      // indexIsValid guarantees this:
+      TRI_ASSERT(rowsLeft > 0);
+      std::size_t const skip = std::min(rowsLeft, atMost);
+      depInfo._rowIndex += skip;
+
+      return {depInfo._upstreamState, skip};
+    }
+
+    TRI_ASSERT(!indexIsValid(depInfo));
+    if (!isDone(depInfo)) {
+      return skipSomeForDependency(dependency, atMost);
+    }
+
+    // We should not be called after we're done.
+    TRI_ASSERT(false);
+    return {ExecutionState::DONE, 0};
+  }
+
  private:
   DependencyProxy<false>* _dependencyProxy;
 
@@ -205,6 +230,8 @@ class MultiDependencySingleRowFetcher {
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(size_t dependency,
                                                                            size_t atMost);
+
+  std::pair<ExecutionState, size_t> skipSomeForDependency(size_t dependency, size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()

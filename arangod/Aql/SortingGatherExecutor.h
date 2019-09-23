@@ -123,7 +123,10 @@ class SortingGatherExecutor {
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
+
  private:
+  ExecutionState initNumDepsIfNecessary();
   ExecutionState init(size_t atMost);
 
   std::pair<ExecutionState, InputAqlItemRow> produceNextRow(size_t atMost);
@@ -166,12 +169,25 @@ class SortingGatherExecutor {
   /// dependencies.
   size_t _rowsReturned;
 
+  /// @brief When we reached the limit, we once count the rows that are left in
+  /// the heap (in _rowsLeftInHeap), so we can count them for skipping.
+  bool _heapCounted;
+
+  /// @brief See comment for _heapCounted first. At the first real skip, this
+  /// is set to the number of rows left in the heap. It will be reduced while
+  /// skipping.
+  size_t _rowsLeftInHeap;
+
+  size_t _skipped;
+
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<bool> _flaggedAsDone;
 #endif
+  std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> reallySkipRows(size_t atMost);
+  std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> produceAndSkipRows(size_t atMost);
 };
 
 }  // namespace aql

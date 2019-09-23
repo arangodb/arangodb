@@ -189,6 +189,9 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _nrDone(0),
       _limit(infos.limit()),
       _rowsReturned(0),
+      _heapCounted(false),
+      _rowsLeftInHeap(0),
+      _skipped(0),
       _strategy(nullptr) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
@@ -243,7 +246,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
   return {state, NoStats{}};
 }
 
-std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow(size_t atMost) {
+std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow(size_t const atMost) {
   TRI_ASSERT(_strategy != nullptr);
   assertConstrainedDoesntOverfetch(atMost);
   // We shouldn't be asked for more rows when we are allowed to skip
@@ -306,7 +309,7 @@ std::pair<ExecutionState, InputAqlItemRow> SortingGatherExecutor::produceNextRow
   return {ExecutionState::HASMORE, val.row};
 }
 
-void SortingGatherExecutor::adjustNrDone(size_t dependency) {
+void SortingGatherExecutor::adjustNrDone(size_t const dependency) {
   auto const& dep = _inputRows[dependency];
   if (dep.state == ExecutionState::DONE) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -317,8 +320,7 @@ void SortingGatherExecutor::adjustNrDone(size_t dependency) {
   }
 }
 
-ExecutionState SortingGatherExecutor::init(size_t atMost) {
-  assertConstrainedDoesntOverfetch(atMost);
+ExecutionState SortingGatherExecutor::initNumDepsIfNecessary() {
   if (_numberDependencies == 0) {
     // We need to initialize the dependencies once, they are injected
     // after the fetcher is created.
@@ -332,6 +334,11 @@ ExecutionState SortingGatherExecutor::init(size_t atMost) {
 #endif
     }
   }
+}
+
+ExecutionState SortingGatherExecutor::init(size_t const atMost) {
+  assertConstrainedDoesntOverfetch(atMost);
+  initNumDepsIfNecessary();
 
   while (_dependencyToFetch < _numberDependencies) {
     std::tie(_inputRows[_dependencyToFetch].state,
@@ -354,7 +361,7 @@ ExecutionState SortingGatherExecutor::init(size_t atMost) {
   return ExecutionState::HASMORE;
 }
 
-std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(size_t atMost) const {
+std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(size_t const atMost) const {
   assertConstrainedDoesntOverfetch(atMost);
   // We shouldn't be asked for more rows when we are allowed to skip
   TRI_ASSERT(!maySkip());
@@ -396,7 +403,7 @@ bool SortingGatherExecutor::constrainedSort() const noexcept {
   return _limit > 0;
 }
 
-void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t atMost) const noexcept {
+void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t const atMost) const noexcept {
   // if we have a constrained sort, we should not be asked for more rows than
   // our limit.
   TRI_ASSERT(!constrainedSort() || atMost >= rowsLeftToWrite());
@@ -405,4 +412,103 @@ void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t atMost) cons
 bool SortingGatherExecutor::maySkip() const noexcept {
   TRI_ASSERT(_rowsReturned <= _limit);
   return constrainedSort() && _rowsReturned >= _limit;
+}
+
+std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::skipRows(size_t const atMost) {
+  if (!maySkip()) {
+    // Until our limit, we must produce rows, because we might be asked later
+    // to produce rows, in which case all rows have to have been skipped in
+    // order.
+    return produceAndSkipRows(atMost);
+  } else {
+    // If we've reached our limit, we will never be asked to produce rows again.
+    // So we can just skip without sorting.
+    return reallySkipRows(atMost);
+  }
+}
+
+std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::reallySkipRows(
+    size_t const atMost) {
+  if (!_heapCounted) {
+    initNumDepsIfNecessary();
+
+    // This row was just fetched:
+    _inputRows[_dependencyToFetch].row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    _rowsLeftInHeap = 0;
+    for (auto& it : _inputRows) {
+      if (it.row) {
+        ++_rowsLeftInHeap;
+        it.row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      }
+    }
+    _heapCounted = true;
+
+    // Now we will just skip through all dependencies, starting with the first.
+    _dependencyToFetch = 0;
+  }
+
+  { // Skip rows left in the heap first
+    std::size_t const skip = std::min(atMost, _rowsLeftInHeap);
+    _rowsLeftInHeap -= skip;
+    _skipped += skip;
+  }
+
+  while (_dependencyToFetch < _numberDependencies && _skipped < atMost) {
+    auto& state = _inputRows[_dependencyToFetch].state;
+    while (state != ExecutionState::DONE && _skipped < atMost) {
+      std::size_t skippedNow;
+      std::tie(state, skippedNow) =
+          _fetcher.skipRowsForDependency(_dependencyToFetch, atMost - _skipped);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(skippedNow == 0);
+        return {state, NoStats{}, 0};
+      }
+      _skipped += skippedNow;
+    }
+    if (state == ExecutionState::DONE) {
+      ++_dependencyToFetch;
+    }
+  }
+
+  // Skip dependencies which are DONE
+  while (_dependencyToFetch < _numberDependencies &&
+         _inputRows[_dependencyToFetch].state == ExecutionState::DONE) {
+    ++_dependencyToFetch;
+  }
+  // The current dependency must now neither be DONE, nor WAITING.
+  TRI_ASSERT(_dependencyToFetch >= _numberDependencies ||
+             _inputRows[_dependencyToFetch].state == ExecutionState::HASMORE);
+
+  ExecutionState const state = _dependencyToFetch < _numberDependencies
+                                   ? ExecutionState::HASMORE
+                                   : ExecutionState::DONE;
+  std::size_t const skipped = _skipped;
+  _skipped = 0;
+  TRI_ASSERT(skipped <= atMost);
+  return {state, NoStats{}, skipped};
+}
+
+std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::produceAndSkipRows(
+    size_t const atMost) {
+  ExecutionState state = ExecutionState::HASMORE;
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+
+  size_t skipped = 0;
+
+  while(state == ExecutionState::HASMORE && skipped < atMost) {
+    std::tie(state, row) = produceNextRow(atMost);
+    // HASMORE => row has to be initialized
+    TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
+    // WAITING => row may not be initialized
+    TRI_ASSERT(state != ExecutionState::WAITING || !row.isInitialized());
+
+    if (row.isInitialized()) {
+      ++skipped;
+    }
+  }
+
+  TRI_ASSERT(state != ExecutionState::HASMORE || skipped > 0);
+  TRI_ASSERT(state != ExecutionState::WAITING || skipped == 0);
+
+  return {state, NoStats{}, skipped};
 }

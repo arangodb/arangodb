@@ -92,6 +92,9 @@ class DependencyProxy {
   TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
 
+  // See comment on fetchBlockForDependency().
+  std::pair<ExecutionState, size_t> skipSomeForDependency(size_t dependency, size_t atMost);
+
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
