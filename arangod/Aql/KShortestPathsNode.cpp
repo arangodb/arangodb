@@ -218,8 +218,9 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
-void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
+void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                            std::unordered_set<ExecutionNode const*>& seen) const {
+  GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
   // Out variables
   if (usesPathOutVariable()) {
     nodes.add(VPackValue("pathOutVariable"));

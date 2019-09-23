@@ -36,7 +36,6 @@
 #include "velocypack/Parser.h"
 
 namespace {
-
 struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
       : arangodb::LogicalView(vocbase, definition, planVersion) {}
@@ -150,7 +149,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
       "\"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)

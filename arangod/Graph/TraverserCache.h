@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 
 #include <velocypack/StringRef.h>
+#include <map>
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -57,9 +58,12 @@ struct EdgeDocumentToken;
 /// with an implementation which caches entire documents,
 /// the single server / db server can just work with raw
 /// document tokens and retrieve documents as needed
+struct BaseOptions;
+
+
 class TraverserCache {
  public:
-  explicit TraverserCache(aql::Query* query);
+  explicit TraverserCache(aql::Query* query, BaseOptions const* opts);
 
   virtual ~TraverserCache();
 
@@ -161,6 +165,8 @@ class TraverserCache {
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
+
+  BaseOptions const* _baseOptions;
 };
 
 }  // namespace graph

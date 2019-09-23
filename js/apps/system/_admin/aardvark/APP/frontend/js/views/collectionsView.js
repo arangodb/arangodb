@@ -35,9 +35,7 @@
     checkLockedCollections: function () {
       var callback = function (error, lockedCollections) {
         var self = this;
-        if (error) {
-          console.log('Could not check locked collections');
-        } else {
+        if (!error) {
           this.collection.each(function (model) {
             model.set('locked', false);
           });
@@ -350,8 +348,8 @@
         } else {
           var collName = $('#new-collection-name').val();
           var collSize = $('#new-collection-size').val();
-          var replicationFactor = $('#new-replication-factor').val();
-          var minReplicationFactor = $('#new-min-replication-factor').val();
+          var replicationFactor = Number($('#new-replication-factor').val());
+          var minReplicationFactor = Number($('#new-min-replication-factor').val());
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
@@ -373,7 +371,7 @@
             if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
               smartJoinAttribute = $('#smart-join-attribute').val().trim();
             }
-            if (frontendConfig.isEnterprise && $('#distribute-shards-like').val() !== '') {
+            if (frontendConfig.isEnterprise) {
               distributeShardsLike = $('#distribute-shards-like').val().trim();
             }
 
@@ -444,21 +442,26 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            replicationFactor: replicationFactor,
-            minReplicationFactor: minReplicationFactor,
             collType: collType,
             shards: shards,
             shardKeys: shardKeys
           };
+
           if (self.engine.name !== 'rocksdb') {
             tmpObj.journalSize = collSize;
           }
           if (smartJoinAttribute !== '') {
             tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
-          if (distributeShardsLike !== '') {
-            tmpObj.distributeShardsLike = distributeShardsLike;
+
+          tmpObj.distributeShardsLike = distributeShardsLike;
+          if (distributeShardsLike === '' && window.App.isCluster) {
+            // if we are in the cluster and are not using distribute shards like
+            // then we want to make use of the replication factor
+            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+            tmpObj.minReplicationFactor = Number(minReplicationFactor);
           }
+
           if (!abort) {
             this.collection.newCollection(tmpObj, callback);
             window.modalView.hide();
@@ -471,6 +474,24 @@
     },
 
     createNewCollectionModal: function () {
+        var self = this;
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/database/properties'), //get default properties of current db
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.createNewCollectionModalReal(data.result);
+          },
+          error: function () {
+            arangoHelper.arangoError('Engine', 'Could not fetch default collection properties.');
+          }
+        });
+
+    },
+
+    createNewCollectionModalReal: function (properties) {
       var self = this;
       var callbackCoord2 = function (error, isCoordinator) {
         if (error) {
@@ -505,6 +526,7 @@
               ]
             )
           );
+
           tableContent.push(
             window.modalView.createSelectEntry(
               'new-collection-type',
@@ -519,7 +541,7 @@
             tableContent.push(
               window.modalView.createTextEntry(
                 'new-collection-shards',
-                'Shards',
+                'Number of shards',
                 '',
                 'The number of shards to create. You cannot change this afterwards. ',
                 '',
@@ -537,6 +559,25 @@
                 false
               )
             );
+          
+            if (window.App.isCluster) {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-replication-factor',
+                  'Replication factor',
+                  ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.replicationFactor : '',
+                  'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+                  '',
+                  false,
+                  [
+                    {
+                      rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                      msg: 'Must be a number between 1 and 10.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           buttons.push(
@@ -551,7 +592,7 @@
                 window.modalView.createTextEntry(
                   'distribute-shards-like',
                   'Distribute shards like',
-                  '',
+                  properties.sharding === "single" ? "_graphs" : "",
                   'Name of another collection that should be used as a prototype for sharding this collection.',
                   '',
                   false,
@@ -581,27 +622,12 @@
                 )
               );
             }
-            advancedTableContent.push(
-              window.modalView.createTextEntry(
-                'new-replication-factor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
-                    msg: 'Must be a number between 1 and 10.'
-                  }
-                ]
-              )
-            );
+
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-min-replication-factor',
                 'Mininum replication factor',
-                '',
+                ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.minReplicationFactor : '',
                 'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,
