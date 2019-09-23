@@ -142,8 +142,13 @@ class SingleRowFetcher {
    *        Part of the Fetcher, and may be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+#endif
   ExecutionState _upstreamState;
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ private:
+#endif
   /**
    * @brief Input block currently in use. Used for memory management by the
    *        SingleRowFetcher. May be moved if the Fetcher implementations
@@ -170,7 +175,8 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+
   bool fetchBlockIfNecessary(size_t atMost);
 
   /**

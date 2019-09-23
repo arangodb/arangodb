@@ -62,6 +62,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThro
 template <bool passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
     : _dependencyProxy(nullptr),
+      _upstreamState(ExecutionState::HASMORE),
       _rowIndex(0),
       _currentRow{CreateInvalidInputRowHint{}},
       _currentShadowRow{CreateInvalidShadowRowHint{}} {}

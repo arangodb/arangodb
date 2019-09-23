@@ -75,6 +75,10 @@ class SingleRowFetcherHelper
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::ShadowAqlItemRow> fetchShadowRow(
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+
   uint64_t nrCalled() { return _nrCalled; }
 
   size_t totalSkipped() const { return _totalSkipped; }
@@ -84,13 +88,19 @@ class SingleRowFetcherHelper
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForPassthrough(
       size_t atMost) override;
 
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
+
   bool isDone() const { return _returnedDone; }
 
-  arangodb::aql::AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
+  arangodb::aql::AqlItemBlockManager& itemBlockManager() {
+    return _itemBlockManager;
+  }
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr& getItemBlock() { return _itemBlock; }
-  arangodb::aql::SharedAqlItemBlockPtr const& getItemBlock() const { return _itemBlock; }
+  arangodb::aql::SharedAqlItemBlockPtr const& getItemBlock() const {
+    return _itemBlock;
+  }
 
   void nextRow() {
     _curRowIndex++;
