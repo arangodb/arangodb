@@ -191,6 +191,8 @@ void message::responseHeader(ResponseHeader const& header,
 
   // 3 - meta (not optional even if empty)
   builder.openObject();
+  builder.add(fu_content_type_key,
+              VPackValue(to_string(header.contentType())));
   if (!header.meta().empty()) {
     for (auto const& item : header.meta()) {
       builder.add(item.first, VPackValue(item.second));
@@ -479,7 +481,7 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
     header.parameters.emplace(it.key.copyString(), it.value.copyString());
   }
   for (auto const& it :
-       VPackObjectIterator(headerSlice.at(5))) {  // meta (headers)
+       VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
     header.addMeta(it.key.copyString(), it.value.copyString());
   }
   return header;

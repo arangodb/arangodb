@@ -255,7 +255,7 @@ OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
       return network::opResultFromBody(std::move(body), TRI_ERROR_INTERNAL);
   }
 }
-  
+
 /// @brief Create Cluster Communication result for modify
 OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
@@ -268,11 +268,11 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }
     case fuerte::StatusConflict:
-      return OperationResult(network::resultFromBody(std::move(body), TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED),
-                             std::move(body), std::move(options), errorCounter);
+      return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED),
+                             body, std::move(options), errorCounter);
     case fuerte::StatusPreconditionFailed:
-      return OperationResult(network::resultFromBody(std::move(body), TRI_ERROR_ARANGO_CONFLICT),
-                             std::move(body), std::move(options), errorCounter);
+      return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
+                             body, std::move(options), errorCounter);
     case fuerte::StatusNotFound:
       return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default: {
@@ -295,8 +295,8 @@ OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
-      return OperationResult(network::resultFromBody(std::move(body), TRI_ERROR_ARANGO_CONFLICT),
-                             std::move(body), std::move(options), errorCounter);
+      return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
+                             body, std::move(options), errorCounter);
     case fuerte::StatusNotFound:
       return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default: {
