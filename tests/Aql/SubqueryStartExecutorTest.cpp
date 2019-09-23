@@ -49,7 +49,7 @@ void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isReleva
   // even if we do not have a shadow row.
   if (block->isShadowRow(row)) {
     ShadowAqlItemRow shadow{block, row};
-    EXPECT_EQ(shadow.isRelevant(), isRelevant);
+    EXPECT_EQ(shadow.isRelevant(), isRelevant) << "Testing row " << row;
   }
 }
 }  // namespace
@@ -237,6 +237,6 @@ TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
     TestShadowRow(block, 5, false);
     EXPECT_FALSE(block->isShadowRow(6));
     TestShadowRow(block, 7, true);
-    TestShadowRow(block, 8, true);
+    TestShadowRow(block, 8, false);
   }
 }
