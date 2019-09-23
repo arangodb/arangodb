@@ -1232,10 +1232,10 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   }
   
   std::string const baseUrl =
-      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=";
+      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
 
   std::string const optsUrlPart =
-      std::string("&waitForSync=") + (options.waitForSync ? "true" : "false") +
+      std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
       "&returnNew=" + (options.returnNew ? "true" : "false") +
       "&returnOld=" + (options.returnOld ? "true" : "false") +
       "&isRestore=" + (options.isRestore ? "true" : "false") + "&" +
@@ -1682,10 +1682,11 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     for (auto const& it : shardMap) {
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
-      
+      std::string url;
+      VPackBuffer<uint8_t> buffer;
+
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-
         if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
           headers.emplace("if-match", slice.get(StaticStrings::RevString).copyString());
         }
@@ -1695,28 +1696,24 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           keySlice = slice.get(StaticStrings::KeyString);
         }
         VPackStringRef ref = keySlice.stringRef();
-        std::string url = baseUrl + StringUtils::urlEncode(it.first) + "/";
-        url.append(StringUtils::urlEncode(ref.data(), ref.length())).append(optsUrlPart);
-
         // We send to single endpoint
-        futures.emplace_back(network::sendRequestRetry("shard:" + it.first, restVerb,
-                                                       std::move(url), VPackBuffer<uint8_t>(),
-                                                       network::Timeout(CL_DEFAULT_TIMEOUT),
-                                                       headers, /*retryNotFound*/ true));
+        url = baseUrl + StringUtils::urlEncode(it.first) + "/";
+        url.append(StringUtils::urlEncode(ref.data(), ref.length())).append(optsUrlPart);
       } else {
-        VPackBuffer<uint8_t> buffer;
+        // We send to Babies endpoint
+        url = baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart;
         VPackBuilder builder(buffer);
         builder.openArray(/*unindexed*/true);
         for (auto const& value : it.second) {
           builder.add(value);
         }
         builder.close();
-        // We send to Babies endpoint
-        futures.emplace_back(network::sendRequestRetry("shard:" + it.first, restVerb,
-                                                       baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                                                       std::move(buffer), network::Timeout(CL_DEFAULT_TIMEOUT),
-                                                       headers, /*retryNotFound*/ true));
       }
+
+      futures.emplace_back(network::sendRequestRetry("shard:" + it.first, restVerb,
+                                                     std::move(url), std::move(buffer),
+                                                     network::Timeout(CL_DEFAULT_TIMEOUT),
+                                                     std::move(headers), /*retryNotFound*/ true));
     }
 
     // Now compute the result
