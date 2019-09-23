@@ -22,6 +22,43 @@
 
 #include "TestHelper.h"
 
+#include "Aql/QueryRegistry.h"
+#include "Basics/StaticStrings.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Replication/ReplicationFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8/v8-vpack.h"
+#include "V8Server/v8-users.h"
+#include "VocBase/vocbase.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
+// The following v8 headers must be included late, or MSVC fails to compile
+// (error in mswsockdef.h), because V8's win32-headers.h #undef some macros like
+// CONST and VOID. If, e.g., "Cluster/ClusterInfo.h" (which is in turn included
+// here by "Sharding/ShardingFeature.h") is included after these, compilation
+// fails. Another option than to include the following headers late is to
+// include ClusterInfo.h before them.
+// I have not dug into which header included by ClusterInfo.h will finally
+// include mwsockdef.h. Nor did I check whether all of the following headers
+// will include V8's "src/base/win32-headers.h".
+
+// #include "src/api.h"
+// #include "src/objects-inl.h"
+// #include "src/objects/scope-info.h"
+
+
+
+
+
 void arangodb::TestHelper::createUser(std::string const& username,
 				    std::function<bool(User* user)> permissions) {
   auto* userManager = authFeature->userManager();
