@@ -243,6 +243,8 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
       if (meta.ok()) {
         LOG_TOPIC("0f208", INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
         LOG_TOPIC("55af7", INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
+        LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
+        LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
       }
     }
   }

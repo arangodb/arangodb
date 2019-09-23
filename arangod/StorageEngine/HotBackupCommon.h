@@ -29,6 +29,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/VelocyPackHelper.h"
+
 namespace arangodb {
 
 constexpr char const* BAD_PARAMS_CREATE = "backup payload must be an object "
@@ -43,10 +45,14 @@ struct BackupMeta {
   std::string _id;
   std::string _version;
   std::string _datetime;
+  size_t _sizeInBytes;
+  size_t _nrFiles;
 
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
   static constexpr const char *DATETIME = "datetime";
+  static constexpr const char *SIZEINBYTES = "sizeInBytes";
+  static constexpr const char *NRFILES = "nrFiles";
 
   void toVelocyPack(VPackBuilder &builder) const {
     {
@@ -54,6 +60,8 @@ struct BackupMeta {
       builder.add(ID, VPackValue(_id));
       builder.add(VERSION, VPackValue(_version));
       builder.add(DATETIME, VPackValue(_datetime));
+      builder.add(SIZEINBYTES, VPackValue(_sizeInBytes));
+      builder.add(NRFILES, VPackValue(_nrFiles));
     }
   }
 
@@ -63,14 +71,19 @@ struct BackupMeta {
       meta._id = slice.get(ID).copyString();
       meta._version  = slice.get(VERSION).copyString();
       meta._datetime = slice.get(DATETIME).copyString();
+      meta._sizeInBytes = basics::VelocyPackHelper::getNumericValue<size_t>(
+          slice, SIZEINBYTES, 0);
+      meta._nrFiles = basics::VelocyPackHelper::getNumericValue<size_t>(
+          slice, NRFILES, 0);
       return meta;
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
     }
   }
 
-  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime) :
-    _id(id), _version(version), _datetime(datetime) {}
+  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles) :
+    _id(id), _version(version), _datetime(datetime),
+    _sizeInBytes(sizeInBytes), _nrFiles(nrFiles) {}
 
 private:
   BackupMeta() {}
