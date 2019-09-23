@@ -126,6 +126,18 @@ class SortingGatherExecutor {
  private:
   ExecutionState init(size_t atMost);
 
+  bool constrainedSort() const noexcept;
+
+  size_t rowsLeftToWrite() const noexcept;
+
+  void assertConstrainedDoesntOverfetch(size_t atMost) const noexcept;
+
+  // This is interesting in case this is a constrained sort and fullCount is
+  // enabled. Then, after the limit is reached, we may pass skipSome through
+  // to our dependencies, and not sort any more.
+  // This also means that we may not produce rows anymore after that point.
+  bool maySkip() const noexcept;
+
  private:
   Fetcher& _fetcher;
 
@@ -146,6 +158,11 @@ class SortingGatherExecutor {
 
   /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
   size_t _limit;
+
+  /// @brief Number of rows we've already written or skipped, up to _limit.
+  /// Only after _rowsReturned == _limit we may pass skip through to
+  /// dependencies.
+  size_t _rowsReturned;
 
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;

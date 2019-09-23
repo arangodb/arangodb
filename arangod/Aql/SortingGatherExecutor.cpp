@@ -188,6 +188,7 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _inputRows(),
       _nrDone(0),
       _limit(infos.limit()),
+      _rowsReturned(0),
       _strategy(nullptr) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
@@ -222,8 +223,13 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_strategy != nullptr);
+  size_t const atMost = constrainedSort() ? output.numRowsLeft()
+                                          : ExecutionBlock::DefaultBatchSize();
+  assertConstrainedDoesntOverfetch(atMost);
+  // We shouldn't be asked for more rows when we are allowed to skip
+  TRI_ASSERT(!maySkip());
   if (!_initialized) {
-    ExecutionState state = init(output.numRowsLeft());
+    ExecutionState state = init(atMost);
     if (state != ExecutionState::HASMORE) {
       // Can be DONE(unlikely, no input) of WAITING
       return {state, NoStats{}};
@@ -237,7 +243,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
       // This is executed on every produceRows, and will replace the row that we have returned last time
       std::tie(_inputRows[_dependencyToFetch].state,
                _inputRows[_dependencyToFetch].row) =
-          _fetcher.fetchRowForDependency(_dependencyToFetch, output.numRowsLeft());
+          _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
       if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, NoStats{}};
       }
@@ -276,6 +282,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
   // inside the outputblock by identical AQL values.
   // This optimization is not in use anymore.
   output.copyRow(val.row);
+  ++_rowsReturned;
   adjustNrDone(_dependencyToFetch);
   if (_nrDone >= _numberDependencies) {
     return {ExecutionState::DONE, NoStats{}};
@@ -295,6 +302,7 @@ void SortingGatherExecutor::adjustNrDone(size_t dependency) {
 }
 
 ExecutionState SortingGatherExecutor::init(size_t atMost) {
+  assertConstrainedDoesntOverfetch(atMost);
   if (_numberDependencies == 0) {
     // We need to initialize the dependencies once, they are injected
     // after the fetcher is created.
@@ -331,6 +339,9 @@ ExecutionState SortingGatherExecutor::init(size_t atMost) {
 }
 
 std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(size_t atMost) const {
+  assertConstrainedDoesntOverfetch(atMost);
+  // We shouldn't be asked for more rows when we are allowed to skip
+  TRI_ASSERT(!maySkip());
   ExecutionState state;
   size_t expectedNumberOfRows;
   std::tie(state, expectedNumberOfRows) = _fetcher.preFetchNumberOfRows(atMost);
@@ -357,4 +368,25 @@ std::pair<ExecutionState, size_t> SortingGatherExecutor::expectedNumberOfRows(si
     return {ExecutionState::DONE, 0};
   }
   return {ExecutionState::HASMORE, expectedNumberOfRows};
+}
+
+size_t SortingGatherExecutor::rowsLeftToWrite() const noexcept {
+  TRI_ASSERT(constrainedSort());
+  TRI_ASSERT(_limit >= _rowsReturned);
+  return _limit - _rowsReturned;
+}
+
+bool SortingGatherExecutor::constrainedSort() const noexcept {
+  return _limit > 0;
+}
+
+void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t atMost) const noexcept {
+  // if we have a constrained sort, we should not be asked for more rows than
+  // our limit.
+  TRI_ASSERT(!constrainedSort() || atMost >= rowsLeftToWrite());
+}
+
+bool SortingGatherExecutor::maySkip() const noexcept {
+  TRI_ASSERT(_rowsReturned <= _limit);
+  return constrainedSort() && _rowsReturned >= _limit;
 }
