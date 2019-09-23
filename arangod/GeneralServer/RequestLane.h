@@ -98,11 +98,7 @@ enum class RequestLane {
   // AGENCY_CALLBACK`
 };
 
-enum class RequestPriority { 
-  HIGH = 0, 
-  MED = 1, 
-  LOW = 2 
-};
+enum class RequestPriority { HIGH, MED, LOW };
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
