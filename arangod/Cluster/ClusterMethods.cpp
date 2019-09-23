@@ -1699,7 +1699,6 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           // We send to Babies endpoint
           url.append(baseUrl).append(StringUtils::urlEncode(it.first)).append(optsUrlPart);
           
-          VPackBuffer<uint8_t> buffer;
           VPackBuilder builder(buffer);
           builder.openArray(/*unindexed*/true);
           for (auto const& value : it.second) {

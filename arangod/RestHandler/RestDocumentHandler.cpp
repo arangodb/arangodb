@@ -423,7 +423,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                          opOptions.isSynchronousReplicationFrom);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (!isArrayCase) {
     bool isValidRevision;
     TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
@@ -439,19 +439,20 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
-      builder = std::make_shared<VPackBuilder>();
+      buffer = std::make_shared<VPackBuffer<uint8_t>>();
+      VPackBuilder builder(buffer);
       {
-        VPackObjectBuilder guard(builder.get());
-        TRI_SanitizeObject(body, *builder);
-        builder->add(StaticStrings::KeyString, VPackValue(key));
+        VPackObjectBuilder guard(&builder);
+        TRI_SanitizeObject(body, builder);
+        builder.add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev != 0) {
-          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         }
       }
 
-      body = builder->slice();
+      body = builder.slice();
     }
   }
 
@@ -483,7 +484,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
   
-  return waitForFuture(std::move(f).thenValue([=, builder = std::move(builder)](OperationResult opRes) {
+  return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
 
     // ...........................................................................
@@ -545,22 +546,23 @@ RestStatus RestDocumentHandler::removeDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   VPackSlice search;
-  std::shared_ptr<VPackBuilder> builder;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
   if (suffixes.size() == 2) {
-    builder = std::make_shared<VPackBuilder>();
+    buffer = std::make_shared<VPackBuffer<uint8_t>>();
+    VPackBuilder builder(buffer);
     {
-      VPackObjectBuilder guard(builder.get());
+      VPackObjectBuilder guard(&builder);
 
-      builder->add(StaticStrings::KeyString, VPackValue(key));
+      builder.add(StaticStrings::KeyString, VPackValue(key));
 
       if (revision != 0) {
         opOptions.ignoreRevs = false;
-        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
       }
     }
 
-    search = builder->slice();
+    search = builder.slice();
   } else {
     bool parseSuccess = false;
     search = this->parseVPackBody(parseSuccess);
@@ -590,7 +592,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   bool const isMultiple = search.isArray();
   
   return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
-                       .thenValue([=, builder(std::move(builder))](OperationResult opRes) {
+                       .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
     
     // ...........................................................................
