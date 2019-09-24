@@ -655,7 +655,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   std::string rev;
   RegisterId const inDocReg = info._input1RegisterId;
   RegisterId const keyReg = info._input2RegisterId;
-  bool const hasKeyVariable = keyReg != ExecutionNode::MaxRegisterId;
+  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
   itemBlock::forRowInBlock(_block, [this, &options, &stats, &errorCode,
                                     &errorMessage, &key, &rev, trx, inDocReg, keyReg,

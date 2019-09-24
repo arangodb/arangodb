@@ -48,7 +48,7 @@ DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::Resou
       _fetchedBlocks(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
-      _itemBlockManager(&_monitor) {}
+      _itemBlockManager(&_monitor, SerializationFormat::SHADOWROWS) {}
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
@@ -152,7 +152,7 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),
                                          nrRegisters),
-      _itemBlockManager(&monitor) {
+      _itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
     _dependencyMocks.emplace_back(DependencyProxyMock<passBlocksThrough>{monitor, nrRegisters});

@@ -140,7 +140,7 @@ void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
-    TRI_ASSERT(collectRegister > 0 && collectRegister < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(collectRegister > 0 && collectRegister < RegisterPlan::MaxRegisterId);
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
@@ -160,8 +160,8 @@ void CollectNode::calcGroupRegisters(
 
     RegisterId inReg = itIn->second.registerId;
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(inReg < ExecutionNode::MaxRegisterId);
-    TRI_ASSERT(outReg < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
     groupRegisters.emplace_back(outReg, inReg);
     writeableOutputRegisters.insert(outReg);
     readableInputRegisters.insert(inReg);
@@ -178,14 +178,14 @@ void CollectNode::calcAggregateRegisters(
     auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(outReg < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
 
-    RegisterId inReg = ExecutionNode::MaxRegisterId;
+    RegisterId inReg = RegisterPlan::MaxRegisterId;
     if (Aggregator::requiresInput(p.second.second)) {
       auto itIn = getRegisterPlan()->varInfo.find(p.second.first->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg < ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required
@@ -254,7 +254,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::unordered_set<RegisterId> readableInputRegisters;
       std::unordered_set<RegisterId> writeableOutputRegisters;
 
-      RegisterId collectRegister = ExecutionNode::MaxRegisterId;
+      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
       // calculate the group registers
@@ -292,10 +292,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::unordered_set<RegisterId> readableInputRegisters;
       std::unordered_set<RegisterId> writeableOutputRegisters;
 
-      RegisterId collectRegister = ExecutionNode::MaxRegisterId;
+      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
-      RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+      RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
       calcExpressionRegister(expressionRegister, readableInputRegisters);
 
       // calculate the group registers
