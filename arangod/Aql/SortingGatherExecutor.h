@@ -127,6 +127,7 @@ class SortingGatherExecutor {
 
  private:
   void initNumDepsIfNecessary();
+
   ExecutionState init(size_t atMost);
 
   std::pair<ExecutionState, InputAqlItemRow> produceNextRow(size_t atMost);

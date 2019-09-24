@@ -429,6 +429,7 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
 
 std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::reallySkipRows(
     size_t const atMost) {
+  // Once, count all rows that are left in the heap (and free them)
   if (!_heapCounted) {
     initNumDepsIfNecessary();
 
@@ -447,7 +448,7 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
     _dependencyToFetch = 0;
   }
 
-  { // Skip rows left in the heap first
+  { // Skip rows we had left in the heap first
     std::size_t const skip = std::min(atMost, _rowsLeftInHeap);
     _rowsLeftInHeap -= skip;
     _skipped += skip;
@@ -496,7 +497,7 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
   size_t skipped = 0;
 
   while(state == ExecutionState::HASMORE && skipped < atMost) {
-    std::tie(state, row) = produceNextRow(atMost);
+    std::tie(state, row) = produceNextRow(atMost - skipped);
     // HASMORE => row has to be initialized
     TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
     // WAITING => row may not be initialized
