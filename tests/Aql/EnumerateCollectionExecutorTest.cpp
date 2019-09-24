@@ -93,7 +93,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   VPackBuilder input;
 
   EnumerateCollectionExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         server(),
         vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server())),
         json(arangodb::velocypack::Parser::fromJson(

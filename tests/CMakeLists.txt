@@ -24,7 +24,9 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
   Aql/AqlHelper.cpp
+  Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowTest.cpp
+  Aql/AqlShadowRowTest.cpp
   Aql/AllRowsFetcherTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp

@@ -445,7 +445,9 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       auto* scatter = findFirstScatter(*node);
       auto const* colNode = dynamic_cast<CollectionAccessingNode const*>(node);
       if (colNode == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast node to CollectionAccessingNode");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "unable to cast node to CollectionAccessingNode");
       }
       std::unordered_set<std::string> restrictedShard;
       if (colNode->isRestricted()) {
@@ -589,8 +591,7 @@ void EngineInfoContainerDBServer::DBServerInfo::addEngine(
   _engineInfos[info].emplace_back(id);
 }
 
-void EngineInfoContainerDBServer::DBServerInfo::setShardAsResponsibleForInitializeCursor(
-    ShardID const& id) {
+void EngineInfoContainerDBServer::DBServerInfo::setShardAsResponsibleForInitializeCursor(ShardID const& id) {
   _shardsResponsibleForInitializeCursor.emplace(id);
 }
 
@@ -600,6 +601,8 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   TRI_ASSERT(infoBuilder.isEmpty());
 
   infoBuilder.openObject();
+  infoBuilder.add("serializationFormat",
+                  VPackValue(static_cast<int>(SerializationFormat::SHADOWROWS)));
   infoBuilder.add(VPackValue("lockInfo"));
   infoBuilder.openObject();
   for (auto const& shardLocks : _shardLocking) {
@@ -1054,7 +1057,8 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
-    LOG_TOPIC("41be6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
+    LOG_TOPIC("41be6", DEBUG, arangodb::Logger::AQL)
+        << "Building Engine Info for " << it.first;
     infoBuilder.clear();
     it.second.buildMessage(it.first, *this, _query, infoBuilder);
     LOG_TOPIC("2f1fd", DEBUG, arangodb::Logger::AQL)
@@ -1087,7 +1091,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
 
     if (!response.isObject() || !response.get("result").isObject()) {
       LOG_TOPIC("0c3fa", ERR, Logger::AQL) << "Received error information from "
-                                  << it.first << " : " << response.toJson();
+                                           << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
               "servers. This can happen during "
@@ -1173,14 +1177,11 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   _graphNodes.emplace_back(node);
 }
 
-
 namespace {
 struct NoopCb final : public arangodb::ClusterCommCallback {
-  bool operator()(ClusterCommResult*) override{
-    return true;
-  }
+  bool operator()(ClusterCommResult*) override { return true; }
 };
-}
+}  // namespace
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of
@@ -1230,8 +1231,8 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
       cc->asyncRequest(coordinatorTransactionID, engine.first, rest::RequestType::DELETE_REQ,
-                       url + basics::StringUtils::itoa(engine.second), noBody, headers, cb,
-                       shortTimeout, false, 2.0);
+                       url + basics::StringUtils::itoa(engine.second), noBody,
+                       headers, cb, shortTimeout, false, 2.0);
     }
     _query.incHttpRequests(allEngines->size());
   }

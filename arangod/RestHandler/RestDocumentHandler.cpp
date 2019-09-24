@@ -154,7 +154,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
 
@@ -258,7 +258,8 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
     ifRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
-  VPackBuilder builder;
+  auto buffer = std::make_shared<VPackBuffer<uint8_t>>();
+  VPackBuilder builder(buffer);
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::KeyString, VPackValue(key));
@@ -287,7 +288,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   return waitForFuture(
-      _activeTrx->documentAsync(collection, search, options).thenValue([=](OperationResult opRes) {
+      _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
         auto res = _activeTrx->finish(opRes.result);
 
         if (!opRes.ok()) {
@@ -401,7 +402,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
 
@@ -423,7 +424,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                          opOptions.isSynchronousReplicationFrom);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (!isArrayCase) {
     bool isValidRevision;
     TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
@@ -439,19 +440,20 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
-      builder = std::make_shared<VPackBuilder>();
+      buffer = std::make_shared<VPackBuffer<uint8_t>>();
+      VPackBuilder builder(buffer);
       {
-        VPackObjectBuilder guard(builder.get());
-        TRI_SanitizeObject(body, *builder);
-        builder->add(StaticStrings::KeyString, VPackValue(key));
+        VPackObjectBuilder guard(&builder);
+        TRI_SanitizeObject(body, builder);
+        builder.add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev != 0) {
-          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         }
       }
 
-      body = builder->slice();
+      body = builder.slice();
     }
   }
 
@@ -483,9 +485,9 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
   
-  return waitForFuture(std::move(f).thenValue([=](OperationResult opRes) {
+  return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
-    
+
     // ...........................................................................
     // outside write transaction
     // ...........................................................................
@@ -544,11 +546,12 @@ RestStatus RestDocumentHandler::removeDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  VPackBuilder builder;
   VPackSlice search;
-  std::shared_ptr<VPackBuilder> builderPtr;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
   if (suffixes.size() == 2) {
+    buffer = std::make_shared<VPackBuffer<uint8_t>>();
+    VPackBuilder builder(buffer);
     {
       VPackObjectBuilder guard(&builder);
 
@@ -562,17 +565,11 @@ RestStatus RestDocumentHandler::removeDocument() {
 
     search = builder.slice();
   } else {
-    try {
-      TRI_ASSERT(_request != nullptr);
-      builderPtr = _request->toVelocyPackBuilderPtr();
-    } catch (...) {
-      // If an error occurs here the body is not parsable. Fail with bad
-      // parameter
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "Request body not parseable");
+    bool parseSuccess = false;
+    search = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {  // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
-    search = builderPtr->slice();
   }
 
   if (!search.isArray() && !search.isObject()) {
@@ -596,7 +593,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   bool const isMultiple = search.isArray();
   
   return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
-                       .thenValue([=](OperationResult opRes) {
+                       .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
     
     // ...........................................................................

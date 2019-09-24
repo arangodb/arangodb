@@ -44,6 +44,7 @@ struct Response {
   
  public:
   std::string destinationShard() const; /// @brief shardId or empty
+  std::string serverId() const;         /// @brief server ID
 };
 using FutureRes = arangodb::futures::Future<Response>;
 
@@ -51,7 +52,7 @@ using FutureRes = arangodb::futures::Future<Response>;
 FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
                       arangodb::fuerte::RestVerb type, std::string const& path,
                       velocypack::Buffer<uint8_t> payload, Timeout timeout,
-                      Headers const& headers = {});
+                      Headers headers = {});
 
 /// @brief send a request to a given destination, retry under certain conditions
 /// a retry will be triggered if the connection was lost our could not be established
@@ -59,7 +60,7 @@ FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
 FutureRes sendRequestRetry(NetworkFeature& feature, DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
-                           Headers const& headers = {}, bool retryNotFound = false);
+                           Headers headers = {}, bool retryNotFound = false);
 
 }  // namespace network
 }  // namespace arangodb

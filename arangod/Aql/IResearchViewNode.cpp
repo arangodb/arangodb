@@ -823,11 +823,10 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 }
 
-void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
-                                          std::vector<aql::RegisterId>& nrRegs,
-                                          std::unordered_map<aql::VariableId, VarInfo>& varInfo,
-                                          unsigned int& totalNrRegs,
-                                          unsigned int depth) const {
+void IResearchViewNode::planNodeRegisters(
+    std::vector<aql::RegisterId>& nrRegsHere, std::vector<aql::RegisterId>& nrRegs,
+    std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
+    unsigned int& totalNrRegs, unsigned int depth) const {
   nrRegsHere.emplace_back(1);
   // create a copy of the last value here
   // this is requried because back returns a reference and emplace/push_back
@@ -835,7 +834,7 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
   aql::RegisterId const registerId = 1 + nrRegs.back();
   nrRegs.emplace_back(registerId);
 
-  varInfo.emplace(_outVariable->id, VarInfo(depth, totalNrRegs++));
+  varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
 
   //  if (isInInnerLoop()) {
   //    return;
@@ -845,7 +844,7 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
   for (auto const& scorer : _scorers) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(scorer.var->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
   }
 }
 

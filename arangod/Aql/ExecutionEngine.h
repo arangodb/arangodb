@@ -35,11 +35,12 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionBlock;
 class QueryRegistry;
+enum class SerializationFormat;
 
 class ExecutionEngine {
  public:
   /// @brief create the engine
-  explicit ExecutionEngine(Query& query);
+  ExecutionEngine(Query& query, SerializationFormat format);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();

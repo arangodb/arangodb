@@ -265,7 +265,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
 
   bool usedAlternativeRegId = false;
 
-  if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
+  if (input.isNull() && _alternativeRegId != RegisterPlan::MaxRegisterId) {
     // value is set, but null
     // check if there is a second input register available (UPSERT makes use of
     // two input registers,

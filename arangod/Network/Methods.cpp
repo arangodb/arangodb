@@ -55,16 +55,23 @@ std::string Response::destinationShard() const {
   return StaticStrings::Empty;
 }
 
+std::string Response::serverId() const {
+  if (this->destination.size() > 7 && this->destination.compare(0, 7, "server:", 7) == 0) {
+    return this->destination.substr(7);
+  }
+  return StaticStrings::Empty;
+}
+
 template <typename T>
 auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
-                    Timeout timeout, Headers const& headers) {
+                    Timeout timeout, Headers headers) {
   fuerte::StringMap params;  // intentionally empty
   auto req = fuerte::createRequest(type, path, params, std::forward<T>(payload));
   req->header.parseArangoPath(path);  // strips /_db/<name>/
   if (req->header.database.empty()) {
     req->header.database = StaticStrings::SystemDatabase;
   }
-  req->header.addMeta(headers);
+  req->header.setMeta(std::move(headers));
 
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   req->header.addMeta(StaticStrings::HLCHeader,
@@ -84,12 +91,12 @@ auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
 
   return req;
 }
-  
+
 /// @brief send a request to a given destination
 FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
                       RestVerb type, std::string const& path,
                       velocypack::Buffer<uint8_t> payload, Timeout timeout,
-                      Headers const& headers) {
+                      Headers headers) {
   // FIXME build future.reset(..)
 
   ConnectionPool* pool = feature.pool();
@@ -108,7 +115,7 @@ FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
   }
   TRI_ASSERT(!endpoint.empty());
 
-  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
+  auto req = prepareRequest(type, path, std::move(payload), timeout, std::move(headers));
 
   // fits in SSO of std::function
   struct Pack {
@@ -307,11 +314,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 FutureRes sendRequestRetry(NetworkFeature& feature, DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
-                           Headers const& headers, bool retryNotFound) {
+                           Headers headers, bool retryNotFound) {
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
   auto rs = std::make_shared<RequestsState>(feature, destination, type, path,
                                             std::move(payload), timeout,
-                                            headers, retryNotFound);
+                                            std::move(headers), retryNotFound);
   rs->startRequest();  // will auto reference itself
   return rs->future();
 }

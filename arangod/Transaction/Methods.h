@@ -216,15 +216,21 @@ class Methods {
   /// @brief begin the transaction
   Result begin();
 
+  /// @deprecated use async variant
+  Result commit() { return commitAsync().get(); }
   /// @brief commit / finish the transaction
-  Result commit();
+  Future<Result> commitAsync();
 
+  /// @deprecated use async variant
+  Result abort() { return abortAsync().get(); }
   /// @brief abort the transaction
-  Result abort();
+  Future<Result> abortAsync();
+
+  /// @deprecated use async variant
+  Result finish(Result const& res) { return finishAsync(res).get(); }
 
   /// @brief finish a transaction (commit or abort), based on the previous state
-  Result finish(int errorNum);
-  Result finish(Result const& res);
+  Future<Result> finishAsync(Result const& res);
 
   /// @brief return the transaction id
   TRI_voc_tid_t tid() const;

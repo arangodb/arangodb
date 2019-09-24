@@ -73,19 +73,19 @@ int fuerteToArangoErrorCode(fuerte::Error err);
 /// @brief Create Cluster Communication result for insert
 OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
                                     std::shared_ptr<velocypack::Buffer<uint8_t>> body,
-                                    OperationOptions const& options,
+                                    OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter);
 OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
                                       std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                      OperationOptions const& options,
+                                      OperationOptions options,
                                       std::unordered_map<int, size_t> const& errorCounter);
 OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions const& options,
+                                    OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter);
 OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions const& options,
+                                    OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter);
 
 }  // namespace network
