@@ -501,7 +501,7 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
-  void flushValue() {
+  void flushValue() override {
     ptr->clear();
   }
 
@@ -542,7 +542,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
     return std::string(param.name()) + "...";
   }
 
-  void flushValue() {
+  void flushValue() override {
     ptr->clear();
   }
 
