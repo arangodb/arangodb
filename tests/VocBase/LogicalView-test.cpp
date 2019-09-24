@@ -38,8 +38,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Parser.h"
+
+#include <velocypack/Parser.h>
 
 namespace {
 struct TestView : public arangodb::LogicalView {
