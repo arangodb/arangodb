@@ -164,7 +164,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
       _nrRegs(0),
       _nrCalled(0),
       _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
+      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());

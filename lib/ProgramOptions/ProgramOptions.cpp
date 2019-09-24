@@ -276,8 +276,8 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
   }
 
   if (option.hasFlag(options::Flags::FlushOnFirst) &&
-      std::find(_seenParams.begin(), _seenParams.end(), parts.second) == _seenParams.end()) {
-    _seenParams.push_back(parts.second);
+      _alreadyFlushed.find(parts.second) == _alreadyFlushed.end()) {
+    _alreadyFlushed.insert(parts.second);
     option.parameter->flushValue();
   }
   std::string result = option.parameter->set(_translator(value, _binaryPath));

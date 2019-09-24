@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -237,7 +238,7 @@ struct MockGraphDatabase {
                                  arangodb::velocypack::Parser::fromJson("{}"),
                                  arangodb::aql::PART_MAIN);
     query->parse();
-    query->prepare(arangodb::QueryRegistryFeature::registry());
+    query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);
 
@@ -285,10 +286,11 @@ struct MockGraphDatabase {
   }
 };
 
-bool checkPath(ShortestPathOptions* spo, ShortestPathResult result, std::vector<std::string> vertices,
+bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
+               std::vector<std::string> vertices,
                std::vector<std::pair<std::string, std::string>> edges, std::string& msgs);
 
-}
-}
-}
+}  // namespace graph
+}  // namespace tests
+}  // namespace arangodb
 #endif
