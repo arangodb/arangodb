@@ -643,9 +643,9 @@ void ClusterInfo::loadPlan() {
                                                                StaticStrings::DatabaseId);
           // create a local database object...
           arangodb::CreateDatabaseInfo info;
-          info.load(name, id);
+          info.load(id, database.value);
 
-          Result res = databaseFeature->createDatabase(info ,vocbase);
+          Result res = databaseFeature->createDatabase(info, vocbase);
 
           if (res.fail()) {
             LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
@@ -1479,7 +1479,7 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 
 // Build the VPackSlice that contains the `isBuilding` entry
 void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
-                                         VPackBuilder& builder) {
+                                       VPackBuilder& builder) {
   VPackObjectBuilder guard(&builder);
   database.toVelocyPack(builder);
 
@@ -1492,7 +1492,7 @@ void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
 
 // Build the VPackSlice that does not contain  the `isBuilding` entry
 void ClusterInfo::buildFinalSlice(CreateDatabaseInfo const& database,
-                                    VPackBuilder& builder) {
+                                  VPackBuilder& builder) {
   VPackObjectBuilder guard(&builder);
   database.toVelocyPack(builder);
 }
