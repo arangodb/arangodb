@@ -384,7 +384,7 @@ int Slice::compareString(StringRef const& value) const {
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
-    return keyLength - length;
+    return static_cast<int>(keyLength - length);
   }
   return res;
 }
@@ -398,7 +398,7 @@ int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
-    return keyLength - length;
+    return static_cast<int>(keyLength - length);
   }
   return res;
 }
@@ -617,12 +617,10 @@ Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
 
     if (res > 0) {
       r = index - 1;
+    } else if (res == 0) {
+      // found. now return a Slice pointing at the value
+      return Slice(key.start() + key.byteSize());
     } else {
-      if (res == 0) {
-        // found. now return a Slice pointing at the value
-        return Slice(key.start() + key.byteSize());
-      }
-
       l = index + 1;
     }
     
