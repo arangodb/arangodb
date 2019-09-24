@@ -1259,8 +1259,6 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
                                                     LogicalCollection& coll,
                                                     VPackSlice const slice,
                                                     arangodb::OperationOptions const& options) {
-  ClusterFeature& feature = trx.vocbase().server().getFeature<ClusterFeature>();
-  
   const std::string collid = std::to_string(coll.id());
 
   // create vars used in this function
