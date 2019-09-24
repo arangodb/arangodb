@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix compilation issue with clang 10
+
 * Fixed issue #10062: AQL: Could not extract custom attribute.
 
 * Add ReplicationFactor, MinReplicationFactor and sharding strategy to database creation
