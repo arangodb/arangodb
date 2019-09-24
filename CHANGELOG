@@ -3,6 +3,8 @@ devel
 
 * Fix compilation issue with clang 10
 
+* Fixed issue #10062: AQL: Could not extract custom attribute.
+
 * Add ReplicationFactor, MinReplicationFactor and sharding strategy to database creation
   dialogue in web UI. Preselect database default values for collection creation in web UI.
 
@@ -19,6 +21,8 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
+
 * Fix a problem with AQL constrained sort in the cluster, which might abort
   queries.
 
@@ -29,7 +33,8 @@ devel
 * Enabled IPO with cmake as an option, default is on for release builds without
   google tests.
 
-* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting in undefined behaviour.
+* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting 
+  in undefined behaviour.
 
 * Remove operations documents in the cluster will now use an optimization, if all sharding keys 
   were specified. Should the sharding keys not match the values in the actual document
