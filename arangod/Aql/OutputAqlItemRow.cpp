@@ -74,3 +74,22 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
 
   return block;
 }
+
+void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
+  TRI_ASSERT(!_inputRowCopied);
+  // A shadow row can only be created on blocks that DO NOT write additional
+  // output. This assertion is not a hard requirement and could be softened, but
+  // it makes the logic much easier to understand, we have a shadow-row producer
+  // that does not produce anything else.
+  TRI_ASSERT(numRegistersToWrite() == 0);
+  // This is the hard requirement, if we decide to remove the no-write policy.
+  // This has te be in place. However no-write implies this.
+  TRI_ASSERT(allValuesWritten());
+  TRI_ASSERT(sourceRow.isInitialized());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // We can only add shadow rows if source and this are different blocks
+  TRI_ASSERT(!sourceRow.internalBlockIs(_block));
+#endif
+  block().makeShadowRow(_baseIndex);
+  doCopyRow(sourceRow, true);
+}

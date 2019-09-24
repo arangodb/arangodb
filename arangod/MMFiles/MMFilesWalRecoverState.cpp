@@ -1222,7 +1222,14 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
-        Result res = state->databaseFeature->createDatabase(databaseId, nameString, vocbase);
+
+				arangodb::CreateDatabaseInfo info;
+        auto res = info.load(payloadSlice, VPackSlice::emptyArraySlice());
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+
+        res = state->databaseFeature->createDatabase(info, vocbase);
 
         if (res.fail()) {
           LOG_TOPIC("9c045", WARN, arangodb::Logger::ENGINES)

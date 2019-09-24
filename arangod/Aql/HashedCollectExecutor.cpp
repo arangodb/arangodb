@@ -136,7 +136,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
     TRI_ASSERT(aggregateValues->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (auto const& r : _infos.getAggregatedRegisters()) {
-      if (r.second == ExecutionNode::MaxRegisterId) {
+      if (r.second == RegisterPlan::MaxRegisterId) {
         (*aggregateValues)[j]->reduce(EmptyValue);
       } else {
         (*aggregateValues)[j]->reduce(input.getValue(r.second));
@@ -148,7 +148,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 
 void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) {
   // build the result
-  TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != RegisterPlan::MaxRegisterId);
 
   auto& keys = _currentGroup->first;
   TRI_ASSERT(_currentGroup->second != nullptr);

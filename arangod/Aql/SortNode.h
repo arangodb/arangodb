@@ -75,7 +75,8 @@ class SortNode : public ExecutionNode {
   inline bool isStable() const { return _stable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
