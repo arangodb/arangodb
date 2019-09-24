@@ -1,5 +1,8 @@
 devel
 -----
+
+* Fix compilation issue with clang 10
+
 * Add ReplicationFactor, MinReplicationFactor and sharding strategy to database creation
   dialogue in web UI. Preselect database default values for collection creation in web UI.
 
