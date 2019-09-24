@@ -193,7 +193,10 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block != nullptr);
-  itemBlock::forRowInBlock(_block, [this, inReg, &info](InputAqlItemRow&& row) {
+  
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
+    
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -205,7 +208,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
@@ -320,8 +323,8 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block != nullptr);
-  itemBlock::forRowInBlock(_block, [this, &stats, &errorCode, &key, &rev, trx,
-                                    inReg, &info](InputAqlItemRow&& row) {
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
     auto const& inVal = row.getValue(inReg);
 
     if (!info._consultAqlWriteFilter ||
@@ -361,7 +364,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
       _operations.push_back(ModOperationType::IGNORE_RETURN);
       this->_last_not_skip = _operations.size();
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
@@ -460,9 +463,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   RegisterId const insertReg = info._input2RegisterId;
   RegisterId const updateReg = info._input3RegisterId;
 
-  itemBlock::forRowInBlock(_block, [this, &stats, &errorCode, &errorMessage,
-                                    &key, trx, inDocReg, insertReg, updateReg,
-                                    &info](InputAqlItemRow&& row) {
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
+    
     errorMessage.clear();
     errorCode = TRI_ERROR_NO_ERROR;
     auto const& inVal = row.getValue(inDocReg);
@@ -522,7 +525,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
       _operations.push_back(ModOperationType::IGNORE_SKIP);
       handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
@@ -657,9 +660,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   RegisterId const keyReg = info._input2RegisterId;
   bool const hasKeyVariable = keyReg != ExecutionNode::MaxRegisterId;
 
-  itemBlock::forRowInBlock(_block, [this, &options, &stats, &errorCode,
-                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
-                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
+  
     auto const& inVal = row.getValue(inDocReg);
     errorCode = TRI_ERROR_NO_ERROR;
     errorMessage.clear();
@@ -716,7 +719,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
       _operations.push_back(ModOperationType::IGNORE_SKIP);
       handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 

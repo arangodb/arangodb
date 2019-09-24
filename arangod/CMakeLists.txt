@@ -330,7 +330,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
-  Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )

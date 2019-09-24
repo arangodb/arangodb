@@ -25,10 +25,9 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Basics/Mutex.h"
-#include "Cluster/ClusterComm.h"
-#include "Rest/CommonDefines.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <fuerte/message.h>
+#include <fuerte/types.h>
 
 namespace arangodb {
 namespace aql {
@@ -60,9 +59,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
-  /// @brief handleAsyncResult
-  bool handleAsyncResult(ClusterCommResult* result) override;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
@@ -80,26 +76,12 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   Query const& getQuery() const { return _query; }
 
-  /**
-   * @brief Handle communication errors in Async case.
-   *
-   * @param result The network response we got from cluster comm.
-   *
-   * @return A wrapped Result Object, that is either ok() or contains
-   *         the error information to be thrown in get/skip some.
-   */
-  arangodb::Result handleCommErrors(ClusterCommResult* result) const;
-
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
-  arangodb::Result sendAsyncRequest(rest::RequestType type, std::string const& urlPart,
-                                    std::shared_ptr<std::string const> body);
-
-  std::shared_ptr<velocypack::Builder> stealResultBody();
+  arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
+                                    velocypack::Buffer<uint8_t> body);
 
  private:
-  /// @brief timeout
-  static double const defaultTimeOut;
 
   ExecutorInfos _infos;
 
@@ -121,19 +103,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
-  std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
+  std::unique_ptr<fuerte::Response> _lastResponse;
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
-
-  /// @brief Mutex to cover against the race, that a getSome request
-  ///        is responded before the ticket id is registered.
-  arangodb::Mutex _communicationMutex;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::atomic<std::thread::id> _communicationMutexOwner; // current thread owning '_communicationMutex' lock (workaround for non-recusrive MutexLocker)
-#endif
-
-  OperationID _lastTicketId;
 
   bool _hasTriggeredShutdown;
 };

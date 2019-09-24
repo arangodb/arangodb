@@ -195,7 +195,7 @@ class Request final : public Message {
   ///////////////////////////////////////////////
   // add payload
   ///////////////////////////////////////////////
-  void addVPack(velocypack::Slice const& slice);
+  void addVPack(velocypack::Slice const slice);
   void addVPack(velocypack::Buffer<uint8_t> const& buffer);
   void addVPack(velocypack::Buffer<uint8_t>&& buffer);
   void addBinary(uint8_t const* data, std::size_t length);

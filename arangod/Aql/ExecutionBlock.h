@@ -255,16 +255,6 @@ class ExecutionBlock {
 
   transaction::Methods* transaction() const { return _trx; }
 
-  // @brief Will be called on the querywakeup callback with the
-  // result collected over the network. Needs to be implemented
-  // on all nodes that use this mechanism.
-  virtual bool handleAsyncResult(ClusterCommResult* result) {
-    // This indicates that a node uses async functionality
-    // but does not react to the response.
-    TRI_ASSERT(false);
-    return true;
-  }
-
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep) {
     TRI_ASSERT(ep != nullptr);

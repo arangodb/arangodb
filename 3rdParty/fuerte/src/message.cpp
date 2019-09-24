@@ -184,7 +184,7 @@ std::string Request::acceptTypeString() const {
 ContentType Request::acceptType() const { return header.acceptType(); }
 
 //// add payload add VelocyPackData
-void Request::addVPack(VPackSlice const& slice) {
+void Request::addVPack(VPackSlice const slice) {
 #ifdef FUERTE_CHECKED_MODE
   // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
   // std::endl;
