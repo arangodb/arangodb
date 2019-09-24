@@ -1,5 +1,8 @@
 devel
 -----
+
+* Fixed issue #10062: AQL: Could not extract custom attribute.
+
 * Add ReplicationFactor, MinReplicationFactor and sharding strategy to database creation
   dialogue in web UI. Preselect database default values for collection creation in web UI.
 
@@ -16,6 +19,8 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
+
 * Fix a problem with AQL constrained sort in the cluster, which might abort
   queries.
 
@@ -26,7 +31,8 @@ devel
 * Enabled IPO with cmake as an option, default is on for release builds without
   google tests.
 
-* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting in undefined behaviour.
+* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting 
+  in undefined behaviour.
 
 * Remove operations documents in the cluster will now use an optimization, if all sharding keys 
   were specified. Should the sharding keys not match the values in the actual document
@@ -75,6 +81,7 @@ devel
 
 * Upgraded bundled jemalloc library to version 5.2.1.
 
+<<<<<<< HEAD
 * Fixed internal issue #4407: remove storage engine warning.
 
 * Added support for TLS 1.3 for the arangod server and the client tools.
@@ -84,6 +91,11 @@ devel
 
   The arangod server can be started with option `--ssl.protocol 5` to make it use
   TLS 1.2 again.
+=======
+
+v3.4.8 (2019-09-09)
+-------------------
+>>>>>>> 3f25287103... fixed issue #10062: AQL: Could not extract custom attribute
 
   All client tools also support TLS 1.3, by using the `--ssl.protocol 6` option when
   invoking them. The client tools will use TLS 1.2 by default, in order to be
