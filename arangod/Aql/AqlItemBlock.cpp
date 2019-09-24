@@ -711,3 +711,238 @@ void AqlItemBlock::copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
     TRI_ASSERT(false);
   }
 }
+
+AqlItemBlock::~AqlItemBlock() {
+  TRI_ASSERT(_refCount == 0);
+  destroy();
+  decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
+}
+
+void AqlItemBlock::increaseMemoryUsage(size_t value) {
+  resourceMonitor().increaseMemoryUsage(value);
+}
+
+void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
+  resourceMonitor().decreaseMemoryUsage(value);
+}
+
+AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
+  return _data[getAddress(index, varNr)];
+}
+
+AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
+  return _data[getAddress(index, varNr)];
+}
+
+void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+  TRI_ASSERT(_data[getAddress(index, varNr)].isEmpty());
+
+  // First update the reference count, if this fails, the value is empty
+  if (value.requiresDestruction()) {
+    if (++_valueCount[value] == 1) {
+      size_t mem = value.memoryUsage();
+      increaseMemoryUsage(mem);
+    }
+  }
+
+  _data[getAddress(index, varNr)] = value;
+}
+
+template <typename... Args>
+void AqlItemBlock::emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+  auto address = getAddress(index, varNr);
+  AqlValue* p = &_data[address];
+  TRI_ASSERT(p->isEmpty());
+  // construct the AqlValue in place
+  AqlValue* value;
+  try {
+    value = new (p) AqlValue(std::forward<Args>(args)...);
+  } catch (...) {
+    // clean up the cell
+    _data[address].erase();
+    throw;
+  }
+
+  try {
+    // Now update the reference count, if this fails, we'll roll it back
+    if (value->requiresDestruction()) {
+      if (++_valueCount[*value] == 1) {
+        increaseMemoryUsage(value->memoryUsage());
+      }
+    }
+  } catch (...) {
+    // invoke dtor
+    value->~AqlValue();
+    // TODO - instead of disabling it completly we could you use
+    // a constexpr if() with c++17
+    _data[address].destroy();
+    throw;
+  }
+}
+
+void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
+  auto& element = _data[getAddress(index, varNr)];
+
+  if (element.requiresDestruction()) {
+    auto it = _valueCount.find(element);
+
+    if (it != _valueCount.end()) {
+      if (--(it->second) == 0) {
+        decreaseMemoryUsage(element.memoryUsage());
+        _valueCount.erase(it);
+        element.destroy();
+        return;  // no need for an extra element.erase() in this case
+      }
+    }
+  }
+
+  element.erase();
+}
+
+void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
+  auto& element = _data[getAddress(index, varNr)];
+
+  if (element.requiresDestruction()) {
+    auto it = _valueCount.find(element);
+
+    if (it != _valueCount.end()) {
+      if (--(it->second) == 0) {
+        decreaseMemoryUsage(element.memoryUsage());
+        try {
+          _valueCount.erase(it);
+        } catch (...) {
+        }
+      }
+    }
+  }
+
+  element.erase();
+}
+
+void AqlItemBlock::eraseAll() {
+  for (size_t i = 0; i < numEntries(); i++) {
+    auto& it = _data[i];
+    if (!it.isEmpty()) {
+      it.erase();
+    }
+  }
+
+  for (auto const& it : _valueCount) {
+    if (it.second > 0) {
+      decreaseMemoryUsage(it.first.memoryUsage());
+    }
+  }
+  _valueCount.clear();
+}
+
+void AqlItemBlock::copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {
+  TRI_ASSERT(currentRow != fromRow);
+
+  for (RegisterId i = 0; i < curRegs; i++) {
+    auto currentAddress = getAddress(currentRow, i);
+    auto fromAddress = getAddress(fromRow, i);
+    if (_data[currentAddress].isEmpty()) {
+      // First update the reference count, if this fails, the value is empty
+      if (_data[fromAddress].requiresDestruction()) {
+        ++_valueCount[_data[fromAddress]];
+      }
+      TRI_ASSERT(_data[currentAddress].isEmpty());
+      _data[currentAddress] = _data[fromAddress];
+    }
+  }
+  // Copy over subqueryDepth
+  copySubqueryDepth(currentRow, fromRow);
+}
+
+void AqlItemBlock::copyValuesFromRow(size_t currentRow,
+                                     std::unordered_set<RegisterId> const& regs,
+                                     size_t fromRow) {
+  TRI_ASSERT(currentRow != fromRow);
+
+  for (auto const reg : regs) {
+    TRI_ASSERT(reg < getNrRegs());
+    if (getValueReference(currentRow, reg).isEmpty()) {
+      // First update the reference count, if this fails, the value is empty
+      if (getValueReference(fromRow, reg).requiresDestruction()) {
+        ++_valueCount[getValueReference(fromRow, reg)];
+      }
+      _data[getAddress(currentRow, reg)] = getValueReference(fromRow, reg);
+    }
+  }
+  // Copy over subqueryDepth
+  copySubqueryDepth(currentRow, fromRow);
+}
+
+void AqlItemBlock::steal(AqlValue const& value) {
+  if (value.requiresDestruction()) {
+    if (_valueCount.erase(value)) {
+      decreaseMemoryUsage(value.memoryUsage());
+    }
+  }
+}
+
+RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
+
+size_t AqlItemBlock::size() const noexcept { return _nrItems; }
+
+size_t AqlItemBlock::numEntries() const { return internalNrRegs() * _nrItems; }
+
+size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
+
+bool AqlItemBlock::isShadowRow(size_t row) const {
+  /// This value is only filled for shadowRows.
+  /// And it is guaranteed to be only filled by numbers this way.
+  return _data[getSubqueryDepthAddress(row)].isNumber();
+}
+
+AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
+  TRI_ASSERT(isShadowRow(row));
+  return _data[getSubqueryDepthAddress(row)];
+}
+
+void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
+  TRI_ASSERT(other.isNumber());
+  _data[getSubqueryDepthAddress(row)] = other;
+  TRI_ASSERT(isShadowRow(row));
+}
+
+void AqlItemBlock::makeShadowRow(size_t row) {
+  TRI_ASSERT(!isShadowRow(row));
+  _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+}
+
+void AqlItemBlock::makeDataRow(size_t row) {
+  TRI_ASSERT(isShadowRow(row));
+  _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
+}
+
+AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept { return _manager; }
+
+size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
+
+void AqlItemBlock::incrRefCount() const noexcept { ++_refCount; }
+
+void AqlItemBlock::decrRefCount() const noexcept {
+  TRI_ASSERT(_refCount > 0);
+  --_refCount;
+}
+
+RegisterCount AqlItemBlock::internalNrRegs() const noexcept { return _nrRegs + 1; }
+size_t AqlItemBlock::getAddress(size_t index, RegisterId varNr) const noexcept {
+  TRI_ASSERT(index < _nrItems);
+  TRI_ASSERT(varNr < _nrRegs);
+  return index * internalNrRegs() + varNr + 1;
+}
+
+size_t AqlItemBlock::getSubqueryDepthAddress(size_t index) const noexcept {
+  TRI_ASSERT(index < _nrItems);
+  return index * internalNrRegs();
+}
+
+void AqlItemBlock::copySubqueryDepth(size_t currentRow, size_t fromRow) {
+  auto currentAddress = getSubqueryDepthAddress(currentRow);
+  auto fromAddress = getSubqueryDepthAddress(fromRow);
+  if (!_data[fromAddress].isEmpty() && _data[currentAddress].isEmpty()) {
+    _data[currentAddress] = _data[fromAddress];
+  }
+}
