@@ -102,11 +102,11 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--pork.a-string-value-with-an-inline-comment", "bla", new StringParameter(&aStringValueWithAnInlineComment));
   options.addOption("--pork.another-string-value-with-an-inline-comment", "bla", new StringParameter(&anotherStringValueWithAnInlineComment));
   options.addOption("--pork.a-string-value-not-set", "bla", new StringParameter(&aStringValueNotSet));
-  options.addOption("--pork.sounds", "which sounds do porks make?",
+  options.addOption("--pork.sounds", "which sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
 
-  options.addOption("--pork.strange-sounds", "which strange sounds do porks make?",
+  options.addOption("--pork.strange-sounds", "which strange sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
 
