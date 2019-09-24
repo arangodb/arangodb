@@ -106,7 +106,7 @@ TEST(InifileParserTest, test_options) {
                     new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
 
-  options.addOption("--pork.strange-sounds", "which strange sounds do porks make?",
+  options.addOption("--pork.strange-sounds", "which strange sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
 
