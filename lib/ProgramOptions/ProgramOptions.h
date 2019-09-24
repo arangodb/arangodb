@@ -267,7 +267,7 @@ class ProgramOptions {
   std::string _more;
   // context string that's shown when errors are printed
   std::string _context;
-  // already seen to flush programm options
+  // already seen to flush program options
   std::vector<std::string> _seenParams;
   // all sections
   std::map<std::string, Section> _sections;
