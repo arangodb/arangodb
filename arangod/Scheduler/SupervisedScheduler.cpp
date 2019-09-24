@@ -204,15 +204,26 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
       }
     }
   }
+  
+  auto work = std::make_unique<WorkItem>(std::move(handler));
+  
+  // use memory order acquire to make sure, pushed item is visible
+  uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
+  uint64_t const jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
+  
+  // to make sure the queue length hasn't underflowed
+  TRI_ASSERT(jobsDone <= jobsSubmitted);
 
-  size_t queueNo = static_cast<size_t>(PriorityRequestLane(lane));
+  uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
+  
+  size_t const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
 
   TRI_ASSERT(queueNo <= 2);
   TRI_ASSERT(isStopping() == false);
 
-  auto work = std::make_unique<WorkItem>(std::move(handler));
-
   if (!_queues[queueNo].bounded_push(work.get())) {
+    _jobsSubmitted.fetch_sub(1, std::memory_order_release);
+
     uint64_t maxSize = _maxFifoSize;
     if (queueNo == 1) {
       maxSize = _fifo1Size;
@@ -223,18 +234,11 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
     logQueueFullEveryNowAndThen(queueNo, maxSize);
     return false;
   }
+
   // queue now has ownership for the WorkItem
   work.release();
 
-  static thread_local uint64_t lastSubmitTime_ns;
-
-  // use memory order release to make sure, pushed item is visible
-  uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
-  uint64_t const jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
-  uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
-
-  // to make sure the queue length hasn't underflowed
-  TRI_ASSERT(jobsDone <= jobsSubmitted);
+  static thread_local uint64_t lastSubmitTime_ns = 0;
 
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
