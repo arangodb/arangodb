@@ -5248,7 +5248,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     arangodb::aql::Query query(false, *vocbase, arangodb::aql::QueryString("RETURN 1"),
                                nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query.plan(), 0);
 
@@ -5265,7 +5265,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     );
     node.addDependency(&singleton);
 
-    arangodb::aql::ExecutionEngine engine(&query);
+    arangodb::aql::ExecutionEngine engine(&query, arangodb::aql::SerializationFormat::SHADOWROWS);
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
     singleton.setVarUsageValid();
     node.setVarUsageValid();

@@ -51,7 +51,7 @@ class ReturnExecutorTest : public ::testing::Test {
   RegisterId inputRegister;
 
   ReturnExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         registersToKeep(make_shared_unordered_set()),
         inputRegister(0) {}

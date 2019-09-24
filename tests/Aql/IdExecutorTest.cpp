@@ -57,7 +57,7 @@ class IdExecutorTest : public ::testing::Test {
   OutputAqlItemRow row;
 
   IdExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(make_shared_unordered_set()),
         registersToKeep(make_shared_unordered_set({0})),

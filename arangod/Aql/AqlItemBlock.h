@@ -37,6 +37,7 @@ namespace aql {
 class AqlItemBlockManager;
 class BlockCollector;
 class SharedAqlItemBlockPtr;
+enum class SerializationFormat;
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -71,6 +72,8 @@ class AqlItemBlock {
 
   void initFromSlice(arangodb::velocypack::Slice);
 
+  SerializationFormat getFormatType() const;
+
  protected:
   /// @brief destroy the block
   /// Should only ever be deleted by AqlItemManager::returnBlock, so the
@@ -78,7 +81,7 @@ class AqlItemBlock {
   ~AqlItemBlock() {
     TRI_ASSERT(_refCount == 0);
     destroy();
-    decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+    decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
   }
 
  private:
@@ -97,23 +100,17 @@ class AqlItemBlock {
  public:
   /// @brief getValue, get the value of a register
   inline AqlValue getValue(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(index < _nrItems);
-    TRI_ASSERT(varNr < _nrRegs);
-    return _data[index * _nrRegs + varNr];
+    return _data[getAddress(index, varNr)];
   }
 
   /// @brief getValue, get the value of a register by reference
   inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(index < _nrItems);
-    TRI_ASSERT(varNr < _nrRegs);
-    return _data[index * _nrRegs + varNr];
+    return _data[getAddress(index, varNr)];
   }
 
   /// @brief setValue, set the current value of a register
   inline void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-    TRI_ASSERT(index < _nrItems);
-    TRI_ASSERT(varNr < _nrRegs);
-    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+    TRI_ASSERT(_data[getAddress(index, varNr)].isEmpty());
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
@@ -123,19 +120,16 @@ class AqlItemBlock {
       }
     }
 
-    _data[index * _nrRegs + varNr] = value;
+    _data[getAddress(index, varNr)] = value;
   }
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
-  //std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
-  void
-  emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    TRI_ASSERT(index < _nrItems);
-    TRI_ASSERT(varNr < _nrRegs);
-
-    AqlValue* p = &_data[index * _nrRegs + varNr];
+  // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
+  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+    auto address = getAddress(index, varNr);
+    AqlValue* p = &_data[address];
     TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
     AqlValue* value;
@@ -143,7 +137,7 @@ class AqlItemBlock {
       value = new (p) AqlValue(std::forward<Args>(args)...);
     } catch (...) {
       // clean up the cell
-      _data[index * _nrRegs + varNr].erase();
+      _data[address].erase();
       throw;
     }
 
@@ -159,7 +153,7 @@ class AqlItemBlock {
       value->~AqlValue();
       // TODO - instead of disabling it completly we could you use
       // a constexpr if() with c++17
-      _data[index * _nrRegs + varNr].destroy();
+      _data[address].destroy();
       throw;
     }
   }
@@ -169,7 +163,7 @@ class AqlItemBlock {
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
   void destroyValue(size_t index, RegisterId varNr) {
-    auto& element = _data[index * _nrRegs + varNr];
+    auto& element = _data[getAddress(index, varNr)];
 
     if (element.requiresDestruction()) {
       auto it = _valueCount.find(element);
@@ -190,7 +184,7 @@ class AqlItemBlock {
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
   void eraseValue(size_t index, RegisterId varNr) {
-    auto& element = _data[index * _nrRegs + varNr];
+    auto& element = _data[getAddress(index, varNr)];
 
     if (element.requiresDestruction()) {
       auto it = _valueCount.find(element);
@@ -214,7 +208,7 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll() {
     for (size_t i = 0; i < numEntries(); i++) {
-      auto &it = _data[i];
+      auto& it = _data[i];
       if (!it.isEmpty()) {
         it.erase();
       }
@@ -245,20 +239,23 @@ class AqlItemBlock {
     TRI_ASSERT(currentRow != fromRow);
 
     for (RegisterId i = 0; i < curRegs; i++) {
-      if (_data[currentRow * _nrRegs + i].isEmpty()) {
+      auto currentAddress = getAddress(currentRow, i);
+      auto fromAddress = getAddress(fromRow, i);
+      if (_data[currentAddress].isEmpty()) {
         // First update the reference count, if this fails, the value is empty
-        if (_data[fromRow * _nrRegs + i].requiresDestruction()) {
-          ++_valueCount[_data[fromRow * _nrRegs + i]];
+        if (_data[fromAddress].requiresDestruction()) {
+          ++_valueCount[_data[fromAddress]];
         }
-        TRI_ASSERT(_data[currentRow * _nrRegs + i].isEmpty());
-        _data[currentRow * _nrRegs + i] = _data[fromRow * _nrRegs + i];
+        TRI_ASSERT(_data[currentAddress].isEmpty());
+        _data[currentAddress] = _data[fromAddress];
       }
     }
+    // Copy over subqueryDepth
+    copySubqueryDepth(currentRow, fromRow);
   }
 
   void copyValuesFromRow(size_t currentRow,
-                         std::unordered_set<RegisterId> const& regs,
-                         size_t fromRow) {
+                         std::unordered_set<RegisterId> const& regs, size_t fromRow) {
     TRI_ASSERT(currentRow != fromRow);
 
     for (auto const reg : regs) {
@@ -268,9 +265,11 @@ class AqlItemBlock {
         if (getValueReference(fromRow, reg).requiresDestruction()) {
           ++_valueCount[getValueReference(fromRow, reg)];
         }
-        _data[currentRow * _nrRegs + reg] = getValueReference(fromRow, reg);
+        _data[getAddress(currentRow, reg)] = getValueReference(fromRow, reg);
       }
     }
+    // Copy over subqueryDepth
+    copySubqueryDepth(currentRow, fromRow);
   }
 
   /// @brief valueCount
@@ -302,14 +301,11 @@ class AqlItemBlock {
   /// @brief getter for _nrItems
   inline size_t size() const noexcept { return _nrItems; }
 
-
   /// @brief Number of entries in the matrix. If this changes, the memory usage
   /// must be / in- or decreased appropriately as well.
   /// All entries _data[i] for numEntries() <= i < _data.size() always have to
   /// be erased, i.e. empty / none!
-  inline size_t numEntries() const {
-    return _nrRegs * _nrItems;
-  }
+  inline size_t numEntries() const { return internalNrRegs() * _nrItems; }
 
   inline size_t capacity() const noexcept { return _data.capacity(); }
 
@@ -349,6 +345,35 @@ class AqlItemBlock {
   /// be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
+  /// @brief test if the given row is a shadow row and conveys subquery
+  /// information only. It should not be handed to any non-subquery executor.
+  bool isShadowRow(size_t row) const {
+    /// This value is only filled for shadowRows.
+    /// And it is guaranteed to be only filled by numbers this way.
+    return _data[getSubqueryDepthAddress(row)].isNumber();
+  }
+
+  AqlValue const& getShadowRowDepth(size_t row) const {
+    TRI_ASSERT(isShadowRow(row));
+    return _data[getSubqueryDepthAddress(row)];
+  }
+
+  void setShadowRowDepth(size_t row, AqlValue const& other) {
+    TRI_ASSERT(other.isNumber());
+    _data[getSubqueryDepthAddress(row)] = other;
+    TRI_ASSERT(isShadowRow(row));
+  }
+
+  void makeShadowRow(size_t row) {
+    TRI_ASSERT(!isShadowRow(row));
+    _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  }
+
+  void makeDataRow(size_t row) {
+    TRI_ASSERT(isShadowRow(row));
+    _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
+  }
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept { return _manager; }
   size_t getRefCount() const noexcept { return _refCount; }
@@ -357,6 +382,33 @@ class AqlItemBlock {
     TRI_ASSERT(_refCount > 0);
     --_refCount;
   }
+
+ private:
+  // This includes the amount of internal registers that are not visible to the outside.
+  inline RegisterCount internalNrRegs() const noexcept { return _nrRegs + 1; }
+
+  /// @brief get the computed address within the data vector
+  inline size_t getAddress(size_t index, RegisterId varNr) const noexcept {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
+    return index * internalNrRegs() + varNr + 1;
+  }
+
+  inline size_t getSubqueryDepthAddress(size_t index) const noexcept {
+    TRI_ASSERT(index < _nrItems);
+    return index * internalNrRegs();
+  }
+
+  inline void copySubqueryDepth(size_t currentRow, size_t fromRow) {
+    auto currentAddress = getSubqueryDepthAddress(currentRow);
+    auto fromAddress = getSubqueryDepthAddress(fromRow);
+    if (!_data[fromAddress].isEmpty() && _data[currentAddress].isEmpty()) {
+      _data[currentAddress] = _data[fromAddress];
+    }
+  }
+
+  void copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
+                                     size_t sourceRow, size_t targetRow) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -375,7 +427,7 @@ class AqlItemBlock {
   size_t _nrItems = 0;
 
   /// @brief _nrRegs, number of columns
-  RegisterId _nrRegs = 0;
+  RegisterCount _nrRegs = 0;
 
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;

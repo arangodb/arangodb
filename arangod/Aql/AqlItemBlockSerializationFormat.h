@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,35 +17,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_CXX_DRIVER_FORMAT_H
-#define ARANGO_CXX_DRIVER_FORMAT_H 1
+#ifndef ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
+#define ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 
-#include "Endian.h"
+namespace arangodb {
+namespace aql {
 
-namespace arangodb { namespace fuerte { namespace basics {
-  
-/*
- * Alignment aware serialization and deserialization functions
- */
+/// @brief Defines the serialization format of AQL item blocks
+enum class SerializationFormat {
+  // Format used in 3.5 and early. Not containing shadow rows
+  CLASSIC = 0,
+  // Use a hidden register for shadow rows. In classic versions all entries would be off by one.
+  SHADOWROWS = 1
+};
 
-template <typename T>
-inline T uintFromPersistentLE(uint8_t const* p) {
-  static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-  T value;
-  memcpy(&value, p, sizeof(T));
-  return basics::littleToHost<T>(value);
-}
-
-template <typename T>
-inline void uintToPersistentLE(uint8_t* p, T value) {
-  static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-  value = basics::hostToLittle(value);
-  memcpy(p, &value, sizeof(T));
-}
-
-}}} 
-
+}  // namespace aql
+}  // namespace arangodb
 #endif
