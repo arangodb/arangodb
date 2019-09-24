@@ -89,6 +89,9 @@ class ConnectionPool final {
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
+  
+  /// @brief shutdown all connections
+  void drainConnections();
 
   /// @brief shutdown all connections
   void shutdown();

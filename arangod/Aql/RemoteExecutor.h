@@ -82,7 +82,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
                                     velocypack::Buffer<uint8_t> body);
 
  private:
-
   ExecutorInfos _infos;
 
   Query const& _query;
@@ -107,10 +106,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
-  
+
   bool _hasTriggeredShutdown;
-  
-  std::atomic<unsigned> _lastTicket; /// used to check for canceled requests
+
+  std::atomic<unsigned> _lastTicket;  /// used to check for canceled requests
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _didSendShutdownRequest = false;

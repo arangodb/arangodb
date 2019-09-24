@@ -47,8 +47,8 @@ using arangodb::basics::VelocyPackHelper;
 
 namespace {
 /// @brief timeout
-  int constexpr kDefaultTimeOutSecs = 3600.0;
-}
+int constexpr kDefaultTimeOutSecs = 3600.0;
+}  // namespace
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, RemoteNode const* node, ExecutorInfos&& infos,
@@ -131,9 +131,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
-  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
-
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome/", std::move(buffer));
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome/",
+                              std::move(buffer));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -193,13 +192,12 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  builder.openObject(/*unindexed*/true);
+  builder.openObject(/*unindexed*/ true);
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
-  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
-
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/skipSome/", std::move(buffer));
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/skipSome/",
+                              std::move(buffer));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -240,7 +238,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, &options);
-  builder.openObject(/*unindexed*/true);
+  builder.openObject(/*unindexed*/ true);
 
   // Backwards Compatibility 3.3
   // NOTE: Removing this breaks tests in current devel - is this really for
@@ -253,13 +251,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   // Now only the one output row is send.
   builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
-  builder.openObject(/*unindexed*/true);
+  builder.openObject(/*unindexed*/ true);
   input.toVelocyPack(_engine->getQuery()->trx(), builder);
   builder.close();
 
   builder.close();
-
-  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
                               "/_api/aql/initializeCursor/", std::move(buffer));
@@ -278,20 +274,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   }
 
   if (!_hasTriggeredShutdown) {
-    // Make sure to cover against the race that the request
-    // in flight is not overtaking in the drop phase here.
-    // After this lock is released even a response
-    // will be discarded in the handle response code
-//    MUTEX_LOCKER(locker, _communicationMutex);
-//    if (_lastTicketId != 0) {
-//      auto cc = ClusterComm::instance();
-//      if (cc == nullptr) {
-//        // nullptr only happens on controlled shutdown
-//        return {ExecutionState::DONE, TRI_ERROR_SHUTTING_DOWN};
-//      }
-//      cc->drop(0, _lastTicketId, "");
-//    }
-//    _lastTicketId = 0;
     _lastTicket.store(0);
     _lastError.reset(TRI_ERROR_NO_ERROR);
     _lastResponse.reset();
@@ -319,7 +301,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
-    
+
     auto response = std::move(_lastResponse);
 
     // both must be reset before return or throw
@@ -361,11 +343,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   // For every call we simply forward via HTTP
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  builder.openObject(/*unindexed*/true);
+  builder.openObject(/*unindexed*/ true);
   builder.add("code", VPackValue(errorCode));
   builder.close();
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown/", std::move(buffer));
+  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown/",
+                              std::move(buffer));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -373,90 +356,91 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 }
 
 namespace {
-Result handleErrorResponse(network::EndpointSpec const& spec,
-                           fuerte::Error err,
+Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
                            fuerte::Response* response) {
-  TRI_ASSERT(err != fuerte::Error::NoError ||
-             response->statusCode() >= 400);
+  TRI_ASSERT(err != fuerte::Error::NoError || response->statusCode() >= 400);
   if (err != fuerte::Error::NoError) {
     return Result(network::fuerteToArangoErrorCode(err));
   }
-  
+
   std::string msg;
   if (spec.shardId.empty()) {
     msg.append("Error message received from cluster node '")
-       .append(spec.serverId).append("': ");
+        .append(spec.serverId)
+        .append("': ");
   } else {
     msg.append("Error message received from shard '")
-       .append(spec.shardId).append("' on cluster node '")
-       .append(spec.serverId).append("': ");
+        .append(spec.shardId)
+        .append("' on cluster node '")
+        .append(spec.serverId)
+        .append("': ");
   }
-  
+
   int res = TRI_ERROR_INTERNAL;
   VPackSlice slice = response->slice();
   if (slice.isObject()) {
     VPackSlice err = slice.get(StaticStrings::Error);
     if (err.isBool() && err.getBool()) {
       res = VelocyPackHelper::readNumericValue(slice, StaticStrings::ErrorNum, res);
-      VPackStringRef ref = VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
-                                                          "(no valid error in response)");
+      VPackStringRef ref =
+          VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
+                                         "(no valid error in response)");
       msg.append(ref.data(), ref.size());
     }
   }
-  
+
   return Result(res, std::move(msg));
 }
-}
+}  // namespace
 
-Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
-    fuerte::RestVerb type, std::string const& urlPart,
-    VPackBuffer<uint8_t> body) {
-
+Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
+                                                            std::string const& urlPart,
+                                                            VPackBuffer<uint8_t> body) {
   network::ConnectionPool* pool = NetworkFeature::pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
-  
+
   std::string url = std::string("/_db/") +
                     arangodb::basics::StringUtils::urlEncode(
                         _engine->getQuery()->trx()->vocbase().name()) +
                     urlPart + _queryId;
-  
+
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(_server, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
-  
+
   auto req = fuerte::createRequest(type, url, {}, std::move(body));
   // Later, we probably want to set these sensibly:
   req->timeout(std::chrono::seconds(kDefaultTimeOutSecs));
   if (!_ownName.empty()) {
     req->header.addMeta("Shard-Id", _ownName);
   }
-  
+
   network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
-  
+
   unsigned ticket = _lastTicket.fetch_add(1) + 1;
   std::shared_ptr<fuerte::Connection> conn = ref.connection();
   conn->sendRequest(std::move(req),
                     [=, ref(std::move(ref))](fuerte::Error err,
                                              std::unique_ptr<fuerte::Request>,
                                              std::unique_ptr<fuerte::Response> res) {
-    _query.sharedState()->execute([&] { // notifies outside
-      if (_lastTicket.load() == ticket) {
-        if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
-          _lastError = handleErrorResponse(spec, err, res.get());
-        } else {
-          _lastResponse = std::move(res);
-        }
-      }
-    });
-  });
-  
+                      _query.sharedState()->execute([&] {  // notifies outside
+                        if (_lastTicket.load() == ticket) {
+                          if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+                            _lastError = handleErrorResponse(spec, err, res.get());
+                          } else {
+                            _lastResponse = std::move(res);
+                          }
+                        }
+                      });
+                    });
+
   ++_engine->_stats.requests;
-  
+
   return {TRI_ERROR_NO_ERROR};
 }

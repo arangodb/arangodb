@@ -69,8 +69,8 @@ ConnectionPool::Ref ConnectionPool::leaseConnection(std::string const& str) {
   return selectConnection(*(it->second), builder);
 }
 
-/// @brief shutdown all connections
-void ConnectionPool::shutdown() {
+/// @brief drain all connections
+void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
     ConnectionList& list = *(pair.second);
@@ -79,6 +79,13 @@ void ConnectionPool::shutdown() {
       c->fuerte->cancel();
     }
   }
+}
+
+
+/// @brief shutdown all connections
+void ConnectionPool::shutdown() {
+  drainConnections();
+  WRITE_LOCKER(guard, _lock);
   _connections.clear();
 }
   

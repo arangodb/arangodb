@@ -144,15 +144,18 @@ void NetworkFeature::beginShutdown() {
     _workItem.reset();
   }
   _poolPtr.store(nullptr, std::memory_order_release);
-  if (_pool) {
-    _pool->shutdown();
+  if (_pool) {  // first cancel all connections
+    _pool->drainConnections();
   }
 }
 
 void NetworkFeature::stop() {
-  // we might have posted another workItem during shutdown.
-  std::lock_guard<std::mutex> guard(_workItemMutex);
-  _workItem.reset();
+  {
+    // we might have posted another workItem during shutdown.
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
+  }
+  _pool->drainConnections();
 }
 
 }  // namespace arangodb
