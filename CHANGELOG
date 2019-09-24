@@ -1,3 +1,9 @@
+v3.5.2 (XXXX-XX-XX)
+-------------------
+
+* Fixed issue #10062: AQL: could not extract custom attribute.
+
+
 v3.5.1 (2019-09-24)
 -------------------
 
