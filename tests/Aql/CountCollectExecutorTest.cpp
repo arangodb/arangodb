@@ -50,7 +50,7 @@ class CountCollectExecutorTest : public ::testing::Test {
   std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
 
   CountCollectExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         nrOutputReg(2),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputReg)),
         outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(

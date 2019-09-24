@@ -116,6 +116,10 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
 
+  /// @brief Cache for the Logical Collection. This way it is not refetched
+  /// on every document.
+  std::shared_ptr<arangodb::LogicalCollection> _logCol;
+
   /// @brief _index: the block in _buffer we are currently considering
   size_t _index;
 

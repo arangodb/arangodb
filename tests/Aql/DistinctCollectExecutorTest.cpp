@@ -70,7 +70,7 @@ class DistinctCollectExecutorTest : public ::testing::Test {
   NoStats stats;
 
   DistinctCollectExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()) {}
 };
@@ -353,6 +353,6 @@ TEST_F(DistinctCollectExecutorTest,
   ASSERT_TRUE(y.toInt64() == 3);
 }
 
+}  // namespace aql
 }  // namespace tests
-}  // namespace arangodb
 }  // namespace arangodb

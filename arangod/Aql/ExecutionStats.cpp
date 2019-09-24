@@ -85,7 +85,16 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime
 
   for (auto const& pair : summand.nodes) {
-    auto result = nodes.insert(pair);
+    size_t nid = pair.first;
+    auto const& alias = _nodeAliases.find(nid);
+    if (alias != _nodeAliases.end()) {
+      nid = alias->second;
+      if (nid == std::numeric_limits<size_t>::max()) {
+        // ignore this value, it is an intenral node that we do not want to expose
+        continue;
+      }
+    }
+    auto result = nodes.insert({nid, pair.second});
     if (!result.second) {
       result.first->second += pair.second;
     }
@@ -135,6 +144,10 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
+      auto const& alias = _nodeAliases.find(nid);
+      if (alias != _nodeAliases.end()) {
+        nid = alias->second;
+      }
       nodes.emplace(nid, node);
     }
   }

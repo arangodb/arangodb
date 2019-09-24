@@ -57,7 +57,7 @@ class SingleRowFetcher;
 
 class IResearchViewExecutorInfos : public ExecutorInfos {
  public:
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::ExecutionNode::VarInfo>;
+  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   IResearchViewExecutorInfos(
       ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
@@ -280,7 +280,7 @@ class IResearchViewExecutorBase {
   size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _isInitialized;
-};
+};  // IResearchViewExecutorBase
 
 template <bool ordered>
 class IResearchViewExecutor

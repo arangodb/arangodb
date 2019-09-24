@@ -86,7 +86,7 @@ class CalculationExecutorTest : public ::testing::Test {
   CalculationExecutorInfos infos;
 
   CalculationExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         ast(fakedQuery.get()),
         one(ast.createNodeValueInt(1)),

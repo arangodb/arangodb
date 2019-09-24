@@ -41,7 +41,7 @@
 #include "Cluster/ClusterInfo.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
+  #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
@@ -83,12 +83,12 @@ class IResearchFeatureTest : public ::testing::Test {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
 
-  IResearchFeatureTest() : engine(server), server(nullptr, nullptr) {
+  IResearchFeatureTest(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
         _agencyStore);  // need 2 connections or Agency callbacks will fail
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);  // required for Coordinator tests
+    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager); // required for Coordinator tests
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
@@ -132,9 +132,9 @@ TEST_F(IResearchFeatureTest, test_start) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
   std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
+    arangodb::application_features::ApplicationServer::server,
+    [](arangodb::application_features::ApplicationServer* ptr)->void {
+      arangodb::application_features::ApplicationServer::server = ptr;
       });
   arangodb::application_features::ApplicationServer::server =
       nullptr;  // avoid "ApplicationServer initialized twice"
@@ -147,32 +147,32 @@ TEST_F(IResearchFeatureTest, test_start) {
   enum class FunctionType { FILTER = 0, SCORER };
 
   std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
-      // filter functions
-      {"EXISTS", {".|.,.", FunctionType::FILTER}},
-      {"PHRASE", {".,.|.+", FunctionType::FILTER}},
-      {"STARTS_WITH", {".,.|.", FunctionType::FILTER}},
-      {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
+    // filter functions
+    { "EXISTS", { ".|.,.", FunctionType::FILTER } },
+    { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
+    { "STARTS_WITH", { ".,.|.", FunctionType::FILTER } },
+    { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
 
-      // context functions
-      {"ANALYZER", {".,.", FunctionType::FILTER}},
-      {"BOOST", {".,.", FunctionType::FILTER}},
+    // context functions
+    { "ANALYZER", { ".,.", FunctionType::FILTER } },
+    { "BOOST", { ".,.", FunctionType::FILTER } },
 
-      // scorer functions
-      {"BM25", {".|+", FunctionType::SCORER}},
-      {"TFIDF", {".|+", FunctionType::SCORER}},
+    // scorer functions
+    { "BM25", { ".|+", FunctionType::SCORER } },
+    { "TFIDF", { ".|+", FunctionType::SCORER } },
   };
 
   server.addFeature(functions);
   functions->prepare();
 
-  for (auto& entry : expected) {
+  for(auto& entry: expected) {
     auto* function = arangodb::iresearch::getFunction(*functions, entry.first);
     EXPECT_TRUE((nullptr == function));
   };
 
   iresearch.start();
 
-  for (auto& entry : expected) {
+  for(auto& entry: expected) {
     auto* function = arangodb::iresearch::getFunction(*functions, entry.first);
     EXPECT_TRUE((nullptr != function));
     EXPECT_TRUE((entry.second.first == function->arguments));
@@ -185,7 +185,7 @@ TEST_F(IResearchFeatureTest, test_start) {
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1) {
   // version 0 data-source path
-  auto getPersistedPath0 = [](arangodb::LogicalView const& view) -> irs::utf8_path {
+  auto getPersistedPath0 = [](arangodb::LogicalView const& view)->irs::utf8_path {
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>(
             "DatabasePath");
@@ -201,7 +201,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
   };
 
   // version 1 data-source path
-  auto getPersistedPath1 = [](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
+  auto getPersistedPath1 = [](arangodb::iresearch::IResearchLink const& link)->irs::utf8_path {
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>(
             "DatabasePath");
@@ -234,9 +234,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -244,22 +244,22 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
-    server.addFeature(new arangodb::FlushFeature(server));  // required to skip IResearchView validation
-    server.addFeature(new arangodb::DatabaseFeature(server));  // required to skip IResearchView validation
-    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server));  // required for IResearchLink::initDataStore()
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
+    server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
+    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(
                           server));  // required for restoring link analyzers
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system));  // required for IResearchAnalyzerFeature::start()
-    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    analyzerFeature->prepare();  // add static analyzers
-    feature.prepare();           // register iresearch view type
-    feature.start();             // register upgrade tasks
-    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade();  // skip IResearchView validation
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
+    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchAnalyzerFeature::start()
+    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
+    feature.prepare(); // register iresearch view type
+    feature.start(); // register upgrade tasks
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
 
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
     auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
       StorageEngineMock::versionFilenameResult = versionFilename;
@@ -270,8 +270,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -283,12 +282,12 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link0));
 
-    index->unload();  // release file handles
+    index->unload(); // release file handles
     bool result;
     auto linkDataPath = getPersistedPath1(*link0);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+    EXPECT_TRUE((linkDataPath.remove())); // remove link directory
     auto viewDataPath = getPersistedPath0(*logicalView0);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure no view directory
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE((logicalView0
@@ -297,21 +296,21 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok())); // run upgrade
     auto logicalView1 = vocbase.lookupView(logicalView0->name());
-    EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-    EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+    EXPECT_TRUE((false == !logicalView1)); // ensure view present after upgrade
+    EXPECT_TRUE((logicalView0->id() == logicalView1->id())); // ensure same id for view
     auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection,
                                                                 *logicalView1);
-    EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
+    EXPECT_TRUE((false == !link1)); // ensure link present after upgrade
+    EXPECT_TRUE((link0->id() != link1->id())); // ensure new link
     linkDataPath = getPersistedPath1(*link1);
-    EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
+    EXPECT_TRUE((linkDataPath.exists(result) && result)); // ensure link directory created after upgrade
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not present
     viewDataPath = getPersistedPath0(*logicalView1);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not created
     builder.clear();
     builder.openObject();
     EXPECT_TRUE((logicalView1
@@ -320,7 +319,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
+    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
   }
 
   // test single-server (with directory)
@@ -339,9 +338,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -349,22 +348,22 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
-    server.addFeature(new arangodb::FlushFeature(server));  // required to skip IResearchView validation
-    server.addFeature(new arangodb::DatabaseFeature(server));  // required to skip IResearchView validation
-    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server));  // required for IResearchLink::initDataStore()
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
+    server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
+    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(
                           server));  // required for restoring link analyzers
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system));  // required for IResearchLinkHelper::normalize(...)
-    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    analyzerFeature->prepare();  // add static analyzers
-    feature.prepare();           // register iresearch view type
-    feature.start();             // register upgrade tasks
-    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade();  // skip IResearchView validation
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
+    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
+    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
+    feature.prepare(); // register iresearch view type
+    feature.start(); // register upgrade tasks
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
 
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
     auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
       StorageEngineMock::versionFilenameResult = versionFilename;
@@ -375,8 +374,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -388,13 +386,13 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link0));
 
-    index->unload();  // release file handles
+    index->unload(); // release file handles
     bool result;
     auto linkDataPath = getPersistedPath1(*link0);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+    EXPECT_TRUE((linkDataPath.remove())); // remove link directory
     auto viewDataPath = getPersistedPath0(*logicalView0);
     EXPECT_TRUE((viewDataPath.exists(result) && !result));
-    EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
+    EXPECT_TRUE((viewDataPath.mkdir())); // create view directory
     EXPECT_TRUE((viewDataPath.exists(result) && result));
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -404,21 +402,21 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok())); // run upgrade
     auto logicalView1 = vocbase.lookupView(logicalView0->name());
-    EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-    EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+    EXPECT_TRUE((false == !logicalView1)); // ensure view present after upgrade
+    EXPECT_TRUE((logicalView0->id() == logicalView1->id())); // ensure same id for view
     auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection,
                                                                 *logicalView1);
-    EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
+    EXPECT_TRUE((false == !link1)); // ensure link present after upgrade
+    EXPECT_TRUE((link0->id() != link1->id())); // ensure new link
     linkDataPath = getPersistedPath1(*link1);
-    EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
+    EXPECT_TRUE((linkDataPath.exists(result) && result)); // ensure link directory created after upgrade
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory removed after upgrade
     viewDataPath = getPersistedPath0(*logicalView1);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not created
     builder.clear();
     builder.openObject();
     EXPECT_TRUE((logicalView1
@@ -427,7 +425,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
+    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
 
     server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
@@ -457,9 +455,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -467,44 +465,44 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::DatabaseFeature* database;
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
-    server.addFeature(new arangodb::FlushFeature(server));  // required for constructing TRI_vocbase_t
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature(new arangodb::AuthenticationFeature(server));  // required for ClusterComm::instance()
-    server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
+    server.addFeature(new arangodb::FlushFeature(server)); // required for constructing TRI_vocbase_t
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
+    server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterComm::instance()
+    server.addFeature(new arangodb::ClusterFeature(server)); // required to create ClusterInfo instance
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
         server));  // required for SimpleHttpClient::doRequest()
-    server.addFeature(database = new arangodb::DatabaseFeature(server));  // required to skip IResearchView validation
+    server.addFeature(database = new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(
                           server));  // required for restoring link analyzers
-    server.addFeature(new arangodb::ShardingFeature(server));  // required for LogicalCollection::LogicalCollection(...)
-    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system));  // required for IResearchLinkHelper::normalize(...)
-    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
+    server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
+    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
+    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
 
-#if USE_ENTERPRISE
-    server.addFeature(new arangodb::LdapFeature(server));  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
+    #if USE_ENTERPRISE
+      server.addFeature(new arangodb::LdapFeature(server)); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
-    analyzerFeature->prepare();  // add static analyzers
-    feature.prepare();           // register iresearch view type
-    feature.start();             // register upgrade tasks
-    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare();  // create AuthenticationFeature::INSTANCE
-    server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade();  // skip IResearchView validation
-    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // register sharding types
-    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+    analyzerFeature->prepare(); // add static analyzers
+    feature.prepare(); // register iresearch view type
+    feature.start(); // register upgrade tasks
+    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
+    server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare(); // create ClusterInfo instance
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
+    arangodb::AgencyCommManager::MANAGER->start(); // initialize agency
     arangodb::DatabaseFeature::DATABASE =
         database;  // required for ClusterInfo::createCollectionCoordinator(...)
     const_cast<arangodb::IndexFactory&>(engine.indexFactory())
         .emplace(  // required for Indexes::ensureIndex(...)
-            arangodb::iresearch::DATA_SOURCE_TYPE.name(),
+      arangodb::iresearch::DATA_SOURCE_TYPE.name(),
             arangodb::iresearch::IResearchLinkCoordinator::factory());
     auto* ci = arangodb::ClusterInfo::instance();
     ASSERT_TRUE((nullptr != ci));
-    TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
-    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+    ASSERT_TRUE(database->createDatabase(testDBInfo("testDatabase"), vocbase).ok());
 
     // simulate heartbeat thread (create database in current)
     // this is stupid.
@@ -561,7 +559,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
     // ensure no upgrade on coordinator
     // simulate heartbeat thread (create index in current)
@@ -573,16 +571,16 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
           "] } }");
       EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
-    EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
+    EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok())); // run upgrade
     auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection2));
     auto logicalView1 = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-    EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+    EXPECT_TRUE((false == !logicalView1)); // ensure view present after upgrade
+    EXPECT_TRUE((logicalView0->id() == logicalView1->id())); // ensure same id for view
     auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2,
                                                                 *logicalView1);
-    EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() == link1->id()));  // ensure new link
+    EXPECT_TRUE((false == !link1)); // ensure link present after upgrade
+    EXPECT_TRUE((link0->id() == link1->id())); // ensure new link
     builder.clear();
     builder.openObject();
     EXPECT_TRUE((logicalView1
@@ -591,7 +589,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 after upgrade
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 after upgrade
 
     server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
@@ -618,9 +616,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -628,26 +626,26 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
-    server.addFeature(new arangodb::FlushFeature(server));  // required to skip IResearchView validation
-    server.addFeature(new arangodb::AuthenticationFeature(server));  // required for ClusterInfo::loadPlan()
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
+    server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
         server));  // required for SimpleHttpClient::doRequest()
-    server.addFeature(new arangodb::DatabaseFeature(server));  // required to skip IResearchView validation
-    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server));  // required for IResearchLink::initDataStore()
+    server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
+    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(
                           server));  // required for restoring link analyzers
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    server.addFeature(new arangodb::ShardingFeature(server));  // required for LogicalCollection::LogicalCollection(...)
-    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    analyzerFeature->prepare();  // add static analyzers
-    feature.prepare();           // register iresearch view type
-    feature.start();             // register upgrade tasks
-    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare();  // create AuthenticationFeature::INSTANCE
-    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade();  // skip IResearchView validation
-    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // register sharding types
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
+    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
+    feature.prepare(); // register iresearch view type
+    feature.start(); // register upgrade tasks
+    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
 
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
     auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
       StorageEngineMock::versionFilenameResult = versionFilename;
@@ -658,28 +656,27 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
+    ASSERT_NE(logicalCollection, nullptr);
     auto logicalView = vocbase.createView(viewJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_NE(logicalView, nullptr);
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-    ASSERT_TRUE((false == !view));
+    ASSERT_NE(view, nullptr);
     bool created;
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((created));
-    ASSERT_TRUE((false == !index));
+    ASSERT_TRUE(created);
+    ASSERT_NE(index, nullptr);
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-    ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
+    ASSERT_NE(link, nullptr);
+    ASSERT_TRUE((view->link(link->self()).ok())); // link will not notify view in 'vocbase', hence notify manually
 
-    index->unload();  // release file handles
+    index->unload(); // release file handles
     bool result;
     auto linkDataPath = getPersistedPath1(*link);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+    EXPECT_TRUE((linkDataPath.remove())); // remove link directory
     auto viewDataPath = getPersistedPath0(*logicalView);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure no view directory
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE((logicalView
@@ -688,12 +685,12 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok())); // run upgrade
     logicalView = vocbase.lookupView(logicalView->name());
-    EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
+    EXPECT_TRUE((true == !logicalView)); // ensure view removed after upgrade
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not present
 
     server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
@@ -720,9 +717,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -730,26 +727,26 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
-    server.addFeature(new arangodb::FlushFeature(server));  // required to skip IResearchView validation
-    server.addFeature(new arangodb::AuthenticationFeature(server));  // required for ClusterInfo::loadPlan()
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
+    server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
         server));  // required for SimpleHttpClient::doRequest()
-    server.addFeature(new arangodb::DatabaseFeature(server));  // required to skip IResearchView validation
-    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server));  // required for IResearchLink::initDataStore()
+    server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
+    server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(
                           server));  // required for restoring link analyzers
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    server.addFeature(new arangodb::ShardingFeature(server));  // required for LogicalCollection::LogicalCollection(...)
-    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    analyzerFeature->prepare();  // add static analyzers
-    feature.prepare();           // register iresearch view type
-    feature.start();             // register upgrade tasks
-    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare();  // create AuthenticationFeature::INSTANCE
-    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade();  // skip IResearchView validation
-    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // register sharding types
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
+    server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
+    feature.prepare(); // register iresearch view type
+    feature.start(); // register upgrade tasks
+    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
 
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
     auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
       StorageEngineMock::versionFilenameResult = versionFilename;
@@ -761,8 +758,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     engine.views.clear();
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
@@ -775,15 +771,15 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
-    ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
+    ASSERT_TRUE((view->link(link->self()).ok())); // link will not notify view in 'vocbase', hence notify manually
 
-    index->unload();  // release file handles
+    index->unload(); // release file handles
     bool result;
     auto linkDataPath = getPersistedPath1(*link);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+    EXPECT_TRUE((linkDataPath.remove())); // remove link directory
     auto viewDataPath = getPersistedPath0(*logicalView);
     EXPECT_TRUE((viewDataPath.exists(result) && !result));
-    EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
+    EXPECT_TRUE((viewDataPath.mkdir())); // create view directory
     EXPECT_TRUE((viewDataPath.exists(result) && result));
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -793,13 +789,13 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                                                arangodb::LogicalDataSource::Serialize::ForPersistence))
                      .ok()));
     builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
-    //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
+    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok())); // run upgrade
+//    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
     logicalView = vocbase.lookupView(logicalView->name());
-    EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
+    EXPECT_TRUE((true == !logicalView)); // ensure view removed after upgrade
+    EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory removed after upgrade
   }
 }
 
@@ -817,17 +813,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
@@ -852,17 +848,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
     std::condition_variable cond;
     std::mutex mutex;
@@ -888,16 +884,16 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
     std::mutex mutex;
@@ -906,7 +902,7 @@ TEST_F(IResearchFeatureTest, test_async) {
     feature.async(resourceMutex, {});
     EXPECT_TRUE((std::cv_status::timeout ==
                  cond.wait_for(lock, std::chrono::milliseconds(100))));
-    resourceMutex->reset();  // should not deadlock if task released
+    resourceMutex->reset(); // should not deadlock if task released
   }
 
   // schedule task (wait indefinite)
@@ -914,17 +910,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
@@ -945,7 +941,7 @@ TEST_F(IResearchFeatureTest, test_async) {
     EXPECT_TRUE((false == deallocated));
     EXPECT_TRUE((std::cv_status::timeout ==
                  cond.wait_for(lock, std::chrono::milliseconds(100))));
-    EXPECT_TRUE((false == deallocated));  // still scheduled
+    EXPECT_TRUE((false == deallocated)); // still scheduled
     EXPECT_TRUE((1 == count));
   }
 
@@ -954,17 +950,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
     std::mutex mutex;
@@ -990,17 +986,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
     std::mutex mutex;
@@ -1015,14 +1011,14 @@ TEST_F(IResearchFeatureTest, test_async) {
       feature.async(resourceMutex,
                     [&cond, &mutex, flag, &count, &last,
                      &diff](size_t& timeoutMsec, bool) -> bool {
-                      diff = std::chrono::system_clock::now() - last;
-                      last = std::chrono::system_clock::now();
-                      timeoutMsec = 100;
-                      if (++count <= 1) return true;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      return false;
-                    });
+        diff = std::chrono::system_clock::now() - last;
+        last = std::chrono::system_clock::now();
+        timeoutMsec = 100;
+        if (++count <= 1) return true;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+        return false;
+      });
     }
     EXPECT_TRUE((std::cv_status::timeout !=
                  cond.wait_for(lock, std::chrono::milliseconds(1000))));
@@ -1037,17 +1033,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool execVal = true;
     std::condition_variable cond;
@@ -1088,17 +1084,17 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool execVal = false;
     std::condition_variable cond;
@@ -1113,12 +1109,12 @@ TEST_F(IResearchFeatureTest, test_async) {
       feature.async(resourceMutex,
                     [&cond, &mutex, flag, &execVal, &count](size_t& timeoutMsec,
                                                             bool exec) -> bool {
-                      execVal = exec;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      timeoutMsec = 100;
-                      return ++count < 2;
-                    });
+        execVal = exec;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+        timeoutMsec = 100;
+        return ++count < 2;
+      });
     }
     EXPECT_TRUE((std::cv_status::timeout !=
                  cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
@@ -1129,7 +1125,7 @@ TEST_F(IResearchFeatureTest, test_async) {
     EXPECT_TRUE((true == deallocated));
     EXPECT_TRUE((true == execVal));
     auto diff = std::chrono::system_clock::now() - last;
-    EXPECT_TRUE((std::chrono::milliseconds(300) >= diff));  // could be a little more then 100ms+100ms
+    EXPECT_TRUE((std::chrono::milliseconds(300) >= diff)); // could be a little more then 100ms+100ms
   }
 
   // deallocate empty
@@ -1137,9 +1133,9 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -1147,8 +1143,8 @@ TEST_F(IResearchFeatureTest, test_async) {
 
     {
       arangodb::iresearch::IResearchFeature feature(server);
-      server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-      feature.prepare();  // start thread pool
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+      feature.prepare(); // start thread pool
     }
   }
 
@@ -1157,9 +1153,9 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
@@ -1172,8 +1168,8 @@ TEST_F(IResearchFeatureTest, test_async) {
 
     {
       arangodb::iresearch::IResearchFeature feature(server);
-      server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-      feature.prepare();  // start thread pool
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+      feature.prepare(); // start thread pool
       std::shared_ptr<bool> flag(&deallocated,
                                  [](bool* ptr) -> void { *ptr = true; });
 
@@ -1195,18 +1191,18 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated0 = false;  // declare above 'feature' to ensure proper destruction order
-    bool deallocated1 = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated0 = false; // declare above 'feature' to ensure proper destruction order
+    bool deallocated1 = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
-    feature.prepare();  // start thread pool
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
     std::mutex mutex;
@@ -1218,23 +1214,23 @@ TEST_F(IResearchFeatureTest, test_async) {
                                  [](bool* ptr) -> void { *ptr = true; });
       feature.async(resourceMutex,
                     [&cond, &mutex, flag, &count](size_t& timeoutMsec, bool) -> bool {
-                      if (++count > 1) return false;
-                      timeoutMsec = 100;
-                      SCOPED_LOCK_NAMED(mutex, lock);
-                      cond.notify_all();
-                      cond.wait(lock);
-                      return true;
-                    });
+        if (++count > 1) return false;
+        timeoutMsec = 100;
+        SCOPED_LOCK_NAMED(mutex, lock);
+        cond.notify_all();
+        cond.wait(lock);
+        return true;
+      });
     }
     EXPECT_TRUE((std::cv_status::timeout !=
                  cond.wait_for(lock, std::chrono::milliseconds(1000))));  // wait for the first task to start
 
-    std::thread thread([resourceMutex]() -> void { resourceMutex->reset(); });  // try to aquire a write lock
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // hopefully a write-lock aquisition attempt is in progress
+    std::thread thread([resourceMutex]()->void { resourceMutex->reset(); }); // try to aquire a write lock
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // hopefully a write-lock aquisition attempt is in progress
 
     {
       TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
-      EXPECT_TRUE((false == resourceLock.owns_lock()));  // write-lock aquired successfully (read-locks blocked)
+      EXPECT_TRUE((false == resourceLock.owns_lock())); // write-lock aquired successfully (read-locks blocked)
     }
 
     {
@@ -1244,8 +1240,8 @@ TEST_F(IResearchFeatureTest, test_async) {
         return false;
       });  // will never get invoked because resourceMutex is reset
     }
-    cond.notify_all();  // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
-    lock.unlock();      // allow first task to run
+    cond.notify_all(); // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
+    lock.unlock(); // allow first task to run
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_TRUE((true == deallocated0));
     EXPECT_TRUE((true == deallocated1));
@@ -1257,16 +1253,16 @@ TEST_F(IResearchFeatureTest, test_async) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
         });
     arangodb::application_features::ApplicationServer::server =
         nullptr;  // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
     arangodb::iresearch::IResearchFeature feature(server);
-    server.addFeature(new arangodb::ViewTypesFeature(server));  // required for IResearchFeature::prepare()
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     arangodb::options::ProgramOptions options("", "", "", nullptr);
     auto optionsPtr = std::shared_ptr<arangodb::options::ProgramOptions>(
         &options, [](arangodb::options::ProgramOptions*) -> void {});
@@ -1287,16 +1283,16 @@ TEST_F(IResearchFeatureTest, test_async) {
       feature.async(resourceMutex,
                     [&cond, &mutex, flag, &count, &last,
                      &diff](size_t& timeoutMsec, bool) -> bool {
-                      diff = std::chrono::system_clock::now() - last;
-                      last = std::chrono::system_clock::now();
-                      timeoutMsec = 100;
-                      if (++count <= 1) return true;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      return false;
-                    });
+        diff = std::chrono::system_clock::now() - last;
+        last = std::chrono::system_clock::now();
+        timeoutMsec = 100;
+        if (++count <= 1) return true;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+        return false;
+      });
     }
-    feature.prepare();  // start thread pool after a task has been scheduled, to trigger resize with a task
+    feature.prepare(); // start thread pool after a task has been scheduled, to trigger resize with a task
     EXPECT_TRUE((std::cv_status::timeout !=
                  cond.wait_for(lock, std::chrono::milliseconds(1000))));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

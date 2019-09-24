@@ -26,6 +26,7 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 
@@ -46,7 +47,8 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
                                                     std::unordered_set<RegisterId> const& registers,
                                                     size_t newNrRegs) const {
-  SharedAqlItemBlockPtr block = manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
+  SharedAqlItemBlockPtr block =
+      manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNrRegisters() <= newNrRegs);
@@ -118,6 +120,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
 ///                  such that actual indices start at 2
 void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
   TRI_ASSERT(isInitialized());
+  TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -182,9 +185,15 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < getNrRegisters(); column++) {
-    AqlValue const& a = getValue(column);
-
+  // We use column == 0 to simulate a shadowRow
+  // this is only relevant if all participants can use shadow rows
+  RegisterId startRegister = 0;
+  if (block().getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < getNrRegisters() + 1; column++) {
+    AqlValue const& a = column == 0 ? AqlValue{} : getValue(column - 1);
     // determine current state
     if (a.isEmpty()) {
       currentState = Empty;
@@ -280,7 +289,14 @@ bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   return !(*this == other);
 }
 
-bool InputAqlItemRow::isInitialized() const noexcept { return _block != nullptr; }
+bool InputAqlItemRow::isInitialized() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_block != nullptr) {
+    TRI_ASSERT(!block().isShadowRow(_baseIndex));
+  }
+#endif
+  return _block != nullptr;
+}
 
 InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
 

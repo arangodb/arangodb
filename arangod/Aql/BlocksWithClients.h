@@ -57,7 +57,7 @@ class ExecutionNode;
 class BlocksWithClients : public ExecutionBlock {
  public:
   BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
-                   std::vector<std::string> const& shardIds);
+                    std::vector<std::string> const& shardIds);
 
   ~BlocksWithClients() override = default;
 
@@ -94,6 +94,9 @@ class BlocksWithClients : public ExecutionBlock {
 
   /// @brief _nrClients: total number of clients
   size_t _nrClients;
+
+  /// @brief type of distribution that this nodes follows.
+  ScatterNode::ScatterType _type;
 
  private:
   bool _wasShutdown;

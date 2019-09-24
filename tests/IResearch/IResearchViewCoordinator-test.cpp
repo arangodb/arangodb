@@ -84,14 +84,14 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-  }
+    }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-  }
+    }
 
   ~IResearchViewCoordinatorTest() {
   }
@@ -111,8 +111,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                  "testVocbase");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo());
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
@@ -211,8 +210,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo());
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
         (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
@@ -4158,7 +4156,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
                                          collection0Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4168,7 +4166,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                          collection1Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4309,7 +4307,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
                                          collection0Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4319,7 +4317,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                          collection1Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4907,7 +4905,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
                                          collection0Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4917,7 +4915,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                          collection1Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -5065,7 +5063,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
                                          collection0Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -5075,7 +5073,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE(
         (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                          collection1Json->slice(), 0.0, false, nullptr)
-             .ok()));
+                     .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -5242,7 +5240,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     arangodb::aql::Query query(false, *vocbase, arangodb::aql::QueryString("RETURN 1"),
                                nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query.plan(), 0);
 
@@ -5259,7 +5257,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     );
     node.addDependency(&singleton);
 
-    arangodb::aql::ExecutionEngine engine(&query);
+    arangodb::aql::ExecutionEngine engine(&query, arangodb::aql::SerializationFormat::SHADOWROWS);
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
     singleton.setVarUsageValid();
     node.setVarUsageValid();

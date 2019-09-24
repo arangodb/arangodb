@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
 #define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
 
+#include "Aql/ShadowAqlItemRow.h"
+
 #include <cstdint>
 #include <utility>
 #include <vector>

@@ -52,7 +52,8 @@ class MultiDependencySingleRowFetcherTest : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
 
-  MultiDependencySingleRowFetcherTest() : itemBlockManager(&monitor) {}
+  MultiDependencySingleRowFetcherTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(MultiDependencySingleRowFetcherTest,

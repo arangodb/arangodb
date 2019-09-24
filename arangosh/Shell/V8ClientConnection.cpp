@@ -91,7 +91,7 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
 
     _lastHttpReturnCode = res->statusCode();
     if (_lastHttpReturnCode >= 400) {
-      auto const& headers = res->messageHeader().meta;
+      auto const& headers = res->messageHeader().meta();
       auto it = headers.find("http/1.1");
       if (it != headers.end()) {
         _lastErrorMessage = (*it).second;
@@ -1471,7 +1471,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.meta.emplace(std::move(pair));
+    req->header.addMeta(std::move(pair.first), std::move(pair.second));
   }
   if (isFile) {
     std::string const infile = TRI_ObjectToString(isolate, body);
@@ -1538,7 +1538,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.meta.emplace(std::move(pair));
+    req->header.addMeta(std::move(pair.first), std::move(pair.second));
   }
   if (body->IsString()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
@@ -1629,12 +1629,12 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
   // copy all headers
   v8::Local<v8::Object> headers = v8::Object::New(isolate);
-  for (auto const& it : response->header.meta) {
-    v8::Local<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
-    v8::Local<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
-
-    headers->Set(key, val);
+  for (auto const& it : response->header.meta()) {
+    headers->Set(TRI_V8_STD_STRING(isolate, it.first),
+                 TRI_V8_STD_STRING(isolate, it.second));
   }
+  auto content = TRI_V8_STD_STRING(isolate, fuerte::to_string(response->contentType()));
+  headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
 

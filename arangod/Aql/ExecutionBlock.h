@@ -183,7 +183,6 @@ class ExecutionBlock {
   aql::BlockCollector _collector;
 };
 
-
 }  // namespace aql
 }  // namespace arangodb
 

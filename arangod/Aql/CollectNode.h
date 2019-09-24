@@ -90,7 +90,8 @@ class CollectNode : public ExecutionNode {
   CollectOptions& getOptions();
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const final;
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,

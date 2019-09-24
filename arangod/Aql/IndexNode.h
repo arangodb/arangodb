@@ -87,7 +87,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void needsGatherNodeSort(bool value);
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -115,8 +116,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void initIndexCoversProjections();
 
  private:
-  void initializeOnce(bool hasV8Expression,
-                      std::vector<Variable const*>& inVars,
+  void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;

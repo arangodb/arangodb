@@ -32,8 +32,9 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor)
-    : _resourceMonitor(resourceMonitor) {
+AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
+                                         SerializationFormat format)
+    : _resourceMonitor(resourceMonitor), _format(format) {
   TRI_ASSERT(resourceMonitor != nullptr);
 }
 
@@ -44,7 +45,7 @@ AqlItemBlockManager::~AqlItemBlockManager() = default;
 SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
   // LOG_TOPIC("47298", TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
   // << nrItems << " x " << nrRegs;
-  size_t const targetSize = nrItems * nrRegs;
+  size_t const targetSize = nrItems * (nrRegs + 1);
 
   AqlItemBlock* block = nullptr;
   size_t i = Bucket::getId(targetSize);

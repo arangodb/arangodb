@@ -63,10 +63,13 @@ class GraphNode : public ExecutionNode {
             std::vector<TRI_edge_direction_e> const& directions,
             std::unique_ptr<graph::BaseOptions> options);
 
+  std::string const& collectionToShardName(std::string const& collName) const;
+
  public:
   ~GraphNode() override;
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
@@ -128,6 +131,12 @@ class GraphNode : public ExecutionNode {
   /// @brief return any of the collections
   Collection const* collection() const;
 
+  void injectVertexCollection(aql::Collection const* other);
+
+  std::vector<aql::Collection const*> const collections() const;
+  void setCollectionToShard(std::map<std::string, std::string> const& map) { _collectionToShard = map; }
+  void addCollectionToShard(std::string const& coll, std::string const& shard) { _collectionToShard.emplace(coll,shard); }
+
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
 
@@ -181,6 +190,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart (enterprise edition only!)
   bool _isSmart;
+
+  /// @brief list of shards involved, requried for one-shard-databases
+  std::map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace aql

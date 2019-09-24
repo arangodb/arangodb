@@ -74,6 +74,7 @@ class Query;
 struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
+enum class SerializationFormat;
 
 /// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
@@ -165,7 +166,8 @@ class Query {
     return _collections.add(name, accessType);
   }
 
-  inline Collection* addCollection(arangodb::velocypack::StringRef name, AccessMode::Type accessType) {
+  inline Collection* addCollection(arangodb::velocypack::StringRef name,
+                                   AccessMode::Type accessType) {
     return _collections.add(name.toString(), accessType);
   }
 
@@ -218,7 +220,7 @@ class Query {
   /// @brief register a warning (convenience overload)
   TEST_VIRTUAL void registerWarning(int code, std::string const& details);
 
-  void prepare(QueryRegistry*);
+  void prepare(QueryRegistry*, SerializationFormat format);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);

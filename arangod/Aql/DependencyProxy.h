@@ -104,6 +104,8 @@ class DependencyProxy {
 
   void reset();
 
+  void setDistributeId(std::string const& distId) { _distributeId = distId; }
+
  protected:
   AqlItemBlockManager& itemBlockManager();
   AqlItemBlockManager const& itemBlockManager() const;
@@ -120,6 +122,7 @@ class DependencyProxy {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
+  std::string _distributeId;
 
   // A queue would suffice, but for the clear() call in reset().
   std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;

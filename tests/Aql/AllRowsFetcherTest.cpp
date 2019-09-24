@@ -103,7 +103,7 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immediately) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
@@ -133,7 +133,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then_done) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
@@ -164,7 +164,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_done) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -199,7 +199,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmore_then_done) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -238,7 +238,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
 // specification should be compared with the actual output.
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -278,7 +278,7 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
 }
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -332,7 +332,7 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
 }
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),

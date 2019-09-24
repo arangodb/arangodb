@@ -26,6 +26,8 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
+#include "Aql/AqlItemBlock.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
@@ -103,7 +105,6 @@ class InputAqlItemRow {
 
   bool blockHasMoreRows() const noexcept;
 
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
@@ -124,7 +125,6 @@ class InputAqlItemRow {
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
-
   AqlItemBlock& block() noexcept;
 
   AqlItemBlock const& block() const noexcept;

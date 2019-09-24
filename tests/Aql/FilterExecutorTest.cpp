@@ -55,7 +55,7 @@ class FilterExecutorTest : public ::testing::Test {
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(make_shared_unordered_set()),
         registersToKeep(outputRegisters),

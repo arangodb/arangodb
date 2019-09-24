@@ -28,6 +28,7 @@
 #include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;
 
@@ -144,14 +145,14 @@ bool FailedServer::start(bool& aborts) {
           auto const& collection = *(collptr.second);
 
           auto const& replicationFactorPair =
-            collection.hasAsNode("replicationFactor");
+            collection.hasAsNode(StaticStrings::ReplicationFactor);
           if (replicationFactorPair.second) {
 
             VPackSlice const replicationFactor = replicationFactorPair.first.slice();
             uint64_t number = 1;
             bool isSatellite = false;
 
-            if (replicationFactor.isString() && replicationFactor.compareString("satellite") == 0) {
+            if (replicationFactor.isString() && replicationFactor.compareString(StaticStrings::Satellite) == 0) {
               isSatellite = true; // do nothing - number = Job::availableServers(_snapshot).size();
             } else if (replicationFactor.isNumber()) {
               try {

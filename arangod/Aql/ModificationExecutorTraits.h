@@ -46,11 +46,11 @@ enum class ModOperationType : uint8_t {
   APPLY_INSERT = 4,  // apply it and return the result, used only used for UPSERT
 };
 
-inline std::string toString(Insert&){ return "Insert"; };
-inline std::string toString(Remove&){ return "Remove"; };
-inline std::string toString(Update&){ return "Update"; };
-inline std::string toString(Upsert&){ return "Upsert"; };
-inline std::string toString(Replace&){ return "Replace"; };
+inline std::string toString(Insert&) { return "Insert"; };
+inline std::string toString(Remove&) { return "Remove"; };
+inline std::string toString(Update&) { return "Update"; };
+inline std::string toString(Upsert&) { return "Upsert"; };
+inline std::string toString(Replace&) { return "Replace"; };
 
 struct ModificationBase {
   ModificationBase()
@@ -59,7 +59,7 @@ struct ModificationBase {
 
   std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
-  std::size_t _blockIndex = 0;  // cursor to the current positon
+  std::size_t _blockIndex = 0;      // cursor to the current positon
   SharedAqlItemBlockPtr _block = nullptr;
 
   OperationResult _operationResult;
@@ -92,8 +92,10 @@ struct ModificationBase {
     target = std::move(result);
     if (target.buffer && target.slice().isArray()) {
       slice = target.slice();
-      iter = VPackArrayIterator(slice);
+    } else {
+      slice = VPackSlice::emptyArraySlice();
     }
+    iter = VPackArrayIterator(slice);
   }
 
   void setOperationResult(OperationResult&& result) {

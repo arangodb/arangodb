@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H
 #define ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H 1
 
+#include "Basics/debugging.h"
+
 #include <string>
 
 struct TRI_vocbase_t;
@@ -59,6 +61,12 @@ class CollectionAccessingNode {
   /// should be used only in smart-graph context!
   void collection(aql::Collection const* collection);
 
+  void setUsedShard(std::string const& shardName) {
+    // We can only use the shard we are restricted to
+    TRI_ASSERT(_restrictedTo.empty() || _restrictedTo == shardName);
+    _usedShard = shardName;
+  }
+
   /**
    * @brief Restrict this Node to a single Shard (cluster only)
    *
@@ -87,6 +95,18 @@ class CollectionAccessingNode {
   aql::Collection const* prototypeCollection() const;
   aql::Variable const* prototypeOutVariable() const;
 
+  bool isUsedAsSatellite() const { return _isSatellite; }
+
+  void useAsSatellite();
+
+  void cloneInto(CollectionAccessingNode& c) const {
+    c._prototypeCollection = _prototypeCollection;
+    c._prototypeOutVariable = _prototypeOutVariable;
+    c._restrictedTo = _restrictedTo;
+    c._isSatellite = _isSatellite;
+    c._usedShard = _usedShard;
+  }
+
  protected:
   aql::Collection const* _collection;
 
@@ -96,6 +116,10 @@ class CollectionAccessingNode {
   /// @brief prototype collection when using distributeShardsLike
   aql::Collection const* _prototypeCollection;
   aql::Variable const* _prototypeOutVariable;
+
+  std::string _usedShard;
+
+  bool _isSatellite;
 };
 
 }  // namespace aql

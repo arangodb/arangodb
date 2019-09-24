@@ -55,8 +55,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
   // _fixedSource XOR _inputRegister
-  TRI_ASSERT((_fixedSource.empty() && _inputRegister != ExecutionNode::MaxRegisterId) ||
-             (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
+  TRI_ASSERT((_fixedSource.empty() && _inputRegister != RegisterPlan::MaxRegisterId) ||
+             (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
 }
 
 TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
@@ -85,7 +85,7 @@ bool TraversalExecutorInfos::usePathOutput() const {
 }
 
 static std::string typeToString(TraversalExecutorInfos::OutputName type) {
-  switch(type) {
+  switch (type) {
     case TraversalExecutorInfos::VERTEX:
       return std::string{"VERTEX"};
     case TraversalExecutorInfos::EDGE:
@@ -101,8 +101,8 @@ RegisterId TraversalExecutorInfos::findRegisterChecked(OutputName type) const {
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "Logic error: requested unused register type " + typeToString(type));
+        TRI_ERROR_INTERNAL,
+        "Logic error: requested unused register type " + typeToString(type));
   }
   return it->second;
 }
@@ -135,7 +135,7 @@ std::string const& TraversalExecutorInfos::getFixedSource() const {
 
 RegisterId TraversalExecutorInfos::getInputRegister() const {
   TRI_ASSERT(!usesFixedSource());
-  TRI_ASSERT(_inputRegister != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(_inputRegister != RegisterPlan::MaxRegisterId);
   return _inputRegister;
 }
 
@@ -153,7 +153,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
 TraversalExecutor::~TraversalExecutor() {
   auto opts = _traverser.options();
   if (opts != nullptr && opts->usesPrune()) {
-    auto *evaluator = opts->getPruneEvaluator();
+    auto* evaluator = opts->getPruneEvaluator();
     if (evaluator != nullptr) {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
       // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and

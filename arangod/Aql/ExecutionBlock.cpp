@@ -268,6 +268,9 @@ bool ExecutionBlock::handleAsyncResult(ClusterCommResult* result) {
 
 void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   TRI_ASSERT(ep != nullptr);
+  // We can never have the same dependency twice
+  TRI_ASSERT(std::find(_dependencies.begin(), _dependencies.end(), ep) ==
+             _dependencies.end());
   _dependencies.emplace_back(ep);
   _dependencyPos = _dependencies.end();
 }

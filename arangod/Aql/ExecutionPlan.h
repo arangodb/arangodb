@@ -24,19 +24,19 @@
 #ifndef ARANGOD_AQL_EXECUTION_PLAN_H
 #define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
+#include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
+#include "Basics/HashSet.h"
 #include "Basics/SmallVector.h"
 
 #include <array>
-#include <cstdint>
-#include <memory>
-#include <vector>
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
-class Builder;
 }
 
 namespace aql {
@@ -45,10 +45,8 @@ struct AstNode;
 class CalculationNode;
 class CollectNode;
 class ExecutionNode;
+struct OptimizerRule;
 class Query;
-struct CollectOptions;
-struct CostEstimate;
-struct ModificationOptions;
 
 class ExecutionPlan {
  public:
@@ -86,38 +84,61 @@ class ExecutionPlan {
   void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
 
   /// @brief check if the plan is empty
-  bool empty() const;
+  inline bool empty() const { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
-  void addAppliedRule(int level);
+  void addAppliedRule(int level); 
+  
+  /// @brief check if a specific optimizer rule was applied
+  bool hasAppliedRule(int level) const;
+  
+  /// @brief check if a specific rule is disabled
+  bool isDisabledRule(int rule) const;
+  
+  /// @brief enable a specific rule
+  void enableRule(int rule);
 
-  /// @brief get a list of all applied rules
-  std::vector<std::string> getAppliedRules() const;
+  /// @brief disable a specific rule
+  void disableRule(int rule);
 
   /// @brief return the next value for a node id
-  size_t nextId();
+  inline size_t nextId() { return ++_nextId; }
 
   /// @brief get a node by its id
   ExecutionNode* getNodeById(size_t id) const;
 
   /// @brief check if the node is the root node
-  bool isRoot(ExecutionNode const* node) const;
+  inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
 
   /// @brief get the root node
-  ExecutionNode* root() const;
+  inline ExecutionNode* root() const {
+    TRI_ASSERT(_root != nullptr);
+    return _root;
+  }
 
   /// @brief set the root node
-  void root(ExecutionNode* node, bool force = false);
+  inline void root(ExecutionNode* node, bool force = false) {
+    if (!force) {
+      TRI_ASSERT(_root == nullptr);
+    }
+    _root = node;
+  }
 
   /// @brief invalidate all cost estimations in the plan
-  void invalidateCost();
+  inline void invalidateCost() {
+    TRI_ASSERT(_root != nullptr);
+    _root->invalidateCost();
+  }
 
   /// @brief get the estimated cost . . .
-  CostEstimate getCost();
+  CostEstimate getCost() {
+    TRI_ASSERT(_root != nullptr);
+    return _root->getCost();
+  }
 
   /// @brief this can be called by the optimizer to tell that the
   /// plan is temporarily in an invalid state
-  void setValidity(bool value);
+  inline void setValidity(bool value) { _planValid = value; }
 
   /// @brief returns true if a plan is so simple that optimizations would
   /// probably cost more than simply executing the plan
@@ -130,12 +151,23 @@ class ExecutionPlan {
 
   /// @brief note this node for being excluded from producing scatter/gather
   /// nodes
-  void excludeFromScatterGather(ExecutionNode const* node);
+  void excludeFromScatterGather(ExecutionNode const* node) {
+    _excludeFromScatterGather.emplace(node);
+  }
 
-  bool shouldExcludeFromScatterGather(ExecutionNode const* node) const;
+  bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
+    return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
+  }
 
   /// @brief get the node where variable with id <id> is introduced . . .
-  ExecutionNode* getVarSetBy(VariableId id) const;
+  ExecutionNode* getVarSetBy(VariableId id) const {
+    auto it = _varSetBy.find(id);
+
+    if (it == _varSetBy.end()) {
+      return nullptr;
+    }
+    return (*it).second;
+  }
 
   /// @brief find nodes of a certain type
   void findNodesOfType(SmallVector<ExecutionNode*>& result,
@@ -155,13 +187,13 @@ class ExecutionPlan {
   bool varUsageComputed() const;
 
   /// @brief determine if the above are already set
-  void setVarUsageComputed();
+  void setVarUsageComputed() { _varUsageComputed = true; }
 
   /// @brief flush var usage calculation
-  void clearVarUsageComputed();
+  void clearVarUsageComputed() { _varUsageComputed = false; }
 
   /// @brief static analysis
-  void planRegisters();
+  void planRegisters() { _root->planRegisters(); }
 
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
@@ -203,7 +235,7 @@ class ExecutionPlan {
   void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
-  Ast* getAst() const;
+  inline Ast* getAst() const { return _ast; }
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
@@ -321,6 +353,9 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
+  
+  /// @brief which optimizer rules were disabled for a plan
+  arangodb::HashSet<int> _disabledRules;
 
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to

@@ -84,12 +84,12 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        collectRegister(ExecutionNode::MaxRegisterId),
-        expressionRegister(ExecutionNode::MaxRegisterId),
+        collectRegister(RegisterPlan::MaxRegisterId),
+        expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
         readableInputRegisters{0},
@@ -165,7 +165,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestRowsUpstream()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -173,7 +173,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         collectRegister(2),
         writeableOutputRegisters({1, 2}),
         nrOutputRegister(3),
-        expressionRegister(ExecutionNode::MaxRegisterId),
+        expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
         infos(1, nrOutputRegister, regToClear, regToKeep,
@@ -388,7 +388,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_waits) {
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -416,8 +416,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   // if count = true, then we need to set a valid countRegister
   bool count = true;
-  RegisterId collectRegister = ExecutionNode::MaxRegisterId;
-  RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
 
@@ -479,7 +479,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -506,8 +506,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
 
   // if count = true, then we need to set a valid countRegister
   bool count = true;
-  RegisterId collectRegister = ExecutionNode::MaxRegisterId;
-  RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
   writeableOutputRegisters.insert(2);
@@ -585,7 +585,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -612,8 +612,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
   // if count = true, then we need to set a valid countRegister
   bool count = true;
-  RegisterId collectRegister = ExecutionNode::MaxRegisterId;
-  RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
   writeableOutputRegisters.insert(2);

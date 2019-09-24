@@ -173,9 +173,10 @@ void IndexNode::initIndexCoversProjections() {
 }
 
 /// @brief toVelocyPack, for IndexNode
-void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
+void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add outvariable and projections
   DocumentProducingNode::toVelocyPack(builder);
@@ -261,7 +262,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
       inRegs.emplace_back(it->second.registerId);
     }
   };
@@ -409,9 +410,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
-  c->_prototypeCollection = _prototypeCollection;
-  c->_prototypeOutVariable = _prototypeOutVariable;
-
+  CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 

@@ -24,8 +24,16 @@
 #ifndef ARANGOD_AQL_CLUSTER_NODES_H
 #define ARANGOD_AQL_CLUSTER_NODES_H 1
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
+#include "Aql/DistributeConsumerNode.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/Variable.h"
+#include "Aql/types.h"
+#include "Basics/Common.h"
+#include "Basics/StringUtils.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -38,29 +46,28 @@ class RemoveNode;
 struct Collection;
 
 /// @brief class RemoteNode
-class RemoteNode final : public ExecutionNode {
+class RemoteNode final : public DistributeConsumerNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
  public:
   RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             std::string server, std::string ownName, std::string queryId);
+             std::string const& server, std::string const& ownName, std::string const& queryId)
+      : DistributeConsumerNode(plan, id, ownName),
+        _vocbase(vocbase),
+        _server(server),
+        _queryId(queryId) {
+    // note: server and queryId may be empty and filled later
+  }
 
   RemoteNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  /// @brief whether or not this node will forward initializeCursor or shutDown
-  /// requests
-  void isResponsibleForInitializeCursor(bool value);
-
-  /// @brief whether or not this node will forward initializeCursor or shutDown
-  /// requests
-  bool isResponsibleForInitializeCursor() const;
-
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final { return REMOTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -69,34 +76,34 @@ class RemoteNode final : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final {
+    return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
+                                                    getDistributeId(), _queryId),
+                       withDependencies, withProperties);
+  }
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief return the database
-  TRI_vocbase_t* vocbase() const;
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   /// @brief return the server name
-  std::string server() const;
+  std::string server() const { return _server; }
 
   /// @brief set the server name
-  void server(std::string const& server);
-
-  /// @brief return our own name
-  std::string ownName() const;
-
-  /// @brief set our own name
-  void ownName(std::string const& ownName);
+  void server(std::string const& server) { _server = server; }
 
   /// @brief return the query id
-  std::string queryId() const;
+  std::string queryId() const { return _queryId; }
 
   /// @brief set the query id
-  void queryId(std::string const& queryId);
+  void queryId(std::string const& queryId) { _queryId = queryId; }
 
   /// @brief set the query id
-  void queryId(QueryId queryId);
+  void queryId(QueryId queryId) {
+    _queryId = arangodb::basics::StringUtils::itoa(queryId);
+  }
 
  private:
   /// @brief the underlying database
@@ -105,31 +112,27 @@ class RemoteNode final : public ExecutionNode {
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;
 
-  /// @brief our own identity, in case of the coordinator this is empty,
-  /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
-
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
-
-  /// @brief whether or not this node will forward initializeCursor and shutDown
-  /// requests
-  bool _isResponsibleForInitializeCursor;
 };
 
 /// @brief class ScatterNode
 class ScatterNode : public ExecutionNode {
  public:
+  enum ScatterType { SERVER = 0, SHARD = 1 };
+
   /// @brief constructor with an id
-  ScatterNode(ExecutionPlan* plan, size_t id);
+  ScatterNode(ExecutionPlan* plan, size_t id, ScatterType type)
+      : ExecutionNode(plan, id), _type(type) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override;
+  NodeType getType() const override { return SCATTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -138,20 +141,53 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+                       bool withProperties) const override {
+    auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
+    c->copyClients(clients());
+    return cloneHelper(std::move(c), withDependencies, withProperties);
+  }
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override;
 
-  std::vector<std::string> const& clients() const noexcept;
-  std::vector<std::string>& clients() noexcept;
+  void addClient(DistributeConsumerNode const* client) {
+    auto const& distId = client->getDistributeId();
+    // We cannot add the same distributeId twice, data is delivered exactly once for each id
+    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) == _clients.end());
+    _clients.emplace_back(distId);
+  }
+
+  // Just temporary as long as we have two versions
+  void addClient(std::string const& clientId) {
+    // We cannot add the same distributeId twice, data is delivered exactly once for each id
+    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
+    _clients.emplace_back(clientId);
+  }
+
+  /// @brief drop the current clients.
+  void clearClients() { _clients.clear(); }
+
+  std::vector<std::string> const& clients() const noexcept { return _clients; }
+
+  /// @brief get the scatter type, this defines the variation on how we
+  /// distribute the data onto our clients.
+  ScatterType getScatterType() const { return _type; };
+
+  void setScatterType(ScatterType targetType) { _type = targetType; }
 
  protected:
-  void writeClientsToVelocyPack(velocypack::Builder& builder) const;
-  bool readClientsFromVelocyPack(velocypack::Slice base);
+  void writeClientsToVelocyPack(VPackBuilder& builder) const;
+  bool readClientsFromVelocyPack(VPackSlice base);
+
+  void copyClients(std::vector<std::string> const& other) {
+    TRI_ASSERT(_clients.empty());
+    _clients = other;
+  }
 
  private:
   std::vector<std::string> _clients;
+
+  ScatterType _type;
 };
 
 /// @brief class DistributeNode
@@ -161,17 +197,26 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, size_t id, Collection const* collection,
-                 Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject);
+  DistributeNode(ExecutionPlan* plan, size_t id, ScatterNode::ScatterType type,
+                 Collection const* collection, Variable const* variable,
+                 Variable const* alternativeVariable, bool createKeys,
+                 bool allowKeyConversionToObject)
+      : ScatterNode(plan, id, type),
+        CollectionAccessingNode(collection),
+        _variable(variable),
+        _alternativeVariable(alternativeVariable),
+        _createKeys(createKeys),
+        _allowKeyConversionToObject(allowKeyConversionToObject),
+        _allowSpecifiedKeys(false) {}
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final { return DISTRIBUTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -180,26 +225,38 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final {
+    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection,
+                                              _variable, _alternativeVariable,
+                                              _createKeys, _allowKeyConversionToObject);
+    c->copyClients(clients());
+    CollectionAccessingNode::cloneInto(*c);
+
+    return cloneHelper(std::move(c), withDependencies, withProperties);
+  }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
+  CostEstimate estimateCost() const override final;
 
-  void variable(Variable const* variable);
+  void variable(Variable const* variable) { _variable = variable; }
 
-  void alternativeVariable(Variable const* variable);
+  void alternativeVariable(Variable const* variable) {
+    _alternativeVariable = variable;
+  }
 
   /// @brief set createKeys
-  void setCreateKeys(bool b);
+  void setCreateKeys(bool b) { _createKeys = b; }
 
   /// @brief set allowKeyConversionToObject
-  void setAllowKeyConversionToObject(bool b);
+  void setAllowKeyConversionToObject(bool b) {
+    _allowKeyConversionToObject = b;
+  }
 
   /// @brief set _allowSpecifiedKeys
-  void setAllowSpecifiedKeys(bool b);
+  void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
 
  private:
   /// @brief the variable we must inspect to know where to distribute
@@ -234,7 +291,10 @@ class GatherNode final : public ExecutionNode {
 
   /// @returns sort mode for the specified number of shards
   static SortMode evaluateSortMode(size_t numberOfShards,
-                                   size_t shardsRequiredForHeapMerge = 5) noexcept;
+                                   size_t shardsRequiredForHeapMerge = 5) noexcept {
+    return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap
+                                                        : SortMode::MinElement;
+  }
 
   /// @brief constructor with an id
   GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept;
@@ -243,14 +303,18 @@ class GatherNode final : public ExecutionNode {
              SortElementVector const& elements);
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final { return GATHER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final {
+    return cloneHelper(std::make_unique<GatherNode>(plan, _id, _sortmode),
+                       withDependencies, withProperties);
+  }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -258,19 +322,23 @@ class GatherNode final : public ExecutionNode {
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
+    for (auto const& p : _elements) {
+      vars.emplace(p.var);
+    }
+  }
 
   /// @brief get Variables used here including ASC/DESC
-  SortElementVector const& elements() const;
-  SortElementVector& elements();
+  SortElementVector const& elements() const { return _elements; }
+  SortElementVector& elements() { return _elements; }
 
-  void elements(SortElementVector const& src);
+  void elements(SortElementVector const& src) { _elements = src; }
 
-  SortMode sortMode() const noexcept;
-  void sortMode(SortMode sortMode) noexcept;
+  SortMode sortMode() const noexcept { return _sortmode; }
+  void sortMode(SortMode sortMode) noexcept { _sortmode = sortMode; }
 
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
@@ -297,13 +365,19 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   // We probably do not need this, because the rule will only be used on the
   // coordinator
-  SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+      : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "single remote operation node deserialization not implemented.");
+  }
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final { return REMOTESINGLE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -312,18 +386,44 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final {
+    auto n =
+        std::make_unique<SingleRemoteOperationNode>(plan, _id, _mode, _replaceIndexNode,
+                                                    _key, collection(), _options,
+                                                    _inVariable, _outVariable,
+                                                    _outVariableOld, _outVariableNew);
+    CollectionAccessingNode::cloneInto(*n);
+    return cloneHelper(std::move(n), withDependencies, withProperties);
+  }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
+    if (_inVariable) {
+      vars.emplace(_inVariable);
+    }
+  }
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const final;
+  virtual std::vector<Variable const*> getVariablesSetHere() const override final {
+    std::vector<Variable const*> vec;
+
+    if (_outVariable) {
+      vec.push_back(_outVariable);
+    }
+    if (_outVariableNew) {
+      vec.push_back(_outVariableNew);
+    }
+    if (_outVariableOld) {
+      vec.push_back(_outVariableOld);
+    }
+
+    return vec;
+  }
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
+  CostEstimate estimateCost() const override final;
 
-  std::string const& key() const;
+  std::string const& key() const { return _key; }
 
  private:
   // whether we replaced an index node
