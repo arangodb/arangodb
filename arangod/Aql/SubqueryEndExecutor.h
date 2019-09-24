@@ -44,7 +44,7 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                            std::unordered_set<RegisterId> const& registersToClear,
-                           std::unordered_set<RegisterId>&& registersToKeep,
+                           std::unordered_set<RegisterId> registersToKeep,
                            transaction::Methods* trxPtr, RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
@@ -65,7 +65,7 @@ class SubqueryEndExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

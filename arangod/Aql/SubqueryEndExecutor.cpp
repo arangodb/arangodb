@@ -35,11 +35,11 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId>&& registersToKeep,
+    std::unordered_set<RegisterId> registersToKeep,
     transaction::Methods* trxPtr, RegisterId outReg)
     : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr), _outReg(outReg) {}
+      _trxPtr(trxPtr), _outReg(outReg) { }
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
 
@@ -90,6 +90,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
           TRI_ASSERT(!shadowRow.isInitialized());
           return {ExecutionState::WAITING, std::move(stats)};
         }
+
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
         TRI_ASSERT(shadowRow.isInitialized() == true);
         TRI_ASSERT(shadowRow.isRelevant() == true);
@@ -97,7 +98,6 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit
         _accumulator.close();
-
         TRI_ASSERT(_accumulator.isClosed());
 
         AqlValue resultDocVec{_accumulator.slice()};
