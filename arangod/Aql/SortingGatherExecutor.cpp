@@ -406,7 +406,7 @@ bool SortingGatherExecutor::constrainedSort() const noexcept {
 void SortingGatherExecutor::assertConstrainedDoesntOverfetch(size_t const atMost) const noexcept {
   // if we have a constrained sort, we should not be asked for more rows than
   // our limit.
-  TRI_ASSERT(!constrainedSort() || atMost >= rowsLeftToWrite());
+  TRI_ASSERT(!constrainedSort() || atMost <= rowsLeftToWrite());
 }
 
 bool SortingGatherExecutor::maySkip() const noexcept {
