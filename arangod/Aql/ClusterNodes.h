@@ -333,8 +333,6 @@ class GatherNode final : public ExecutionNode {
 
   void setConstrainedSortLimit(size_t limit) noexcept;
 
-  bool isConstrainedSort() const noexcept;
-
   size_t constrainedSortLimit() const noexcept;
 
  private:

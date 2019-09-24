@@ -40,6 +40,7 @@
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include "Transaction/Methods.h"
 
@@ -389,6 +390,10 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
           << "invalid sort mode detected while "
              "creating 'GatherNode' from vpack";
     }
+
+    _limit =
+        basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
+                                                                    "limit", 0);
   }
 }
 
@@ -404,6 +409,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     nodes.add("sortmode", VPackValue(SortModeUnset.data()));
   } else {
     nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
+    nodes.add("limit", VPackValue(_limit));
   }
 
   nodes.add(VPackValue("elements"));
@@ -465,8 +471,6 @@ CostEstimate GatherNode::estimateCost() const {
 void GatherNode::setConstrainedSortLimit(size_t limit) noexcept {
   _limit = limit;
 }
-
-bool GatherNode::isConstrainedSort() const noexcept { return _limit > 0; }
 
 size_t GatherNode::constrainedSortLimit() const noexcept { return _limit; }
 
