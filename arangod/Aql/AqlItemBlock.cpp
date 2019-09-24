@@ -28,6 +28,8 @@
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Range.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
 

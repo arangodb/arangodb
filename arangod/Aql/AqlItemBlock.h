@@ -25,12 +25,11 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Aql/AqlValue.h"
-#include "Aql/Range.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
 
-#include <utility>
+#include <unordered_set>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 namespace aql {

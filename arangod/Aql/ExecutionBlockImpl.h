@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
+#include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 

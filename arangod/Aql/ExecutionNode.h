@@ -58,20 +58,15 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
-#include "Aql/RegisterPlan.h"
-#include "Aql/Variable.h"
-#include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
+#include "Basics/HashSet.h"
 
-#include <type_traits>
+#include <memory>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace arangodb {
 namespace velocypack {
@@ -88,7 +83,13 @@ class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
+class ExecutorInfos;
+class Expression;
 class RedundantCalculationsReplacer;
+struct RegisterPlan;
+struct Variable;
+template <class T>
+class WalkerWorker;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document

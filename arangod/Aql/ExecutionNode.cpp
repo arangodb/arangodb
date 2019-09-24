@@ -37,6 +37,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
@@ -48,6 +49,7 @@
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/Range.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -65,8 +67,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb::basics;
+using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 namespace {
 
