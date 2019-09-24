@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Aql/AstNode.h"
 #include "VocBase/vocbase.h"
+#include "Basics/StaticStrings.h"
 
 #include <string>
 #include <vector>
@@ -195,5 +196,20 @@ void assertFilterParseFail(
   std::string const& queryString,
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
+
+inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("name", VPackValue(name));
+  builder.add("sharding", VPackValue(std::string{}));
+  builder.add("replicationFactor", VPackValue(1));
+  builder.close();
+  return builder;
+};
+
+arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id, bool allowSystemDB = false);
+arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name = arangodb::StaticStrings::SystemDatabase, uint64_t id = 1);
+arangodb::CreateDatabaseInfo testDBInfo(std::string const& name = "testVocbase", uint64_t id = 2);
+arangodb::CreateDatabaseInfo unknownDBInfo(std::string const& name = "unknownVocbase", uint64_t id = 3);
 
 #endif

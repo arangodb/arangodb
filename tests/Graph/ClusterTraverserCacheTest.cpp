@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -72,7 +73,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
         ASSERT_TRUE(strcmp(message, expectedMessage.c_str()) == 0);
       });
 
-  ClusterTraverserCache testee(&query, &engines);
+  traverser::TraverserOptions opts{&query};
+  ClusterTraverserCache testee(&query, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
   AqlValue val = testee.fetchVertexAqlResult(arangodb::velocypack::StringRef(vertexId));
@@ -99,8 +101,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
       });
 
   VPackBuilder result;
-
-  ClusterTraverserCache testee(&query, &engines);
+  traverser::TraverserOptions opts{&query};
+  ClusterTraverserCache testee(&query, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
   testee.insertVertexIntoResult(arangodb::velocypack::StringRef(vertexId), result);

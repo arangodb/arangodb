@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -58,6 +59,12 @@ class CollectionAccessingNode {
   /// should be used only in smart-graph context!
   void collection(aql::Collection const* collection);
 
+  void setUsedShard(std::string const& shardName) {
+    // We can only use the shard we are restricted to
+    TRI_ASSERT(_restrictedTo.empty() || _restrictedTo == shardName);
+    _usedShard = shardName;
+  }
+
   /**
    * @brief Restrict this Node to a single Shard (cluster only)
    *
@@ -80,24 +87,45 @@ class CollectionAccessingNode {
   std::string const& restrictedShard() const { return _restrictedTo; }
 
   /// @brief set the prototype collection when using distributeShardsLike
-  void setPrototype(arangodb::aql::Collection const* prototypeCollection, 
+  void setPrototype(arangodb::aql::Collection const* prototypeCollection,
                     arangodb::aql::Variable const* prototypeOutVariable) {
     _prototypeCollection = prototypeCollection;
     _prototypeOutVariable = prototypeOutVariable;
   }
-  
-  aql::Collection const* prototypeCollection() const { return _prototypeCollection; }
-  aql::Variable const* prototypeOutVariable() const { return _prototypeOutVariable; }
+
+  aql::Collection const* prototypeCollection() const {
+    return _prototypeCollection;
+  }
+
+  aql::Variable const* prototypeOutVariable() const {
+    return _prototypeOutVariable;
+  }
+
+  bool isUsedAsSatellite() const { return _isSatellite; }
+
+  void useAsSatellite();
+
+  void cloneInto(CollectionAccessingNode& c) const {
+    c._prototypeCollection = _prototypeCollection;
+    c._prototypeOutVariable = _prototypeOutVariable;
+    c._restrictedTo = _restrictedTo;
+    c._isSatellite = _isSatellite;
+    c._usedShard = _usedShard;
+  }
 
  protected:
   aql::Collection const* _collection;
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
-  
+
   /// @brief prototype collection when using distributeShardsLike
   aql::Collection const* _prototypeCollection;
   aql::Variable const* _prototypeOutVariable;
+
+  std::string _usedShard;
+
+  bool _isSatellite;
 };
 
 }  // namespace aql

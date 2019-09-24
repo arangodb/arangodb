@@ -60,7 +60,8 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   ModificationNode(ExecutionPlan*, arangodb::velocypack::Slice const& slice);
 
   /// @brief export to VelocyPack
-  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override;
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                                  std::unordered_set<ExecutionNode const*>& seen) const override;
 
  public:
   /// @brief estimateCost
@@ -168,7 +169,8 @@ class RemoveNode : public ModificationNode {
   NodeType getType() const override final { return REMOVE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -215,7 +217,8 @@ class InsertNode : public ModificationNode {
   NodeType getType() const override final { return INSERT; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -260,7 +263,8 @@ class UpdateReplaceNode : public ModificationNode {
   UpdateReplaceNode(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
@@ -307,7 +311,8 @@ class UpdateNode : public UpdateReplaceNode {
   NodeType getType() const override final { return UPDATE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -340,7 +345,8 @@ class ReplaceNode : public UpdateReplaceNode {
   NodeType getType() const override final { return REPLACE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -382,7 +388,8 @@ class UpsertNode : public ModificationNode {
   NodeType getType() const override final { return UPSERT; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

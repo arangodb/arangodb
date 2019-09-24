@@ -36,11 +36,11 @@
 namespace arangodb {
 namespace network {
 
-int resolveDestination(DestinationId const& dest, std::string& endpoint) {
+int resolveDestination(DestinationId const& dest, network::EndpointSpec& spec) {
   using namespace arangodb;
 
   if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
-    endpoint = dest;
+    spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
   }
 
@@ -55,22 +55,22 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   // responsible server is looked up, if a serverID is given, the endpoint
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
-  ServerID serverID;
+
   if (dest.compare(0, 6, "shard:", 6) == 0) {
-    ShardID shardID = dest.substr(6);
+    spec.shardId = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(shardID);
+      std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(spec.shardId);
       if (!resp->empty()) {
-        serverID = (*resp)[0];
+        spec.serverId = (*resp)[0];
       } else {
         LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << shardID << "'";
+            << "cannot find responsible server for shard '" << spec.shardId << "'";
         return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
       }
     }
-    LOG_TOPIC("64670", DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
+    LOG_TOPIC("64670", DEBUG, Logger::CLUSTER) << "Responsible server: " << spec.serverId;
   } else if (dest.compare(0, 7, "server:", 7) == 0) {
-    serverID = dest.substr(7);
+    spec.serverId = dest.substr(7);
   } else {
     std::string errorMessage = "did not understand destination '" + dest + "'";
     LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)
@@ -78,15 +78,15 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
-  endpoint = ci->getServerEndpoint(serverID);
-  if (endpoint.empty()) {
-    if (serverID.find(',') != std::string::npos) {
+  spec.endpoint = ci->getServerEndpoint(spec.serverId);
+  if (spec.endpoint.empty()) {
+    if (spec.serverId.find(',') != std::string::npos) {
       TRI_ASSERT(false);
     }
     std::string errorMessage =
-        "did not find endpoint of server '" + serverID + "'";
+        "did not find endpoint of server '" + spec.serverId + "'";
     LOG_TOPIC("f29ef", ERR, Logger::COMMUNICATION)
-        << "did not find endpoint of server '" << serverID << "'";
+        << "did not find endpoint of server '" << spec.serverId << "'";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
   return TRI_ERROR_NO_ERROR;
@@ -215,70 +215,68 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
 /// @brief Create Cluster Communication result for insert
 OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions const& options,
+                                    OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusAccepted:
-      return OperationResult(Result(), std::move(body), options, errorCounter);
+      return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     case fuerte::StatusCreated: {
-      OperationOptions copy = options;
-      copy.waitForSync = true;  // wait for sync is abused herea
+      options.waitForSync = true;  // wait for sync is abused herea
       // operationResult should get a return code.
-      return OperationResult(Result(), std::move(body), copy, errorCounter);
+      return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
-      return network::opResultFromBody(body, TRI_ERROR_ARANGO_CONFLICT);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_CONFLICT);
     case fuerte::StatusBadRequest:
-      return network::opResultFromBody(body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_INTERNAL);
     case fuerte::StatusNotFound:
-      return network::opResultFromBody(body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case fuerte::StatusConflict:
-      return network::opResultFromBody(body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return network::opResultFromBody(body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_INTERNAL);
   }
 }
 
 /// @brief Create Cluster Communication result for document
 OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
                                       std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                      OperationOptions const& options,
+                                      OperationOptions options,
                                       std::unordered_map<int, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusOK:
-      return OperationResult(Result(), std::move(body), options, errorCounter);
+      return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     case fuerte::StatusPreconditionFailed:
       return OperationResult(Result(TRI_ERROR_ARANGO_CONFLICT), std::move(body),
-                             options, errorCounter);
+                             std::move(options), errorCounter);
     case fuerte::StatusNotFound:
-      return network::opResultFromBody(body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return network::opResultFromBody(body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_INTERNAL);
   }
 }
-  
+
 /// @brief Create Cluster Communication result for modify
 OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions const& options,
+                                    OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusAccepted:
     case fuerte::StatusCreated: {
-      OperationOptions options;
       options.waitForSync = (code == fuerte::StatusCreated);
-      return OperationResult(Result(), std::move(body), options, errorCounter);
+      return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }
     case fuerte::StatusConflict:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED),
-                             body, options, errorCounter);
+                             body, std::move(options), errorCounter);
     case fuerte::StatusPreconditionFailed:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
-                             body, options, errorCounter);
+                             body, std::move(options), errorCounter);
     case fuerte::StatusNotFound:
-      return network::opResultFromBody(body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default: {
-      return network::opResultFromBody(body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_INTERNAL);
     }
   }
 }
@@ -286,7 +284,7 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
 /// @brief Create Cluster Communication result for delete
 OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions const& options,
+                                    OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusOK:
@@ -294,15 +292,15 @@ OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
     case fuerte::StatusCreated: {
       OperationOptions options;
       options.waitForSync = (code != fuerte::StatusAccepted);
-      return OperationResult(Result(), std::move(body), options, errorCounter);
+      return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
-                             body, options, errorCounter);
+                             body, std::move(options), errorCounter);
     case fuerte::StatusNotFound:
-      return network::opResultFromBody(body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default: {
-      return network::opResultFromBody(body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(std::move(body), TRI_ERROR_INTERNAL);
     }
   }
 }

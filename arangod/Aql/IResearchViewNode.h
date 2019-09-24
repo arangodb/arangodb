@@ -67,7 +67,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
@@ -158,7 +159,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
                          std::vector<aql::RegisterId>& nrRegs,
-                         std::unordered_map<aql::VariableId, VarInfo>& varInfo,
+                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
                          unsigned int& totalNrRegs, unsigned int depth) const;
 
   /// @brief creates corresponding ExecutionBlock

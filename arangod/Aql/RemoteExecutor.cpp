@@ -24,7 +24,6 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/WakeupQueryCallback.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringBuffer.h"
@@ -62,7 +61,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _queryId(queryId),
       _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
-      _hasTriggeredShutdown(false) {
+      _hasTriggeredShutdown(false),
+      _lastTicket(0) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
@@ -272,7 +272,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
-
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
@@ -293,11 +292,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 //      cc->drop(0, _lastTicketId, "");
 //    }
 //    _lastTicketId = 0;
+    _lastTicket.store(0);
     _lastError.reset(TRI_ERROR_NO_ERROR);
     _lastResponse.reset();
     _hasTriggeredShutdown = true;
   }
-
   if (_lastError.fail()) {
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
@@ -355,7 +354,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_didSendShutdownRequest == false);
+  _didSendShutdownRequest = true;
+#endif
   // For every call we simply forward via HTTP
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -370,6 +372,42 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
+namespace {
+Result handleErrorResponse(network::EndpointSpec const& spec,
+                           fuerte::Error err,
+                           fuerte::Response* response) {
+  TRI_ASSERT(err != fuerte::Error::NoError ||
+             response->statusCode() >= 400);
+  if (err != fuerte::Error::NoError) {
+    return Result(network::fuerteToArangoErrorCode(err));
+  }
+  
+  std::string msg;
+  if (spec.shardId.empty()) {
+    msg.append("Error message received from cluster node '")
+       .append(spec.serverId).append("': ");
+  } else {
+    msg.append("Error message received from shard '")
+       .append(spec.shardId).append("' on cluster node '")
+       .append(spec.serverId).append("': ");
+  }
+  
+  int res = TRI_ERROR_INTERNAL;
+  VPackSlice slice = response->slice();
+  if (slice.isObject()) {
+    VPackSlice err = slice.get(StaticStrings::Error);
+    if (err.isBool() && err.getBool()) {
+      res = VelocyPackHelper::readNumericValue(slice, StaticStrings::ErrorNum, res);
+      VPackStringRef ref = VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
+                                                          "(no valid error in response)");
+      msg.append(ref.data(), ref.size());
+    }
+  }
+  
+  return Result(res, std::move(msg));
+}
+}
+
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     fuerte::RestVerb type, std::string const& urlPart,
     VPackBuffer<uint8_t> body) {
@@ -379,50 +417,46 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
-
-  // Later, we probably want to set these sensibly:
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
-  }
-
+  
   std::string url = std::string("/_db/") +
                     arangodb::basics::StringUtils::urlEncode(
                         _engine->getQuery()->trx()->vocbase().name()) +
                     urlPart + _queryId;
-
-  ++_engine->_stats.requests;
-
-  arangodb::network::EndpointSpec endpoint;
- 
-  int res = network::resolveDestination(_server, endpoint);
+  
+  arangodb::network::EndpointSpec spec;
+  int res = network::resolveDestination(_server, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return Result(res);
   }
-  TRI_ASSERT(!endpoint.empty());
+  TRI_ASSERT(!spec.endpoint.empty());
   
   auto req = fuerte::createRequest(type, url, {}, std::move(body));
+  // Later, we probably want to set these sensibly:
   req->timeout(std::chrono::seconds(kDefaultTimeOutSecs));
+  if (!_ownName.empty()) {
+    req->header.addMeta("Shard-Id", _ownName);
+  }
   
-  network::ConnectionPool::Ref ref = pool->leaseConnection(endpoint);
-
+  network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
+  
+  unsigned ticket = _lastTicket.fetch_add(1) + 1;
   std::shared_ptr<fuerte::Connection> conn = ref.connection();
-  conn->sendRequest(std::move(req), [this](fuerte::Error err,
-                                           std::unique_ptr<fuerte::Request> req,
-                                           std::unique_ptr<fuerte::Response> res) {
-    _query.sharedState()->execute([&] {
-      if (err == fuerte::Error::NoError) {
-        if (res->statusCode() >= 400) {
-          
+  conn->sendRequest(std::move(req),
+                    [=, ref(std::move(ref))](fuerte::Error err,
+                                             std::unique_ptr<fuerte::Request>,
+                                             std::unique_ptr<fuerte::Response> res) {
+    _query.sharedState()->execute([&] { // notifies outside
+      if (_lastTicket.load() == ticket) {
+        if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+          _lastError = handleErrorResponse(spec, err, res.get());
         } else {
           _lastResponse = std::move(res);
         }
-      } else {
-        _lastError.reset(network::fuerteToArangoErrorCode(err));
       }
     });
   });
+  
+  ++_engine->_stats.requests;
   
 //  std::shared_ptr<ClusterCommCallback> callback =
 //      std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());

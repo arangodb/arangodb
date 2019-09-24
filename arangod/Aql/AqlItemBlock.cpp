@@ -24,6 +24,7 @@
 #include "AqlItemBlock.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -38,24 +39,46 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a,
+                          size_t rowNumber, RegisterId col, SharedAqlItemBlockPtr& res) {
+  if (!a.isEmpty()) {
+    if (a.requiresDestruction()) {
+      auto it = cache.find(a);
+
+      if (it == cache.end()) {
+        AqlValue b = a.clone();
+        try {
+          res->setValue(rowNumber, col, b);
+        } catch (...) {
+          b.destroy();
+          throw;
+        }
+        cache.emplace(b);
+      } else {
+        res->setValue(rowNumber, col, (*it));
+      }
+    } else {
+      res->setValue(rowNumber, col, a);
+    }
+  }
+}
+}  // namespace
+
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
     : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
-
-  if (nrRegs > 0) {
-    // check that the nrRegs value is somewhat sensible
-    // this compare value is arbitrary, but having so many registers in a single
-    // query seems unlikely
-    TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
-
-    increaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
-    try {
-      _data.resize(nrItems * nrRegs);
-    } catch (...) {
-      decreaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
-      throw;
-    }
+  // check that the nrRegs value is somewhat sensible
+  // this compare value is arbitrary, but having so many registers in a single
+  // query seems unlikely
+  TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
+  increaseMemoryUsage(sizeof(AqlValue) * nrItems * internalNrRegs());
+  try {
+    _data.resize(nrItems * internalNrRegs());
+  } catch (...) {
+    decreaseMemoryUsage(sizeof(AqlValue) * nrItems * internalNrRegs());
+    throw;
   }
 }
 
@@ -70,14 +93,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
   // Initialize the data vector:
-  if (_nrRegs > 0) {
-    increaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
-    try {
-      _data.resize(_nrItems * _nrRegs);
-    } catch (...) {
-      decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
-      throw;
-    }
+  increaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
+  try {
+    _data.resize(_nrItems * internalNrRegs());
+  } catch (...) {
+    decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
+    throw;
   }
 
   // Now put in the data:
@@ -97,11 +118,18 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     AqlValue a(it.value());
     it.next();
     try {
-      setValue(row, column, a);  // if this throws, a is destroyed again
+      if (column == 0) {
+        if (!a.isEmpty()) {
+          setShadowRowDepth(row, a);
+        }
+      } else {
+        setValue(row, column - 1, a);  // if this throws, a is destroyed again
+      }
     } catch (...) {
       a.destroy();
       throw;
     }
+
     madeHere.emplace_back(a);
   };
 
@@ -115,8 +143,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
+    RegisterId startColumn = 0;
+    if (getFormatType() == SerializationFormat::CLASSIC) {
+      startColumn = 1;
+    }
 
-    for (RegisterId column = 0; column < _nrRegs; column++) {
+    for (RegisterId column = startColumn; column < internalNrRegs(); column++) {
       for (size_t i = 0; i < _nrItems; i++) {
         if (runLength > 0) {
           switch (runType) {
@@ -130,7 +162,13 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
             case PositionalRun:
               TRI_ASSERT(tablePos < madeHere.size());
-              setValue(i, column, madeHere[tablePos]);
+              if (column == 0) {
+                if (!madeHere[tablePos].isEmpty()) {
+                  setShadowRowDepth(i, madeHere[tablePos]);
+                }
+              } else {
+                setValue(i, column - 1, madeHere[tablePos]);
+              }
               break;
 
             case NoRun: {
@@ -189,8 +227,13 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                                "found undefined data value");
               }
-
-              setValue(i, column, madeHere[tablePos]);
+              if (column == 0) {
+                if (!madeHere[tablePos].isEmpty()) {
+                  setShadowRowDepth(i, madeHere[tablePos]);
+                }
+              } else {
+                setValue(i, column - 1, madeHere[tablePos]);
+              }
             }
           }
         } else if (n == -2) {
@@ -202,15 +245,20 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
           int64_t low = VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
           int64_t high = VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
-          emplaceValue(i, column, low, high);
+          TRI_ASSERT(column != 0);
+          emplaceValue(i, column - 1, low, high);
         } else if (n >= 2) {
           if (static_cast<size_t>(n) >= madeHere.size()) {
             // safeguard against out-of-bounds accesses
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "found undefined data value");
           }
+          if (column == 0) {
+            setShadowRowDepth(i, madeHere[static_cast<size_t>(n)]);
+          } else {
+            setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
+          }
 
-          setValue(i, column, madeHere[static_cast<size_t>(n)]);
           // If this throws, all is OK, because it was already put into
           // the block elsewhere.
         } else {
@@ -228,6 +276,10 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   TRI_ASSERT(runType == NoRun);
 }
 
+SerializationFormat AqlItemBlock::getFormatType() const {
+  return _manager.getFormatType();
+}
+
 /// @brief destroy the block, used in the destructor and elsewhere
 void AqlItemBlock::destroy() noexcept {
   // none of the functions used here will throw in reality, but
@@ -243,7 +295,7 @@ void AqlItemBlock::destroy() noexcept {
     }
 
     for (size_t i = 0; i < numEntries(); i++) {
-      auto &it = _data[i];
+      auto& it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
@@ -256,7 +308,7 @@ void AqlItemBlock::destroy() noexcept {
           }
         }
       }
-        // Note that if we do not know it the thing it has been stolen from us!
+      // Note that if we do not know it the thing it has been stolen from us!
       it.erase();
     }
     _valueCount.clear();
@@ -286,8 +338,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
-  
-  for (size_t i = _nrItems * _nrRegs; i < _data.size(); ++i) {
+
+  for (size_t i = numEntries(); i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
       auto it = _valueCount.find(a);
@@ -315,10 +367,10 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   TRI_ASSERT(_valueCount.empty());
-  TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
 
-  size_t const targetSize = nrItems * nrRegs;
-  size_t const currentSize = _nrItems * _nrRegs;
+  size_t const targetSize = nrItems * (nrRegs + 1);
+  size_t const currentSize = _nrItems * internalNrRegs();
   TRI_ASSERT(currentSize == numEntries());
 
   // TODO Previously, _data.size() was used for the memory usage.
@@ -339,7 +391,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
     // Values will not be re-initialized, but are expected to be that way.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for(size_t i = currentSize; i < targetSize; i++) {
+    for (size_t i = currentSize; i < targetSize; i++) {
       TRI_ASSERT(_data[i].isEmpty());
     }
 #endif
@@ -356,7 +408,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
     for (auto const& reg : toClear) {
-      AqlValue& a(_data[_nrRegs * i + reg]);
+      AqlValue& a(_data[getAddress(i, reg)]);
 
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
@@ -390,31 +442,12 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
+    // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[row * _nrRegs + col]);
-
-      if (!a.isEmpty()) {
-        if (a.requiresDestruction()) {
-          auto it = cache.find(a);
-
-          if (it == cache.end()) {
-            AqlValue b = a.clone();
-            try {
-              res->setValue(row - from, col, b);
-            } catch (...) {
-              b.destroy();
-              throw;
-            }
-            cache.emplace(b);
-          } else {
-            res->setValue(row - from, col, (*it));
-          }
-        } else {
-          // simple copying of values
-          res->setValue(row - from, col, a);
-        }
-      }
+      AqlValue const& a(_data[getAddress(row, col)]);
+      ::CopyValueOver(cache, a, row - from, col, res);
     }
+    copySubQueryDepthToOtherBlock(res, row, row - from);
   }
 
   return res;
@@ -429,35 +462,15 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
   std::unordered_set<AqlValue> cache;
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
-
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
       continue;
     }
 
-    AqlValue const& a(_data[row * _nrRegs + col]);
-
-    if (!a.isEmpty()) {
-      if (a.requiresDestruction()) {
-        auto it = cache.find(a);
-
-        if (it == cache.end()) {
-          AqlValue b = a.clone();
-          try {
-            res->setValue(0, col, b);
-          } catch (...) {
-            b.destroy();
-            throw;
-          }
-          cache.emplace(b);
-        } else {
-          res->setValue(0, col, (*it));
-        }
-      } else {
-        res->setValue(0, col, a);
-      }
-    }
+    AqlValue const& a(_data[getAddress(row, col)]);
+    ::CopyValueOver(cache, a, 0, col, res);
   }
+  copySubQueryDepthToOtherBlock(res, row, 0);
 
   return res;
 }
@@ -469,34 +482,16 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_set<AqlValue> cache;
-  cache.reserve((to - from) * _nrRegs / 4 + 1);
+  cache.reserve((to - from) * internalNrRegs() / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[chosen[row] * _nrRegs + col]);
-
-      if (!a.isEmpty()) {
-        if (a.requiresDestruction()) {
-          auto it = cache.find(a);
-
-          if (it == cache.end()) {
-            AqlValue b = a.clone();
-            try {
-              res->setValue(row - from, col, b);
-            } catch (...) {
-              b.destroy();
-            }
-            cache.emplace(b);
-          } else {
-            res->setValue(row - from, col, (*it));
-          }
-        } else {
-          res->setValue(row - from, col, a);
-        }
-      }
+      AqlValue const& a(_data[getAddress(chosen[row], col)]);
+      ::CopyValueOver(cache, a, row - from, col, res);
     }
+    copySubQueryDepthToOtherBlock(res, row, row - from);
   }
 
   return res;
@@ -517,7 +512,7 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue& a(_data[chosen[row] * _nrRegs + col]);
+      AqlValue& a(_data[getAddress(chosen[row], col)]);
 
       if (!a.isEmpty()) {
         steal(a);
@@ -568,6 +563,7 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+  TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -632,9 +628,15 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < _nrRegs; column++) {
+
+  RegisterId startRegister = 0;
+  if (getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < internalNrRegs(); column++) {
     for (size_t i = 0; i < _nrItems; i++) {
-      AqlValue const& a(_data[i * _nrRegs + column]);
+      AqlValue const& a(_data[i * internalNrRegs() + column]);
 
       // determine current state
       if (a.isEmpty()) {
@@ -697,4 +699,15 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
 
 ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
   return *_manager.resourceMonitor();
+}
+
+void AqlItemBlock::copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
+                                                 size_t sourceRow, size_t targetRow) const {
+  AqlValue const& d(_data[getSubqueryDepthAddress(sourceRow)]);
+  if (d.isNumber()) {
+    // Value set, copy it over
+    TRI_ASSERT(!d.requiresDestruction());
+    // TODO implement me!!
+    TRI_ASSERT(false);
+  }
 }

@@ -62,14 +62,18 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
 BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
-                                   std::vector<std::string> const& shardIds)
+                                     std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep),
       _nrClients(shardIds.size()),
+      _type(ScatterNode::ScatterType::SHARD),
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
+  auto scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
+  TRI_ASSERT(scatter != nullptr);
+  _type = scatter->getScatterType();
 }
 
 std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
@@ -111,16 +115,16 @@ std::pair<ExecutionState, Result> BlocksWithClients::shutdown(int errorCode) {
 /// corresponding to <shardId>
 size_t BlocksWithClients::getClientId(std::string const& shardId) const {
   if (shardId.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "got empty distribution id");
   }
-
   auto it = _shardIdMap.find(shardId);
   if (it == _shardIdMap.end()) {
-    std::string message("AQL: unknown shard id ");
+    std::string message("AQL: unknown distribution id ");
     message.append(shardId);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
-  return ((*it).second);
+  return it->second;
 }
 
 void BlocksWithClients::throwIfKilled() {

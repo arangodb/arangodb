@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -40,21 +41,37 @@ using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
     : _collection(collection),
+      _restrictedTo(""),
       _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
+      _prototypeOutVariable(nullptr),
+      _usedShard(""),
+      _isSatellite(false) {
   TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_usedShard.empty());
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
-    : _collection(plan->getAst()->query()->collections()->get(
-          slice.get("collection").copyString())),
+    : _collection(nullptr),
+      _restrictedTo(""),
       _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
-    
+      _prototypeOutVariable(nullptr),
+      _usedShard(""),
+      _isSatellite(false) {
   if (slice.get("prototype").isString()) {
-    _prototypeCollection = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+    _prototypeCollection =
+        plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
   }
+  auto colName = slice.get("collection").copyString();
+  auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
+  if (typeId == ExecutionNode::DISTRIBUTE) {
+    // This is a special case, the distribute node can inject a collection
+    // that is NOT yet known to the plan
+    auto query = plan->getAst()->query();
+    query->addCollection(colName, AccessMode::Type::NONE);
+  }
+
+  _collection = plan->getAst()->query()->collections()->get(colName);
 
   TRI_ASSERT(_collection != nullptr);
 
@@ -70,6 +87,8 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
   if (restrictedTo.isString()) {
     _restrictedTo = restrictedTo.copyString();
   }
+
+  _isSatellite = basics::VelocyPackHelper::getBooleanValue(slice, "isSatellite", false);
 }
 
 TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
@@ -85,12 +104,17 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
-  builder.add("collection", VPackValue(_collection->name()));
+  if (!_usedShard.empty()) {
+    builder.add("collection", VPackValue(_usedShard));
+  } else {
+    builder.add("collection", VPackValue(_collection->name()));
+  }
+
   if (_prototypeCollection != nullptr) {
     builder.add("prototype", VPackValue(_prototypeCollection->name()));
   }
-  builder.add("satellite", VPackValue(_collection->isSatellite()));
-    
+  builder.add(StaticStrings::Satellite, VPackValue(_collection->isSatellite()));
+
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }
@@ -98,6 +122,10 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
+#ifdef USE_ENTERPRISE
+  // why do we have _isSatellite and _collection->isSatellite()?
+  builder.add("isSatellite", VPackValue(_isSatellite));
+#endif
 }
 
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
@@ -107,4 +135,11 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
                        [](arangodb::Index const* idx) {
                          return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
                        });
+}
+
+void CollectionAccessingNode::useAsSatellite() {
+  TRI_ASSERT(_collection->isSatellite());
+#ifdef USE_ENTERPRISE
+  _isSatellite = true;
+#endif
 }

@@ -315,8 +315,10 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
+void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                       std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  GraphNode::toVelocyPackHelper(nodes, flags, seen);
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -394,9 +396,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
     nodes.close();
   }
 
-  nodes.add(VPackValue("indexes"));
-  _options->toVelocyPackIndexes(nodes);
-
   if (_pruneExpression != nullptr) {
     // The Expression constructor expects only this name
     nodes.add(VPackValue("expression"));
@@ -419,7 +418,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto& varInfo = getRegisterPlan()->varInfo;
-  RegisterId inputRegister = MaxRegisterId;
+  RegisterId inputRegister = RegisterPlan::MaxRegisterId;
   if (usesInVariable()) {
     auto it = varInfo.find(inVariable()->id);
     TRI_ASSERT(it != varInfo.end());
@@ -433,7 +432,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                   it->second.registerId);
@@ -441,7 +440,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::EDGE,
                                   it->second.registerId);
@@ -449,7 +448,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (usesPathOutVariable()) {
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::PATH,
                                   it->second.registerId);
