@@ -159,7 +159,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
                          std::vector<aql::RegisterId>& nrRegs,
-                         std::unordered_map<aql::VariableId, VarInfo>& varInfo,
+                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
                          unsigned int& totalNrRegs, unsigned int depth) const;
 
   /// @brief creates corresponding ExecutionBlock

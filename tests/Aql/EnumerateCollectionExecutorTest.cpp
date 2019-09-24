@@ -103,7 +103,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   VPackBuilder input;
 
   EnumerateCollectionExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         options(std::make_shared<options::ProgramOptions>("arangod", "something",
                                                           "", "path")),
         server(options, "path"),

@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
+#include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
 
 namespace arangodb {
@@ -57,7 +58,7 @@ struct ViewExpressionContextBase : public aql::QueryExpressionContext {
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::ExecutionNode::VarInfo>;
+  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   ViewExpressionContext(aql::Query* query, aql::RegisterId numRegs,
                         aql::Variable const& outVar,

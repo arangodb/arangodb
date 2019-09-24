@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -38,9 +39,10 @@ struct ResourceMonitor;
 
 class AqlItemBlockManager {
   friend class SharedAqlItemBlockPtr;
+
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(ResourceMonitor*);
+  explicit AqlItemBlockManager(ResourceMonitor*, SerializationFormat format);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();
@@ -52,20 +54,22 @@ class AqlItemBlockManager {
   /// @brief request a block and initialize it from the slice
   TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
 
-  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
+  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept {
+    return _resourceMonitor;
+  }
+
+  SerializationFormat getFormatType() const { return _format; }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
-  static void deleteBlock(AqlItemBlock* block) {
-    delete block;
-  }
+  static void deleteBlock(AqlItemBlock* block) { delete block; }
 #endif
 
 #ifndef ARANGODB_USE_GOOGLE_TESTS
  protected:
 #else
- // make returnBlock public for tests so it can be mocked
+  // make returnBlock public for tests so it can be mocked
  public:
 #endif
   /// @brief return a block to the manager
@@ -74,6 +78,7 @@ class AqlItemBlockManager {
 
  private:
   ResourceMonitor* _resourceMonitor;
+  SerializationFormat const _format;
 
   static constexpr size_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;
