@@ -24,6 +24,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "Agency/AgencyComm.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -79,8 +80,7 @@ struct BoostScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
-    virtual void collect(irs::byte_type* stats,
-                         const irs::index_reader& index,
+    virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       // NOOP
@@ -107,42 +107,39 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
-        irs::sub_reader const&,
-        irs::term_reader const&,
-        irs::byte_type const*,
-        irs::attribute_view const&,
-        irs::boost_t boost) const override {
+        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+        irs::attribute_view const&, irs::boost_t boost) const override {
       struct ScoreCtx : public irs::sort::score_ctx {
         ScoreCtx(irs::boost_t score) : scr(score) {}
 
         irs::boost_t scr;
       };
 
-      return {
-        std::make_unique<ScoreCtx>(boost),
-        [](const void* ctx, irs::byte_type* score_buf) noexcept {
-          auto& state = *static_cast<const ScoreCtx*>(ctx);
-          irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
-        }
-      };
+      return {std::make_unique<ScoreCtx>(boost),
+              [](const void* ctx, irs::byte_type* score_buf) noexcept {
+                  auto & state = *static_cast<const ScoreCtx*>(ctx);
+      irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
     }
   };
+}
+};  // namespace
 
-  static ::iresearch::sort::type_id const& type() {
-    static ::iresearch::sort::type_id TYPE("boostscorer");
-    return TYPE;
-  }
+static ::iresearch::sort::type_id const& type() {
+  static ::iresearch::sort::type_id TYPE("boostscorer");
+  return TYPE;
+}
 
-  static irs::sort::ptr make(irs::string_ref const&) {
-    return std::make_shared<BoostScorer>();
-  }
+static irs::sort::ptr make(irs::string_ref const&) {
+  return std::make_shared<BoostScorer>();
+}
 
-  BoostScorer() : irs::sort(BoostScorer::type()) {}
+BoostScorer() : irs::sort(BoostScorer::type()) {}
 
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>();
-  }
-};  // BoostScorer
+virtual irs::sort::prepared::ptr prepare() const override {
+  return irs::memory::make_unique<Prepared>();
+}
+}
+;  // BoostScorer
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
@@ -157,8 +154,7 @@ struct CustomScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
-    virtual void collect(irs::byte_type* stats,
-                         const irs::index_reader& index,
+    virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       // NOOP
@@ -185,73 +181,73 @@ struct CustomScorer : public irs::sort {
     }
 
     virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
-        irs::sub_reader const&,
-        irs::term_reader const&,
-        irs::byte_type const*,
-        irs::attribute_view const&,
-        irs::boost_t) const override {
+        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+        irs::attribute_view const&, irs::boost_t) const override {
       struct ScoreCtx : public irs::sort::score_ctx {
         ScoreCtx(float_t score) : i(score) {}
 
         float_t i;
       };
 
-      return {
-        std::make_unique<ScoreCtx>(i),
-        [](const void* ctx, irs::byte_type* score_buf) noexcept {
-          auto& state = *static_cast<const ScoreCtx*>(ctx);
-          irs::sort::score_cast<float_t>(score_buf) = state.i;
-        }
-      };
+      return {std::make_unique<ScoreCtx>(i),
+              [](const void* ctx, irs::byte_type* score_buf) noexcept {
+                  auto & state = *static_cast<const ScoreCtx*>(ctx);
+      irs::sort::score_cast<float_t>(score_buf) = state.i;
     }
-
-    float_t i;
   };
+}
 
-  static ::iresearch::sort::type_id const& type() {
-    static ::iresearch::sort::type_id TYPE("customscorer");
-    return TYPE;
+float_t i;
+}
+;
+
+static ::iresearch::sort::type_id const& type() {
+  static ::iresearch::sort::type_id TYPE("customscorer");
+  return TYPE;
+}
+
+static irs::sort::ptr make(irs::string_ref const& args) {
+  if (args.null()) {
+    return std::make_shared<CustomScorer>(0u);
   }
 
-  static irs::sort::ptr make(irs::string_ref const& args) {
-    if (args.null()) {
-      return std::make_shared<CustomScorer>(0u);
-    }
+  // velocypack::Parser::fromJson(...) will throw exception on parse error
+  auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+  auto slice = json ? json->slice() : arangodb::velocypack::Slice();
 
-    // velocypack::Parser::fromJson(...) will throw exception on parse error
-    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
-    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
-
-    if (!slice.isArray()) {
-      return nullptr;  // incorrect argument format
-    }
-
-    arangodb::velocypack::ArrayIterator itr(slice);
-
-    if (!itr.valid()) {
-      return nullptr;
-    }
-
-    auto const value = itr.value();
-
-    if (!value.isNumber()) {
-      return nullptr;
-    }
-
-    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
+  if (!slice.isArray()) {
+    return nullptr;  // incorrect argument format
   }
 
-  CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
+  arangodb::velocypack::ArrayIterator itr(slice);
 
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
+  if (!itr.valid()) {
+    return nullptr;
   }
 
-  size_t i;
-};  // CustomScorer
+  auto const value = itr.value();
+
+  if (!value.isNumber()) {
+    return nullptr;
+  }
+
+  return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
+}
+
+CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
+
+virtual irs::sort::prepared::ptr prepare() const override {
+  return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
+}
+
+size_t i;
+}
+;  // CustomScorer
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 namespace arangodb {
@@ -333,7 +329,8 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
-    expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
+    arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
+    expectedRules.emplace(translated.toString());
   }
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
@@ -405,7 +402,8 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
       false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
       arangodb::velocypack::Parser::fromJson(optionsString), arangodb::aql::PART_MAIN);
 
-  query->prepare(arangodb::QueryRegistryFeature::registry());
+  query->prepare(arangodb::QueryRegistryFeature::registry(),
+                 arangodb::aql::SerializationFormat::SHADOWROWS);
   return query;
 }
 
@@ -424,8 +422,6 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature) {
   const_cast<std::string&>(feature.directory()) = path.utf8();
 }
 
-
-
 void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where) {
   SCOPED_TRACE(rhs.toString());
   SCOPED_TRACE(rhs.toHex());
@@ -434,8 +430,7 @@ void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char
   SCOPED_TRACE(lhs.toHex());
   SCOPED_TRACE("---EXPECTED---");
   SCOPED_TRACE(where);
-  EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
-                   lhs, rhs, true));
+  EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(lhs, rhs, true));
 }
 
 }  // namespace tests
@@ -491,7 +486,8 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   EXPECT_TRUE(query.plan());
   auto& plan = *query.plan();
 
@@ -528,8 +524,7 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
                              std::make_shared<arangodb::velocypack::Builder>(),
@@ -639,8 +634,7 @@ void assertFilter(bool parseOk, bool execOk, std::string const& queryString,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -741,8 +735,7 @@ void assertFilterExecutionFail(std::string const& queryString,
 void assertFilterParseFail(std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
@@ -750,6 +743,29 @@ void assertFilterParseFail(std::string const& queryString,
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.fail());
 }
+
+arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id, bool allowSystem) {
+  arangodb::CreateDatabaseInfo info;
+  info.allowSystemDB(allowSystem);
+  auto rv = info.load(name, id);
+  if(rv.fail()) {
+    throw std::runtime_error(rv.errorMessage());
+  }
+  return info;
+};
+
+arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name, uint64_t id) {
+  auto rv =  createInfo(name, id, true);
+  return rv;
+};
+
+arangodb::CreateDatabaseInfo testDBInfo(std::string const& name, uint64_t id) {
+  return createInfo(name, id);
+};
+
+arangodb::CreateDatabaseInfo unknownDBInfo(std::string const& name, uint64_t id) {
+  return createInfo(name, id);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

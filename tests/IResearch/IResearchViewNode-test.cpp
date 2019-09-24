@@ -45,6 +45,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -67,11 +68,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "V8Server/V8DealerFeature.h"
-#include "Cluster/ClusterFeature.h"
 
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchMMFilesLink.h"
@@ -118,7 +118,7 @@ class IResearchViewNodeTest : public ::testing::Test {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
+                                                     systemDBInfo());
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
@@ -182,8 +182,7 @@ class IResearchViewNodeTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(IResearchViewNodeTest, constructSortedView) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ "
@@ -200,7 +199,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   {
@@ -342,8 +342,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, construct) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -354,7 +353,8 @@ TEST_F(IResearchViewNodeTest, construct) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no options
@@ -514,8 +514,7 @@ TEST_F(IResearchViewNodeTest, construct) {
 }
 
 TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -526,7 +525,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // missing 'viewId'
@@ -942,8 +942,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, clone) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -954,7 +953,8 @@ TEST_F(IResearchViewNodeTest, clone) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no filter condition, no sort condition, no shards, no options
@@ -998,7 +998,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1025,7 +1026,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1097,7 +1099,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1124,7 +1127,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1193,7 +1197,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1223,7 +1228,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1297,7 +1303,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1327,7 +1334,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -1353,8 +1361,7 @@ TEST_F(IResearchViewNodeTest, clone) {
 }
 
 TEST_F(IResearchViewNodeTest, serialize) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -1365,7 +1372,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1533,8 +1541,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
 }
 
 TEST_F(IResearchViewNodeTest, serializeSortedView) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"primarySort\" : "
@@ -1549,7 +1556,8 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1722,8 +1730,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, collections) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   std::shared_ptr<arangodb::LogicalCollection> collection1;
@@ -1777,7 +1784,8 @@ TEST_F(IResearchViewNodeTest, collections) {
   query.addCollection(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ);
 
   // prepare query
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1810,8 +1818,7 @@ TEST_F(IResearchViewNodeTest, collections) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
@@ -1862,10 +1869,11 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(&query, arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1937,8 +1945,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
@@ -1948,10 +1955,11 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(&query, arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::SingletonNode singleton(query.plan(), 0);
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1987,9 +1995,7 @@ class IResearchViewBlockTest : public ::testing::Test {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchViewBlockTest()
-      : engine(server),
-        server(nullptr, nullptr) {
+  IResearchViewBlockTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::tests::init(true);
 
@@ -2046,7 +2052,6 @@ class IResearchViewBlockTest : public ::testing::Test {
             "DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
 
-
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
@@ -2081,8 +2086,7 @@ class IResearchViewBlockTest : public ::testing::Test {
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,
-        EMPTY_VECTOR, EMPTY_VECTOR,
-        arangodb::transaction::Options());
+        EMPTY_VECTOR, EMPTY_VECTOR, arangodb::transaction::Options());
 
     EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already removed from collection)
@@ -2135,9 +2139,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
-                                  "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
@@ -2150,9 +2153,9 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollection) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
-                                  "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
+  auto queryResult = arangodb::tests::executeQuery(
+      *vocbase,
+      "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());

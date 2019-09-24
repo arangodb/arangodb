@@ -35,11 +35,12 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionBlock;
 class QueryRegistry;
+enum class SerializationFormat;
 
 class ExecutionEngine {
  public:
   /// @brief create the engine
-  explicit ExecutionEngine(Query* query);
+  ExecutionEngine(Query* query, SerializationFormat format);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
@@ -88,11 +89,8 @@ class ExecutionEngine {
   bool initializeCursorCalled() const { return _initializeCursorCalled; }
 
   /// @brief add a block to the engine
-  TEST_VIRTUAL void addBlock(ExecutionBlock*);
-
-  /// @brief add a block to the engine
   /// @returns added block
-  ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>&&);
+  ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>);
 
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister) {

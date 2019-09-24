@@ -39,8 +39,8 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
       std::string key, bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(inputRegister, ExecutionNode::MaxRegisterId,
-                                  ExecutionNode::MaxRegisterId, outputNewRegisterId,
+      : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
+                                  RegisterPlan::MaxRegisterId, outputNewRegisterId,
                                   outputOldRegisterId, outputRegisterId,
                                   nrInputRegisters, nrOutputRegisters,
                                   registersToClear, std::move(registersToKeep),

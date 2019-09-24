@@ -27,6 +27,7 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Basics/StaticStrings.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
@@ -392,11 +393,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           continue;
         }
 
-        auto replicationFactor = collection.hasAsString("replicationFactor");
-        bool isSatellite = replicationFactor.second && replicationFactor.first == "satellite";
-
-
-
+        auto replicationFactor = collection.hasAsString(StaticStrings::ReplicationFactor);
+        bool isSatellite = replicationFactor.second && replicationFactor.first == StaticStrings::Satellite;
         bool isLeader = (found == 0);
 
         if (isSatellite) {

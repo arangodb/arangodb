@@ -40,11 +40,13 @@
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Cluster/ServerState.h"
 
 #include "Transaction/Methods.h"
 
 #include <type_traits>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -90,13 +92,17 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 
 /// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
+    : DistributeConsumerNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _server(base.get("server").copyString()),
-      _ownName(base.get("ownName").copyString()),
-      _queryId(base.get("queryId").copyString()),
-      _isResponsibleForInitializeCursor(
-          base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+      _queryId(base.get("queryId").copyString()) {
+  // Backwards compatibility (3.4.x)(3.5.0) and earlier, coordinator might send ownName.
+  arangodb::velocypack::StringRef tmpId(getDistributeId());
+  tmpId = VelocyPackHelper::getStringRef(base, "ownName", tmpId);
+  if (tmpId != getDistributeId()) {
+    setDistributeId(tmpId.toString());
+  }
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
@@ -131,21 +137,19 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
 
-  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
-                                                              std::move(infos), server(),
-                                                              ownName(), queryId());
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
+      &engine, this, std::move(infos), server(), getDistributeId(), queryId());
 }
 
 /// @brief toVelocyPack, for RemoteNode
-void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  DistributeConsumerNode::toVelocyPackHelperInternal(nodes, flags, seen);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
-  nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
-  nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
 
   // And close it:
   nodes.close();
@@ -191,13 +195,13 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // serialize clients
   writeClientsToVelocyPack(nodes);
-
   // And close it:
   nodes.close();
 }
@@ -228,10 +232,14 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
     ++pos;
   }
 
+  _type = static_cast<ScatterNode::ScatterType>(
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(base, "scatterType", 0));
+
   return true;
 }
 
 void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
+  builder.add("scatterType", VPackValue(static_cast<uint64_t>(getScatterType())));
   VPackArrayBuilder arrayScope(&builder, "clients");
   for (auto const& client : _clients) {
     builder.add(VPackValue(client));
@@ -282,7 +290,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
                       std::move(regsToKeep));
 
   RegisterId regId;
-  RegisterId alternativeRegId = ExecutionNode::MaxRegisterId;
+  RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
 
   {  // set regId and alternativeRegId:
 
@@ -294,7 +302,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     regId = (*it).second.registerId;
 
-    TRI_ASSERT(regId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
 
     if (_alternativeVariable != _variable) {
       // use second variable
@@ -302,9 +310,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       alternativeRegId = (*it).second.registerId;
 
-      TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(alternativeRegId < RegisterPlan::MaxRegisterId);
     } else {
-      TRI_ASSERT(alternativeRegId == ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
 
@@ -314,9 +322,10 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 }
 
 /// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
+void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
+                                        std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
@@ -396,9 +405,10 @@ GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexce
     : ExecutionNode(plan, id), _sortmode(sortMode) {}
 
 /// @brief toVelocyPack, for GatherNode
-void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   if (_elements.empty()) {
     nodes.add("sortmode", VPackValue(SortModeUnset.data()));
@@ -438,8 +448,18 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                getRegisterPlan()->nrRegs[getDepth()]);
     IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                           calcRegsToKeep(), getRegsToClear());
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
-        &engine, this, std::move(infos));
+    if (ServerState::instance()->isCoordinator()) {
+      // In the coordinator case the GatherBlock will fetch from RemoteBlocks.
+      // We want to immediately move the block on and not wait for additional requests here (hence passthrough)
+      return std::make_unique<ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>>(
+          &engine, this, std::move(infos));
+    } else {
+      // In the DBServer case the GatherBlock will merge local results and then expose them (directly or indirectly)
+      // To the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
+      // memory inefficiency that we have here in favor of a better grouping of requests.
+      return std::make_unique<ExecutionBlockImpl<IdExecutor<false, SingleRowFetcher<false>>>>(
+          &engine, this, std::move(infos));
+    }
   }
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
@@ -542,9 +562,10 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 }
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode
-void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
   CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   // add collection information

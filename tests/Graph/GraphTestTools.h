@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -80,8 +81,7 @@ struct GraphTestSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
+    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
@@ -135,8 +135,9 @@ struct MockGraphDatabase {
   std::vector<arangodb::aql::Query*> queries;
   std::vector<arangodb::graph::ShortestPathOptions*> spos;
 
-  MockGraphDatabase(std::string name)
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, name) {}
+  MockGraphDatabase(std::string name) :
+    vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(name, 1))
+  {}
 
   ~MockGraphDatabase() {
     for (auto& q : queries) {
@@ -215,6 +216,7 @@ struct MockGraphDatabase {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+
                                               *edges, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
@@ -236,7 +238,7 @@ struct MockGraphDatabase {
                                  arangodb::velocypack::Parser::fromJson("{}"),
                                  arangodb::aql::PART_MAIN);
     query->parse();
-    query->prepare(arangodb::QueryRegistryFeature::registry());
+    query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);
 
@@ -284,10 +286,11 @@ struct MockGraphDatabase {
   }
 };
 
-bool checkPath(ShortestPathOptions* spo, ShortestPathResult result, std::vector<std::string> vertices,
+bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
+               std::vector<std::string> vertices,
                std::vector<std::pair<std::string, std::string>> edges, std::string& msgs);
 
-}
-}
-}
+}  // namespace graph
+}  // namespace tests
+}  // namespace arangodb
 #endif

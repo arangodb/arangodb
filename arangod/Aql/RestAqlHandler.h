@@ -40,6 +40,7 @@ class TraverserEngineRegistry;
 namespace aql {
 class Query;
 class QueryRegistry;
+enum class SerializationFormat;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
@@ -54,11 +55,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus continueExecute() override;
 
  public:
-  // POST method for /_api/aql/instantiate
-  // The body is a VelocyPack with attributes "plan" for the execution plan and
-  // "options" for the options, all exactly as in AQL_EXECUTEJSON.
-  void createQueryFromVelocyPack();
-
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "getSome" or "skip".
@@ -107,7 +103,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                         arangodb::velocypack::Slice const collections,
                         arangodb::velocypack::Slice const variables,
                         std::shared_ptr<arangodb::velocypack::Builder> options,
-                        std::shared_ptr<transaction::Context> const& ctx, double const ttl,
+                        std::shared_ptr<transaction::Context> const& ctx,
+                        double const ttl, aql::SerializationFormat format,
                         bool& needToLock, arangodb::velocypack::Builder& answer);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
