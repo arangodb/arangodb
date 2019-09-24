@@ -1,15 +1,36 @@
 devel
 -----
 
+* Prevent spurious log message "Scheduler queue is filled more than 50% in last x s"
+  from occurring when this is not the case. Due to a data race, the message could 
+  previously also occur if the queue was empty.
+
+* Make the scheduler enforce the configured queue lengths. The values of the options
+  `--server.scheduler-queue-size`, `--server.prio1-size` and `--server.maximal-queue-size`
+  will now be honored and not exceeded.
+
+  The default queue sizes in the scheduler for requests buffering have
+  also been changed as follows:
+
+      request type        before      now
+      -----------------------------------
+      high priority          128     4096
+      medium priority    1048576     4096
+      low priority          4096     4096
+
+  The queue sizes can still be adjusted at server start using the above-
+  mentioned startup options.
+
 * Fix compilation issue with clang 10
 
 * Fixed issue #10062: AQL: Could not extract custom attribute.
 
-* Add ReplicationFactor, MinReplicationFactor and sharding strategy to database creation
-  dialogue in web UI. Preselect database default values for collection creation in web UI.
+* Add replicationFactor, minReplicationFactor and sharding strategy to database creation
+  dialog in web UI. Preselect database default values for collection creation in web UI.
 
-* Add new JavaScipt function `db._properties()` and REST route `GET /_api/database/properties`
-  that provides information about the current database's properties.
+* Add new JavaScipt function `db._properties()` and REST route GET 
+  `/_api/database/properties` that provides information about the current database's 
+  properties.
 
 * Add new options `sharding` and `replicationFactor` for database creation methods. The
   specified values will provide the defaults for all collections created in a database.
@@ -33,12 +54,12 @@ devel
 * Enabled IPO with cmake as an option, default is on for release builds without
   google tests.
 
-* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting 
-  in undefined behaviour.
+* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, 
+  resulting in undefined behaviour.
 
-* Remove operations documents in the cluster will now use an optimization, if all sharding keys 
-  were specified. Should the sharding keys not match the values in the actual document
-  a not found error will be returned.
+* Remove operations for documents in the cluster will now use an optimization, 
+  if all sharding keys are specified. Should the sharding keys not match the values in 
+  the actual document, a not found error will be returned.
 
 * Fixed AQL constrained-heap sort in conjunction with fullCount.
 
