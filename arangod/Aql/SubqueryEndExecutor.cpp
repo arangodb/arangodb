@@ -48,7 +48,7 @@ SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
     : _fetcher(fetcher),
       _infos(infos),
-      _outputPending(false) {
+      _state(ACCUMULATE) {
   resetAccumulator();
 }
 
@@ -61,45 +61,47 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
   ShadowAqlItemRow shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
 
-  while (true) {
-    std::tie(state, inputRow) = _fetcher.fetchRow();
+  while (!output.isFull()) {
+    switch (_state) {
+      case ACCUMULATE: {
+        std::tie(state, inputRow) = _fetcher.fetchRow();
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!inputRow.isInitialized());
-      return {state, std::move(stats)};
-    }
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!inputRow.isInitialized());
+          return {state, std::move(stats)};
+        }
 
-    // We got a row, put it into the accumulator
-    if (inputRow.isInitialized()) {
-      // Above is a RETURN which writes to register 0
-      TRI_ASSERT(_accumulator.isOpenArray());
-      AqlValue value = inputRow.getValue(0);
-      value.toVelocyPack(_infos.getTrxPtr(), _accumulator, false);
-      _outputPending = true;
-    } else {
-      // Did not get a row, we had better be done now, because we caught WAITING above.
-      TRI_ASSERT(state == ExecutionState::DONE);
+        // We got a data row, put it into the accumulator
+        if (inputRow.isInitialized()) {
+          // Above is a RETURN which writes to register 0
+          // TODO: The RETURN node above is superflous and could be folded
+          //       into the SubqueryEndNode
+          TRI_ASSERT(_accumulator.isOpenArray());
+          AqlValue value = inputRow.getValue(0);
+          value.toVelocyPack(_infos.getTrxPtr(), _accumulator, false);
+        }
 
-      // do this only if pending outputs
-      // submit result to output
-      if(_outputPending) {
-        // Now we expect a shadow row which contains the input
-        // to our subquery, i.e. isRelevant().
+        // We have received DONE on data rows, so now
+        // we have to read a relevant shadow row
+        if (state == ExecutionState::DONE) {
+          _accumulator.close();
+          TRI_ASSERT(_accumulator.isClosed());
+          _state = RELEVANT_SHADOW_ROW_PENDING;
+        }
+        break;
+      }
+      case RELEVANT_SHADOW_ROW_PENDING: {
         std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!shadowRow.isInitialized());
           return {ExecutionState::WAITING, std::move(stats)};
         }
-
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
         TRI_ASSERT(shadowRow.isInitialized() == true);
         TRI_ASSERT(shadowRow.isRelevant() == true);
 
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit
-        _accumulator.close();
-        TRI_ASSERT(_accumulator.isClosed());
-
         AqlValue resultDocVec{_accumulator.slice()};
         AqlValueGuard guard{resultDocVec, true};
 
@@ -107,32 +109,53 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         output.moveValueInto(_infos.getOutputRegister(), shadowRow, guard);
         TRI_ASSERT(output.produced());
 
+        // Reset the accumulator in case we read more data
         resetAccumulator();
-        TRI_ASSERT(_outputPending == false);
+        _state = FORWARD_IRRELEVANT_SHADOW_ROWS;
+        break;
       }
-
-      // we have to consume and forward all immediately following shadow rows,
-      // and they have to have isRelevant == false
-      do {
+      case FORWARD_IRRELEVANT_SHADOW_ROWS: {
+        // Forward irrelevant shadow rows (and only those)
         std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
+
         if (state == ExecutionState::WAITING) {
           return {ExecutionState::WAITING, std::move(stats)};
         }
-        if (shadowRow.isInitialized()) {
-          output.decreaseShadowRowDepth(shadowRow);
-        }
-      } while(state != ExecutionState::DONE);
 
-      // we are done now
-      return {ExecutionState::DONE, std::move(stats)};
+        if (shadowRow.isInitialized()) {
+          // We got a shadow row, it must be irrelevant,
+          // because to get another relevant shadowRow we must
+          // first call fetchRow again
+          TRI_ASSERT(shadowRow.isRelevant() == false);
+          output.decreaseShadowRowDepth(shadowRow);
+        } else {
+          // We did not get another shadowRow; either we
+          // are DONE or we are getting another relevant
+          // shadow row, but only after we called fetchRow
+          // again
+          if (state == ExecutionState::HASMORE) {
+            _state = ACCUMULATE;
+          }
+        }
+
+        if (state == ExecutionState::DONE) {
+          return {ExecutionState::DONE, std::move(stats)};
+        }
+        break;
+      }
+
+      default: {
+        TRI_ASSERT(false);
+        break;
+      }
     }
   }
-
-  return {ExecutionState::DONE, NoStats{}};
+  // We should *only* fall through here if output.isFull() is true.
+  TRI_ASSERT(output.isFull());
+  return {ExecutionState::HASMORE, NoStats{}};
 }
 
 void SubqueryEndExecutor::resetAccumulator() {
   _accumulator.clear();
   _accumulator.openArray();
-  _outputPending = false;
 }

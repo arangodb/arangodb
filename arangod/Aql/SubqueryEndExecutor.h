@@ -83,6 +83,11 @@ class SubqueryEndExecutor {
   }
 
  private:
+  enum State : int {
+    ACCUMULATE,
+    RELEVANT_SHADOW_ROW_PENDING,
+    FORWARD_IRRELEVANT_SHADOW_ROWS
+  };
   void resetAccumulator();
 
  private:
@@ -91,7 +96,7 @@ class SubqueryEndExecutor {
 
   // Accumulator for rows between shadow rows
   VPackBuilder _accumulator;
-  bool _outputPending;
+  State _state;
 };
 }  // namespace aql
 }  // namespace arangodb
