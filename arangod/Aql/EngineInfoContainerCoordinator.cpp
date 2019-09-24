@@ -62,10 +62,12 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds) const {
+    MapRemoteToSnippet const& dbServerQueryIds,
+    std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(!_nodes.empty());
   {
-    auto uniqEngine = std::make_unique<ExecutionEngine>(query);
+    auto uniqEngine =
+        std::make_unique<ExecutionEngine>(query, SerializationFormat::SHADOWROWS);
     query->setEngine(uniqEngine.release());
   }
 
@@ -78,7 +80,8 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC("16287", DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
+  LOG_TOPIC("16287", DEBUG, arangodb::Logger::AQL)
+      << "Storing Coordinator engine: " << _id;
 
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately

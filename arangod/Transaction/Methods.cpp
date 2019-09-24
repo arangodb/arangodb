@@ -1233,7 +1233,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     OperationOptions options;  // use default configuration
-    options.ignoreRevs = true;
 
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (opRes.fail()) {

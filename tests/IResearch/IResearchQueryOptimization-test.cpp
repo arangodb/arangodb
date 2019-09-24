@@ -32,6 +32,7 @@
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -96,7 +97,7 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};

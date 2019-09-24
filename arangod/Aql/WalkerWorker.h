@@ -24,7 +24,8 @@
 #ifndef ARANGOD_AQL_WALKER_WORKER_H
 #define ARANGOD_AQL_WALKER_WORKER_H 1
 
-#include "Basics/Common.h"
+#include "Aql/types.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {
