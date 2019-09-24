@@ -474,6 +474,8 @@ void GatherNode::setConstrainedSortLimit(size_t limit) noexcept {
 
 size_t GatherNode::constrainedSortLimit() const noexcept { return _limit; }
 
+bool GatherNode::isSortingGather() const noexcept { return !elements().empty(); }
+
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,
     std::string const& key, Collection const* collection,

@@ -335,6 +335,8 @@ class GatherNode final : public ExecutionNode {
 
   size_t constrainedSortLimit() const noexcept;
 
+  bool isSortingGather() const noexcept;
+
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
