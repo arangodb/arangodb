@@ -31,6 +31,10 @@
 
 #include <velocypack/Builder.h>
 
+#include <map>
+#include <string>
+#include <vector>
+
 namespace arangodb {
 
 namespace graph {

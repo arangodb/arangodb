@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 
@@ -35,6 +36,7 @@ namespace aql {
 struct Collection;
 class ExecutionBlock;
 class ExecutionEngine;
+struct VarInfo;
 }  // namespace aql
 
 namespace iresearch {

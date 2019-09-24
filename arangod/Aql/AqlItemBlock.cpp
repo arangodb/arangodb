@@ -750,38 +750,6 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& valu
   _data[getAddress(index, varNr)] = value;
 }
 
-template <typename... Args>
-void AqlItemBlock::emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-  auto address = getAddress(index, varNr);
-  AqlValue* p = &_data[address];
-  TRI_ASSERT(p->isEmpty());
-  // construct the AqlValue in place
-  AqlValue* value;
-  try {
-    value = new (p) AqlValue(std::forward<Args>(args)...);
-  } catch (...) {
-    // clean up the cell
-    _data[address].erase();
-    throw;
-  }
-
-  try {
-    // Now update the reference count, if this fails, we'll roll it back
-    if (value->requiresDestruction()) {
-      if (++_valueCount[*value] == 1) {
-        increaseMemoryUsage(value->memoryUsage());
-      }
-    }
-  } catch (...) {
-    // invoke dtor
-    value->~AqlValue();
-    // TODO - instead of disabling it completly we could you use
-    // a constexpr if() with c++17
-    _data[address].destroy();
-    throw;
-  }
-}
-
 void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
   auto& element = _data[getAddress(index, varNr)];
 

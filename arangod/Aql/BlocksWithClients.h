@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
 #define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Basics/Result.h"
