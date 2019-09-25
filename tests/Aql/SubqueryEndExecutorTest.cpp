@@ -181,7 +181,6 @@ class SubqueryEndExecutorTest : public ::testing::Test {
     ASSERT_EQ(outputBlock->size(), inputBlock->size());
   }
 
-
   void ExpectedValue(SharedAqlItemBlockPtr const& block, size_t row, bool isRelevant) {
     InputAqlItemRow input{block, row};
     LOG_DEVEL << input.getValue(0).slice().toJson();
