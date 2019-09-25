@@ -374,14 +374,51 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 7);
 }
 
+/// SECTION: Shadow row combination tests. Split the input block into diverse
+/// parts to securely test all borders
+
+namespace {
+
+/// Helper method that splits a single baseBlock into multiple AqlItemBlocks.
+/// Where to split is defined by the piecesBitMap handed it.
+/// If the `n-th` bit piecesBitMap is set, we will add a split after Row `n`.
+/// e.g. we will now have a block from 0 -> n and a block from n+1 -> end
+/// we can apply multiple of these splits, ulimate case, split block into single line blocks.
+std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>> CutMyBlockIntoPieces(
+    SharedAqlItemBlockPtr baseBlock, uint64_t piecesBitMap) {
+  std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>> toReturn{};
+  size_t from = 0;
+  for (size_t to = 0; to < baseBlock->size(); ++to) {
+    if (((piecesBitMap) >> (to)) & 1) {
+      // We split blocks if the corresponding bit is set.
+      ExecutionState state = to == baseBlock->size() - 1 ? ExecutionState::DONE
+                                                         : ExecutionState::HASMORE;
+      toReturn.emplace_back(std::make_pair(state, baseBlock->slice(from, to + 1)));
+      from = to + 1;
+    }
+  }
+  if (from < baseBlock->size()) {
+    toReturn.emplace_back(std::make_pair(ExecutionState::DONE,
+                                         baseBlock->slice(from, baseBlock->size())));
+  }
+  return toReturn;
+}
+
+}  // namespace
+
+// Section First Pattern, alternating Input / Shadow Rows, 1 higher level shadow row
+
 class AllRowsFetcherPattern1Test : public testing::TestWithParam<uint64_t> {
+ public:
+  static size_t const NrRows = 7;
+
  protected:
   ResourceMonitor monitor;
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   void SetUp() override {
-    SharedAqlItemBlockPtr baseBlock{new AqlItemBlock(itemBlockManager, 7, 1)};
+    SharedAqlItemBlockPtr baseBlock{new AqlItemBlock(itemBlockManager, NrRows, 1)};
     {  // fill data into the baseBlock
       baseBlock->emplaceValue(0, 0, "a");
       baseBlock->emplaceValue(1, 0, "a");
@@ -398,21 +435,7 @@ class AllRowsFetcherPattern1Test : public testing::TestWithParam<uint64_t> {
     // prepare the proxy
     uint64_t splits = GetParam();
     ASSERT_LE(splits, (std::pow)(2, baseBlock->size() - 1));
-    std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>> toReturn{};
-    size_t from = 0;
-    for (size_t to = 0; to < baseBlock->size(); ++to) {
-      if (((splits) >> (to)) & 1) {
-        // We split blocks if the corresponding bit is set.
-        ExecutionState state = to == baseBlock->size() - 1 ? ExecutionState::DONE
-                                                           : ExecutionState::HASMORE;
-        toReturn.emplace_back(std::make_pair(state, baseBlock->slice(from, to + 1)));
-        from = to + 1;
-      }
-    }
-    if (from < baseBlock->size()) {
-      toReturn.emplace_back(std::make_pair(ExecutionState::DONE,
-                                           baseBlock->slice(from, baseBlock->size())));
-    }
+    auto toReturn = CutMyBlockIntoPieces(baseBlock, splits);
     dependencyProxyMock.shouldReturn(toReturn);
   }
 };
@@ -528,285 +551,507 @@ TEST_P(AllRowsFetcherPattern1Test, handle_shadow_rows) {
 
 INSTANTIATE_TEST_CASE_P(AllRowsFetcherPattern1Instanciated, AllRowsFetcherPattern1Test,
                         testing::Range(static_cast<uint64_t>(0),
-                                       static_cast<uint64_t>(std::pow(2, 6))));
+                                       static_cast<uint64_t>(std::pow(2, AllRowsFetcherPattern1Test::NrRows -
+                                                                             1))));
 
-TEST_F(AllRowsFetcherTest, handling_of_relevant_shadow_rows) {
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
-  {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
-    block->emplaceValue(0, 0, "a");
-    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
-    block->emplaceValue(1, 0, "a");
-    block->emplaceValue(2, 0, "b");
-    block->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(0ull)));
-    block->emplaceValue(3, 0, "b");
-    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
-  }
+// Section Second Pattern, two consecutive relevant shadow rows, , 1 higher level shadow row
 
-  {
-    AllRowsFetcher testee(dependencyProxyMock);
-    AqlItemMatrix const* matrix = nullptr;
-    std::tie(state, matrix) = testee.fetchAllRows();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(matrix->size(), 1);
-    auto rowIndexes = matrix->produceRowIndexes();
-    ASSERT_EQ(rowIndexes.size(), 1);
-    for (auto const& i : rowIndexes) {
-      auto row = matrix->getRow(i);
-      ASSERT_TRUE(row.isInitialized());
-      EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
+class AllRowsFetcherPattern2Test : public testing::TestWithParam<uint64_t> {
+ public:
+  static size_t const NrRows = 4;
+
+ protected:
+  ResourceMonitor monitor;
+  DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+
+  void SetUp() override {
+    SharedAqlItemBlockPtr baseBlock{new AqlItemBlock(itemBlockManager, NrRows, 1)};
+    {  // fill data into the baseBlock
+      baseBlock->emplaceValue(0, 0, "a");
+      baseBlock->emplaceValue(1, 0, "a");
+      baseBlock->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(2, 0, "b");
+      baseBlock->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(3, 0, "b");
+      baseBlock->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(1ull)));
     }
-
-    // Will stay on done
-    std::tie(state, matrix) = testee.fetchAllRows();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(matrix, nullptr);
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
-    EXPECT_TRUE(shadow.isRelevant());
-
-    // Will stay on HASMORE
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_FALSE(shadow.isInitialized());
-
-    std::tie(state, matrix) = testee.fetchAllRows();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(matrix->size(), 1);
-    rowIndexes = matrix->produceRowIndexes();
-    ASSERT_EQ(rowIndexes.size(), 1);
-    for (auto const& i : rowIndexes) {
-      auto row = matrix->getRow(i);
-      ASSERT_TRUE(row.isInitialized());
-      EXPECT_TRUE(row.getValue(0).slice().isEqualString("b"));
-    }
-
-    // Will stay on done
-    std::tie(state, matrix) = testee.fetchAllRows();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(matrix, nullptr);
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
-    EXPECT_TRUE(shadow.isRelevant());
-
-    // Will stay on DONE
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(shadow.isInitialized());
-
-    // Will not produce more data
-    std::tie(state, matrix) = testee.fetchAllRows();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(matrix, nullptr);
-
-  }  // testee is destroyed here
-  // testee must be destroyed before verify, because it may call returnBlock
-  // in the destructor
-  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
-}
-/*
-TEST_F(AllRowsFetcherTest, handling_of_irrelevant_shadow_rows) {
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
-  {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
-    block->emplaceValue(0, 0, "a");
-    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
-    block->emplaceValue(1, 0, "a");
-    block->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(1ull)));
-    block->emplaceValue(2, 0, "a");
-    // Back to top level
-    block->emplaceValue(3, 0, "b");
-    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(0ull)));
-    block->emplaceValue(4, 0, "b");
-    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(1ull)));
-    block->emplaceValue(5, 0, "b");
-    block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(2ull)));
-    block->emplaceValue(6, 0, "b");
-
-    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+    // prepare the proxy
+    uint64_t splits = GetParam();
+    ASSERT_LE(splits, (std::pow)(2, baseBlock->size() - 1));
+    auto toReturn = CutMyBlockIntoPieces(baseBlock, splits);
+    dependencyProxyMock.shouldReturn(toReturn);
   }
+};
 
-  {
-    AllRowsFetcher testee(dependencyProxyMock);
+TEST_P(AllRowsFetcherPattern2Test, handle_shadow_rows) {
+  // The result should be always identical, it does not matter how the blocks are splitted.
+  AllRowsFetcher testee(dependencyProxyMock);
+  AqlItemMatrix const* matrix = nullptr;
+  ExecutionState state = ExecutionState::HASMORE;
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_NE(matrix, nullptr);
+  EXPECT_EQ(matrix->size(), 1);
+  auto rowIndexes = matrix->produceRowIndexes();
+  ASSERT_EQ(rowIndexes.size(), 1);
+  for (auto const& i : rowIndexes) {
+    auto row = matrix->getRow(i);
     ASSERT_TRUE(row.isInitialized());
     EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
-
-    // Will stay on done
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
-    EXPECT_TRUE(shadow.isRelevant());
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
-    EXPECT_FALSE(shadow.isRelevant());
-
-    // Will stay on HASMORE
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    EXPECT_FALSE(shadow.isInitialized());
-
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ASSERT_TRUE(row.isInitialized());
-    EXPECT_TRUE(row.getValue(0).slice().isEqualString("b"));
-
-    // Will stay on done
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
-    EXPECT_TRUE(shadow.isRelevant());
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
-    EXPECT_FALSE(shadow.isRelevant());
-
-    // Can fetch shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
-    EXPECT_FALSE(shadow.isRelevant());
-
-    // Will stay on DONE
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(shadow.isInitialized());
-
-    // Will not produce data row
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
-
-  }  // testee is destroyed here
-  // testee must be destroyed before verify, because it may call returnBlock
-  // in the destructor
-  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
-}
-
-TEST_F(AllRowsFetcherTest, handling_consecutive_shadowrows) {
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
-  {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
-    block->emplaceValue(0, 0, "a");
-    block->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
-    block->emplaceValue(1, 0, "a");
-    block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(1ull)));
-    block->emplaceValue(2, 0, "b");
-    block->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(0ull)));
-    block->emplaceValue(3, 0, "c");
-    block->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(0ull)));
-    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
   }
 
-  {
-    AllRowsFetcher testee(dependencyProxyMock);
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
 
-    // First no data row
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+  EXPECT_TRUE(shadow.isRelevant());
 
-    // but shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
-    EXPECT_TRUE(shadow.isRelevant());
+  // Will stay on HASMORE
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  EXPECT_FALSE(shadow.isInitialized());
 
-    // Second, non-relevant shadow row
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
-    EXPECT_FALSE(shadow.isRelevant());
+  // Now fetch an empty matrix and shadowRow "b", and higher level shadowRow "b"
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(matrix, nullptr);
 
-    // Third, relevant shadow row.
-    // We cannot continue fetching shadowrows now.
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_FALSE(shadow.isInitialized());
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
 
-    // Require to fetch one data-row (done, empty)
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+  EXPECT_TRUE(shadow.isRelevant());
 
-    // Now we can continue to fetch shadowrows
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
-    EXPECT_TRUE(shadow.isRelevant());
+  // Can fetch higher level shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 1);
 
-    // We cannot continue fetching shadowrows now.
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-    ASSERT_FALSE(shadow.isInitialized());
+  // Will stay on done
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_FALSE(shadow.isInitialized());
 
-    // Require to fetch one data-row (done, empty)
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
-
-    // Now we can continue to fetch shadowrows
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ASSERT_TRUE(shadow.isInitialized());
-    EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("c"));
-    EXPECT_TRUE(shadow.isRelevant());
-
-    // Will stay on done
-    std::tie(state, row) = testee.fetchRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(row.isInitialized());
-    // Will stay on done
-    std::tie(state, shadow) = testee.fetchShadowRow();
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(shadow.isInitialized());
-  }  // testee is destroyed here
-  // testee must be destroyed before verify, because it may call returnBlock
-  // in the destructor
-  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
 }
-*/
+
+INSTANTIATE_TEST_CASE_P(AllRowsFetcherPattern2Instanciated, AllRowsFetcherPattern2Test,
+                        testing::Range(static_cast<uint64_t>(0),
+                                       static_cast<uint64_t>(std::pow(2, AllRowsFetcherPattern2Test::NrRows -
+                                                                             1))));
+
+// Section Third Pattern, 1 input, and alternating relevant irrelvant shadow rows
+
+class AllRowsFetcherPattern3Test : public testing::TestWithParam<uint64_t> {
+ public:
+  static size_t const NrRows = 5;
+
+ protected:
+  ResourceMonitor monitor;
+  DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+
+  void SetUp() override {
+    SharedAqlItemBlockPtr baseBlock{new AqlItemBlock(itemBlockManager, NrRows, 1)};
+    {  // fill data into the baseBlock
+      baseBlock->emplaceValue(0, 0, "a");
+      baseBlock->emplaceValue(1, 0, "a");
+      baseBlock->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(2, 0, "a");
+      baseBlock->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(1ull)));
+
+      baseBlock->emplaceValue(3, 0, "b");
+      baseBlock->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(4, 0, "b");
+      baseBlock->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(1ull)));
+    }
+    // prepare the proxy
+    uint64_t splits = GetParam();
+    ASSERT_LE(splits, (std::pow)(2, baseBlock->size() - 1));
+    auto toReturn = CutMyBlockIntoPieces(baseBlock, splits);
+    dependencyProxyMock.shouldReturn(toReturn);
+  }
+};
+
+TEST_P(AllRowsFetcherPattern3Test, handle_shadow_rows) {
+  // The result should be always identical, it does not matter how the blocks are splitted.
+  AllRowsFetcher testee(dependencyProxyMock);
+  AqlItemMatrix const* matrix = nullptr;
+  ExecutionState state = ExecutionState::HASMORE;
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_NE(matrix, nullptr);
+  EXPECT_EQ(matrix->size(), 1);
+  auto rowIndexes = matrix->produceRowIndexes();
+  ASSERT_EQ(rowIndexes.size(), 1);
+  for (auto const& i : rowIndexes) {
+    auto row = matrix->getRow(i);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
+  }
+
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+  EXPECT_TRUE(shadow.isRelevant());
+
+  // Can fetch higher level shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  EXPECT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 1);
+
+  // Will stay on HASMORE
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  EXPECT_FALSE(shadow.isInitialized());
+
+  // Now fetch an empty matrix and shadowRow "b", and higher level shadowRow "b"
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(matrix, nullptr);
+
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+  EXPECT_TRUE(shadow.isRelevant());
+
+  // Can fetch higher level shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 1);
+
+  // Will stay on done
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_FALSE(shadow.isInitialized());
+
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+}
+
+INSTANTIATE_TEST_CASE_P(AllRowsFetcherPattern3Instanciated, AllRowsFetcherPattern3Test,
+                        testing::Range(static_cast<uint64_t>(0),
+                                       static_cast<uint64_t>(std::pow(2, AllRowsFetcherPattern3Test::NrRows -
+                                                                             1))));
+
+// Section Foruth Pattern, 1 input, and alternating relevant irrelvant shadow rows
+
+class AllRowsFetcherPattern4Test : public testing::TestWithParam<uint64_t> {
+ public:
+  static size_t const NrRows = 5;
+
+ protected:
+  ResourceMonitor monitor;
+  DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+
+  void SetUp() override {
+    SharedAqlItemBlockPtr baseBlock{new AqlItemBlock(itemBlockManager, NrRows, 1)};
+    {  // fill data into the baseBlock
+      baseBlock->emplaceValue(0, 0, "a");
+      baseBlock->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(1, 0, "b");
+      baseBlock->emplaceValue(2, 0, "c");
+      baseBlock->emplaceValue(3, 0, "d");
+      baseBlock->emplaceValue(4, 0, "d");
+      baseBlock->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(0ull)));
+    }
+    // prepare the proxy
+    uint64_t splits = GetParam();
+    ASSERT_LE(splits, (std::pow)(2, baseBlock->size() - 1));
+    auto toReturn = CutMyBlockIntoPieces(baseBlock, splits);
+    dependencyProxyMock.shouldReturn(toReturn);
+  }
+};
+
+TEST_P(AllRowsFetcherPattern4Test, handle_shadow_rows) {
+  // The result should be always identical, it does not matter how the blocks are splitted.
+  AllRowsFetcher testee(dependencyProxyMock);
+  AqlItemMatrix const* matrix = nullptr;
+  ExecutionState state = ExecutionState::HASMORE;
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+
+  // We start with an empty matrix
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("a"));
+  EXPECT_TRUE(shadow.isRelevant());
+
+  // Now fetch the data block
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_NE(matrix, nullptr);
+  EXPECT_EQ(matrix->size(), 3);
+  auto rowIndexes = matrix->produceRowIndexes();
+  ASSERT_EQ(rowIndexes.size(), 3);
+  size_t count = 0;
+  for (auto const& i : rowIndexes) {
+    auto row = matrix->getRow(i);
+    ASSERT_TRUE(row.isInitialized());
+    switch (count) {
+      case 0:
+        EXPECT_TRUE(row.getValue(0).slice().isEqualString("b"));
+        break;
+      case 1:
+        EXPECT_TRUE(row.getValue(0).slice().isEqualString("c"));
+        break;
+      case 2:
+        EXPECT_TRUE(row.getValue(0).slice().isEqualString("d"));
+        break;
+      default:
+        EXPECT_TRUE(false) << "This code is unreachable";
+    }
+    ++count;
+  }
+
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("d"));
+  EXPECT_TRUE(shadow.isRelevant());
+
+  // Will stay on done
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_FALSE(shadow.isInitialized());
+
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+}
+
+INSTANTIATE_TEST_CASE_P(AllRowsFetcherPattern4Instanciated, AllRowsFetcherPattern4Test,
+                        testing::Range(static_cast<uint64_t>(0),
+                                       static_cast<uint64_t>(std::pow(2, AllRowsFetcherPattern4Test::NrRows -
+                                                                             1))));
+
+// Section fifth Pattern, 1 input, 1 relevant, a set of irrelevant shadow rows
+// followed by another input and 1 relevant, 1 irrelevant shadow row.
+
+class AllRowsFetcherPattern5Test : public testing::TestWithParam<uint64_t> {
+ public:
+  static size_t const NrRows = 10;
+
+ protected:
+  ResourceMonitor monitor;
+  DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+
+  void SetUp() override {
+    SharedAqlItemBlockPtr baseBlock{new AqlItemBlock(itemBlockManager, NrRows, 1)};
+    {  // fill data into the baseBlock
+      baseBlock->emplaceValue(0, 0, "a");
+      baseBlock->emplaceValue(1, 0, "b");
+      baseBlock->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(2, 0, "c");
+      baseBlock->setShadowRowDepth(2, AqlValue(AqlValueHintUInt(1ull)));
+      baseBlock->emplaceValue(3, 0, "d");
+      baseBlock->setShadowRowDepth(3, AqlValue(AqlValueHintUInt(2ull)));
+      baseBlock->emplaceValue(4, 0, "e");
+      baseBlock->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(1ull)));
+      baseBlock->emplaceValue(5, 0, "f");
+      baseBlock->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(2ull)));
+      baseBlock->emplaceValue(6, 0, "g");
+      baseBlock->emplaceValue(7, 0, "h");
+      baseBlock->setShadowRowDepth(7, AqlValue(AqlValueHintUInt(0ull)));
+      baseBlock->emplaceValue(8, 0, "i");
+      baseBlock->setShadowRowDepth(8, AqlValue(AqlValueHintUInt(1ull)));
+      baseBlock->emplaceValue(9, 0, "j");
+      baseBlock->setShadowRowDepth(9, AqlValue(AqlValueHintUInt(2ull)));
+    }
+    // prepare the proxy
+    uint64_t splits = GetParam();
+    ASSERT_LE(splits, (std::pow)(2, baseBlock->size() - 1));
+    auto toReturn = CutMyBlockIntoPieces(baseBlock, splits);
+    dependencyProxyMock.shouldReturn(toReturn);
+  }
+};
+
+TEST_P(AllRowsFetcherPattern5Test, handle_shadow_rows) {
+  // The result should be always identical, it does not matter how the blocks are splitted.
+  AllRowsFetcher testee(dependencyProxyMock);
+  AqlItemMatrix const* matrix = nullptr;
+  ExecutionState state = ExecutionState::HASMORE;
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+
+  // We start with our single data row
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_NE(matrix, nullptr);
+  EXPECT_EQ(matrix->size(), 1);
+  auto rowIndexes = matrix->produceRowIndexes();
+  ASSERT_EQ(rowIndexes.size(), 1);
+  for (auto const& i : rowIndexes) {
+    auto row = matrix->getRow(i);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("a"));
+  }
+
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("b"));
+  EXPECT_TRUE(shadow.isRelevant());
+
+  // Can fetch another irrelevant shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("c"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 1);
+
+  // Can fetch another irrelevant shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("d"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 2);
+
+  // Can fetch another irrelevant shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("e"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 1);
+
+  // Can fetch another irrelevant shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("f"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 2);
+
+  // Will stay on HASMORE
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  EXPECT_FALSE(shadow.isInitialized());
+
+  // Now fetch the data block
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_NE(matrix, nullptr);
+  EXPECT_EQ(matrix->size(), 1);
+  rowIndexes = matrix->produceRowIndexes();
+  ASSERT_EQ(rowIndexes.size(), 1);
+  for (auto const& i : rowIndexes) {
+    auto row = matrix->getRow(i);
+    ASSERT_TRUE(row.isInitialized());
+    EXPECT_TRUE(row.getValue(0).slice().isEqualString("g"));
+  }
+
+  // Will stay on done
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+
+  // Can fetch shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("h"));
+  EXPECT_TRUE(shadow.isRelevant());
+
+  // Can fetch another irrelevant shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("i"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 1);
+
+  // Can fetch another irrelevant shadow row
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ASSERT_TRUE(shadow.isInitialized());
+  EXPECT_TRUE(shadow.getValue(0).slice().isEqualString("j"));
+  EXPECT_FALSE(shadow.isRelevant());
+  EXPECT_EQ(shadow.getDepth(), 2);
+
+  // Will stay on done
+  std::tie(state, shadow) = testee.fetchShadowRow();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_FALSE(shadow.isInitialized());
+
+  std::tie(state, matrix) = testee.fetchAllRows();
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(matrix, nullptr);
+}
+
+INSTANTIATE_TEST_CASE_P(AllRowsFetcherPattern5Instanciated, AllRowsFetcherPattern5Test,
+                        testing::Range(static_cast<uint64_t>(0),
+                                       static_cast<uint64_t>(std::pow(2, AllRowsFetcherPattern5Test::NrRows -
+                                                                             1))));
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
