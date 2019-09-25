@@ -364,9 +364,6 @@ namespace {
 Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
                            fuerte::Response* response) {
   TRI_ASSERT(err != fuerte::Error::NoError || response->statusCode() >= 400);
-  if (err != fuerte::Error::NoError) {
-    return Result(network::fuerteToArangoErrorCode(err));
-  }
 
   std::string msg;
   if (spec.shardId.empty()) {
@@ -380,17 +377,22 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
         .append(spec.serverId)
         .append("': ");
   }
-
+  
   int res = TRI_ERROR_INTERNAL;
-  VPackSlice slice = response->slice();
-  if (slice.isObject()) {
-    VPackSlice err = slice.get(StaticStrings::Error);
-    if (err.isBool() && err.getBool()) {
-      res = VelocyPackHelper::readNumericValue(slice, StaticStrings::ErrorNum, res);
-      VPackStringRef ref =
-          VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
-                                         "(no valid error in response)");
-      msg.append(ref.data(), ref.size());
+  if (err != fuerte::Error::NoError) {
+    res = network::fuerteToArangoErrorCode(err);
+    msg.append(TRI_errno_string(res));
+  } else {
+    VPackSlice slice = response->slice();
+    if (slice.isObject()) {
+      VPackSlice err = slice.get(StaticStrings::Error);
+      if (err.isBool() && err.getBool()) {
+        res = VelocyPackHelper::readNumericValue(slice, StaticStrings::ErrorNum, res);
+        VPackStringRef ref =
+            VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
+                                           "(no valid error in response)");
+        msg.append(ref.data(), ref.size());
+      }
     }
   }
 
