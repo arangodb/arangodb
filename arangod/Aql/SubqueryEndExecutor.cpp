@@ -108,10 +108,16 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         // Responsibility is handed over
         output.moveValueInto(_infos.getOutputRegister(), shadowRow, guard);
         TRI_ASSERT(output.produced());
+        output.advanceRow();
 
         // Reset the accumulator in case we read more data
         resetAccumulator();
-        _state = FORWARD_IRRELEVANT_SHADOW_ROWS;
+
+        if (state ==  ExecutionState::DONE) {
+          return {ExecutionState::DONE, std::move(stats)};
+        } else {
+          _state = FORWARD_IRRELEVANT_SHADOW_ROWS;
+        }
         break;
       }
       case FORWARD_IRRELEVANT_SHADOW_ROWS: {
