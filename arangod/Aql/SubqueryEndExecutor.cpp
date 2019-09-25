@@ -159,3 +159,13 @@ void SubqueryEndExecutor::resetAccumulator() {
   _accumulator.clear();
   _accumulator.openArray();
 }
+
+// TODO: Find out what to return here
+std::pair<ExecutionState, size_t> SubqueryEndExecutor::expectedNumberOfRows(size_t atMost) const {
+  ExecutionState state{ExecutionState::HASMORE};
+  size_t expected = 0;
+  std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
+  // We will write one shadow row per input data row.
+  // We might write less on all shadow rows in input, right now we do not figure this out yes.
+  return {state, expected * 2};
+}

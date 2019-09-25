@@ -55,6 +55,7 @@
 #include "Aql/SortRegister.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Aql/SubqueryEndExecutor.h"
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/TraversalExecutor.h"
 
@@ -723,6 +724,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;

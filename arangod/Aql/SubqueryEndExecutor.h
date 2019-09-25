@@ -76,11 +76,7 @@ class SubqueryEndExecutor {
   ~SubqueryEndExecutor();
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
-    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-    return {rv.first, {}, std::move(rv.second)};
-  }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   enum State : int {
