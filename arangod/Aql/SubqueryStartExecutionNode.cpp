@@ -27,7 +27,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Meta/static_assert_size.h"
 

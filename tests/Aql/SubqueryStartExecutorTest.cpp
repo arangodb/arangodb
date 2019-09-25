@@ -23,9 +23,14 @@
 #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/SubqueryStartExecutor.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
