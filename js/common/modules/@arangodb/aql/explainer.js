@@ -2057,7 +2057,8 @@ function inspectDump(filename, outfile) {
     for (let i = keys.length; i > 0; --i) {
       let collection = keys[i - 1];
       let details = data.collections[collection];
-      if (details.name[0] === '_') {
+      let name = details.name || collection;
+      if (name[0] === '_') {
         // system collection
         print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
       } else {

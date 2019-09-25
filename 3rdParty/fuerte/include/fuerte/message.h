@@ -46,17 +46,12 @@ struct MessageHeader {
   short version() const { return _version; }
   void setVersion(short v) { _version = v; }
 
-  /// Header meta data (equivalent to HTTP headers)
-  StringMap meta;
-
-#ifdef FUERTE_DEBUG
-  std::size_t byteSize;  // for debugging
-#endif
-
  public:
   // Header metadata helpers
-  void addMeta(std::string const& key, std::string const& value);
+  void addMeta(std::string key, std::string value);
   void addMeta(StringMap const&);
+  void setMeta(StringMap);
+  StringMap const& meta() const { return _meta; }
 
   // Get value for header metadata key, returns empty string if not found.
   std::string const& metaByKey(std::string const& key) const {
@@ -66,25 +61,18 @@ struct MessageHeader {
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
   // content type accessors
-  inline std::string const& contentTypeString() const {
-    return metaByKey(fu_content_type_key);
-  }
-
-  inline ContentType contentType() const {
-    return to_ContentType(contentTypeString());
-  }
-
+  inline ContentType contentType() const { return _contentType; }
   void contentType(std::string const& type);
   void contentType(ContentType type);
 
  protected:
+  StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
+  ContentType _contentType;
+  ContentType _acceptType;
 };
 
 struct RequestHeader final : public MessageHeader {
-  /// HTTP method
-  RestVerb restVerb = RestVerb::Illegal;
-
   /// Database that is the target of the request
   std::string database;
 
@@ -94,11 +82,12 @@ struct RequestHeader final : public MessageHeader {
   /// Query parameters
   StringMap parameters;
 
+  /// HTTP method
+  RestVerb restVerb = RestVerb::Illegal;
+
  public:
   // accept header accessors
-  std::string acceptTypeString() const;
   ContentType acceptType() const;
-  void acceptType(std::string const& type);
   void acceptType(ContentType type);
 
   // query parameter helpers
@@ -157,7 +146,6 @@ class Message {
   }
 
   /// content-type header accessors
-  std::string contentTypeString() const;
   ContentType contentType() const;
 
   bool isContentTypeJSON() const;
@@ -189,7 +177,6 @@ class Request final : public Message {
   ///////////////////////////////////////////////
 
   // accept header accessors
-  std::string acceptTypeString() const;
   ContentType acceptType() const;
 
   ///////////////////////////////////////////////
