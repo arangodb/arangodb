@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Optimizer.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::aql;

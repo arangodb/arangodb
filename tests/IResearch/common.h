@@ -33,7 +33,8 @@
 #include <vector>
 
 #undef NO_INLINE // to avoid GCC warning
-#include "search/filter.hpp"
+#include <search/filter.hpp>
+#include <velocypack/Slice.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a TRI_vocbase_t that will call shutdown() on deallocation
@@ -119,7 +120,7 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature);
 #define EXPECT_EQUAL_SLICES_STRINGIFY(x) #x
 #define EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, file, line) arangodb::tests::expectEqualSlices_(leftSlice, rightSlice, file ":" EXPECT_EQUAL_SLICES_STRINGIFY(line))
 #define EXPECT_EQUAL_SLICES(leftSlice, rightSlice) EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, __FILE__, __LINE__)
-void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where);
+void expectEqualSlices_(const velocypack::Slice& lhs, const velocypack::Slice& rhs, const char* where);
 
 }
 }

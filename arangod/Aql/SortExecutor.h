@@ -31,6 +31,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {

@@ -21,15 +21,17 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "OptimizerRules.h"
+
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
-#include "OptimizerRules.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

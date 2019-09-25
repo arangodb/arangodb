@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseExpressionContext.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb::aql;
 
@@ -62,3 +64,15 @@ AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool 
   msg.append("' in executeSimpleExpression()");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
+
+BaseExpressionContext::BaseExpressionContext(Query* query, size_t startPos,
+                                             AqlItemBlock const* argv,
+                                             std::vector<Variable const*> const& vars,
+                                             std::vector<RegisterId> const& regs)
+    : QueryExpressionContext(query),
+      _startPos(startPos),
+      _argv(argv),
+      _vars(&vars),
+      _regs(&regs) {}
+
+size_t BaseExpressionContext::numRegisters() const { return _regs->size(); }
