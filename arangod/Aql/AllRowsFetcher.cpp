@@ -137,3 +137,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPa
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
+
+std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_t atMost) {
+  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+}
