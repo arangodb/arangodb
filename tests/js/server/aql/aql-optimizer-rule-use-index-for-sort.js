@@ -1212,52 +1212,10 @@ function optimizerRuleTestSuite() {
   };
 }
 
-function optimizerRuleWithOtherIndexTypesTestSuite() {
-  const cn = "UnitTestsCollection";
-
-  return {
-    setUp : function () {
-      internal.db._drop(cn);
-      internal.db._create(cn, { numberOfShards: 3 });
-    },
-
-    tearDown : function () {
-      internal.db._drop(cn);
-    },
-
-    testFulltextAscending : function () {
-      internal.db[cn].ensureIndex({ type: "fulltext", fields: ["name"] });
-      internal.db[cn].insert([ { name: "Agatha" }, { name: "Agathe" }, { name: "Aardvark" }, { name: "Aaron" }, { name: "Astrid" }, { name: "Ana" }, { name: "Anna" }, { name: "Anne" }, { name: "Ali" } ]);
-      
-      let query = `FOR doc IN FULLTEXT(${cn}, 'name', 'prefix:a') SORT doc.name RETURN doc.name`;
-
-      let rules = AQL_EXPLAIN(query).plan.rules;
-      assertEqual(-1, rules.indexOf(ruleName));
-
-      let results = AQL_EXECUTE(query).json;
-      assertEqual([ "Aardvark", "Aaron", "Agatha", "Agathe", "Ali", "Ana", "Anna", "Anne", "Astrid" ], results);
-    },
-    
-    testFulltextDescending : function () {
-      internal.db[cn].ensureIndex({ type: "fulltext", fields: ["name"] });
-      internal.db[cn].insert([ { name: "Agatha" }, { name: "Agathe" }, { name: "Aardvark" }, { name: "Aaron" }, { name: "Astrid" }, { name: "Ana" }, { name: "Anna" }, { name: "Anne" }, { name: "Ali" } ]);
-      
-      let query = `FOR doc IN FULLTEXT(${cn}, 'name', 'prefix:a') SORT doc.name DESC RETURN doc.name`;
-
-      let rules = AQL_EXPLAIN(query).plan.rules;
-      assertEqual(-1, rules.indexOf(ruleName));
-
-      let results = AQL_EXECUTE(query).json;
-      assertEqual([ "Astrid", "Anne", "Anna", "Ana", "Ali", "Agathe", "Agatha", "Aaron", "Aardvark" ], results);
-    },
-  };
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerRuleTestSuite);
-jsunity.run(optimizerRuleWithOtherIndexTypesTestSuite);
 
 return jsunity.done();
