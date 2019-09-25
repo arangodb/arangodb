@@ -177,7 +177,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  if(!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))){
+  if (!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -194,7 +194,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  auto failureGuard = scopeGuard([ci, info]() {
+  auto failureGuard = scopeGuard([ci, &info]() {
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
       << "Failed to create database '" << info.getName() << "', rolling back.";
     Result res = ci->cancelCreateDatabaseCoordinator(info);
@@ -299,12 +299,12 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   }
 
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
-    if(!createInfo.validId()){
+    if (!createInfo.validId()) {
       createInfo.setId(ClusterInfo::instance()->uniqid());
     }
     res = createCoordinator(createInfo);
   } else {  // Single, DBServer, Agency
-    if(!createInfo.validId()){
+    if (!createInfo.validId()) {
       createInfo.setId(TRI_NewTickServer());
     }
     res = createOther(createInfo);

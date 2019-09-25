@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
+#include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
