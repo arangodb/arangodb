@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesOptimizerRules.h"
+
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IndexNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SortNode.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 

@@ -39,11 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::import;
 
-QuickHistogram histogram;
-
-SenderThread::SenderThread(std::unique_ptr<httpclient::SimpleHttpClient> client,
+SenderThread::SenderThread(application_features::ApplicationServer& server,
+                           std::unique_ptr<httpclient::SimpleHttpClient> client,
                            ImportStatistics* stats, std::function<void()> const& wakeup)
-    : Thread("Import Sender"),
+    : Thread(server, "Import Sender"),
       _client(std::move(client)),
       _wakeup(wakeup),
       _data(false),

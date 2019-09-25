@@ -20,7 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "ClusterEngine.h"
+
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -30,7 +31,6 @@
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/build.h"
-#include "ClusterEngine.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -45,12 +45,14 @@
 #include "ProgramOptions/Section.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ticks.h"
+#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -121,8 +123,9 @@ void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
-std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager() {
-  return std::make_unique<transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
+    transaction::ManagerFeature& feature) {
+  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
@@ -216,9 +219,9 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
 
   status = TRI_ERROR_INTERNAL;
-  arangodb::CreateDatabaseInfo info;
+  arangodb::CreateDatabaseInfo info(server());
   auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if(res.fail()) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -364,11 +367,11 @@ void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
     TRI_voc_tick_t id, VPackSlice args , bool wasCleanShutdown, bool isUpgrade) {
 
-  arangodb::CreateDatabaseInfo info;
+  arangodb::CreateDatabaseInfo info(server());
   TRI_ASSERT(args.get("name").isString());
   info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
   auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if(res.fail()) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 

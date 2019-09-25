@@ -58,7 +58,8 @@ struct sto<uint32_t> {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-  RestAgencyPrivHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
+  RestAgencyPrivHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
  public:
   char const* name() const override final { return "RestAgencyPrivHandler"; }

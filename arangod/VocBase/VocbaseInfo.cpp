@@ -30,6 +30,8 @@
 #include "Utils/Events.h"
 
 namespace arangodb {
+  
+CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   Result res;
@@ -158,6 +160,8 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
   }
 }
 
+application_features::ApplicationServer& CreateDatabaseInfo::server() const { return _server; }
+
 Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   if (users.isNone() || users.isNull()) {
     return Result();
@@ -225,16 +229,17 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
                                           bool extractId, bool extractName) {
   if (options.isNone() || options.isNull()) {
     return Result();
-  } else if (!options.isObject()) {
+  } 
+  if (!options.isObject()) {
     events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
 
-  auto vocopts = getVocbaseOptions(options);
+  auto vocopts = getVocbaseOptions(_server, options);
   _replicationFactor = vocopts.replicationFactor;
   _minReplicationFactor = vocopts.minReplicationFactor;
   _sharding = vocopts.sharding;
-
+  
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
     if (!nameSlice.isString()) {
@@ -279,7 +284,7 @@ Result CreateDatabaseInfo::checkOptions() {
   return Result();
 }
 
-VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
+VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server, VPackSlice const& options) {
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -304,8 +309,7 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
     }
   }
 
-  auto cluster = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
-      "Cluster");
+  bool haveCluster = server.hasFeature<ClusterFeature>();
   {
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite = (replicationSlice.isString() &&
@@ -313,12 +317,11 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
     bool isNumber = replicationSlice.isNumber();
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if (!isSatellite && !isNumber) {
-      if (cluster) {
-        vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
+      if (haveCluster) {
+        vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
-            << "Can not access ClusterFeature to determine database "
-               "replicationFactor";
+            << "Cannot access ClusterFeature to determine replicationFactor";
       }
     } else if (isSatellite) {
       vocbaseOptions.replicationFactor = 0;
@@ -328,12 +331,11 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
     }
 #ifndef USE_ENTERPRISE
     if (vocbaseOptions.replicationFactor == 0) {
-      if (cluster) {
-        vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
+      if (haveCluster) {
+        vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
-            << "Can not access ClusterFeature to determine database "
-               "replicationFactor";
+            << "Cannot access ClusterFeature to determine replicationFactor";
         vocbaseOptions.replicationFactor = 1;
       }
     }
@@ -345,12 +347,11 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
     bool isNumber =
         (minReplicationSlice.isNumber() && minReplicationSlice.getNumber<int>() > 0);
     if (!isNumber) {
-      if (cluster) {
-        vocbaseOptions.minReplicationFactor = cluster->minReplicationFactor();
+      if (haveCluster) {
+        vocbaseOptions.minReplicationFactor = server.getFeature<ClusterFeature>().minReplicationFactor();
       } else {
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
-            << "Can not access ClusterFeature to determine database "
-               "minReplicationFactor";
+            << "Cannot access ClusterFeature to determine minReplicationFactor";
       }
     } else if (isNumber) {
       vocbaseOptions.minReplicationFactor =

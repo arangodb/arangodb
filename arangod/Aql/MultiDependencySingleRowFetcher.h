@@ -26,6 +26,8 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 #include <memory>
 

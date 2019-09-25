@@ -23,7 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-#include "Aql/AqlItemBlock.h"
+
+#include "Aql/Aggregator.h"
 #include "Aql/AstHelper.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -34,6 +35,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
@@ -44,6 +46,8 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
@@ -54,9 +58,9 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Geo/GeoParams.h"
-#include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -65,7 +69,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
-#include <boost/optional.hpp>
 #include <tuple>
 
 namespace {
@@ -3878,9 +3881,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           ExecutionNode::castTo<ModificationNode*>(node)->collection();
 
 #ifdef USE_ENTERPRISE
-      auto ci = ClusterInfo::instance();
+      auto& ci = collection->vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
       auto collInfo =
-          ci->getCollection(collection->vocbase()->name(), collection->name());
+          ci.getCollection(collection->vocbase()->name(), collection->name());
       // Throws if collection is not found!
       if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
         node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,
@@ -4567,6 +4570,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           break;
         }
 
+        case EN::SUBQUERY_START:
+        case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
@@ -7173,6 +7178,50 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       plan->insertAfter(f, limitNode);
       modified = true;
     }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+// Splices in subqueries by replacing subquery nodes by
+// a SubqueryStartNode and a SubqueryEndNode with the subquery's nodes
+// in between.
+void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                         OptimizerRule const& rule) {
+  bool modified = false;
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
+
+  std::unordered_map<ExecutionNode*, std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>> subqueryAttributes;
+
+  for (auto const& n : nodes) {
+    modified = true;
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(n);
+
+    // insert a SubqueryStartNode before the SubqueryNode
+    SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
+    plan->registerNode(start);
+    plan->insertBefore(sq, start);
+
+    // All parents of the Singleton of the subquery become parents of the SubqueryStartNode
+    // The singleton will be deleted after.
+    // TODO: Meh const_cast
+    ExecutionNode *singleton = const_cast<ExecutionNode*>(sq->getSubquery()->getSingleton());
+    std::vector<ExecutionNode*> deps = singleton->getParents();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      x->replaceDependency(singleton, start);
+    }
+
+    // insert a SubqueryEndNode after the SubqueryNode sq
+    SubqueryEndNode* end =
+        new SubqueryEndNode(plan.get(), plan->nextId(), sq->outVariable());
+    plan->registerNode(end);
+    plan->insertAfter(sq, end);
+
+    end->replaceDependency(sq, sq->getSubquery());
   }
 
   opt->addPlan(std::move(plan), rule, modified);

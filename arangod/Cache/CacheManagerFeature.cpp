@@ -35,6 +35,7 @@
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,7 +64,7 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
                      : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 }
 
 CacheManagerFeature::~CacheManagerFeature() {}
@@ -112,7 +113,7 @@ void CacheManagerFeature::start() {
   };
   _manager.reset(new Manager(postFn, _cacheSize));
   MANAGER = _manager.get();
-  _rebalancer.reset(new CacheRebalancerThread(_manager.get(), _rebalancingInterval));
+  _rebalancer.reset(new CacheRebalancerThread(server(), _manager.get(), _rebalancingInterval));
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }

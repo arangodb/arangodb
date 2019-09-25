@@ -65,15 +65,10 @@ void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
   "aborted follower transactions on shard '" << cid << "'";
 }
 
-void abortTransactionsWithFailedServers() {
+void abortTransactionsWithFailedServers(ClusterInfo& ci) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  if (!ci) {
-    return;
-  }
-  
-  std::vector<ServerID> failed = ci->getFailedServers();
+  std::vector<ServerID> failed = ci.getFailedServers();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   
@@ -104,7 +99,7 @@ void abortTransactionsWithFailedServers() {
     didWork = mgr->abortManagedTrx([&](TransactionState const& state) -> bool {
       uint32_t serverId = TRI_ExtractServerIdFromTick(state.id());
       if (serverId != 0) {
-        ServerID coordId = ci->getCoordinatorByShortID(serverId);
+        ServerID coordId = ci.getCoordinatorByShortID(serverId);
         return std::find(failed.begin(), failed.end(), coordId) != failed.end();
       }
       return false;

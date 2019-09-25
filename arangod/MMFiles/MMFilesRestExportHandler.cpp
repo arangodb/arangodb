@@ -41,9 +41,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-MMFilesRestExportHandler::MMFilesRestExportHandler(GeneralRequest* request,
+MMFilesRestExportHandler::MMFilesRestExportHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _restrictions() {}
+    : RestVocbaseBaseHandler(server, request, response), _restrictions() {}
 
 RestStatus MMFilesRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {

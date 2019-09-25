@@ -55,24 +55,16 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
       stream(stream) {}
 
 /// @brief create a query list
-QueryList::QueryList(TRI_vocbase_t*)
+QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
     : _lock(),
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-                   ->trackSlowQueries()),
-      _trackSlowQueries(
-          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-              ->trackSlowQueries()),
-      _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-                         ->trackBindVars()),
-      _slowQueryThreshold(
-          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-              ->slowQueryThreshold()),
-      _slowStreamingQueryThreshold(
-          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-              ->slowStreamingQueryThreshold()),
+      _enabled(feature.trackSlowQueries()),
+      _trackSlowQueries(feature.trackSlowQueries()),
+      _trackBindVars(feature.trackBindVars()),
+      _slowQueryThreshold(feature.slowQueryThreshold()),
+      _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);

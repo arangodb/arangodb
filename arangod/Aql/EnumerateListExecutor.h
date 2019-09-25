@@ -26,14 +26,13 @@
 #ifndef ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 
-#include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace transaction {
@@ -43,7 +42,7 @@ class Methods;
 namespace aql {
 
 class ExecutorInfos;
-class InputAqlItemRow;
+class OutputAqlItemRow;
 class NoStats;
 template <bool>
 class SingleRowFetcher;
@@ -61,8 +60,8 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  RegisterId getOutputRegister() const noexcept { return _outputRegister; };
+  RegisterId getInputRegister() const noexcept;
+  RegisterId getOutputRegister() const noexcept;
 
  private:
   // These two are exactly the values in the parent members

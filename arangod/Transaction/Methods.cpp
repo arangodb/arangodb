@@ -49,6 +49,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -948,86 +949,85 @@ Result transaction::Methods::begin() {
 }
 
 /// @brief commit / finish the transaction
-Result transaction::Methods::commit() {
+Future<Result> transaction::Methods::commitAsync() {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
-  Result res;
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     "transaction not running on commit");
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on commit");
   }
 
-  auto const& exec = ExecContext::current();
   if (!_state->isReadOnlyTransaction()) {
+    auto const& exec = ExecContext::current();
     bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
     if (exec.isCanceled() || cancelRW) {
-      return res.reset(TRI_ERROR_ARANGO_READ_ONLY,
-                       "server is in read-only mode");
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
+  auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    res = ClusterTrxMethods::commitTransaction(*this);
+    f = ClusterTrxMethods::commitTransaction(*this);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
           << "failed to commit on subordinates: '" << res.errorMessage() << "'";
       return res;
     }
-  }
 
-  res = _state->commitTransaction(this);
-  if (res.ok()) {
-    applyStatusChangeCallbacks(*this, Status::COMMITTED);
-  }
+    res = _state->commitTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::COMMITTED);
+    }
 
-  return res;
+    return res;
+  });
 }
 
 /// @brief abort the transaction
-Result transaction::Methods::abort() {
-  Result res;
+Future<Result> transaction::Methods::abortAsync() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     "transaction not running on abort");
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on abort");
   }
 
+  auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    res = ClusterTrxMethods::abortTransaction(*this);
+    f = ClusterTrxMethods::abortTransaction(*this);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
           << "failed to abort on subordinates: " << res.errorMessage();
     }  // abort locally anyway
-  }
 
-  res = _state->abortTransaction(this);
-  if (res.ok()) {
-    applyStatusChangeCallbacks(*this, Status::ABORTED);
-  }
+    res = _state->abortTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::ABORTED);
+    }
 
-  return res;
+    return res;
+  });
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
-Result transaction::Methods::finish(int errorNum) {
-  return finish(Result(errorNum));
-}
-
-/// @brief finish a transaction (commit or abort), based on the previous state
-Result transaction::Methods::finish(Result const& res) {
+Future<Result> transaction::Methods::finishAsync(Result const& res) {
   if (res.ok()) {
     // there was no previous error, so we'll commit
-    return this->commit();
+    return this->commitAsync();
   }
 
   // there was a previous error, so we'll abort
-  this->abort();
-
-  // return original error
-  return res;
+  return this->abortAsync().thenValue([res](Result ignore) {
+    return res;  // return original error
+  });
 }
 
 /// @brief return the transaction id
@@ -1311,16 +1311,8 @@ Future<OperationResult> addTracking(Future<OperationResult> f,
                                     VPackSlice value,
                                     F&& func) {
 #ifdef USE_ENTERPRISE
-  std::string key;
-  if (value.isObject()) {
-    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
-    if (keySlice.isString()) {
-      key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-    }
-  }
-  return std::move(f).thenValue([func = std::forward<F>(func),
-                      key = std::move(key)](OperationResult opRes) {
-    func(opRes, VPackSlice(reinterpret_cast<uint8_t const*>(key.c_str())));
+  return std::move(f).thenValue([func = std::forward<F>(func), value](OperationResult opRes) {
+    func(opRes, value);
     return opRes;
   });
 #else
@@ -1364,8 +1356,8 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     }
   }
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1495,8 +1487,8 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1808,8 +1800,8 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     }
   }
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -2119,8 +2111,8 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -2585,15 +2577,16 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(std::string const& collectionName,
                                                        transaction::CountType type) {
-  ClusterInfo* ci = ClusterInfo::instance();
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
     return OperationResult(TRI_ERROR_SHUTTING_DOWN);
   }
+  ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  auto collinfo = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto collinfo = ci.getCollectionNT(vocbase().name(), collectionName);
   if (collinfo == nullptr) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -3088,8 +3081,8 @@ int transaction::Methods::lockCollections() {
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
   return collection->lookupIndex(iid);
 }
@@ -3097,8 +3090,8 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
 
   // update selectivity estimates if they were expired
   if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
@@ -3278,6 +3271,7 @@ Future<Result> Methods::replicateOperations(
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
   network::Timeout const timeout(chooseTimeout(count, payload->size()));
+  auto& networkFeature = vocbase().server().getFeature<NetworkFeature>();
   for (auto const& f : *followerList) {
     // TODO we could steal the payload at least once
     VPackBuffer<uint8_t> buffer;
@@ -3285,8 +3279,9 @@ Future<Result> Methods::replicateOperations(
 
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry("server:" + f, requestType,
-                                            path, std::move(buffer), timeout, headers, /*retryNotFound*/true);
+    auto future = network::sendRequestRetry(networkFeature, "server:" + f, requestType,
+                                            path, std::move(buffer), timeout,
+                                            headers, /*retryNotFound*/ true);
     futures.emplace_back(std::move(future));
   }
 

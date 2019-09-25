@@ -31,10 +31,11 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
 AgentCallback::AgentCallback()
-    : _agent(nullptr), _last(0), _toLog(0), _startTime(0.0) {}
+    : _server(nullptr), _agent(nullptr), _last(0), _toLog(0), _startTime(0.0) {}
 
 AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID, index_t last, size_t toLog)
-    : _agent(agent),
+    : _server(&agent->server()),
+      _agent(agent),
       _last(last),
       _slaveID(slaveID),
       _toLog(toLog),
@@ -90,7 +91,8 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         << "comm_status(" << res->status << "), last(" << _last << "), follower("
         << _slaveID << "), time(" << TRI_microtime() - _startTime << ")";
   } else {
-    if (!ApplicationServer::isStopping() && (_agent == nullptr || !_agent->isStopping())) {
+    if (_server == nullptr ||
+        (!_server->isStopping() && (_agent == nullptr || !_agent->isStopping()))) {
       // Do not warn if we are already shutting down:
       LOG_TOPIC("2c712", WARN, Logger::AGENCY)
           << "Got bad callback from AppendEntriesRPC: "

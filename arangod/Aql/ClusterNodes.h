@@ -36,6 +36,10 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
@@ -176,8 +180,8 @@ class ScatterNode : public ExecutionNode {
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
  protected:
-  void writeClientsToVelocyPack(VPackBuilder& builder) const;
-  bool readClientsFromVelocyPack(VPackSlice base);
+  void writeClientsToVelocyPack(velocypack::Builder& builder) const;
+  bool readClientsFromVelocyPack(velocypack::Slice base);
 
   void copyClients(std::vector<std::string> const& other) {
     TRI_ASSERT(_clients.empty());

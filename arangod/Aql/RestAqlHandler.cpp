@@ -31,6 +31,7 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -41,6 +42,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -52,9 +54,10 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-RestAqlHandler::RestAqlHandler(GeneralRequest* request, GeneralResponse* response,
+RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request, GeneralResponse* response,
                                std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>* registries)
-    : RestVocbaseBaseHandler(request, response),
+    : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
       _qId(0) {

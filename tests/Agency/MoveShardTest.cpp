@@ -140,7 +140,15 @@ class MoveShardTest : public ::testing::Test {
       : baseStructure(createRootNode()),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        jobId("1") {}
+        jobId("1") {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::FATAL);
+  }
+
+  ~MoveShardTest() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
 };
 
 TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {

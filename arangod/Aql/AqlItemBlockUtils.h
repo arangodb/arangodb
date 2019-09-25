@@ -23,13 +23,15 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCKUTILS_H
 #define ARANGOD_AQL_AQLITEMBLOCKUTILS_H
 
-#include "Aql/SharedAqlItemBlockPtr.h"
+#include <functional>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlockManager;
 class BlockCollector;
 class InputAqlItemRow;
+class SharedAqlItemBlockPtr;
 
 namespace itemBlock {
 

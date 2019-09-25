@@ -29,6 +29,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
