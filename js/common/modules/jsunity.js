@@ -144,7 +144,7 @@ jsUnity.results.end = function (passed, failed, duration) {
 };
 
 jsUnity.results.beginSetUpAll = function(index) {
-  STARTTEST = jsUnity.env.getDate();
+  SETUPS = jsUnity.env.getDate();
 };
 
 jsUnity.results.endSetUpAll = function(index) {
@@ -183,11 +183,11 @@ jsUnity.results.endTeardown = function(index, testName) {
 };
 
 jsUnity.results.beginTeardownAll = function(index) {
-  STARTTEST = jsUnity.env.getDate();
+  TEARDOWNS = jsUnity.env.getDate();
 };
 
-jsUnity.results.endSetUpAll = function(index) {
-  RESULTS.teardownAllDuration = jsUnity.env.getDate() - SETUPS;
+jsUnity.results.endTeardownAll = function(index) {
+  RESULTS.teardownAllDuration = jsUnity.env.getDate() - TEARDOWNS;
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
@@ -271,17 +271,19 @@ function Run (testsuite) {
   suite.tearDownAll = tearDownAll;
 
   var result = jsUnity.run(suite);
-  print(JSON.stringify(result))
   TOTAL += result.total;
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
-  
-  print(RESULTS);
-  print(COMPLETE);
+
   let duplicates = [];
   for (var attrname in RESULTS) {
-    if (RESULTS.hasOwnProperty(attrname)) {
+    if (typeof(RESULTS[attrname]) === 'number') {
+      if (!COMPLETE.hasOwnProperty(attrname)) {
+        COMPLETE[attrname] = { };
+      }
+      COMPLETE[attrname][suite.suiteName] = RESULTS[attrname];
+    } else if (RESULTS.hasOwnProperty(attrname)) {
       if (COMPLETE.hasOwnProperty(attrname)) {
         print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
         duplicates.push(attrname);

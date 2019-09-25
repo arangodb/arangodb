@@ -62,6 +62,7 @@ const internalMembers = [
   'totalSetUp',
   'totalTearDown',
   'setUpDuration',
+  'setUpAllDuration',
   'teardownAllDuration'
 ];
 
@@ -172,7 +173,7 @@ function iterateTestResults(options, results, state, handlers) {
       }
     }
   } catch (x) {
-    print("Exception occured in running tests: " + x.message);
+    print("Exception occured in running tests: " + x.message + "\n" + x.stack);
   }
 }
 
@@ -606,7 +607,7 @@ function locateLongRunning(options, results) {
 }
 
 function locateLongSetupTeardown(options, results) {
-  let testRunStatistics = "  Setup  | Run  |  tests | suite name\n";
+  let testRunStatistics = "  Setup  | Run  |  tests | setupAll | suite name\n";
   let sortedByDuration = [];
   let failedStates = {};
   
@@ -614,13 +615,22 @@ function locateLongSetupTeardown(options, results) {
     testRun: function(options, state, testRun, testRunName) {
     },
     testSuite: function(options, state, testSuite, testSuiteName) {
+      let setupAllDuration = 0;
+      if (testSuite.hasOwnProperty('setUpAllDuration')) {
+        Object.keys(testSuite.setUpAllDuration).forEach(testName => {
+          setupAllDuration += testSuite.setUpAllDuration[testName];
+        });
+      }
+      let hasSetupAll = setupAllDuration !== 0;
+      
       if (testSuite.hasOwnProperty('totalSetUp') &&
           testSuite.hasOwnProperty('totalTearDown')) {
         sortedByDuration.push({
           testName: testSuiteName,
           setupTearDown: testSuite.totalSetUp + testSuite.totalTearDown,
           duration: testSuite.duration,
-          count: Object.keys(testSuite).filter(testCase => skipInternalMember(testSuite, testCase)).length,
+          hasSetupAll: hasSetupAll,
+          count: Object.keys(testSuite).filter(testCase => ! skipInternalMember(testSuite, testCase)).length,
         });
       } else {
         print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
@@ -640,6 +650,7 @@ function locateLongSetupTeardown(options, results) {
             fancyTimeFormat(sortedByDuration[i].setupTearDown / 1000) + " | " +
             fancyTimeFormat(sortedByDuration[i].duration / 1000) + " |     " +
             sortedByDuration[i].count + "  | " +
+            sortedByDuration[i].hasSetupAll + "  | " +
             sortedByDuration[i].testName.replace('/\\/g', '/');
         results.push(key);
       }
