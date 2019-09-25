@@ -501,6 +501,14 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocindex.cpp
 )
 
+set(LIB_ARANGO_NETWORK_SOURCES
+  Network/ClusterUtils.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
+)
+
 set(LIB_ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -565,11 +573,6 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
-  Network/ClusterUtils.cpp
-  Network/ConnectionPool.cpp
-  Network/Methods.cpp
-  Network/NetworkFeature.cpp
-  Network/Utils.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -743,6 +746,10 @@ add_library(arangoserver STATIC
   ${ProductVersionFiles}
 )
 
+add_library(arango_network STATIC
+  ${LIB_ARANGO_NETWORK_SOURCES}
+)
+
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES} 
 )
@@ -790,6 +797,7 @@ target_link_libraries(arango_aql arango_geo)
 target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_aql arango_iresearch)
+target_link_libraries(arango_aql arango_network)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
@@ -798,6 +806,7 @@ target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
 
 target_link_libraries(arango_cluster_methods arango)
+target_link_libraries(arango_cluster_methods arango_network)
 
 target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
@@ -819,6 +828,8 @@ target_link_libraries(arango_mmfiles arango_utils)
 target_link_libraries(arango_mmfiles boost_boost)
 target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_mmfiles llhttp)
+
+target_link_libraries(arango_network boost_boost)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
@@ -861,6 +872,7 @@ target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
 target_link_libraries(arangoserver arango_indexes)
 target_link_libraries(arangoserver arango_iresearch)
+target_link_libraries(arangoserver arango_network)
 target_link_libraries(arangoserver arango_pregel)
 target_link_libraries(arangoserver arango_replication)
 target_link_libraries(arangoserver arango_storage_engine)
