@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
 #define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
+#include "Aql/ExecutionBlock.h"
 #include "Aql/types.h"
 
 #include <Basics/Common.h>
@@ -40,6 +41,7 @@ class SharedAqlItemBlockPtr;
 enum class ExecutionState;
 template <bool>
 class DependencyProxy;
+class ShadowAqlItemRow;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
