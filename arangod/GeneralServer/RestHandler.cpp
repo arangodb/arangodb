@@ -182,7 +182,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       _response->setPayload(std::move(*response.response->stealPayload()), true);
     }
 
-    auto const& resultHeaders = response.response->messageHeader().meta;
+    auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
       _response->setHeader(it.first, it.second);
     }
