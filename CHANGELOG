@@ -1,3 +1,8 @@
+v3.5.2 (2019-xx-xx)
+-------------------
+
+* Fix config directory handling, so we don't trap into UNC path lookups on windows
+
 v3.5.1 (2019-09-24)
 -------------------
 
