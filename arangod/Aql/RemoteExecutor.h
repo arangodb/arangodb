@@ -25,6 +25,7 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutorInfos.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterComm.h"
 #include "Rest/CommonDefines.h"

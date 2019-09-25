@@ -21,64 +21,26 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
-#include "gtest/gtest.h"
+#include "IResearchQueryCommon.h"
 
-#include "../Mocks/StorageEngineMock.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
-#include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ExpressionContext.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/SmallVector.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterFeature.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
-#include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "V8/v8-globals.h"
-#include "V8Server/V8DealerFeature.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include "IResearch/VelocyPackHelper.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
-#include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
 
@@ -111,235 +73,90 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchQueryOptimizationTest : public ::testing::Test {
+class IResearchQueryOptimizationTest : public IResearchQueryTest {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  TRI_vocbase_t* _vocbase;
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
-  IResearchQueryOptimizationTest()
-      : engine(server), server(nullptr, nullptr), _vocbase(nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
+  void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+    auto updateJson = VPackParser::fromJson(
+        "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true }"
+        "}}");
+    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
 
-    arangodb::tests::init(true);
+    arangodb::velocypack::Builder builder;
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::WARN);
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+      arangodb::LogicalDataSource::Serialize::Detailed));
+    builder.close();
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    features.emplace_back(new arangodb::FlushFeature(server), false);
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
-                          true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto databases = VPackBuilder();
-    databases.openArray();
-    databases.add(systemDatabaseArgs);
-    databases.close();
-
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases.slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
-        "_NONDETERM_", ".",
-        arangodb::aql::Function::makeFlags(
-            // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
-           arangodb::aql::VPackFunctionParameters const& params) {
-          TRI_ASSERT(!params.empty());
-          return params[0];
-        }});
-
-    // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
-        "_FORWARD_", ".",
-        arangodb::aql::Function::makeFlags(
-            // fake deterministic
-            arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
-           arangodb::aql::VPackFunctionParameters const& params) {
-          TRI_ASSERT(!params.empty());
-          return params[0];
-        }});
-
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    dbFeature->createDatabase(testDBInfo(), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
-    analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer",
-                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
-
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~IResearchQueryOptimizationTest() {
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
-
-void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
-  auto updateJson = VPackParser::fromJson(
-    "{ \"links\" : {"
-    "\"collection_1\" : { \"includeAllFields\" : true }"
-    "}}");
-  EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
-
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-    arangodb::LogicalDataSource::Serialize::Detailed));
-  builder.close();
-
-  auto slice = builder.slice();
-  EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE(slice.get("name").copyString() == "testView");
-  EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::DATA_SOURCE_TYPE.name());
-  EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
-  auto tmpSlice = slice.get("links");
-  EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
-}
-
-  TRI_vocbase_t& vocbase() {
-    TRI_ASSERT(_vocbase != nullptr);
-    return *_vocbase;
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_TRUE(slice.get("type").copyString() ==
+                arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
+    auto tmpSlice = slice.get("links");
+    EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
   }
 
   void SetUp() override {
-  auto createJson = VPackParser::fromJson(
-      "{ \
-    \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
-  }");
+    auto createJson = VPackParser::fromJson(
+        "{ \
+        \"name\": \"testView\", \
+        \"type\": \"arangosearch\" \
+      }");
 
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+    std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+    std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
-  // add collection_1
-  {
+    // add collection_1
+    {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_1\" }");
       logicalCollection1 = vocbase().createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
-  }
-
-  // add view
-  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-        vocbase().createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
-
-  // add link to collection
-  addLinkToCollection(view);
-
-  // populate view with the data
-  {
-    arangodb::OperationOptions opt;
-      static std::vector<std::string> const EMPTY;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
-
-    // insert into collection
-      auto builder =
-          VPackParser::fromJson("[{ \"values\" : [ \"A\", \"C\", \"B\" ] }]");
-
-    auto root = builder->slice();
-    ASSERT_TRUE(root.isArray());
-
-    for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-      insertedDocs.emplace_back();
-      auto const res =
-          logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, false);
-      EXPECT_TRUE(res.ok());
+      ASSERT_TRUE((nullptr != logicalCollection1));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
-    EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
-                     ->commit()
-                     .ok()));
+    // add view
+    auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+        vocbase().createView(createJson->slice()));
+    ASSERT_TRUE((false == !view));
+
+    // add link to collection
+    addLinkToCollection(view);
+
+    // populate view with the data
+    {
+      arangodb::OperationOptions opt;
+      static std::vector<std::string> const EMPTY;
+      arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase()),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      EXPECT_TRUE((trx.begin().ok()));
+
+      // insert into collection
+      auto builder = VPackParser::fromJson(
+          "[{ \"values\" : [ \"A\", \"C\", \"B\" ] }]");
+
+      auto root = builder->slice();
+      ASSERT_TRUE(root.isArray());
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocs.emplace_back();
+        auto const res =
+            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, false);
+        EXPECT_TRUE(res.ok());
+      }
+
+      EXPECT_TRUE((trx.commit().ok()));
+      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
+                       ->commit()
+                       .ok()));
+    }
   }
-  }
-};  // IResearchQuerySetup
+};
 
 NS_END
 

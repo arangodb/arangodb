@@ -25,7 +25,12 @@
 #define ARANGOD_AQL_WALKER_WORKER_H 1
 
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "Basics/debugging.h"
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Basics/HashSet.h"
+#endif
 
 namespace arangodb {
 namespace aql {

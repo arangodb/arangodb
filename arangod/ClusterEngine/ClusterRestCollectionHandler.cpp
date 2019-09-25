@@ -27,9 +27,10 @@
 
 using namespace arangodb;
 
-ClusterRestCollectionHandler::ClusterRestCollectionHandler(GeneralRequest* request,
+ClusterRestCollectionHandler::ClusterRestCollectionHandler(application_features::ApplicationServer& server,
+                                                           GeneralRequest* request,
                                                            GeneralResponse* response)
-    : RestCollectionHandler(request, response) {}
+    : RestCollectionHandler(server, request, response) {}
 
 Result ClusterRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
                                                            std::string const& suffix,

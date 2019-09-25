@@ -30,6 +30,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
@@ -98,7 +99,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
-    auto ci = ClusterInfo::instance();
+    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = true;
       std::string distributeShardsLike;
@@ -108,7 +109,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
           col = col->getMember(1);  // The first member always is the collection
         }
         std::string n = col->getString();
-        auto c = ci->getCollection(_vocbase->name(), n);
+        auto c = ci.getCollection(_vocbase->name(), n);
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
           _isSmart = false;
           break;
@@ -162,7 +163,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
-        auto c = ci->getCollection(_vocbase->name(), eColName);
+        auto c = ci.getCollection(_vocbase->name(), eColName);
         if (!c->isSmart()) {
           addEdgeCollection(eColName, dir);
         } else {
@@ -200,12 +201,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
         // First determine whether all edge collections are smart and sharded
         // like a common collection:
-        auto ci = ClusterInfo::instance();
+        auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
         if (ServerState::instance()->isRunningInCluster()) {
           _isSmart = true;
           std::string distributeShardsLike;
           for (auto const& n : eColls) {
-            auto c = ci->getCollection(_vocbase->name(), n);
+            auto c = ci.getCollection(_vocbase->name(), n);
             if (!c->isSmart() || c->distributeShardsLike().empty()) {
               _isSmart = false;
               break;
@@ -221,7 +222,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
         for (const auto& n : eColls) {
           if (ServerState::instance()->isRunningInCluster()) {
-            auto c = ci->getCollection(_vocbase->name(), n);
+            auto c = ci.getCollection(_vocbase->name(), n);
             if (!c->isSmart()) {
               addEdgeCollection(n, _defaultDirection);
             } else {
@@ -358,13 +359,13 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       Variable::varFromVPack(plan->getAst(), base, "tmpObjVariable");
 
   TRI_ASSERT(base.hasKey("tmpObjVarNode"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _tmpObjVarNode = new AstNode(plan->getAst(), base.get("tmpObjVarNode"));
 
   TRI_ASSERT(base.hasKey("tmpIdNode"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _tmpIdNode = new AstNode(plan->getAst(), base.get("tmpIdNode"));
 
   VPackSlice opts = base.get("options");
@@ -622,4 +623,38 @@ std::vector<aql::Collection const*> const GraphNode::collections() const {
       rv.push_back(collPointer.get());
     }
     return rv;
-  }
+}
+
+bool GraphNode::isSmart() const { return _isSmart; }
+
+TRI_vocbase_t* GraphNode::vocbase() const { return _vocbase; }
+
+Variable const* GraphNode::vertexOutVariable() const {
+  return _vertexOutVariable;
+}
+
+bool GraphNode::usesVertexOutVariable() const {
+  return _vertexOutVariable != nullptr;
+}
+
+void GraphNode::setVertexOutput(Variable const* outVar) {
+  _vertexOutVariable = outVar;
+}
+
+Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
+
+bool GraphNode::usesEdgeOutVariable() const {
+  return _edgeOutVariable != nullptr;
+}
+
+void GraphNode::setEdgeOutput(Variable const* outVar) {
+  _edgeOutVariable = outVar;
+}
+
+std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::edgeColls() const {
+  return _edgeColls;
+}
+
+std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::vertexColls() const {
+  return _vertexColls;
+}

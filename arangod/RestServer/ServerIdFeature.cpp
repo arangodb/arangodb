@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -34,6 +35,8 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
@@ -44,30 +47,28 @@ TRI_server_id_t ServerIdFeature::SERVERID = 0;
 ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
-  startsAfter("BasicsPhase");
-  startsAfter("Database");
-  startsAfter("SystemDatabase");
-  startsAfter("InitDatabase");
+  startsAfter<application_features::BasicFeaturePhaseServer>();
+
+  startsAfter<DatabaseFeature>();
+  startsAfter<InitDatabaseFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 void ServerIdFeature::start() {
-  auto databasePath =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
-  _idFilename = databasePath->subdirectoryName("SERVER");
+  auto& databasePath = server().getFeature<DatabasePathFeature>();
+  _idFilename = databasePath.subdirectoryName("SERVER");
 
-  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-      "Database");
+  auto& database = server().getFeature<DatabaseFeature>();
 
   // read the server id or create a new one
-  bool const checkVersion = database->checkVersion();
+  bool const checkVersion = database.checkVersion();
   int res = determineId(checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
     if (checkVersion) {
       // when we are version checking, we will not fail here
       // additionally notify the database feature that we had no VERSION file
-      database->isInitiallyEmpty(true);
+      database.isInitiallyEmpty(true);
       return;
     }
 

@@ -24,7 +24,6 @@
 
 #include "RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -42,6 +41,7 @@
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -82,12 +82,14 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>
@@ -205,12 +207,12 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _useReleasedTick(false),
       _debugLogging(false) {
 
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
-  startsAfter("RocksDBOption");
+  startsAfter<RocksDBOptionFeature>();
 
-  server.addFeature(new RocksDBRecoveryManager(server));
+  server.addFeature<RocksDBRecoveryManager>();
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
@@ -362,10 +364,8 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 // the storage engine must not start any threads here or write any files
 void RocksDBEngine::prepare() {
   // get base path from DatabaseServerFeature
-  auto databasePathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
-  _basePath = databasePathFeature->directory();
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  _basePath = databasePathFeature.directory();
 
   TRI_ASSERT(!_basePath.empty());
 
@@ -379,7 +379,8 @@ void RocksDBEngine::start() {
   TRI_ASSERT(isEnabled());
 
   if (ServerState::instance()->isAgent() &&
-      !application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.wal-file-timeout-initial")) {
+      !server().options()->processingResult().touched(
+          "rocksdb.wal-file-timeout-initial")) {
     // reduce --rocksb.wal-file-timeout-initial to 15 seconds for agency nodes
     // as we probably won't need the WAL for WAL tailing and replication here
     _pruneWaitTimeInitial = 15;
@@ -390,9 +391,8 @@ void RocksDBEngine::start() {
       << ", supported compression types: " << getCompressionSupport();
 
   // set the database sub-directory for RocksDB
-  auto* databasePathFeature =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = databasePathFeature->subdirectoryName("engine-rocksdb");
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
   if (!basics::FileUtils::isDirectory(_path)) {
     std::string systemErrorStr;
@@ -412,87 +412,86 @@ void RocksDBEngine::start() {
   }
 
   // options imported set by RocksDBOptionFeature
-  auto const* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
-      "RocksDBOption");
+  auto const& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
   transactionOptions.num_stripes = TRI_numberProcessors();
-  transactionOptions.transaction_lock_timeout = opts->_transactionLockTimeout;
+  transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
-  _options.allow_fallocate = opts->_allowFAllocate;
-  _options.enable_pipelined_write = opts->_enablePipelinedWrite;
-  _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
-  _options.max_write_buffer_number = static_cast<int>(opts->_maxWriteBufferNumber);
-  _options.delayed_write_rate = opts->_delayedWriteRate;
+  _options.allow_fallocate = opts._allowFAllocate;
+  _options.enable_pipelined_write = opts._enablePipelinedWrite;
+  _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
+  _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
-      static_cast<int>(opts->_minWriteBufferNumberToMerge);
-  _options.num_levels = static_cast<int>(opts->_numLevels);
-  _options.level_compaction_dynamic_level_bytes = opts->_dynamicLevelBytes;
-  _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
+      static_cast<int>(opts._minWriteBufferNumberToMerge);
+  _options.num_levels = static_cast<int>(opts._numLevels);
+  _options.level_compaction_dynamic_level_bytes = opts._dynamicLevelBytes;
+  _options.max_bytes_for_level_base = opts._maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
-      static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
-  _options.use_direct_reads = opts->_useDirectReads;
-  _options.use_direct_io_for_flush_and_compaction = opts->_useDirectIoForFlushAndCompaction;
+      static_cast<int>(opts._maxBytesForLevelMultiplier);
+  _options.optimize_filters_for_hits = opts._optimizeFiltersForHits;
+  _options.use_direct_reads = opts._useDirectReads;
+  _options.use_direct_io_for_flush_and_compaction = opts._useDirectIoForFlushAndCompaction;
   // limit the total size of WAL files. This forces the flush of memtables of
   // column families still backed by WAL files. If we would not do this, WAL
   // files may linger around forever and will not get removed
-  _options.max_total_wal_size = opts->_maxTotalWalSize;
+  _options.max_total_wal_size = opts._maxTotalWalSize;
 
-  if (opts->_walDirectory.empty()) {
+  if (opts._walDirectory.empty()) {
     _options.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
   } else {
-    _options.wal_dir = opts->_walDirectory;
+    _options.wal_dir = opts._walDirectory;
   }
 
   LOG_TOPIC("bc82a", TRACE, arangodb::Logger::ENGINES)
       << "initializing RocksDB, path: '" << _path << "', WAL directory '"
       << _options.wal_dir << "'";
 
-  if (opts->_skipCorrupted) {
+  if (opts._skipCorrupted) {
     _options.wal_recovery_mode = rocksdb::WALRecoveryMode::kSkipAnyCorruptedRecords;
   } else {
     _options.wal_recovery_mode = rocksdb::WALRecoveryMode::kPointInTimeRecovery;
   }
 
-  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
-  _options.max_subcompactions = static_cast<int>(opts->_maxSubcompactions);
-  _options.use_fsync = opts->_useFSync;
+  _options.max_background_jobs = static_cast<int>(opts._maxBackgroundJobs);
+  _options.max_subcompactions = static_cast<int>(opts._maxSubcompactions);
+  _options.use_fsync = opts._useFSync;
 
   // only compress levels >= 2
   _options.compression_per_level.resize(_options.num_levels);
   for (int level = 0; level < _options.num_levels; ++level) {
     _options.compression_per_level[level] =
-        (((uint64_t)level >= opts->_numUncompressedLevels) ? rocksdb::kSnappyCompression
-                                                           : rocksdb::kNoCompression);
+        (((uint64_t)level >= opts._numUncompressedLevels) ? rocksdb::kSnappyCompression
+                                                          : rocksdb::kNoCompression);
   }
 
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
   // Default: 4
   _options.level0_file_num_compaction_trigger =
-      static_cast<int>(opts->_level0CompactionTrigger);
+      static_cast<int>(opts._level0CompactionTrigger);
 
   // Soft limit on number of level-0 files. We start slowing down writes at this
   // point. A value <0 means that no writing slow down will be triggered by
   // number of files in level-0.
-  _options.level0_slowdown_writes_trigger = static_cast<int>(opts->_level0SlowdownTrigger);
+  _options.level0_slowdown_writes_trigger = static_cast<int>(opts._level0SlowdownTrigger);
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  _options.level0_stop_writes_trigger = static_cast<int>(opts->_level0StopTrigger);
+  _options.level0_stop_writes_trigger = static_cast<int>(opts._level0StopTrigger);
 
-  _options.recycle_log_file_num = opts->_recycleLogFileNum;
-  _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
+  _options.recycle_log_file_num = opts._recycleLogFileNum;
+  _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options);
   startEnterprise();
 #endif
 
-  _options.env->SetBackgroundThreads(static_cast<int>(opts->_numThreadsHigh),
+  _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
                                      rocksdb::Env::Priority::HIGH);
-  _options.env->SetBackgroundThreads(static_cast<int>(opts->_numThreadsLow),
+  _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsLow),
                                      rocksdb::Env::Priority::LOW);
 
   // intentionally set the RocksDB logger to warning because it will
@@ -500,7 +499,7 @@ void RocksDBEngine::start() {
   if (_debugLogging) {
     _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
   } else {
-    if (!opts->_useFileLogging) {
+    if (!opts._useFileLogging) {
       // if we don't use file logging but log into ArangoDB's logfile,
       // we only want real errors
       _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
@@ -509,7 +508,7 @@ void RocksDBEngine::start() {
 
   std::shared_ptr<RocksDBLogger> logger;
 
-  if (!opts->_useFileLogging) {
+  if (!opts._useFileLogging) {
     // if option "--rocksdb.use-file-logging" is set to false, we will use
     // our own logger that logs to ArangoDB's logfile
     logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
@@ -520,35 +519,35 @@ void RocksDBEngine::start() {
     }  // if
   }
 
-  if (opts->_enableStatistics) {
+  if (opts._enableStatistics) {
     _options.statistics = rocksdb::CreateDBStatistics();
     // _options.stats_dump_period_sec = 1;
   }
 
   rocksdb::BlockBasedTableOptions tableOptions;
-  if (opts->_blockCacheSize > 0) {
+  if (opts._blockCacheSize > 0) {
     tableOptions.block_cache =
-        rocksdb::NewLRUCache(opts->_blockCacheSize,
-                             static_cast<int>(opts->_blockCacheShardBits),
-                             /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit);
+        rocksdb::NewLRUCache(opts._blockCacheSize,
+                             static_cast<int>(opts._blockCacheShardBits),
+                             /*strict_capacity_limit*/ opts._enforceBlockCacheSizeLimit);
     // tableOptions.cache_index_and_filter_blocks =
     // tableOptions.pin_l0_filter_and_index_blocks_in_cache
-    // opts->_compactionReadaheadSize > 0;
+    // opts._compactionReadaheadSize > 0;
   } else {
     tableOptions.no_block_cache = true;
   }
-  tableOptions.block_size = opts->_tableBlockSize;
+  tableOptions.block_size = opts._tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   // use slightly space-optimized format version 3
   tableOptions.format_version = 3;
-  tableOptions.block_align = opts->_blockAlignDataBlocks;
+  tableOptions.block_align = opts._blockAlignDataBlocks;
 
   _options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(tableOptions));
 
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
 
-  if (opts->_limitOpenFilesAtStartup) {
+  if (opts._limitOpenFilesAtStartup) {
     _options.max_open_files = 16;
     _options.skip_stats_update_on_db_open = true;
     _options.avoid_flush_during_recovery = true;
@@ -572,17 +571,18 @@ void RocksDBEngine::start() {
   } // if
 
   if (_createShaFiles) {
-    _shaListener.reset(new RocksDBEventListener);
+    _shaListener.reset(new RocksDBEventListener(server()));
     _options.listeners.push_back(_shaListener);
   } // if
 
   _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
 
-  if (opts->_totalWriteBufferSize > 0) {
-    _options.db_write_buffer_size = opts->_totalWriteBufferSize;
+  if (opts._totalWriteBufferSize > 0) {
+    _options.db_write_buffer_size = opts._totalWriteBufferSize;
   }
 
-  if (!application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.max-write-buffer-number")) {
+  if (!server().options()->processingResult().touched(
+          "rocksdb.max-write-buffer-number")) {
     // user hasn't explicitly set the number of write buffers, so we use a default value based
     // on the number of column families
     // this is cfFamilies.size() + 2 ... but _option needs to be set before
@@ -753,21 +753,20 @@ void RocksDBEngine::start() {
     logger->enable();
   }
 
-  if (opts->_limitOpenFilesAtStartup) {
+  if (opts._limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
 
   {
-    auto feature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
-    TRI_ASSERT(feature);
-    _useReleasedTick = feature->isEnabled();
+    auto& feature = server().getFeature<FlushFeature>();
+    _useReleasedTick = feature.isEnabled();
   }
 
   // useReleasedTick should be true on DB servers and single servers
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() || arangodb::ServerState::instance()->isAgent()) || _useReleasedTick);
 
   if (_syncInterval > 0) {
-    _syncThread.reset(new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
+    _syncThread.reset(new RocksDBSyncThread(*this, std::chrono::milliseconds(_syncInterval)));
     if (!_syncThread->start()) {
       LOG_TOPIC("63919", FATAL, Logger::ENGINES)
           << "could not start rocksdb sync thread";
@@ -782,7 +781,7 @@ void RocksDBEngine::start() {
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
-  _backgroundThread.reset(new RocksDBBackgroundThread(this, counterSyncSeconds));
+  _backgroundThread.reset(new RocksDBBackgroundThread(*this, counterSyncSeconds));
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
         << "could not start rocksdb counter manager";
@@ -847,8 +846,9 @@ void RocksDBEngine::unprepare() {
   shutdownRocksDBInstance();
 }
 
-std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager() {
-  return std::make_unique<transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
+    transaction::ManagerFeature& feature) {
+  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<transaction::ContextData> RocksDBEngine::createTransactionContextData() {
@@ -1155,7 +1155,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
   status = TRI_ERROR_INTERNAL;
 
-  arangodb::CreateDatabaseInfo info;
+  arangodb::CreateDatabaseInfo info(server());
   auto rv = info.load(id, args, VPackSlice::emptyArraySlice());
   if(rv.fail()){
     THROW_ARANGO_EXCEPTION(rv);
@@ -1236,12 +1236,12 @@ void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // current recovery state
 RecoveryState RocksDBEngine::recoveryState() noexcept {
-  return RocksDBRecoveryManager::instance()->recoveryState();
+  return server().getFeature<RocksDBRecoveryManager>().recoveryState();
 }
 
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return TRI_voc_tick_t(RocksDBRecoveryManager::instance()->recoveryTick());
+  return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
 }
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {}
@@ -2050,9 +2050,7 @@ void RocksDBEngine::addSystemDatabase() {
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     TRI_voc_tick_t id, VPackSlice args, bool wasCleanShutdown, bool isUpgrade) {
-
-
-  arangodb::CreateDatabaseInfo info;
+  arangodb::CreateDatabaseInfo info(server());
   TRI_ASSERT(args.get("name").isString());
   // when loading we allow system database names
   info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));

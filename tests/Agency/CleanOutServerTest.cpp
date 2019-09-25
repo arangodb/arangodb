@@ -172,6 +172,14 @@ class CleanOutServerTest : public ::testing::Test {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
+
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::FATAL);
+  }
+
+  ~CleanOutServerTest() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

@@ -412,9 +412,9 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
     // resolve the shard of the target vertex.
     ShardID responsibleShard;
-    int res = Utils::resolveShard(_config, collectionName.toString(),
-                                  StaticStrings::KeyString,
-                                  key, responsibleShard);
+    auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    int res = Utils::resolveShard(ci, _config, collectionName.toString(),
+                                  StaticStrings::KeyString, key, responsibleShard);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
       << "Could not resolve target shard of edge";

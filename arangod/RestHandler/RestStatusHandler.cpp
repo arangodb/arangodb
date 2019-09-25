@@ -47,16 +47,15 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatusHandler::RestStatusHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  
-  if (!security->canAccessHardenedApi()) {
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+
+  if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
     return RestStatus::DONE;
@@ -75,13 +74,9 @@ RestStatus RestStatusHandler::execute() {
   result.add("license", VPackValue("community"));
 #endif
 
-  if (application_features::ApplicationServer::server != nullptr) {
-    auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
-        "Server");
-    result.add("mode",
-               VPackValue(server->operationModeString()));  // to be deprecated - 3.3 compat
-    result.add("operationMode", VPackValue(server->operationModeString()));
-  }
+  auto& serverFeature = server.getFeature<ServerFeature>();
+  result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
+  result.add("operationMode", VPackValue(serverFeature.operationModeString()));
 
   std::string host = ServerState::instance()->getHost();
 

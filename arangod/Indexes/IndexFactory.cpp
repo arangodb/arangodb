@@ -172,16 +172,16 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
 void IndexFactory::clear() { _factories.clear(); }
 
 Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& factory) {
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(
-      "Bootstrap");
-  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
-
-  // ensure new factories are not added at runtime since that would require
-  // additional locks
-  if (bootstrapFeature && bootstrapFeature->isReady()) {
-    return arangodb::Result(TRI_ERROR_INTERNAL,
-                            std::string("index factory registration is only "
-                                        "allowed during server startup"));
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (server.hasFeature<BootstrapFeature>()) {
+    auto& feature = server.getFeature<BootstrapFeature>();
+    // ensure new factories are not added at runtime since that would require
+    // additional locks
+    if (feature.isReady()) {
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("index factory registration is only "
+                                          "allowed during server startup"));
+    }
   }
 
   if (!_factories.emplace(type, &factory).second) {

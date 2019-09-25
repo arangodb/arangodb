@@ -36,9 +36,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(GeneralRequest* request, GeneralResponse* response,
+RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request, GeneralResponse* response,
                                AsyncJobManager* jobManager)
-    : RestBaseHandler(request, response), _jobManager(jobManager) {
+    : RestBaseHandler(server, request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
 

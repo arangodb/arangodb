@@ -64,7 +64,7 @@ struct GraphTestSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   GraphTestSetup() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -76,37 +76,31 @@ struct GraphTestSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
 
     // setup required application features
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
+    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
+    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
+    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
+                          false);  // must be before AqlFeature
+    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
+                          true);  // required for IResearchAnalyzerFeature
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
   ~GraphTestSetup() {
@@ -114,18 +108,17 @@ struct GraphTestSetup {
     arangodb::AqlFeature(server).stop();  // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
                                     arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
   }
 };  // Setup
@@ -135,9 +128,8 @@ struct MockGraphDatabase {
   std::vector<arangodb::aql::Query*> queries;
   std::vector<arangodb::graph::ShortestPathOptions*> spos;
 
-  MockGraphDatabase(std::string name) :
-    vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(name, 1))
-  {}
+  MockGraphDatabase(application_features::ApplicationServer& server, std::string name)
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {
     for (auto& q : queries) {

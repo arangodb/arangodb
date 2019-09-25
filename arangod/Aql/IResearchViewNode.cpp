@@ -24,6 +24,7 @@
 #include "IResearchViewNode.h"
 
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -31,10 +32,12 @@
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -699,8 +702,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     _view = _vocbase.lookupView(basics::StringUtils::uint64(viewId));
   } else {
     // need cluster wide view
-    TRI_ASSERT(ClusterInfo::instance());
-    _view = ClusterInfo::instance()->getView(_vocbase.name(), viewId);
+    TRI_ASSERT(_vocbase.server().hasFeature<ClusterFeature>());
+    _view = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getView(
+        _vocbase.name(), viewId);
   }
 
   if (!_view || iresearch::DATA_SOURCE_TYPE != _view->type()) {
