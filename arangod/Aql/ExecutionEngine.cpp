@@ -654,7 +654,7 @@ void ExecutionEngine::root(ExecutionBlock* root) {
   _root = root;
 }
 
-Query* ExecutionEngine::getQuery() const { return _query; }
+Query* ExecutionEngine::getQuery() const { return &_query; }
 
 bool ExecutionEngine::initializeCursorCalled() const {
   return _initializeCursorCalled;
