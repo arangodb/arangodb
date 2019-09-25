@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 #include "Network/types.h"
+#include "Rest/CommonDefines.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 
@@ -68,6 +69,10 @@ void errorCodesFromHeaders(network::Headers headers,
 /// @brief transform response into arango error code
 int fuerteToArangoErrorCode(network::Response const& res);
 int fuerteToArangoErrorCode(fuerte::Error err);
+
+/// @brief convert between arango and fuerte rest methods
+fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
+rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
 /// @brief Create Cluster Communication result for insert
 OperationResult clusterResultInsert(fuerte::StatusCode responsecode,

@@ -212,6 +212,52 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
   return TRI_ERROR_INTERNAL;
 }
 
+fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType verb) {
+  switch (verb) {
+    case rest::RequestType::DELETE_REQ:
+      return fuerte::RestVerb::Delete;
+    case rest::RequestType::GET:
+      return fuerte::RestVerb::Get;
+    case rest::RequestType::POST:
+      return fuerte::RestVerb::Post;
+    case rest::RequestType::PUT:
+      return fuerte::RestVerb::Put;
+    case rest::RequestType::HEAD:
+      return fuerte::RestVerb::Head;
+    case rest::RequestType::PATCH:
+      return fuerte::RestVerb::Patch;
+    case rest::RequestType::OPTIONS:
+      return fuerte::RestVerb::Options;
+    case rest::RequestType::ILLEGAL:
+      return fuerte::RestVerb::Illegal;
+  }
+
+  return fuerte::RestVerb::Illegal;
+}
+
+rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
+  switch (verb) {
+    case fuerte::RestVerb::Illegal:
+      return rest::RequestType::ILLEGAL;
+    case fuerte::RestVerb::Delete:
+      return rest::RequestType::DELETE_REQ;
+    case fuerte::RestVerb::Get:
+      return rest::RequestType::GET;
+    case fuerte::RestVerb::Post:
+      return rest::RequestType::POST;
+    case fuerte::RestVerb::Put:
+      return rest::RequestType::PUT;
+    case fuerte::RestVerb::Head:
+      return rest::RequestType::HEAD;
+    case fuerte::RestVerb::Patch:
+      return rest::RequestType::PATCH;
+    case fuerte::RestVerb::Options:
+      return rest::RequestType::OPTIONS;
+  }
+
+  return rest::RequestType::ILLEGAL;
+}
+
 /// @brief Create Cluster Communication result for insert
 OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
