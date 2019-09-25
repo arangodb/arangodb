@@ -22,18 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SortNode.h"
-#include "Aql/Ast.h"
+
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewNode.h"
+#include "Aql/Expression.h"
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "IResearch/IResearchOrderFactory.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";

@@ -21,12 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InAndOutRowExpressionContext.h"
-#include "Aql/AqlItemBlock.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
-#include <limits.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -124,4 +124,36 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
   // NOTE: PRUNE is the only feature using this context.
   msg.append("' in PRUNE statement");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+}
+
+size_t InAndOutRowExpressionContext::numRegisters() const {
+  return _regs.size();
+}
+
+Variable const* InAndOutRowExpressionContext::getVariable(size_t i) const {
+  return _vars[i];
+}
+
+bool InAndOutRowExpressionContext::needsVertexValue() const {
+  return _vertexVarIdx < _regs.size();
+}
+
+bool InAndOutRowExpressionContext::needsEdgeValue() const {
+  return _edgeVarIdx < _regs.size();
+}
+
+bool InAndOutRowExpressionContext::needsPathValue() const {
+  return _pathVarIdx < _regs.size();
+}
+
+void InAndOutRowExpressionContext::setVertexValue(velocypack::Slice v) {
+  _vertexValue = AqlValue(AqlValueHintDocumentNoCopy(v.begin()));
+}
+
+void InAndOutRowExpressionContext::setEdgeValue(velocypack::Slice e) {
+  _edgeValue = AqlValue(AqlValueHintDocumentNoCopy(e.begin()));
+}
+
+void InAndOutRowExpressionContext::setPathValue(velocypack::Slice p) {
+  _pathValue = AqlValue(AqlValueHintDocumentNoCopy(p.begin()));
 }

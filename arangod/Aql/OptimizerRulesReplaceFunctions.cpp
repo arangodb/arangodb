@@ -20,9 +20,12 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "OptimizerRules.h"
+
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/IndexNode.h"
@@ -30,14 +33,13 @@
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
-#include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
-#include "OptimizerRules.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;

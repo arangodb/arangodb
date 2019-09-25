@@ -48,6 +48,8 @@
 #include "search/scorers.hpp"
 #include "utils/misc.hpp"
 
+#include <velocypack/Parser.h>
+
 namespace {
 
 struct dummy_scorer : public irs::sort {

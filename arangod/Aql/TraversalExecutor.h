@@ -30,6 +30,7 @@
 #include "Aql/Variable.h"
 
 namespace arangodb {
+class Result;
 
 namespace traverser {
 class Traverser;

@@ -24,6 +24,8 @@
 #define ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 namespace arangodb {
 namespace aql {

@@ -24,6 +24,9 @@
 #include "FixedVarExpressionContext.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -72,3 +75,6 @@ void FixedVarExpressionContext::serializeAllVariables(transaction::Methods* trx,
     builder.close();
   }
 }
+
+FixedVarExpressionContext::FixedVarExpressionContext(Query* query)
+    : QueryExpressionContext(query) {}
