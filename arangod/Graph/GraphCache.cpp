@@ -142,9 +142,9 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(std::shared_ptr<transact
   // the cache.
   std::unique_ptr<Graph const> graph;
   try {
-    WRITE_LOCKER(guard, _lock);
-
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+    WRITE_LOCKER(guard, _lock);
 
     GraphManager gmngr{ctx->vocbase(), true};
     auto result = gmngr.lookupGraphByName(name);
@@ -171,7 +171,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(std::shared_ptr<transact
     }
 
   } catch (...) {
-  };
+  }
 
   // graph is never set to an invalid or outdated value. So even in case of an
   // exception, if graph was set, it may be returned.
