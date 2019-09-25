@@ -43,7 +43,7 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
       // We need to handle shadowRows now. It is the job of this node to
       // increase the shadow row depth
       ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-      std::tie(_state, shadowRow) = _fetcher.fetchShadowRow(output.numRowsLeft() / 2);
+      std::tie(_state, shadowRow) = _fetcher.fetchShadowRow();
       if (!shadowRow.isInitialized()) {
         TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
         // We are either fully DONE, or WAITING
