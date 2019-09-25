@@ -32,6 +32,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -50,7 +51,7 @@ using arangodb::basics::VelocyPackHelper;
 
 namespace {
 /// @brief timeout
-int constexpr kDefaultTimeOutSecs = 3600.0;
+constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 }  // namespace
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
@@ -64,8 +65,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _queryId(queryId),
       _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
-      _hasTriggeredShutdown(false),
-      _lastTicket(0) {
+      _lastTicket(0),
+      _hasTriggeredShutdown(false) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
@@ -277,7 +278,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   }
 
   if (!_hasTriggeredShutdown) {
-    _lastTicket.store(0);
+    std::lock_guard<std::mutex> guard(_communicationMutex);
+    _lastTicket = 0;
     _lastError.reset(TRI_ERROR_NO_ERROR);
     _lastResponse.reset();
     _hasTriggeredShutdown = true;
@@ -407,7 +409,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   std::string url = std::string("/_db/") +
                     arangodb::basics::StringUtils::urlEncode(
-                        _engine->getQuery()->trx()->vocbase().name()) +
+                        _engine->getQuery()->vocbase().name()) +
                     urlPart + _queryId;
 
   arangodb::network::EndpointSpec spec;
@@ -419,21 +421,23 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   auto req = fuerte::createRequest(type, url, {}, std::move(body));
   // Later, we probably want to set these sensibly:
-  req->timeout(std::chrono::seconds(kDefaultTimeOutSecs));
+  req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
     req->header.addMeta("Shard-Id", _ownName);
   }
 
   network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
 
-  unsigned ticket = _lastTicket.fetch_add(1) + 1;
+  std::lock_guard<std::mutex> guard(_communicationMutex);
+  unsigned ticket = ++_lastTicket;
   std::shared_ptr<fuerte::Connection> conn = ref.connection();
   conn->sendRequest(std::move(req),
                     [=, ref(std::move(ref))](fuerte::Error err,
                                              std::unique_ptr<fuerte::Request>,
                                              std::unique_ptr<fuerte::Response> res) {
                       _query.sharedState()->execute([&] {  // notifies outside
-                        if (_lastTicket.load() == ticket) {
+                        std::lock_guard<std::mutex> guard(_communicationMutex);
+                        if (_lastTicket == ticket) {
                           if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                             _lastError = handleErrorResponse(spec, err, res.get());
                           } else {

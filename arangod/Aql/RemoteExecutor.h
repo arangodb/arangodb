@@ -106,13 +106,15 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
   std::unique_ptr<fuerte::Response> _lastResponse;
-  
-  unsigned _lastTicket;  /// used to check for canceled requests
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
   
   std::mutex _communicationMutex;
+  
+  unsigned _lastTicket;  /// used to check for canceled requests
+  
+  bool _hasTriggeredShutdown;
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _didSendShutdownRequest = false;
