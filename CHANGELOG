@@ -1,6 +1,8 @@
 v3.3.25 (2019-XX-XX)
 --------------------
 
+* Fix config directory handling, so we don't trap into UNC path lookups on windows
+
 * Fixed non-deterministic occurrences of "document not found" errors in sharded 
   collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
 
