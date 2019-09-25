@@ -25,29 +25,33 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Basics/Common.h"
-
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
-
 #include "Aql/CalculationExecutor.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/IndexNode.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
@@ -219,6 +223,21 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
                                               infos().registersToKeep(),
                                               infos().registersToClear());
   }
+}
+
+template <class Executor>
+Executor& ExecutionBlockImpl<Executor>::executor() {
+  return _executor;
+}
+
+template <class Executor>
+Query const& ExecutionBlockImpl<Executor>::getQuery() const {
+  return _query;
+}
+
+template <class Executor>
+typename ExecutionBlockImpl<Executor>::Infos const& ExecutionBlockImpl<Executor>::infos() const {
+  return _infos;
 }
 
 namespace arangodb {

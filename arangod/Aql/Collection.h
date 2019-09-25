@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_COLLECTION_H
 #define ARANGOD_AQL_COLLECTION_H 1
 
-#include "Basics/Common.h"
 #include "Cluster/ClusterComm.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
@@ -44,39 +43,30 @@ struct Collection {
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t* vocbase() const;
 
   /// @brief upgrade the access type to exclusive
   void setExclusiveAccess();
 
-  AccessMode::Type accessType() const { return _accessType; }
-  void accessType(AccessMode::Type type) { _accessType = type; }
+  AccessMode::Type accessType() const;
+  void accessType(AccessMode::Type type);
 
-  bool isReadWrite() const { return _isReadWrite; }
+  bool isReadWrite() const;
 
-  void isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+  void isReadWrite(bool isReadWrite);
 
   /// @brief set the current shard
-  void setCurrentShard(std::string const& shard) { _currentShard = shard; }
+  void setCurrentShard(std::string const& shard);
 
   /// @brief remove the current shard
-  void resetCurrentShard() { _currentShard.clear(); }
+  void resetCurrentShard();
 
   /// @brief get the collection id
   TRI_voc_cid_t id() const;
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return _currentShard if it is set, and name otherwise
-  std::string const& name() const {
-    if (!_currentShard.empty()) {
-      // sharding case: return the current shard name instead of the collection
-      // name
-      return _currentShard;
-    }
-
-    // non-sharding case: simply return the name
-    return _name;
-  }
+  std::string const& name() const;
 
   /// @brief collection type
   TRI_col_type_e type() const;

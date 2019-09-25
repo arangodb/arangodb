@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SortNode.h"
 
 namespace arangodb {

@@ -26,18 +26,16 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 #include "TestEmptyExecutorHelper.h"
 #include "TestExecutorHelper.h"
 #include "WaitingExecutionBlockMock.h"
 #include "fakeit.hpp"
 
-#include "Aql/ExecutionBlockImpl.h"
-
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;

@@ -30,8 +30,9 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
