@@ -24,6 +24,11 @@
 
 #include "gtest/gtest.h"
 
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
@@ -47,10 +52,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "../Mocks/Servers.h"
-#include "../Mocks/StorageEngineMock.h"
-#include "IResearch/common.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -60,7 +61,8 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-struct GraphTestSetup {
+struct GraphTestSetup
+    : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
@@ -71,9 +73,6 @@ struct GraphTestSetup {
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
@@ -106,8 +105,6 @@ struct GraphTestSetup {
   ~GraphTestSetup() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
