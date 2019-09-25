@@ -132,3 +132,12 @@ void BlocksWithClients::throwIfKilled() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
+std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClients::getSome(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+std::pair<ExecutionState, size_t> BlocksWithClients::skipSome(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

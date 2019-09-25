@@ -23,7 +23,10 @@
 #include "RemoteExecutor.h"
 
 #include "Aql/ClusterNodes.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringBuffer.h"

@@ -51,6 +51,7 @@
 #include "Transaction/Options.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ticks.h"
+#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -218,7 +219,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
   status = TRI_ERROR_INTERNAL;
   arangodb::CreateDatabaseInfo info;
   auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if(res.fail()) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -368,7 +369,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
   TRI_ASSERT(args.get("name").isString());
   info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
   auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if(res.fail()) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 

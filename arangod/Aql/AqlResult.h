@@ -24,8 +24,9 @@
 #ifndef ARANGOD_AQL_AQL_RESULT_H
 #define ARANGOD_AQL_AQL_RESULT_H 1
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
+
+#include <string>
 
 namespace arangodb {
 

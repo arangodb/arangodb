@@ -23,17 +23,21 @@
 #ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
 #define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionState.h"
+#include "Aql/types.h"
 
+#include <Basics/Common.h>
 #include <Basics/Exceptions.h>
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+class AqlItemMatrix;
+class SharedAqlItemBlockPtr;
+enum class ExecutionState;
 template <bool>
 class DependencyProxy;
 
@@ -74,10 +78,7 @@ class AllRowsFetcher {
   // AllRowsFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  };
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
 
   /**
    * @brief Prefetch the number of rows that will be returned from upstream.

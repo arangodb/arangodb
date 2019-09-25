@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalConditionFinder.h"
+
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -29,6 +30,7 @@
 #include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;

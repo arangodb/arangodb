@@ -22,7 +22,11 @@
 
 #include "DistributeExecutor.h"
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -362,4 +366,8 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
 /// @brief create a new document key
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
   return _logCol->createKey(input);
+}
+
+ExecutorInfos const& ExecutionBlockImpl<DistributeExecutor>::infos() const {
+  return _infos;
 }

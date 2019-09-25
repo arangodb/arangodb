@@ -21,11 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationExecutorTraits.h"
+
+#include "Aql/AqlItemBlockUtils.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -34,7 +36,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
-#include "AqlItemBlockUtils.h"
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
