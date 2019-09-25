@@ -3098,15 +3098,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    auto type = index.getIndex()->type();
-    if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX ||
-        type == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO_INDEX ||
-        type == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX ||
-        type == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) {
-      // these indexes cannot be used
-      return true;
-    }
-
     transaction::Methods* trx = _plan->getAst()->query()->trx();
     bool isSorted = false;
     bool isSparse = false;
