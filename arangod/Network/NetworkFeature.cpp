@@ -66,7 +66,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Network"),
       _numIOThreads(1),
       _maxOpenConnections(128),
-      _connectionTtlMilli(5 * 60 * 1000),
+      _connectionTtlMilli(3 * 60 * 1000),
       _verifyHosts(false) {
   setOptional(true);
   startsAfter("Server");

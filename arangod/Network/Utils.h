@@ -20,18 +20,16 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
 #ifndef ARANGOD_NETWORK_UTILS_H
 #define ARANGOD_NETWORK_UTILS_H 1
 
 #include "Basics/Result.h"
 #include "Network/types.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/OperationResult.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-#include <chrono>
 
 namespace arangodb {
 namespace velocypack {
@@ -68,24 +66,6 @@ void errorCodesFromHeaders(network::Headers headers,
 /// @brief transform response into arango error code
 int fuerteToArangoErrorCode(network::Response const& res);
 int fuerteToArangoErrorCode(fuerte::Error err);
-
-/// @brief Create Cluster Communication result for insert
-OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
-                                    std::shared_ptr<velocypack::Buffer<uint8_t>> body,
-                                    OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
-OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
-                                      std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                      OperationOptions options,
-                                      std::unordered_map<int, size_t> const& errorCounter);
-OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
-                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
-OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
-                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
-                                    OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
 
 }  // namespace network
 }  // namespace arangodb

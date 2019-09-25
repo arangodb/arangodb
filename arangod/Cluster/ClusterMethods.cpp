@@ -41,6 +41,7 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Futures/Utilities.h"
 #include "Graph/Traverser.h"
+#include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "StorageEngine/HotBackupCommon.h"
@@ -3476,6 +3477,9 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   if (!result.ok()) {  // This is disaster!
     return result;
   }
+  
+  // no need to keep open broken connections
+  network::pruneConnectionsToServers(dbServers);
 
   auto startTime = std::chrono::steady_clock::now();
   while (true) {  // will be left by a timeout
@@ -3509,7 +3513,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       break;
     }
   }
-
+  
   {
     VPackObjectBuilder o(&report);
     report.add("previous", VPackValue(previous));

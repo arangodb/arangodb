@@ -565,6 +565,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
+  Network/ClusterUtils.cpp
   Network/ConnectionPool.cpp
   Network/Methods.cpp
   Network/NetworkFeature.cpp
