@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/SubqueryEndExecutor.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
@@ -52,9 +53,28 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  TRI_ASSERT(false);
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  TRI_ASSERT(trx != nullptr);
 
-  return nullptr;
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+
+  auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
+  RegisterId outReg = outVar->second.registerId;
+  outputRegisters->emplace(outReg);
+
+  // The const_cast has been taken from previous implementation.
+  SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
+                                 getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                 getRegisterPlan()->nrRegs[getDepth()],
+                                 getRegsToClear(), calcRegsToKeep(), trx, outReg);
+
+  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
+                                                                   std::move(infos));
 }
 
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,
