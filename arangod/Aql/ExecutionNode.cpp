@@ -52,11 +52,14 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Aql/SubqueryEndExecutionNode.h"
 #include "Aql/SubqueryExecutor.h"
+#include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
+#include "Meta/static_assert_size.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -101,6 +104,8 @@ std::unordered_map<int, std::string const> const typeNames{
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
+    {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
+    {static_cast<int>(ExecutionNode::SUBQUERY_END), "SubqueryEndNode"},
     {static_cast<int>(ExecutionNode::DISTRIBUTE_CONSUMER),
      "DistributeConsumer"}};
 
@@ -332,6 +337,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
+    case SUBQUERY_START:
+      return new SubqueryStartNode(plan, slice);
+    case SUBQUERY_END:
+      return new SubqueryEndNode(plan, slice);
     case DISTRIBUTE_CONSUMER:
       return new DistributeConsumerNode(plan, slice);
     default: {
@@ -544,6 +553,18 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClo
     }
     ++it;
   }
+}
+
+bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
+  std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =
+      [](ExecutionNode* const l, ExecutionNode* const r) {
+        return l->isEqualTo(*r);
+      };
+
+  return ((this->getType() == other.getType()) && (_id == other._id) &&
+          (_depth == other._depth) &&
+          (std::equal(_dependencies.begin(), _dependencies.end(),
+                      other._dependencies.begin(), comparator)));
 }
 
 /// @brief invalidate the cost estimation for the node and its dependencies

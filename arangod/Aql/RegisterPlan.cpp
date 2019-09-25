@@ -30,6 +30,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/SubqueryEndExecutionNode.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -296,6 +297,20 @@ void RegisterPlan::after(ExecutionNode* en) {
       TRI_ASSERT(ep);
 
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
+    }
+
+    case ExecutionNode::SUBQUERY_START: {
+      break;
+    }
+
+    case ExecutionNode::SUBQUERY_END: {
+      nrRegsHere[depth]++;
+      nrRegs[depth]++;
+      auto ep = ExecutionNode::castTo<SubqueryEndNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      totalNrRegs++;
       break;
     }
 

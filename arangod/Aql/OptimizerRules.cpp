@@ -44,6 +44,8 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
@@ -4570,6 +4572,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           break;
         }
 
+        case EN::SUBQUERY_START:
+        case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
@@ -7173,6 +7177,50 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       plan->insertAfter(f, limitNode);
       modified = true;
     }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+// Splices in subqueries by replacing subquery nodes by
+// a SubqueryStartNode and a SubqueryEndNode with the subquery's nodes
+// in between.
+void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                         OptimizerRule const& rule) {
+  bool modified = false;
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
+
+  std::unordered_map<ExecutionNode*, std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>> subqueryAttributes;
+
+  for (auto const& n : nodes) {
+    modified = true;
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(n);
+
+    // insert a SubqueryStartNode before the SubqueryNode
+    SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
+    plan->registerNode(start);
+    plan->insertBefore(sq, start);
+
+    // All parents of the Singleton of the subquery become parents of the SubqueryStartNode
+    // The singleton will be deleted after.
+    // TODO: Meh const_cast
+    ExecutionNode *singleton = const_cast<ExecutionNode*>(sq->getSubquery()->getSingleton());
+    std::vector<ExecutionNode*> deps = singleton->getParents();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      x->replaceDependency(singleton, start);
+    }
+
+    // insert a SubqueryEndNode after the SubqueryNode sq
+    SubqueryEndNode* end =
+        new SubqueryEndNode(plan.get(), plan->nextId(), sq->outVariable());
+    plan->registerNode(end);
+    plan->insertAfter(sq, end);
+
+    end->replaceDependency(sq, sq->getSubquery());
   }
 
   opt->addPlan(std::move(plan), rule, modified);
