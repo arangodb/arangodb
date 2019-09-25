@@ -22,14 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionAccessingNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -142,4 +143,34 @@ void CollectionAccessingNode::useAsSatellite() {
 #ifdef USE_ENTERPRISE
   _isSatellite = true;
 #endif
+}
+
+aql::Collection const* CollectionAccessingNode::collection() const {
+  return _collection;
+}
+
+void CollectionAccessingNode::restrictToShard(std::string const& shardId) {
+  _restrictedTo = shardId;
+}
+
+bool CollectionAccessingNode::isRestricted() const {
+  return !_restrictedTo.empty();
+}
+
+std::string const& CollectionAccessingNode::restrictedShard() const {
+  return _restrictedTo;
+}
+
+void CollectionAccessingNode::setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                                           arangodb::aql::Variable const* prototypeOutVariable) {
+  _prototypeCollection = prototypeCollection;
+  _prototypeOutVariable = prototypeOutVariable;
+}
+
+aql::Collection const* CollectionAccessingNode::prototypeCollection() const {
+  return _prototypeCollection;
+}
+
+aql::Variable const* CollectionAccessingNode::prototypeOutVariable() const {
+  return _prototypeOutVariable;
 }

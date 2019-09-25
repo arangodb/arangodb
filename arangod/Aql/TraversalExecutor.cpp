@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
+
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"

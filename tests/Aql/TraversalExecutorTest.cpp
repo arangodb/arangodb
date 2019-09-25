@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"

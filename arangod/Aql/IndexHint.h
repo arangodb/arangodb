@@ -25,8 +25,8 @@
 #define ARANGOD_AQL_INDEX_HINT_H 1
 
 #include <iosfwd>
-
-#include "Aql/AstNode.h"
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -35,6 +35,7 @@ class Slice;
 }
 
 namespace aql {
+struct AstNode;
 
 /// @brief container for index hint information
 class IndexHint {

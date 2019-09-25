@@ -30,11 +30,11 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -47,7 +47,6 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -67,7 +66,6 @@
 #include "V8/v8-globals.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Collections.h"
 

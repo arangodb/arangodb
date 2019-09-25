@@ -35,10 +35,12 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Cluster/ServerState.h"
 

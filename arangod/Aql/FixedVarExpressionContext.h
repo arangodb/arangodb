@@ -25,7 +25,9 @@
 #define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
 
 #include "Aql/AqlValue.h"
-#include "QueryExpressionContext.h"
+#include "Aql/QueryExpressionContext.h"
+
+#include <unordered_map>
 
 namespace arangodb {
 namespace velocypack {
@@ -37,10 +39,9 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(Query* query)
-      : QueryExpressionContext(query) {}
+  explicit FixedVarExpressionContext(Query* query);
 
-  ~FixedVarExpressionContext() {}
+  ~FixedVarExpressionContext() override = default;
 
   size_t numRegisters() const override;
 

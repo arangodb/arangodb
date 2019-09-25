@@ -28,6 +28,8 @@
 
 #include "Aql/ExecutionStats.h"
 
+#include <cstddef>
+
 namespace arangodb {
 namespace aql {
 

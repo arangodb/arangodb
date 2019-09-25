@@ -33,17 +33,17 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewExecutor.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -51,7 +51,6 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -75,10 +74,8 @@
 
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchMMFilesLink.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "velocypack/Iterator.h"
 

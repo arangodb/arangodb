@@ -24,13 +24,14 @@
 #ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
 
-#include "Basics/Common.h"
-
 #include "Aql/types.h"
-#include "Cluster/ClusterInfo.h"
 
 #include <stack>
+#include <string>
+#include <unordered_set>
+
 namespace arangodb {
+class Result;
 
 namespace aql {
 
@@ -60,7 +61,7 @@ class EngineInfoContainerCoordinator {
                        MapRemoteToSnippet const& dbServerQueryIds,
                        std::vector<uint64_t>& coordinatorQueryIds) const;
 
-    QueryId queryId() const { return _id; }
+    QueryId queryId() const;
 
    private:
     // The generated id how we can find this query part
