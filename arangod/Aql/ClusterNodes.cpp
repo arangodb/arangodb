@@ -390,7 +390,10 @@ CostEstimate DistributeNode::estimateCost() const {
 /// @brief construct a gather node
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
-    : ExecutionNode(plan, base), _elements(elements), _sortmode(SortMode::MinElement) {
+    : ExecutionNode(plan, base),
+      _elements(elements),
+      _sortmode(SortMode::MinElement),
+      _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
 
@@ -407,7 +410,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 }
 
 GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept
-    : ExecutionNode(plan, id), _sortmode(sortMode) {}
+    : ExecutionNode(plan, id), _sortmode(sortMode), _limit(0) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
