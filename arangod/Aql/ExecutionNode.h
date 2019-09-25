@@ -151,6 +151,9 @@ class ExecutionNode {
     REMOTESINGLE = 26,
     ENUMERATE_IRESEARCH_VIEW = 27,
     DISTRIBUTE_CONSUMER = 28,
+    SUBQUERY_START = 29,
+    SUBQUERY_END = 30,
+
     MAX_NODE_TYPE_VALUE
   };
 
@@ -292,6 +295,9 @@ class ExecutionNode {
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;
+
+  /// @brief check equality of ExecutionNodes
+  virtual bool isEqualTo(ExecutionNode const& other) const;
 
   /// @brief invalidate the cost estimate for the node and its dependencies
   virtual void invalidateCost();
