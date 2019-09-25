@@ -1,6 +1,8 @@
 v3.4.9 (XXX-XX-XX)
 -------------------
 
+* Fix config directory handling, so we don't trap into UNC path lookups on windows
+
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
 * Fixed a bug in the edge cache's internal memory accounting, which led
