@@ -4186,16 +4186,18 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  double const until = TRI_microtime() + value.toDouble();
+  double now = TRI_microtime();
+  double const until = now + value.toDouble();
 
-  while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  while (now < until) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     } else if (application_features::ApplicationServer::isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    now = TRI_microtime();
   }
   return AqlValue(AqlValueHintNull());
 }
@@ -6147,8 +6149,9 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
-      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual(options));
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();

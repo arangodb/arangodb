@@ -114,7 +114,7 @@ int64_t Slice::getSmallIntUnchecked() const noexcept {
 // translates an integer key into a string, without checks
 Slice Slice::translateUnchecked() const {
   uint8_t const* result = Options::Defaults.attributeTranslator->translate(getUIntUnchecked());
-  if (result != nullptr) {
+  if (VELOCYPACK_LIKELY(result != nullptr)) {
     return Slice(result);
   }
   return Slice();
@@ -384,9 +384,7 @@ int Slice::compareString(StringRef const& value) const {
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
-    if (keyLength != length) {
-      return (keyLength > length) ? 1 : -1;
-    }
+    return static_cast<int>(keyLength - length);
   }
   return res;
 }
@@ -400,9 +398,7 @@ int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
-    if (keyLength != length) {
-      return (keyLength > length) ? 1 : -1;
-    }
+    return static_cast<int>(keyLength - length);
   }
   return res;
 }
@@ -598,49 +594,42 @@ Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
   bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
   VELOCYPACK_ASSERT(n > 0);
 
-  ValueLength l = 0;
-  ValueLength r = n - 1;
-  ValueLength index = r / 2;
+  int64_t l = 0;
+  int64_t r = static_cast<int64_t>(n) - 1;
+  int64_t index = r / 2;
 
-  while (true) {
+  do {
     ValueLength offset = ieBase + index * offsetSize;
     Slice key(_start + readIntegerFixed<ValueLength, offsetSize>(_start + offset));
 
     int res;
     if (key.isString()) {
       res = key.compareStringUnchecked(attribute.data(), attribute.size());
-    } else if (key.isSmallInt() || key.isUInt()) {
+    } else {
+      VELOCYPACK_ASSERT(key.isSmallInt() || key.isUInt());
       // translate key
       if (VELOCYPACK_UNLIKELY(!useTranslator)) {
         // no attribute translator
         throw Exception(Exception::NeedAttributeTranslator);
       }
       res = key.translateUnchecked().compareString(attribute);
-    } else {
-      // invalid key
-      return Slice();
-    }
-
-    if (res == 0) {
-      // found. now return a Slice pointing at the value
-      return Slice(key.start() + key.byteSize());
     }
 
     if (res > 0) {
-      if (index == 0) {
-        return Slice();
-      }
       r = index - 1;
+    } else if (res == 0) {
+      // found. now return a Slice pointing at the value
+      return Slice(key.start() + key.byteSize());
     } else {
       l = index + 1;
-    }
-    if (r < l) {
-      return Slice();
     }
     
     // determine new midpoint
     index = l + ((r - l) / 2);
-  }
+  } while (r >= l);
+  
+  // not found
+  return Slice();
 }
 
 // template instanciations for searchObjectKeyBinary
