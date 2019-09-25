@@ -44,15 +44,12 @@ int resolveDestination(DestinationId const& dest, network::EndpointSpec&);
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
                       int defaultError);
-Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& b,
-                      int defaultError);
-Result resultFromBody(arangodb::velocypack::Slice b,
-                      int defaultError);
-  
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& b, int defaultError);
+Result resultFromBody(arangodb::velocypack::Slice b, int defaultError);
+
 /// @brief extract the error from a cluster response
-template<typename T>
-OperationResult opResultFromBody(T const& body,
-                                 int defaultErrorCode) {
+template <typename T>
+OperationResult opResultFromBody(T const& body, int defaultErrorCode) {
   return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode));
 }
 

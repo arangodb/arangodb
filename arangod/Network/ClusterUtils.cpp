@@ -99,7 +99,7 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
     }
   }
 }
-  
+
 /// @brief Create Cluster Communication result for delete
 OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,

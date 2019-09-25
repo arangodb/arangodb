@@ -103,7 +103,7 @@ int errorCodeFromBody(arangodb::velocypack::Slice body) {
   }
   return TRI_ERROR_ILLEGAL_NUMBER;
 }
-  
+
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,
                       int defaultError) {
   // read the error number from the response and use it if present
@@ -112,10 +112,9 @@ Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> con
   }
   return Result(defaultError);
 }
-  
+
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
                       int defaultError) {
-  
   // read the error number from the response and use it if present
   if (body) {
     return resultFromBody(body->slice(), defaultError);
@@ -123,9 +122,8 @@ Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body
 
   return Result(defaultError);
 }
-  
-Result resultFromBody(arangodb::velocypack::Slice slice,
-                      int defaultError) {
+
+Result resultFromBody(arangodb::velocypack::Slice slice, int defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
     VPackSlice num = slice.get(StaticStrings::ErrorNum);
@@ -156,7 +154,7 @@ void errorCodesFromHeaders(network::Headers headers,
     if (!codesSlice.isObject()) {
       return;
     }
-    
+
     for (auto const& code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
@@ -167,23 +165,17 @@ void errorCodesFromHeaders(network::Headers headers,
     }
   }
 }
-  
-int fuerteToArangoErrorCode(network::Response const& res) {
-  return fuerteToArangoErrorCode(res.error);
-}
-  
-int fuerteToArangoErrorCode(fuerte::Error err) {
 
+namespace {
+
+int toArangoErrorCodeInternal(fuerte::Error err) {
   // This function creates an error code from a ClusterCommResult,
   // but only if it is a communication error. If the communication
   // was successful and there was an HTTP error code, this function
   // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
-  
-  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, err != fuerte::Error::NoError)
-   << "cluster error " << fuerte::to_string(err);
-  
+
   switch (err) {
     case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;
@@ -197,7 +189,7 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
 
     case fuerte::Error::Timeout:  // No reply, we give up:
       return TRI_ERROR_CLUSTER_TIMEOUT;
-      
+
     case fuerte::Error::Canceled:
       return TRI_ERROR_REQUEST_CANCELED;
 
@@ -206,12 +198,26 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
     case fuerte::Error::WriteError:
     case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-      
+
     case fuerte::Error::VstUnauthorized:
       return TRI_ERROR_FORBIDDEN;
   }
 
   return TRI_ERROR_INTERNAL;
+}
+}  // namespace
+
+int fuerteToArangoErrorCode(network::Response const& res) {
+  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError)
+      << "cluster error: '" << fuerte::to_string(res.error)
+      << "' from destination '" << res.destination << "'";
+  return toArangoErrorCodeInternal(res.error);
+}
+
+int fuerteToArangoErrorCode(fuerte::Error err) {
+  LOG_TOPIC_IF("abcdf", ERR, Logger::CLUSTER, err != fuerte::Error::NoError)
+      << "cluster error: '" << fuerte::to_string(err);
+  return toArangoErrorCodeInternal(err);
 }
 }  // namespace network
 }  // namespace arangodb
