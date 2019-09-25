@@ -6953,6 +6953,7 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
         auto sortNode = ExecutionNode::castTo<SortNode*>(current);
         if (shouldApplyHeapOptimization(*sortNode, *limitNode)) {
           sortNode->setLimit(limitNode->offset() + limitNode->limit());
+          mod = true;
         }
       } else if (current->getType() == EN::GATHER) {
         // Make sorting gather nodes aware of the limit, so they may skip after
@@ -6960,6 +6961,7 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
         auto gatherNode = ExecutionNode::castTo<GatherNode*>(current);
         if (gatherNode->isSortingGather()) {
           gatherNode->setConstrainedSortLimit(limitNode->offset() + limitNode->limit());
+          mod = true;
         }
       }
 
