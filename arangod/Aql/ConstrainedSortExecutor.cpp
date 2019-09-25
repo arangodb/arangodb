@@ -23,13 +23,12 @@
 
 #include "ConstrainedSortExecutor.h"
 
-#include "Basics/Common.h"
-
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 
