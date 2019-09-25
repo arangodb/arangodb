@@ -4185,16 +4185,18 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  double const until = TRI_microtime() + value.toDouble();
+  double now = TRI_microtime();
+  double const until = now + value.toDouble();
 
-  while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  while (now < until) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     } else if (application_features::ApplicationServer::isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    now = TRI_microtime();
   }
   return AqlValue(AqlValueHintNull());
 }
