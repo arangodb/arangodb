@@ -638,19 +638,22 @@ void ClusterInfo::loadPlan() {
         TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
         if (vocbase == nullptr) {
           // database does not yet exist, create it now
-          TRI_voc_tick_t id =
-              arangodb::basics::VelocyPackHelper::stringUInt64(database.value,
-                                                               StaticStrings::DatabaseId);
+          
           // create a local database object...
           arangodb::CreateDatabaseInfo info;
-          info.load(id, database.value);
-
-          Result res = databaseFeature->createDatabase(info, vocbase);
-
+          Result res = info.load(database.value, VPackSlice::emptyArraySlice());
           if (res.fail()) {
-            LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
-                << "creating local database '" << name
+            LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
+                << "validating data for local database '" << name
                 << "' failed: " << res.errorMessage();
+          } else {
+            res = databaseFeature->createDatabase(info, vocbase);
+
+            if (res.fail()) {
+              LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
+                  << "creating local database '" << name
+                  << "' failed: " << res.errorMessage();
+            }
           }
         }
       }
