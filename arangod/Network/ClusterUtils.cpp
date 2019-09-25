@@ -127,9 +127,11 @@ OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
 }
 
 void pruneConnectionsToServers(std::vector<std::string> const& serverIDs) {
+  LOG_DEVEL << "pruneConnectionsToServers";
   ConnectionPool* pool = NetworkFeature::pool();
   if (pool) {
     for (std::string const& serverId : serverIDs) {
+      LOG_DEVEL << serverId;
       EndpointSpec spec;
       int res = network::resolveDestination(serverId, spec);
       if (res == TRI_ERROR_NO_ERROR) {

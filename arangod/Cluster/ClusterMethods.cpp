@@ -351,6 +351,22 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
 }
 
 /// @brief handle CRUD api shard responses, slow path
+template <typename F, typename CT>
+OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
+                                             std::vector<Try<network::Response>> const& results) {
+  std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
+  std::unordered_map<int, size_t> errorCounter;
+  fuerte::StatusCode code;
+
+  collectResponsesFromAllShards(opCtx.shardMap, results, errorCounter, resultMap, code);
+  TRI_ASSERT(resultMap.size() == results.size());
+
+  VPackBuilder resultBody;
+  mergeResults(opCtx.reverseMapping, resultMap, resultBody);
+  return std::forward<F>(func)(code, resultBody.steal(), std::move(opCtx.options), errorCounter);
+}
+
+/// @brief handle CRUD api shard responses, slow path
 template <typename F>
 OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, OperationOptions options,
                                              std::vector<Try<network::Response>> const& responses) {
@@ -3470,6 +3486,9 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   // such that we can wait until all have reregistered and are up:
   ci->loadCurrentDBServers();
   auto const preServersKnown = ci->rebootIds();
+  
+  // no need to keep connections to shut-down servers
+  network::pruneConnectionsToServers(dbServers);
 
   // Restore all db servers
   std::string previous;
