@@ -229,7 +229,8 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
                                           bool extractId, bool extractName) {
   if (options.isNone() || options.isNull()) {
     return Result();
-  } else if (!options.isObject()) {
+  } 
+  if (!options.isObject()) {
     events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
@@ -238,7 +239,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _minReplicationFactor = vocopts.minReplicationFactor;
   _sharding = vocopts.sharding;
-
+  
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
     if (!nameSlice.isString()) {
@@ -320,8 +321,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
         vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
-            << "Can not access ClusterFeature to determine database "
-               "replicationFactor";
+            << "Cannot access ClusterFeature to determine replicationFactor";
       }
     } else if (isSatellite) {
       vocbaseOptions.replicationFactor = 0;
@@ -335,8 +335,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
         vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
-            << "Can not access ClusterFeature to determine database "
-               "replicationFactor";
+            << "Cannot access ClusterFeature to determine replicationFactor";
         vocbaseOptions.replicationFactor = 1;
       }
     }
@@ -352,8 +351,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
         vocbaseOptions.minReplicationFactor = server.getFeature<ClusterFeature>().minReplicationFactor();
       } else {
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
-            << "Can not access ClusterFeature to determine database "
-               "minReplicationFactor";
+            << "Cannot access ClusterFeature to determine minReplicationFactor";
       }
     } else if (isNumber) {
       vocbaseOptions.minReplicationFactor =

@@ -89,6 +89,7 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>

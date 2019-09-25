@@ -40,7 +40,6 @@
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Slice.h>
 
@@ -53,9 +52,11 @@ class QueryList;
 }
 namespace velocypack {
 class Builder;
+class Slice;
 class StringRef;
 }  // namespace velocypack
 class CollectionKeysRepository;
+class CreateDatabaseInfo;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
@@ -63,12 +64,6 @@ class LogicalDataSource;
 class LogicalView;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
-
-namespace velocypack {
-  class Builder;
-  class Slice;
-}
-
 }  // namespace arangodb
 
 /// @brief predefined collection name for users

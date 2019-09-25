@@ -68,7 +68,8 @@ OptimizerRule const& OptimizerRulesFeature::ruleByLevel(int level) {
     return (*it);
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find required OptimizerRule");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unable to find required OptimizerRule");
 }
 
 int OptimizerRulesFeature::ruleIndex(int level) {
@@ -77,7 +78,8 @@ int OptimizerRulesFeature::ruleIndex(int level) {
     return static_cast<int>(std::distance(_rules.begin(), it));
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find required OptimizerRule");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unable to find required OptimizerRule");
 }
 
 OptimizerRule const& OptimizerRulesFeature::ruleByIndex(int index) {
@@ -86,7 +88,8 @@ OptimizerRule const& OptimizerRulesFeature::ruleByIndex(int index) {
     return _rules[index];
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find required OptimizerRule");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unable to find required OptimizerRule");
 }
 
 /// @brief register a rule
@@ -102,7 +105,8 @@ void OptimizerRulesFeature::registerRule(char const* name, RuleFunction func,
   // duplicate rules are not allowed
   TRI_ASSERT(_ruleLookup.find(ruleName) == _ruleLookup.end());
 
-  LOG_TOPIC("18669", TRACE, Logger::AQL) << "adding optimizer rule '" << name << "' with level " << level;
+  LOG_TOPIC("18669", TRACE, Logger::AQL)
+      << "adding optimizer rule '" << name << "' with level " << level;
 
   OptimizerRule rule(ruleName, func, level, flags);
 
@@ -202,7 +206,6 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule2,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
 
   // remove unused INTO variable from COLLECT, or unused aggregates
   registerRule("remove-collect-variables", removeCollectVariablesRule,
@@ -312,9 +315,10 @@ void OptimizerRulesFeature::addRules() {
 
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
-  registerRule("cluster-one-shard", clusterOneShardRule,
-               OptimizerRule::clusterOneShardRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::DisabledByDefault, OptimizerRule::Flags::ClusterOnly));
+  registerRule("cluster-one-shard", clusterOneShardRule, OptimizerRule::clusterOneShardRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::ClusterOnly));
 #endif
 
   registerRule("distribute-in-cluster", distributeInClusterRule,
@@ -373,14 +377,19 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+  // Splice subqueries
+  registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault));
 
   // finally add the storage-engine specific rules
   addStorageEngineRules();
 
   // finally sort all rules by their level
-  std::sort(_rules.begin(), _rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
-    return (lhs.level < rhs.level);
-  });
+  std::sort(_rules.begin(), _rules.end(),
+            [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
+              return (lhs.level < rhs.level);
+            });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on

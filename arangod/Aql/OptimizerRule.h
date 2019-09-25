@@ -291,6 +291,11 @@ struct OptimizerRule {
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
+
+    // splice subquery into the place of a subquery node
+    // enclosed by a SubqueryStartNode and a SubqueryEndNode
+    // Must run last.
+    spliceSubqueriesRule
   };
 
   velocypack::StringRef name;

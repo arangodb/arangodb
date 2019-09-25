@@ -177,7 +177,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  if(!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))){
+  if (!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -300,13 +300,13 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   }
 
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
-    if(!createInfo.validId()){
+    if (!createInfo.validId()) {
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       createInfo.setId(clusterInfo.uniqid());
     }
     res = createCoordinator(createInfo);
   } else {  // Single, DBServer, Agency
-    if(!createInfo.validId()){
+    if (!createInfo.validId()) {
       createInfo.setId(TRI_NewTickServer());
     }
     res = createOther(createInfo);
