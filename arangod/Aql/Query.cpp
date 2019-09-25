@@ -432,7 +432,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
   std::unique_ptr<ExecutionEngine> engine(
-      ExecutionEngine::instantiateFromPlan(registry, this, plan.get(),
+      ExecutionEngine::instantiateFromPlan(*registry, *this, *plan,
                                            !_queryString.empty()));
 
   if (_engine == nullptr) {

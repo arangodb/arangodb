@@ -74,6 +74,9 @@
 #include "Logger/LogTopic.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +267,7 @@ class Logger {
   }
 
  public:
-  static void initialize(bool);
+  static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
   static void flush();
 

@@ -24,19 +24,19 @@
 #define ARANGOD_NETWORK_NETWORK_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Network/ConnectionPool.h"
 #include "Scheduler/Scheduler.h"
 
 #include <atomic>
 #include <mutex>
 
 namespace arangodb {
-namespace network {
-class ConnectionPool;
-}
 
 class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   explicit NetworkFeature(application_features::ApplicationServer& server);
+  explicit NetworkFeature(application_features::ApplicationServer& server,
+                          network::ConnectionPool::Config);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -46,14 +46,10 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void stop() override;
 
   /// @brief global connection pool
-  static arangodb::network::ConnectionPool* pool() {
-    return _poolPtr.load(std::memory_order_acquire);
-  }
+  arangodb::network::ConnectionPool* pool() const;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  static void setPoolTesting(arangodb::network::ConnectionPool* pool) {
-    _poolPtr.store(pool, std::memory_order_release);
-  }
+  void setPoolTesting(arangodb::network::ConnectionPool* pool);
 #endif
 
  private:
@@ -68,7 +64,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   std::function<void(bool)> _gcfunc;
 
   std::unique_ptr<network::ConnectionPool> _pool;
-  static std::atomic<network::ConnectionPool*> _poolPtr;
+  std::atomic<network::ConnectionPool*> _poolPtr;
 };
 
 }  // namespace arangodb

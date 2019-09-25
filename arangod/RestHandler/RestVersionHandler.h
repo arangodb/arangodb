@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
-  RestVersionHandler(GeneralRequest*, GeneralResponse*);
+  RestVersionHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestVersionHandler"; }

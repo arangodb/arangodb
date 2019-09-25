@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 
 namespace arangodb {
@@ -96,7 +97,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   void stop() override final;
 
+  std::shared_ptr<HeartbeatThread> heartbeatThread();
+
+  ClusterInfo& clusterInfo();
+
  private:
+  std::unique_ptr<ClusterInfo> _clusterInfo;
   bool _unregisterOnShutdown;
   bool _enableCluster;
   bool _requirePersistedId;

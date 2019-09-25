@@ -35,9 +35,10 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
  public:
   // @note RestHandlerFactory::createHandler(...) passes raw pointers for
   //       request/response to RestHandlerCreator::createNoData(...)
-  RestAnalyzerHandler( // constructor
-    arangodb::GeneralRequest* request, // request
-    arangodb::GeneralResponse* response // response
+  RestAnalyzerHandler(  // constructor
+      application_features::ApplicationServer& server,
+      arangodb::GeneralRequest* request,   // request
+      arangodb::GeneralResponse* response  // response
   );
 
   virtual arangodb::RestStatus execute() override;

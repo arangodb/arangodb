@@ -299,14 +299,11 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
       _meta(std::move(meta)),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
-  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::DatabaseFeature // type
-  >("Database");
-
-  if (databaseFeature) {
+  if (vocbase.server().hasFeature<arangodb::DatabaseFeature>()) {
+    auto& databaseFeature = vocbase.server().getFeature<arangodb::DatabaseFeature>();
     auto view = _asyncSelf; // create copy for lambda
 
-    databaseFeature->registerPostRecoveryCallback([view]()->arangodb::Result {
+    databaseFeature.registerPostRecoveryCallback([view]() -> arangodb::Result {
       auto& viewMutex = view->mutex();
       SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
       auto* viewPtr = view->get();

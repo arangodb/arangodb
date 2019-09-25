@@ -20,29 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GreetingsPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_SERVER_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
-  setOptional(false);
-
-  startsAfter("Config");
-  startsAfter("Logger");
-  startsAfter("Random");
-  startsAfter("ShellColors");
-  startsAfter("Version");
-  startsAfter("WorkMonitor");
-
-  if (!isClient) {
-    // These are server only features
-    startsAfter("Greetings");
-    startsAfter("Jemalloc");
-    startsAfter("LoggerBuffer");
-  }
-}
+class ServerFeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit ServerFeaturePhase(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

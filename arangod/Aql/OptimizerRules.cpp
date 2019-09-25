@@ -58,7 +58,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Geo/GeoParams.h"
 #include "Graph/TraverserOptions.h"
@@ -3884,9 +3884,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           ExecutionNode::castTo<ModificationNode*>(node)->collection();
 
 #ifdef USE_ENTERPRISE
-      auto ci = ClusterInfo::instance();
+      auto& ci = collection->vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
       auto collInfo =
-          ci->getCollection(collection->vocbase()->name(), collection->name());
+          ci.getCollection(collection->vocbase()->name(), collection->name());
       // Throws if collection is not found!
       if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
         node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,

@@ -37,15 +37,11 @@
 
 namespace {
 
-void addTask(std::string&& name, std::string&& desc, uint32_t systemFlag, uint32_t clusterFlag,
+void addTask(arangodb::UpgradeFeature& feature, std::string&& name,
+             std::string&& desc, uint32_t systemFlag, uint32_t clusterFlag,
              uint32_t dbFlag, arangodb::methods::Upgrade::TaskFunction&& action) {
-  auto* upgradeFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
-          "Upgrade");
-
-  TRI_ASSERT(upgradeFeature);
-  upgradeFeature->addTask(arangodb::methods::Upgrade::Task{name, desc, systemFlag, clusterFlag,
-                                                           dbFlag, action});
+  feature.addTask(arangodb::methods::Upgrade::Task{name, desc, systemFlag,
+                                                   clusterFlag, dbFlag, action});
 }
 
 }  // namespace
@@ -207,36 +203,31 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
 }
 
 /// @brief register tasks, only run once on startup
-void methods::Upgrade::registerTasks() {
-  auto* upgradeFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
-          "Upgrade");
-
-  TRI_ASSERT(upgradeFeature);
-  auto& _tasks = upgradeFeature->_tasks;
+void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
+  auto& _tasks = upgradeFeature._tasks;
   TRI_ASSERT(_tasks.empty());
 
-  addTask("createSystemCollectionsAndIndices",
+  addTask(upgradeFeature, "createSystemCollectionsAndIndices",
           "creates all system collections including their indices",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createSystemCollectionsAndIndices);
-  addTask("createSystemStatisticsDBServer",
+  addTask(upgradeFeature, "createSystemStatisticsDBServer",
           "creates the statistics system collections including their indices",
       /*system*/ Flags::DATABASE_SYSTEM,
       /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
       /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createStatisticsCollectionsAndIndices);
-  addTask("addDefaultUserOther", "add default users for a new database",
+  addTask(upgradeFeature, "addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask("persistLocalDocumentIds", "convert collection data from old format",
+  addTask(upgradeFeature, "persistLocalDocumentIds", "convert collection data from old format",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
-  addTask("renameReplicationApplierStateFiles",
+  addTask(upgradeFeature, "renameReplicationApplierStateFiles",
           "rename replication applier state files",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
@@ -246,7 +237,7 @@ void methods::Upgrade::registerTasks() {
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
-  addTask("dropLegacyAnalyzersCollection",            // name
+  addTask(upgradeFeature, "dropLegacyAnalyzersCollection",            // name
           "drop _iresearch_analyzers collection",     // description
           Upgrade::Flags::DATABASE_SYSTEM,            // system flags
           Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // cluster flags
@@ -260,12 +251,8 @@ void methods::Upgrade::registerTasks() {
 UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                          arangodb::velocypack::Slice const& params,
                                          uint32_t clusterFlag, uint32_t dbFlag) {
-  auto* upgradeFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
-          "Upgrade");
-
-  TRI_ASSERT(upgradeFeature);
-  auto& _tasks = upgradeFeature->_tasks;
+  auto& upgradeFeature = vocbase.server().getFeature<arangodb::UpgradeFeature>();
+  auto& _tasks = upgradeFeature._tasks;
 
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   TRI_ASSERT(!_tasks.empty());  // forgot to call registerTask!!

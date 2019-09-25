@@ -79,9 +79,10 @@ struct Options;
 }  // namespace transaction
 
 /// @brief forward declarations
+class ClusterFeature;
 class CollectionNameResolver;
-class LocalDocumentId;
 class Index;
+class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;
 struct OperationCursor;

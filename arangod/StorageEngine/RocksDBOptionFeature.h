@@ -21,8 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_ROCKSDB_OPTION_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_ROCKSDB_OPTION_FEATURE_H 1
+#ifndef ARANGODB_STORAGE_ENGINE_ROCKSDB_OPTION_FEATURE_H
+#define ARANGODB_STORAGE_ENGINE_ROCKSDB_OPTION_FEATURE_H 1
 
 #include <cstdint>
 #include <memory>

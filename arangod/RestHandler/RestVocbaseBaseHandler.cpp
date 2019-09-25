@@ -249,8 +249,10 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response),
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(server, request, response),
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context.vocbase()) {
   TRI_ASSERT(request->requestContext());

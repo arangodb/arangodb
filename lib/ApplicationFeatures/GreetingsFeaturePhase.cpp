@@ -20,21 +20,34 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8ShellPhase.h"
+#include "GreetingsFeaturePhase.h"
+
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
+#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "Random/RandomFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
+GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isClient)
+    : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
 
-  startsAfter("V8Shell");
-  startsAfter("V8Platform");
-  startsAfter("ServerSecurity");
-  startsAfter("V8Security");
-  startsAfter("Console");
+  startsAfter<ConfigFeature>();
+  startsAfter<LoggerFeature>();
+  startsAfter<RandomFeature>();
+  startsAfter<ShellColorsFeature>();
+  startsAfter<VersionFeature>();
+
+  if (!isClient) {
+    // These are server only features
+    startsAfter<GreetingsFeature>();
+    startsAfter<LoggerBufferFeature>();
+  }
 }
 
 }  // namespace application_features

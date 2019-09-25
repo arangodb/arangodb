@@ -29,6 +29,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 
 #include <algorithm>
 
@@ -285,13 +286,14 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
         }
       }
     }
-    auto ci = ClusterInfo::instance();
-    if (ci == nullptr) {
+    auto& server = _query->vocbase().server();
+    if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     // We have at least one shard, otherwise we would not have snippets!
     TRI_ASSERT(!shardIds.empty());
-    _shardMapping = ci->getResponsibleServers(shardIds);
+    _shardMapping = ci.getResponsibleServers(shardIds);
     TRI_ASSERT(_shardMapping.size() == shardIds.size());
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {

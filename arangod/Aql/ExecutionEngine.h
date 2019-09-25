@@ -51,14 +51,14 @@ enum class SerializationFormat;
 class ExecutionEngine {
  public:
   /// @brief create the engine
-  ExecutionEngine(Query* query, SerializationFormat format);
+  ExecutionEngine(Query& query, SerializationFormat format);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
 
  public:
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*, ExecutionPlan*, bool);
+  static ExecutionEngine* instantiateFromPlan(QueryRegistry&, Query&, ExecutionPlan&, bool);
 
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    std::unordered_set<std::string> const& restrictToShards,
@@ -122,7 +122,7 @@ class ExecutionEngine {
   ExecutionBlock* _root;
 
   /// @brief a pointer to the query
-  Query* _query;
+  Query& _query;
 
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;
