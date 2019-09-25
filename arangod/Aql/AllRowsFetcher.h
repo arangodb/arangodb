@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 
 #include <Basics/Exceptions.h>
@@ -103,6 +104,10 @@ class AllRowsFetcher {
 
   // only for ModificationNodes
   ExecutionState upstreamState();
+
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
  private:
   DependencyProxy<false>* _dependencyProxy;
