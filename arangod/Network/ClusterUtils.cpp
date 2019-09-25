@@ -26,6 +26,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -131,6 +133,7 @@ void pruneConnectionsToServers(std::vector<std::string> const& serverIDs) {
       EndpointSpec spec;
       int res = network::resolveDestination(serverId, spec);
       if (res == TRI_ERROR_NO_ERROR) {
+        LOG_DEVEL << "aborting connections to " << serverId << " on " << spec.endpoint;
         pool->cancelConnections(spec.endpoint);
       }
     }

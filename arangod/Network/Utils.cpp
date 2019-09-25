@@ -216,7 +216,7 @@ int fuerteToArangoErrorCode(network::Response const& res) {
 
 int fuerteToArangoErrorCode(fuerte::Error err) {
   LOG_TOPIC_IF("abcdf", ERR, Logger::CLUSTER, err != fuerte::Error::NoError)
-      << "cluster error: '" << fuerte::to_string(err);
+      << "cluster error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
 }
 }  // namespace network
