@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"

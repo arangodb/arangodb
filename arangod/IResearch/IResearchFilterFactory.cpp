@@ -28,9 +28,6 @@
 #undef NOEXCEPT
 #endif
 
-#include <cctype>
-#include <type_traits>
-
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
@@ -42,18 +39,18 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
-#include "AqlHelper.h"
+#include "Aql/Range.h"
 #include "Basics/StringUtils.h"
-#include "ExpressionFilter.h"
-#include "IResearchAnalyzerFeature.h"
-#include "IResearchCommon.h"
-#include "IResearchDocument.h"
-#include "IResearchFeature.h"
-#include "IResearchFilterFactory.h"
-#include "IResearchKludge.h"
-#include "IResearchPrimaryKeyFilter.h"
+#include "IResearch/AqlHelper.h"
+#include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchKludge.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb::iresearch;
 using namespace std::literals::string_literals;

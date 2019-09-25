@@ -154,16 +154,15 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds(
 std::vector<std::string> Collection::shardKeys(bool normalize) const {
   auto coll = getCollection();
   auto const& originalKeys = coll->shardKeys();
-    
-  if (normalize && 
-      coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
+
+  if (normalize && coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
     // smart vertex collection always has ["_key:"] as shard keys
     TRI_ASSERT(originalKeys.size() == 1);
     TRI_ASSERT(originalKeys[0] == "_key:");
     // now normalize it this to _key
-    return std::vector<std::string>{ StaticStrings::KeyString };
+    return std::vector<std::string>{StaticStrings::KeyString};
   }
-  
+
   std::vector<std::string> keys;
   keys.reserve(originalKeys.size());
   for (auto const& key : originalKeys) {
@@ -201,7 +200,36 @@ bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
 /// @brief check if collection is a satellite collection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
-  
+
 /// @brief return the name of the smart join attribute (empty string
 /// if no smart join attribute is present)
-std::string const& Collection::smartJoinAttribute() const { return getCollection()->smartJoinAttribute(); }
+std::string const& Collection::smartJoinAttribute() const {
+  return getCollection()->smartJoinAttribute();
+}
+
+TRI_vocbase_t* Collection::vocbase() const { return _vocbase; }
+
+AccessMode::Type Collection::accessType() const { return _accessType; }
+
+void Collection::accessType(AccessMode::Type type) { _accessType = type; }
+
+bool Collection::isReadWrite() const { return _isReadWrite; }
+
+void Collection::isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+
+void Collection::setCurrentShard(std::string const& shard) {
+  _currentShard = shard;
+}
+
+void Collection::resetCurrentShard() { _currentShard.clear(); }
+
+std::string const& Collection::name() const {
+  if (!_currentShard.empty()) {
+    // sharding case: return the current shard name instead of the collection
+    // name
+    return _currentShard;
+  }
+
+  // non-sharding case: simply return the name
+  return _name;
+}

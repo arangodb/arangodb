@@ -26,14 +26,15 @@
 #include "gtest/gtest.h"
 
 #include "RowFetcherHelper.h"
-#include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
@@ -44,10 +45,6 @@
 
 // required for QuerySetup
 #include "Mocks/Servers.h"
-
-// Query
-#include "RestServer/AqlFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

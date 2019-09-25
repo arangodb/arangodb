@@ -23,6 +23,7 @@
 
 #include "ShardLocking.h"
 
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"

@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {

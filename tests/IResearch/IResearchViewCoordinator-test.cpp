@@ -29,8 +29,6 @@
 #include "gtest/gtest.h"
 
 #include "utils/locale_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
@@ -41,10 +39,10 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
@@ -59,7 +57,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"

@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFunctionFeature.h"
+
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"

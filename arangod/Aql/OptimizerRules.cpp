@@ -23,7 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-#include "Aql/AqlItemBlock.h"
+
+#include "Aql/Aggregator.h"
 #include "Aql/AstHelper.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -34,6 +35,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
@@ -57,7 +59,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Geo/GeoParams.h"
-#include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -66,7 +67,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
-#include <boost/optional.hpp>
 #include <tuple>
 
 namespace {

@@ -23,14 +23,13 @@
 
 #include "ExecutionEngine.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/OptimizerRule.h"
@@ -39,6 +38,7 @@
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -642,4 +642,30 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
 
   _blocks.emplace_back(block.get());
   return block.release();
+}
+
+ExecutionBlock* ExecutionEngine::root() const {
+  TRI_ASSERT(_root != nullptr);
+  return _root;
+}
+
+void ExecutionEngine::root(ExecutionBlock* root) {
+  TRI_ASSERT(root != nullptr);
+  _root = root;
+}
+
+Query* ExecutionEngine::getQuery() const { return _query; }
+
+bool ExecutionEngine::initializeCursorCalled() const {
+  return _initializeCursorCalled;
+}
+
+void ExecutionEngine::resultRegister(RegisterId resultRegister) {
+  _resultRegister = resultRegister;
+}
+
+RegisterId ExecutionEngine::resultRegister() const { return _resultRegister; }
+
+AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
+  return _itemBlockManager;
 }

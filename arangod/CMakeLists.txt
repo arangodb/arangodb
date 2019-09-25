@@ -218,11 +218,14 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
+  Aql/AqlItemMatrix.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
+  Aql/AqlValueGroup.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
+  Aql/AstHelper.cpp
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BaseExpressionContext.cpp
@@ -240,11 +243,13 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ConditionFinder.cpp
   Aql/ConstFetcher.cpp
   Aql/ConstrainedSortExecutor.cpp
+  Aql/CostEstimate.cpp
   Aql/CountCollectExecutor.cpp
   Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
+  Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp

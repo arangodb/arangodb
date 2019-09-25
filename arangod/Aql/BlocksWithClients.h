@@ -26,14 +26,16 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/SortRegister.h"
-#include "Basics/Common.h"
-#include "Cluster/ClusterComm.h"
-#include "Rest/GeneralRequest.h"
+#include "Aql/ExecutionState.h"
+#include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
+
+#include <cstdint>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
 
@@ -51,6 +53,7 @@ namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
+class ExecutionNode;
 
 class BlocksWithClients : public ExecutionBlock {
  public:
@@ -66,16 +69,10 @@ class BlocksWithClients : public ExecutionBlock {
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) final;
 
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) final;
 
   /// @brief getSomeForShard
   virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(

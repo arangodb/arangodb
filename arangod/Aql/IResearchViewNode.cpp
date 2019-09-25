@@ -24,6 +24,7 @@
 #include "IResearchViewNode.h"
 
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -31,6 +32,7 @@
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
 #include "Basics/NumberUtils.h"

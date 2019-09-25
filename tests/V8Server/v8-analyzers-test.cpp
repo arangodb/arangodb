@@ -38,11 +38,11 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/Methods/Collections.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -50,11 +50,14 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-analyzers.h"
 #include "V8Server/v8-externals.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std::string_literals;
 
