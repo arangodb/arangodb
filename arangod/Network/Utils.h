@@ -26,6 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Network/types.h"
+#include "Utils/OperationResult.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
