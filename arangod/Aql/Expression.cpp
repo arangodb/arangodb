@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Expression.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
@@ -33,6 +34,7 @@
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
+#include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -1596,3 +1598,84 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
   // this will convert NaN, +inf & -inf to null
   return AqlValue(AqlValueHintDouble(result));
 }
+void Expression::replaceNode(AstNode* node) {
+  if (node != _node) {
+    _node = node;
+    invalidateAfterReplacements();
+  }
+}
+Ast* Expression::ast() const noexcept { return _ast; }
+AstNode const* Expression::node() const { return _node; }
+AstNode* Expression::nodeForModification() const { return _node; }
+bool Expression::canRunOnDBServer() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  if (_type == JSON) {
+    // can always run on DB server
+    return true;
+  }
+
+  TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
+  TRI_ASSERT(_node != nullptr);
+  return _node->canRunOnDBServer();
+}
+bool Expression::isDeterministic() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  if (_type == JSON) {
+    // always deterministic
+    return true;
+  }
+
+  TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
+  TRI_ASSERT(_node != nullptr);
+  return _node->isDeterministic();
+}
+bool Expression::willUseV8() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  if (_type != SIMPLE) {
+    return false;
+  }
+
+  // only simple expressions can make use of V8
+  TRI_ASSERT(_type == SIMPLE);
+  TRI_ASSERT(_node != nullptr);
+  return _node->willUseV8();
+}
+Expression* Expression::clone(ExecutionPlan* plan, Ast* ast) {
+  // We do not need to copy the _ast, since it is managed by the
+  // query object and the memory management of the ASTs
+  return new Expression(plan, ast != nullptr ? ast : _ast, _node);
+}
+void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {
+  _node->toVelocyPack(builder, verbose);
+}
+std::string Expression::typeString() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  switch (_type) {
+    case JSON:
+      return "json";
+    case SIMPLE:
+      return "simple";
+    case ATTRIBUTE_ACCESS:
+      return "attribute";
+    case UNPROCESSED: {
+    }
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+void Expression::setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
+  _variables.emplace(variable, value);
+}
+void Expression::clearVariable(Variable const* variable) { _variables.erase(variable); }

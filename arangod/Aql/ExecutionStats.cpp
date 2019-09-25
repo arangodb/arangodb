@@ -152,3 +152,29 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
     }
   }
 }
+
+void ExecutionStats::setExecutionTime(double value) { executionTime = value; }
+
+void ExecutionStats::setPeakMemoryUsage(size_t value) {
+  peakMemoryUsage = value;
+}
+
+void ExecutionStats::clear() {
+  writesExecuted = 0;
+  writesIgnored = 0;
+  scannedFull = 0;
+  scannedIndex = 0;
+  filtered = 0;
+  requests = 0;
+  fullCount = 0;
+  count = 0;
+  executionTime = 0.0;
+  peakMemoryUsage = 0;
+}
+
+ExecutionStats::Node& ExecutionStats::Node::operator+=(ExecutionStats::Node const& other) {
+  calls += other.calls;
+  items += other.items;
+  runtime += other.runtime;
+  return *this;
+}

@@ -25,16 +25,27 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
-#include "Aql/Query.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/types.h"
 #include "Basics/Common.h"
 
+#include <memory>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 namespace arangodb {
+class Result;
 namespace aql {
 class AqlItemBlock;
 class ExecutionBlock;
+class ExecutionNode;
+class ExecutionPlan;
 class QueryRegistry;
+class Query;
 enum class SerializationFormat;
 
 class ExecutionEngine {
@@ -54,19 +65,13 @@ class ExecutionEngine {
                                    MapRemoteToSnippet const& queryIds);
 
   /// @brief get the root block
-  TEST_VIRTUAL ExecutionBlock* root() const {
-    TRI_ASSERT(_root != nullptr);
-    return _root;
-  }
+  TEST_VIRTUAL ExecutionBlock* root() const;
 
   /// @brief set the root block
-  TEST_VIRTUAL void root(ExecutionBlock* root) {
-    TRI_ASSERT(root != nullptr);
-    _root = root;
-  }
+  TEST_VIRTUAL void root(ExecutionBlock* root);
 
   /// @brief get the query
-  TEST_VIRTUAL Query* getQuery() const { return _query; }
+  TEST_VIRTUAL Query* getQuery() const;
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
@@ -86,24 +91,20 @@ class ExecutionEngine {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief whether or not initializeCursor was called
-  bool initializeCursorCalled() const { return _initializeCursorCalled; }
+  bool initializeCursorCalled() const;
 
   /// @brief add a block to the engine
   /// @returns added block
   ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>);
 
   /// @brief set the register the final result of the query is stored in
-  void resultRegister(RegisterId resultRegister) {
-    _resultRegister = resultRegister;
-  }
+  void resultRegister(RegisterId resultRegister);
 
   /// @brief get the register the final result of the query is stored in
-  RegisterId resultRegister() const { return _resultRegister; }
+  RegisterId resultRegister() const;
 
   /// @brief accessor to the memory recyler for AqlItemBlocks
-  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager() {
-    return _itemBlockManager;
-  }
+  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
 
  public:
   /// @brief execution statistics for the query
