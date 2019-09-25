@@ -25,6 +25,7 @@
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchFeature.h"
