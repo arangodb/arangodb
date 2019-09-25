@@ -106,7 +106,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         AqlValueGuard guard{resultDocVec, true};
 
         // Responsibility is handed over
-        output.moveValueInto(_infos.getOutputRegister(), shadowRow, guard);
+        output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
         TRI_ASSERT(output.produced());
         output.advanceRow();
 
