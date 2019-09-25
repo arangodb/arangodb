@@ -2441,7 +2441,11 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 
 std::string TRI_LocateInstallDirectory(char const* argv0, char const* binaryPath) {
   std::string thisPath = TRI_LocateBinaryPath(argv0);
-  return TRI_GetInstallRoot(thisPath, binaryPath) + TRI_DIR_SEPARATOR_CHAR;
+  std::string ret = TRI_GetInstallRoot(thisPath, binaryPath);
+  if (ret.length() != 1 || ret != TRI_DIR_SEPARATOR_STR) {
+    ret += TRI_DIR_SEPARATOR_CHAR;
+  }
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2460,8 +2464,14 @@ std::string TRI_LocateConfigDirectory(char const* binaryPath) {
   }
 
   std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
-
-  r += _SYSCONFDIR_;
+  std::string scDir =  _SYSCONFDIR_;
+  if (r.length() == 1 &&
+      r == TRI_DIR_SEPARATOR_STR &&
+      scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
+    r = scDir;
+  } else {
+    r += _SYSCONFDIR_;
+  }
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
   return r;

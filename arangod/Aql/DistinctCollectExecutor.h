@@ -26,22 +26,24 @@
 #ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 
+#include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
+class NoStats;
 class ExecutorInfos;
 template <bool>
 class SingleRowFetcher;
@@ -62,10 +64,8 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   ~DistinctCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
-    return _groupRegisters;
-  }
-  transaction::Methods* getTransaction() const { return _trxPtr; }
+  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
+  transaction::Methods* getTransaction() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -108,7 +108,7 @@ class DistinctCollectExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;
   void destroyValues();
 
  private:

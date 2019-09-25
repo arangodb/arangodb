@@ -335,10 +335,10 @@ class Query {
 
   /// @brief cleanup plan and engine for current query. synchronous variant,
   /// will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
+  void cleanupPlanAndEngineSync(int errorCode, velocypack::Builder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode, velocypack::Builder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();

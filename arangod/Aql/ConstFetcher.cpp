@@ -20,12 +20,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ConstFetcher.h"
-
-#include "Aql/AqlItemBlock.h"
-#include "Aql/DependencyProxy.h"
-#include "Aql/FilterExecutor.h"
 #include "ConstFetcher.h"
+
+#include "Aql/DependencyProxy.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -93,4 +92,10 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPass
   // time to track them down. Thus the following assert is commented out.
   // TRI_ASSERT(_blockForPassThrough != nullptr);
   return {ExecutionState::DONE, std::move(_blockForPassThrough)};
+}
+
+std::pair<ExecutionState, size_t> ConstFetcher::preFetchNumberOfRows(size_t) {
+  // This is not implemented for this fetcher
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
