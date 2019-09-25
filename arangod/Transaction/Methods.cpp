@@ -948,86 +948,85 @@ Result transaction::Methods::begin() {
 }
 
 /// @brief commit / finish the transaction
-Result transaction::Methods::commit() {
+Future<Result> transaction::Methods::commitAsync() {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
-  Result res;
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     "transaction not running on commit");
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on commit");
   }
 
-  auto const& exec = ExecContext::current();
   if (!_state->isReadOnlyTransaction()) {
+    auto const& exec = ExecContext::current();
     bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
     if (exec.isCanceled() || cancelRW) {
-      return res.reset(TRI_ERROR_ARANGO_READ_ONLY,
-                       "server is in read-only mode");
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
+  auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    res = ClusterTrxMethods::commitTransaction(*this);
+    f = ClusterTrxMethods::commitTransaction(*this);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
           << "failed to commit on subordinates: '" << res.errorMessage() << "'";
       return res;
     }
-  }
 
-  res = _state->commitTransaction(this);
-  if (res.ok()) {
-    applyStatusChangeCallbacks(*this, Status::COMMITTED);
-  }
+    res = _state->commitTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::COMMITTED);
+    }
 
-  return res;
+    return res;
+  });
 }
 
 /// @brief abort the transaction
-Result transaction::Methods::abort() {
-  Result res;
+Future<Result> transaction::Methods::abortAsync() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     "transaction not running on abort");
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on abort");
   }
 
+  auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    res = ClusterTrxMethods::abortTransaction(*this);
+    f = ClusterTrxMethods::abortTransaction(*this);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
           << "failed to abort on subordinates: " << res.errorMessage();
     }  // abort locally anyway
-  }
 
-  res = _state->abortTransaction(this);
-  if (res.ok()) {
-    applyStatusChangeCallbacks(*this, Status::ABORTED);
-  }
+    res = _state->abortTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::ABORTED);
+    }
 
-  return res;
+    return res;
+  });
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
-Result transaction::Methods::finish(int errorNum) {
-  return finish(Result(errorNum));
-}
-
-/// @brief finish a transaction (commit or abort), based on the previous state
-Result transaction::Methods::finish(Result const& res) {
+Future<Result> transaction::Methods::finishAsync(Result const& res) {
   if (res.ok()) {
     // there was no previous error, so we'll commit
-    return this->commit();
+    return this->commitAsync();
   }
 
   // there was a previous error, so we'll abort
-  this->abort();
-
-  // return original error
-  return res;
+  return this->abortAsync().thenValue([res](Result ignore) {
+    return res;  // return original error
+  });
 }
 
 /// @brief return the transaction id
@@ -1233,7 +1232,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     OperationOptions options;  // use default configuration
-    options.ignoreRevs = true;
 
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (opRes.fail()) {
@@ -1312,16 +1310,8 @@ Future<OperationResult> addTracking(Future<OperationResult> f,
                                     VPackSlice value,
                                     F&& func) {
 #ifdef USE_ENTERPRISE
-  std::string key;
-  if (value.isObject()) {
-    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
-    if (keySlice.isString()) {
-      key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-    }
-  }
-  return std::move(f).thenValue([func = std::forward<F>(func),
-                      key = std::move(key)](OperationResult opRes) {
-    func(opRes, VPackSlice(reinterpret_cast<uint8_t const*>(key.c_str())));
+  return std::move(f).thenValue([func = std::forward<F>(func), value](OperationResult opRes) {
+    func(opRes, value);
     return opRes;
   });
 #else

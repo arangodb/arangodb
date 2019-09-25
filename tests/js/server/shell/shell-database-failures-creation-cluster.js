@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, AQL_EXECUTE, instanceInfo */
+/*global fail, assertNotEqual, instanceInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -67,31 +67,22 @@ const waitForJob = function (postJobRes) {
 
   const start = Date.now();
 
-  let jobFinished = false;
-  let timeoutExceeded = false;
-  let putJobRes;
-
-  while (!jobFinished && !timeoutExceeded) {
+  while (true) {
     const duration = (Date.now() - start) / 1000;
-    timeoutExceeded = duration > maxWaitTime;
+    if (duration > maxWaitTime) {
+      throw 'Waiting for REST job timed out';
+    }
 
-    putJobRes = request.put(coordinator.url + `/_api/job/${jobId}`);
+    let putJobRes = request.put(coordinator.url + `/_api/job/${jobId}`);
 
     expect(putJobRes).to.have.property("status");
 
     if (putJobRes.status === 204) {
-      wait(waitInterval);
+      wait(waitInterval, false);
     } else {
-      jobFinished = true;
+      return putJobRes;
     }
   }
-
-  if (jobFinished) {
-    return putJobRes;
-  }
-
-  console.error(`Waiting for REST job timed out`);
-  return undefined;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,25 +92,24 @@ const waitForJob = function (postJobRes) {
 function databaseFailureSuite() {
   'use strict';
   var dn = "FailureDatabase";
-  var d;
 
   return {
 
     setUp: function () {
       internal.debugClearFailAt();
+      db._useDatabase('_system');
       try {
         db._dropDatabase(dn);
       } catch (ignore) {
       }
-
-      /*
-      d = db._createDatabase(dn);
-      */
     },
 
     tearDown: function () {
-      d = null;
       internal.debugClearFailAt();
+      db._useDatabase('_system');
+      try {
+        db._dropDatabase(dn);
+      } catch (err) {}
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,26 +118,25 @@ function databaseFailureSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHideDatabaseUntilCreationIsFinished: function () {
-      expectedSystemCollections.sort();
-
       // this will trigger an internal sleep of 5 seconds during db creation
       internal.debugSetFailAt("UpgradeTasks::HideDatabaseUntilCreationIsFinished");
-
-      // create the db async, with job API
-      const postJobRes = request.post(
-        coordinator.url + '/_api/database',
-        {
-          headers: {"x-arango-async": "store"},
-          body: {"name": dn}
-        }
-      );
-
+      
       // this should fail now
       try {
         db._useDatabase(dn);
         fail();
       } catch (err) {
       }
+
+      // create the db async, with job API
+      const postJobRes = request.post(
+        coordinator.url + '/_api/database',
+        {
+          headers: {"x-arango-async": "store"},
+          body: {"name": dn},
+          json: true
+        }
+      );
 
       // wait until database creation is finished
       const jobRes = waitForJob(postJobRes);
@@ -159,26 +148,26 @@ function databaseFailureSuite() {
       db._collections().forEach(function (collection) {
         availableCollections.push(collection.name());
       });
-      availableCollections.sort();
 
-      assertEqual(expectedSystemCollections, availableCollections);
+      expectedSystemCollections.forEach(function(name) {
+        assertNotEqual(-1, availableCollections.indexOf(name));
+      });
     },
 
     testDatabaseSomeExisting: function () {
-      expectedSystemCollections.sort();
-
       internal.debugSetFailAt("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions");
 
-      d = db._createDatabase(dn);
+      db._createDatabase(dn);
       db._useDatabase(dn);
 
       let availableCollections = [];
       db._collections().forEach(function (collection) {
         availableCollections.push(collection.name());
       });
-      availableCollections.sort();
 
-      assertEqual(expectedSystemCollections, availableCollections);
+      expectedSystemCollections.forEach(function(name) {
+        assertNotEqual(-1, availableCollections.indexOf(name));
+      });
     },
 
   };
