@@ -24,35 +24,39 @@
 #ifndef TESTS_IRESEARCH__COMMON_H
 #define TESTS_IRESEARCH__COMMON_H 1
 
-#include "Aql/Query.h"
 #include "Aql/AstNode.h"
-#include "VocBase/vocbase.h"
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
+#include "VocBase/VocbaseInfo.h"
+#include "VocBase/vocbase.h"
 
 #include <string>
 #include <vector>
 
-#undef NO_INLINE // to avoid GCC warning
+#undef NO_INLINE  // to avoid GCC warning
 #include <search/filter.hpp>
+
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a TRI_vocbase_t that will call shutdown() on deallocation
 ///        to force deallocation of dropped collections
 ////////////////////////////////////////////////////////////////////////////////
-struct Vocbase: public TRI_vocbase_t {
-  template<typename... Args>
-  Vocbase(Args&&... args): TRI_vocbase_t(std::forward<Args>(args)...) {}
+struct Vocbase : public TRI_vocbase_t {
+  template <typename... Args>
+  Vocbase(Args&&... args) : TRI_vocbase_t(std::forward<Args>(args)...) {}
   ~Vocbase() { shutdown(); }
 };
 
 namespace v8 {
-class Isolate; // forward declaration
+class Isolate;  // forward declaration
 }
 
 namespace arangodb {
 
-class DatabasePathFeature; // forward declaration
+class DatabasePathFeature;  // forward declaration
 
 namespace application_features {
 class ApplicationServer;
@@ -68,8 +72,7 @@ class ByExpression;
 
 namespace tests {
 
- extern std::string const AnalyzerCollectionName;
-
+extern std::string const AnalyzerCollectionName;
 
 extern std::string testResourceDir;
 
@@ -80,7 +83,7 @@ std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
   auto* location = &ptr;
   auto* oldValue = ptr;
   ptr = newValue;
-  return std::shared_ptr<T>(oldValue, [location](T* p)->void { *location = p; });
+  return std::shared_ptr<T>(oldValue, [location](T* p) -> void { *location = p; });
 }
 
 // @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
@@ -88,46 +91,41 @@ void v8Init();
 
 v8::Isolate* v8Isolate();
 
-bool assertRules(
-  TRI_vocbase_t& vocbase,
-  std::string const& queryString,
-  std::vector<int> expectedRulesIds,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  std::string const& optionsString = "{}"
-);
+bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
+                 std::vector<int> expectedRulesIds,
+                 std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+                 std::string const& optionsString = "{}");
 
 arangodb::aql::QueryResult executeQuery(
-  TRI_vocbase_t& vocbase,
-  std::string const& queryString,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  std::string const& optionsString = "{}"
-);
+    TRI_vocbase_t& vocbase, std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& optionsString = "{}");
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
-  TRI_vocbase_t& vocbase,
-  std::string const& queryString,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  std::string const& optionsString = "{}"
-);
+    TRI_vocbase_t& vocbase, std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& optionsString = "{}");
 
 std::unique_ptr<arangodb::aql::Query> prepareQuery(
-  TRI_vocbase_t& vocbase,
-  std::string const& queryString,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  std::string const& optionsString = "{}"
-);
+    TRI_vocbase_t& vocbase, std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& optionsString = "{}");
 
 uint64_t getCurrentPlanVersion();
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
 #define EXPECT_EQUAL_SLICES_STRINGIFY(x) #x
-#define EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, file, line) arangodb::tests::expectEqualSlices_(leftSlice, rightSlice, file ":" EXPECT_EQUAL_SLICES_STRINGIFY(line))
-#define EXPECT_EQUAL_SLICES(leftSlice, rightSlice) EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, __FILE__, __LINE__)
-void expectEqualSlices_(const velocypack::Slice& lhs, const velocypack::Slice& rhs, const char* where);
+#define EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, file, line) \
+  arangodb::tests::expectEqualSlices_(leftSlice, rightSlice,            \
+                                      file ":" EXPECT_EQUAL_SLICES_STRINGIFY(line))
+#define EXPECT_EQUAL_SLICES(leftSlice, rightSlice) \
+  EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, __FILE__, __LINE__)
+void expectEqualSlices_(const velocypack::Slice& lhs,
+                        const velocypack::Slice& rhs, const char* where);
 
-}
-}
+}  // namespace tests
+}  // namespace arangodb
 
 std::string mangleType(std::string name);
 std::string mangleAnalyzer(std::string name);
