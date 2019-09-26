@@ -867,6 +867,7 @@ bool AqlItemBlock::isShadowRow(size_t row) const {
 
 AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
   TRI_ASSERT(isShadowRow(row));
+  TRI_ASSERT(hasShadowRows());
   return _data[getSubqueryDepthAddress(row)];
 }
 
@@ -874,16 +875,22 @@ void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
   TRI_ASSERT(other.isNumber());
   _data[getSubqueryDepthAddress(row)] = other;
   TRI_ASSERT(isShadowRow(row));
+  // Might be shadowRow before, but we do not care, set is unique
+  _shadowRowIndexes.emplace(row);
 }
 
 void AqlItemBlock::makeShadowRow(size_t row) {
   TRI_ASSERT(!isShadowRow(row));
   _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  TRI_ASSERT(isShadowRow(row));
+  _shadowRowIndexes.emplace(row);
 }
 
 void AqlItemBlock::makeDataRow(size_t row) {
   TRI_ASSERT(isShadowRow(row));
   _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
+  TRI_ASSERT(!isShadowRow(row));
+  _shadowRowIndexes.erase(row);
 }
 
 /// @brief Return the indexes of shadowRows within this block.
