@@ -341,7 +341,8 @@ TEST_F(SubqueryEndExecutorTest, two_shadowrows_after_input) {
 
 // TODO: This is a "death test" with malformed shadow row layout (an irrelevant shadow row before any other row)
 // See https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#death-tests-and-threads
-TEST_F(SubqueryEndExecutorTest, misplaced_irrelevant_shadowrow_DeathTest) {
+using SubqueryEndExecutorTest_DeathTest = SubqueryEndExecutorTest;
+TEST_F(SubqueryEndExecutorTest_DeathTest, misplaced_irrelevant_shadowrow) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {42}, {42}});
 
