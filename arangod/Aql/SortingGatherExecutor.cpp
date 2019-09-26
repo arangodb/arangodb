@@ -483,33 +483,42 @@ std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherEx
   ExecutionState const state = _dependencyToFetch < _numberDependencies
                                    ? ExecutionState::HASMORE
                                    : ExecutionState::DONE;
+
+  TRI_ASSERT(_skipped <= atMost);
   std::size_t const skipped = _skipped;
   _skipped = 0;
-  TRI_ASSERT(skipped <= atMost);
   return {state, NoStats{}, skipped};
 }
 
 std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> SortingGatherExecutor::produceAndSkipRows(
-    size_t const atMost) {
+    size_t atMost) {
   ExecutionState state = ExecutionState::HASMORE;
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
-  size_t skipped = 0;
+  // We may not skip more rows in this method than we can produce!
+  atMost = std::min(atMost, rowsLeftToWrite());
 
-  while(state == ExecutionState::HASMORE && skipped < atMost) {
-    std::tie(state, row) = produceNextRow(atMost - skipped);
+  while(state == ExecutionState::HASMORE && _skipped < atMost) {
+    std::tie(state, row) = produceNextRow(atMost - _skipped);
     // HASMORE => row has to be initialized
     TRI_ASSERT(state != ExecutionState::HASMORE || row.isInitialized());
     // WAITING => row may not be initialized
     TRI_ASSERT(state != ExecutionState::WAITING || !row.isInitialized());
 
     if (row.isInitialized()) {
-      ++skipped;
+      ++_skipped;
     }
   }
 
-  TRI_ASSERT(state != ExecutionState::HASMORE || skipped > 0);
-  TRI_ASSERT(state != ExecutionState::WAITING || skipped == 0);
+  if (state == ExecutionState::WAITING) {
+    return {state, NoStats{}, 0};
+  }
 
+  TRI_ASSERT(_skipped <= atMost);
+  TRI_ASSERT(state != ExecutionState::HASMORE || _skipped > 0);
+  TRI_ASSERT(state != ExecutionState::WAITING || _skipped == 0);
+
+  std::size_t const skipped = _skipped;
+  _skipped = 0;
   return {state, NoStats{}, skipped};
 }
