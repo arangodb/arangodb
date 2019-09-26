@@ -2867,12 +2867,10 @@ static void JS_ProcessStatisticsExternal(v8::FunctionCallbackInfo<v8::Value> con
         "statisticsExternal(<external-identifier>)");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
 
-  if (!v8security->isAllowedToControlProcesses(isolate)) {
+  if (v8security.isInternalModuleHardened(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         "not allowed to execute or modify state of external processes");
