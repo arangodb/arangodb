@@ -35,8 +35,11 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Context.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -139,9 +142,11 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
       _getSomeBegin = TRI_microtime();
     }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto node = getPlanNode();
+      auto const node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
-          << "getSome type=" << node->getTypeString() << " atMost = " << atMost
+          << "[query#" << queryId << "] "
+          << "getSome type=" << node->getTypeString() << " atMost=" << atMost
           << " this=" << (uintptr_t)this << " id=" << node->id();
     }
   }
@@ -153,8 +158,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     ExecutionNode const* en = getPlanNode();
     ExecutionStats::Node stats;
+    auto const items = result != nullptr ? result->size() : 0;
     stats.calls = 1;
-    stats.items = result != nullptr ? result->size() : 0;
+    stats.items = items;
     if (state != ExecutionState::WAITING) {
       stats.runtime = TRI_microtime() - _getSomeBegin;
       _getSomeBegin = 0.0;
@@ -169,13 +175,17 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("07a60", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
           << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state);
+          << " id=" << node->id() << " state=" << stateToString(state)
+          << " items=" << items;
 
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
           LOG_TOPIC("daa64", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
@@ -183,9 +193,11 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
             VPackObjectBuilder guard(&builder);
             result->toVelocyPack(transaction(), builder);
           }
+          auto options = transaction()->transactionContextPtr()->getVPackOptions();
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
               << "getSome type=" << node->getTypeString()
-              << " result: " << builder.toJson();
+              << " result: " << VPackDumper::toString(builder.slice(), options);
         }
       }
     }
@@ -200,8 +212,10 @@ void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
     }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
-          << "skipSome type=" << node->getTypeString() << " atMost = " << atMost
+          << "[query#" << queryId << "] "
+          << "skipSome type=" << node->getTypeString() << " atMost=" << atMost
           << " this=" << (uintptr_t)this << " id=" << node->id();
     }
   }
@@ -231,9 +245,12 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       ExecutionNode const* node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("d1950", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
           << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state);
+          << " id=" << node->id() << " state=" << stateToString(state)
+          << " skipped=" << skipped;
     }
   }
   return res;
