@@ -23,7 +23,7 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_V8SHELL_FEATURE_PHASE_H
 #define ARANGODB_APPLICATION_FEATURES_V8SHELL_FEATURE_PHASE_H 1
 
-#include "ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {

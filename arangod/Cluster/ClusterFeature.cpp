@@ -23,6 +23,7 @@
 
 #include "ClusterFeature.h"
 
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -31,6 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -54,8 +56,8 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  startsAfter("DatabasePhase");
-  startsAfter("CommunicationPhase");
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<DatabaseFeaturePhase>();
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -279,7 +281,7 @@ void ClusterFeature::prepare() {
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(agencyCallbacksPath()));
 
   // Initialize ClusterInfo library:
-  ClusterInfo::createInstance(_agencyCallbackRegistry.get());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
 
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
@@ -356,7 +358,6 @@ void ClusterFeature::prepare() {
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
   if (role == ServerState::ROLE_COORDINATOR) {
-    auto ci = ClusterInfo::instance();
     double start = TRI_microtime();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -370,8 +371,8 @@ void ClusterFeature::prepare() {
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
           << "Waiting for DBservers to show up...";
-      ci->loadCurrentDBServers();
-      std::vector<ServerID> DBServers = ci->getCurrentDBServers();
+      _clusterInfo->loadCurrentDBServers();
+      std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
@@ -561,7 +562,7 @@ void ClusterFeature::unprepare() {
 
   AgencyCommManager::MANAGER->stop();
 
-  ClusterInfo::cleanup();
+  _clusterInfo->cleanup();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
@@ -573,7 +574,7 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           const std::string& endpoints) {
   _heartbeatThread =
-      std::make_shared<HeartbeatThread>(agencyCallbackRegistry,
+      std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
                                         maxFailsBeforeWarning);
 
@@ -594,4 +595,15 @@ void ClusterFeature::syncDBServerStatusQuo() {
   if (_heartbeatThread != nullptr) {
     _heartbeatThread->syncDBServerStatusQuo(true);
   }
+}
+
+std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
+  return _heartbeatThread;
+}
+
+ClusterInfo& ClusterFeature::clusterInfo() {
+  if (!_clusterInfo) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  return *_clusterInfo;
 }

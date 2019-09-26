@@ -20,20 +20,25 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CLUSTER_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_CLUSTER_FEATURE_PHASE_H 1
+#include "FinalFeaturePhase.h"
 
-#include "ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "RestServer/ConsoleFeature.h"
+#include "RestServer/ScriptFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-class ClusterFeaturePhase : public ApplicationFeaturePhase {
- public:
-  explicit ClusterFeaturePhase(ApplicationServer& server);
-};
+FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "FinalPhase") {
+  setOptional(false);
+  startsAfter<AgencyFeaturePhase>();
+
+  startsAfter<ConsoleFeature>();
+  startsAfter<ScriptFeature>();
+  startsAfter<ShutdownFeature>();
+}
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

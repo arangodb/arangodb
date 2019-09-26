@@ -33,6 +33,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 // TODO do we need to add some sort of coordinator?
 // builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
@@ -65,7 +68,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo() = default;
+  CreateDatabaseInfo(application_features::ApplicationServer&);
   // CreateDatabaseInfo(CreateDatabaseInfo &&) = delete; // TODO - then replace shared with unique ptr
   Result load(std::string const& name, uint64_t id);
 
@@ -82,6 +85,8 @@ class CreateDatabaseInfo {
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
+  
+  application_features::ApplicationServer& server() const;
 
   uint64_t getId() const {
     TRI_ASSERT(_valid);
@@ -125,6 +130,8 @@ class CreateDatabaseInfo {
   Result checkOptions();
 
  private:
+  application_features::ApplicationServer& _server;
+  
   std::uint64_t _id = 0;
   std::string _name = "";
   std::vector<DBUser> _users;
@@ -144,7 +151,7 @@ struct VocbaseOptions {
   std::uint32_t minReplicationFactor = 1;
 };
 
-VocbaseOptions getVocbaseOptions(velocypack::Slice const&);
+VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
 void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,

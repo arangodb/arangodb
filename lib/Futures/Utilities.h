@@ -23,6 +23,8 @@
 #ifndef ARANGOD_FUTURES_UTILITIES_H
 #define ARANGOD_FUTURES_UTILITIES_H 1
 
+#include <vector>
+
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 

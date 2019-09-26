@@ -118,6 +118,13 @@ class AddFollowerTest : public ::testing::Test {
         fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()) {
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     baseStructure.toBuilder(builder);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::FATAL);
+  }
+
+  ~AddFollowerTest() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

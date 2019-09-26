@@ -20,38 +20,25 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H 1
+#include "FoxxFeaturePhase.h"
 
-#include "ApplicationFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
+#include "RestServer/BootstrapFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-class CommunicationFeaturePhase : public ApplicationFeaturePhase {
- public:
-  explicit CommunicationFeaturePhase(ApplicationServer& server);
-  /**
-   * @brief decide whether we may freely communicate or not.
-   */
-  bool getCommAllowed() {
-    switch (state()) {
-      case ApplicationFeature::State::UNINITIALIZED:
-      case ApplicationFeature::State::INITIALIZED:
-      case ApplicationFeature::State::VALIDATED:
-      case ApplicationFeature::State::PREPARED:
-      case ApplicationFeature::State::STARTED:
-      case ApplicationFeature::State::STOPPED:
-        return true;
-      case ApplicationFeature::State::UNPREPARED:
-        break; 
-    }
+FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "FoxxPhase") {
+  setOptional(false);
+  startsAfter<ServerFeaturePhase>();
 
-    return false;
-  }
-};
+  startsAfter<BootstrapFeature>();
+  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FrontendFeature>();
+}
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

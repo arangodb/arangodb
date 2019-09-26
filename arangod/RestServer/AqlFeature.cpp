@@ -26,6 +26,7 @@
 
 #include "Aql/QueryRegistry.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -49,10 +50,10 @@ namespace arangodb {
 AqlFeature::AqlFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Aql") {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 
-  startsAfter("QueryRegistry");
-  startsAfter("TraverserEngineRegistry");
+  startsAfter<QueryRegistryFeature>();
+  startsAfter<TraverserEngineRegistryFeature>();
 }
 
 AqlFeature::~AqlFeature() {

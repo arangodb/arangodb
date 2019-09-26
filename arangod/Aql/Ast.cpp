@@ -36,6 +36,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
 #include "Transaction/Helpers.h"
@@ -1217,11 +1218,11 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
         _query->addCollection(name, AccessMode::Type::READ);
 
         if (ServerState::instance()->isCoordinator()) {
-          auto ci = ClusterInfo::instance();
+          auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
           // We want to tolerate that a collection name is given here
           // which does not exist, if only for some unit tests:
-          auto coll = ci->getCollectionNT(_query->vocbase().name(), name);
+          auto coll = ci.getCollectionNT(_query->vocbase().name(), name);
           if (coll != nullptr) {
             auto names = coll->realNames();
 
@@ -1255,7 +1256,6 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
 
   TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
 
-  auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
     arangodb::velocypack::StringRef nameRef(name);
@@ -1263,7 +1263,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
         injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
-        auto c = ci->getCollectionNT(_query->vocbase().name(), name);
+        auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto c = ci.getCollectionNT(_query->vocbase().name(), name);
         if (c != nullptr) {
           auto const& names = c->realNames();
 
@@ -1677,11 +1678,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
       _query->addCollection(name, isExclusive ? AccessMode::Type::EXCLUSIVE
                                               : AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
-        auto ci = ClusterInfo::instance();
+        auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:
-        auto coll = ci->getCollectionNT(_query->vocbase().name(), name);
+        auto coll = ci.getCollectionNT(_query->vocbase().name(), name);
         if (coll != nullptr) {
           auto names = coll->realNames();
 
@@ -3784,10 +3785,10 @@ void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
 AstNode* Ast::createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
-    auto ci = ClusterInfo::instance();
+    auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
-    auto coll = ci->getCollectionNT(_query->vocbase().name(), name.toString());
+    auto coll = ci.getCollectionNT(_query->vocbase().name(), name.toString());
     if (coll != nullptr) {
       if (coll->isSmart()) {
         // add names of underlying smart-edge collections
@@ -3826,10 +3827,10 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
     }
 
     if (ServerState::instance()->isCoordinator()) {
-      auto ci = ClusterInfo::instance();
+      auto& ci = query()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
       for (const auto& n : eColls) {
-        auto c = ci->getCollection(_query->vocbase().name(), n);
+        auto c = ci.getCollection(_query->vocbase().name(), n);
         if (c != nullptr) {
           auto names = c->realNames();
 

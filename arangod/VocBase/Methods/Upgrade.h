@@ -103,7 +103,7 @@ struct Upgrade {
 
  private:
   /// @brief register tasks, only run once on startup
-  static void registerTasks();
+  static void registerTasks(UpgradeFeature&);
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                 arangodb::velocypack::Slice const& params,
                                 uint32_t clusterFlag, uint32_t dbFlag);

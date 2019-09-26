@@ -20,19 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FoxxPhase.h"
+#include "AgencyFeaturePhase.h"
+
+#include "Agency/AgencyFeature.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FoxxPhase") {
+AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "AgencyPhase") {
   setOptional(false);
-  startsAfter("ServerPhase");
+  startsAfter<FoxxFeaturePhase>();
 
-  startsAfter("Bootstrap");
-  startsAfter("FoxxQueues");
-  startsAfter("Frontend");
+  startsAfter<AgencyFeature>();
 }
 
 }  // namespace application_features

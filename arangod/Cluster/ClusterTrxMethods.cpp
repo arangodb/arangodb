@@ -32,6 +32,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -82,15 +83,16 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 #ifdef USE_ENTERPRISE
       if (col.collection()->isSmart() && col.collection()->type() == TRI_COL_TYPE_EDGE) {
         auto names = col.collection()->realNames();
-        auto* ci = ClusterInfo::instance();
+        auto& ci =
+            col.collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         for (std::string const& name : names) {
-          auto cc = ci->getCollectionNT(state.vocbase().name(), name);
+          auto cc = ci.getCollectionNT(state.vocbase().name(), name);
           if (!cc) {
             continue;
           }
-          auto shards = ci->getShardList(std::to_string(cc->id()));
+          auto shards = ci.getShardList(std::to_string(cc->id()));
           for (ShardID const& shard : *shards) {
-            auto sss = ci->getResponsibleServer(shard);
+            auto sss = ci.getResponsibleServer(shard);
             if (server == sss->at(0)) {
               if (numCollections == 0) {
                 builder.add(key, VPackValue(VPackValueType::Array));
@@ -144,10 +146,11 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
                          .append(StringUtils::urlEncode(state.vocbase().name()))
                          .append("/_api/transaction/begin");
 
+  auto& feature = state.vocbase().server().getFeature<NetworkFeature>();
   network::Headers headers;
   headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
-  return network::sendRequest("server:" + server, fuerte::RestVerb::Post,
+  return network::sendRequest(feature, "server:" + server, fuerte::RestVerb::Post,
                               std::move(path), std::move(buffer),
                               network::Timeout(::CL_DEFAULT_TIMEOUT), std::move(headers));
 }
@@ -226,10 +229,11 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
     TRI_ASSERT(false);
   }
 
+  auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
   std::vector<Future<network::Response>> requests;
   for (std::string const& server : state->knownServers()) {
     requests.emplace_back(
-        network::sendRequest("server:" + server, verb, path, VPackBuffer<uint8_t>(),
+        network::sendRequest(feature, "server:" + server, verb, path, VPackBuffer<uint8_t>(),
                              network::Timeout(::CL_DEFAULT_TIMEOUT)));
   }
 

@@ -27,9 +27,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestExportHandler::ClusterRestExportHandler(GeneralRequest* request,
+ClusterRestExportHandler::ClusterRestExportHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus ClusterRestExportHandler::execute() {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
