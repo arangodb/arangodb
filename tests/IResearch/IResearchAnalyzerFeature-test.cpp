@@ -375,7 +375,8 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchAnalyzerFeatureTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }

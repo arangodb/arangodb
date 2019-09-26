@@ -25,9 +25,17 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
+
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedLeader.h"
@@ -36,10 +44,6 @@
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
 
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -113,7 +117,9 @@ char const* todo = R"=({
 
 typedef std::function<std::unique_ptr<Builder>(Slice const&, std::string const&)> TestStructureType;
 
-class FailedLeaderTest : public ::testing::Test {
+class FailedLeaderTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
  protected:
   Node baseStructure;
   Builder builder;

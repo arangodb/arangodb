@@ -27,8 +27,9 @@
 
 #include <iostream>
 
-#include "fakeit.hpp"
 #include "gtest/gtest.h"
+
+#include "fakeit.hpp"
 
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>

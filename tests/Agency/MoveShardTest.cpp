@@ -132,7 +132,7 @@ VPackBuilder createJob(std::string const& collection, std::string const& from,
 }
 
 class MoveShardTest : public ::testing::Test,
-                      public LogSuppressor<Logger::SUPERVISION, LogLevel::ERR> {
+                      public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   write_ret_t fakeWriteResult;

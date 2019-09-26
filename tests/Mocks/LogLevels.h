@@ -34,7 +34,11 @@ namespace tests {
 template <arangodb::LogTopic& topic, arangodb::LogLevel level>
 class LogSuppressor {
  public:
-  LogSuppressor() : _oldLevel(topic.level()) { topic.setLogLevel(level); }
+  LogSuppressor() : _oldLevel(topic.level()) {
+    if (_oldLevel == LogLevel::DEFAULT || _oldLevel > level) {
+      topic.setLogLevel(level);
+    }
+  }
 
   ~LogSuppressor() { topic.setLogLevel(_oldLevel); }
 
