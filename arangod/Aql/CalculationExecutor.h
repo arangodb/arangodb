@@ -85,10 +85,10 @@ template <CalculationType calculationType>
 class CalculationExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = true;
     /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CalculationExecutorInfos;
