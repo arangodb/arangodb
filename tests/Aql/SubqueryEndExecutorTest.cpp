@@ -341,29 +341,29 @@ TEST_F(SubqueryEndExecutorTest, two_shadowrows_after_input) {
 
 // TODO: This is a "death test" with malformed shadow row layout (an irrelevant shadow row before any other row)
 // See https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#death-tests-and-threads
-// TEST_F(SubqueryEndExecutorTest, misplaced_irrelevant_shadowrow) {
-//   SharedAqlItemBlockPtr outputBlock;
-//   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {42}, {42}});
+TEST_F(SubqueryEndExecutorTest, misplaced_irrelevant_shadowrow_DeathTest) {
+  SharedAqlItemBlockPtr outputBlock;
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {42}, {42}});
 
-//   InsertNewShadowRowAfter({0,1}, inputBlock, outputBlock);
-//   inputBlock.swap(outputBlock);
-//   IncreaseShadowRowDepthAt({1}, inputBlock, outputBlock);
-//   inputBlock.swap(outputBlock);
+  InsertNewShadowRowAfter({0,1}, inputBlock, outputBlock);
+  inputBlock.swap(outputBlock);
+  IncreaseShadowRowDepthAt({1}, inputBlock, outputBlock);
+  inputBlock.swap(outputBlock);
 
-//   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
-//   auto infos = MakeBaseInfos();
+  auto infos = MakeBaseInfos();
 
-//   SubqueryEndExecutor testee(fetcher, infos);
+  SubqueryEndExecutor testee(fetcher, infos);
 
-//   NoStats stats{};
-//   ExecutionState state{ExecutionState::HASMORE};
+  NoStats stats{};
+  ExecutionState state{ExecutionState::HASMORE};
 
-//   outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
-//   OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
-//                           infos.registersToKeep(), infos.registersToClear()};
-//   EXPECT_DEATH(std::tie(state, stats) = testee.produceRows(output), ".*");
-// }
+  outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
+  OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear()};
+  EXPECT_DEATH(std::tie(state, stats) = testee.produceRows(output), ".*");
+}
 
 TEST_F(SubqueryEndExecutorTest, one_input_one_shadowrow_one_irrelevant) {
   SharedAqlItemBlockPtr outputBlock;
