@@ -318,7 +318,14 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
 
   LOG_TOPIC("c4d37", INFO, arangodb::Logger::BACKUP)
       << "Backup succeeded. Generated identifier '" << identifier.copyString() << "'";
-
+  VPackSlice sizeInBytes = resultObject.get("sizeInBytes");
+  VPackSlice nrFiles = resultObject.get("nrFiles");
+  if (sizeInBytes.isInteger() && nrFiles.isInteger()) {
+    uint64_t size = sizeInBytes.getNumber<uint64_t>();
+    uint64_t nr = nrFiles.getNumber<uint64_t>();
+    LOG_TOPIC("ce423", INFO, arangodb::Logger::BACKUP)
+      << "Total size of backup: " << size << ", number of files: " << nr;
+  }
   return result;
 }
 

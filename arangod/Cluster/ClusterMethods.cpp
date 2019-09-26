@@ -3088,6 +3088,8 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
 
       // check here that the backups are all made with the same version
       std::string version;
+      size_t totalSize = 0;
+      size_t totalFiles = 0;
 
       for (BackupMeta const& meta : i.second) {
         if (version.empty()) {
@@ -3102,10 +3104,14 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
             break;
           }
         }
+        totalSize += meta._sizeInBytes;
+        totalFiles += meta._nrFiles;
       }
 
       if (valid) {
         BackupMeta& front = i.second.front();
+        front._sizeInBytes = totalSize;
+        front._nrFiles = totalFiles;
         hotBackups.insert(std::make_pair(front._id, front));
       }
     }
