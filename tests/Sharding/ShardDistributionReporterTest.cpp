@@ -107,7 +107,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
  protected:
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   fakeit::Mock<ClusterComm> commMock;
   ClusterComm& cc;
@@ -179,20 +179,18 @@ class ShardDistributionReporterTest : public ::testing::Test {
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    features.emplace_back(new arangodb::DatabaseFeature(server),
+
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
+                          false);  // required for TRI_vocbase_t instantiation
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              testDBInfo());
+                                              testDBInfo(server.server()));
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
 
     col->setShardMap(shards);
@@ -231,7 +229,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
     vocbase.reset();
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
   }
 };

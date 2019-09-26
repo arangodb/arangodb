@@ -39,7 +39,8 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
+  SupervisedScheduler(application_features::ApplicationServer& server,
+                      uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 

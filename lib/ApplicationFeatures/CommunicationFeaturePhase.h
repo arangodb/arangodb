@@ -20,20 +20,38 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H 1
+
+#include "ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ClusterPhase") {
-  setOptional(false);
-  startsAfter("DatabasePhase");
+class CommunicationFeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit CommunicationFeaturePhase(ApplicationServer& server);
+  /**
+   * @brief decide whether we may freely communicate or not.
+   */
+  bool getCommAllowed() {
+    switch (state()) {
+      case ApplicationFeature::State::UNINITIALIZED:
+      case ApplicationFeature::State::INITIALIZED:
+      case ApplicationFeature::State::VALIDATED:
+      case ApplicationFeature::State::PREPARED:
+      case ApplicationFeature::State::STARTED:
+      case ApplicationFeature::State::STOPPED:
+        return true;
+      case ApplicationFeature::State::UNPREPARED:
+        break;
+    }
 
-  startsAfter("Cluster");
-  startsAfter("Maintenance");
-  startsAfter("ReplicationTimeout");
-}
+    return false;
+  }
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

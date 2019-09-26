@@ -32,9 +32,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminDatabaseHandler::RestAdminDatabaseHandler(GeneralRequest* request,
+RestAdminDatabaseHandler::RestAdminDatabaseHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminDatabaseHandler::execute() {
   VPackBuilder result;

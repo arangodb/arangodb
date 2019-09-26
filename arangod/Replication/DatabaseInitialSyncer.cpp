@@ -273,7 +273,7 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
 
 /// @brief check whether the initial synchronization should be aborted
 bool DatabaseInitialSyncer::isAborted() const {
-  if (application_features::ApplicationServer::isStopping() ||
+  if (vocbase().server().isStopping() ||
       (vocbase().replicationApplier() != nullptr &&
        vocbase().replicationApplier()->stopInitialSynchronization())) {
     return true;

@@ -36,7 +36,7 @@ class RocksDBBackgroundThread final : public Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief engine pointer
   //////////////////////////////////////////////////////////////////////////////
-  RocksDBEngine* _engine;
+  RocksDBEngine& _engine;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief interval in which we will run
@@ -48,7 +48,7 @@ class RocksDBBackgroundThread final : public Thread {
   //////////////////////////////////////////////////////////////////////////////
   arangodb::basics::ConditionVariable _condition;
 
-  RocksDBBackgroundThread(RocksDBEngine* eng, double interval);
+  RocksDBBackgroundThread(RocksDBEngine& eng, double interval);
   ~RocksDBBackgroundThread();
 
   void beginShutdown() override;

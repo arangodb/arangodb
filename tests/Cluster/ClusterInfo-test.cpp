@@ -27,7 +27,7 @@
 #include "../Mocks/StorageEngineMock.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -136,14 +136,15 @@ class ClusterInfoTest : public ::testing::Test {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
   };
 
-  GeneralClientConnectionAgencyMock* agency;
-  arangodb::consensus::Store agencyStore{nullptr, "arango"};
-  StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  GeneralClientConnectionAgencyMock* agency;
+  arangodb::consensus::Store agencyStore;
+  StorageEngineMock engine;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
   ViewFactory viewFactory;
 
-  ClusterInfoTest() : engine(server), server(nullptr, nullptr) {
+  ClusterInfoTest()
+      : server(nullptr, nullptr), agencyStore(server, nullptr, "arango"), engine(server) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(agencyStore);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
@@ -166,44 +167,35 @@ class ClusterInfoTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ClusterFeature::prepare()
-    features.emplace_back(arangodb::DatabaseFeature::DATABASE =
-                              new arangodb::DatabaseFeature(server),
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(),
                           false);
-    features.emplace_back(new arangodb::application_features::CommunicationFeaturePhase(server),
-                          false);
-    features.emplace_back(new arangodb::ClusterFeature(server),
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
                           false);  // required for ClusterInfo::instance()
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for LogicalView::instantiate(...)
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(),
                           false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
     // register view factory
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>()
-        ->emplace(arangodb::LogicalDataSource::Type::emplace(
-                      arangodb::velocypack::StringRef("testViewType")),
-                  viewFactory);
+    server.getFeature<arangodb::ViewTypesFeature>().emplace(
+        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        viewFactory);
 
     agencyCommManager->start();  // initialize agency
   }
@@ -214,17 +206,16 @@ class ClusterInfoTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
                                     arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
-    arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
 
     ClusterCommControl::reset();

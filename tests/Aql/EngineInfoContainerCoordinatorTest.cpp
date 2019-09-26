@@ -140,7 +140,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   testee.addNode(&sNode);
 
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds);
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
 
@@ -297,7 +297,7 @@ TEST(EngineInfoContainerTest,
   testee.closeSnippet();
 
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds);
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
 
@@ -533,7 +533,7 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   testee.addNode(&tbNode);
 
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds);
 
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
@@ -700,7 +700,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
       .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
 
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds);
   ASSERT_TRUE(!result.ok());
   // Make sure we check the right thing here
   ASSERT_TRUE(result.errorNumber() == TRI_ERROR_DEBUG);
@@ -867,7 +867,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
       });
 
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds);
   ASSERT_TRUE(!result.ok());
   // Make sure we check the right thing here
   ASSERT_TRUE(result.errorNumber() == TRI_ERROR_INTERNAL);

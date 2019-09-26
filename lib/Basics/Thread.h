@@ -30,6 +30,9 @@
 #include "Basics/threads.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 class ConditionVariable;
 }
@@ -82,7 +85,8 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
  public:
-  Thread(std::string const& name, bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
+  Thread(application_features::ApplicationServer& server, std::string const& name,
+         bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
  public:
@@ -139,6 +143,9 @@ class Thread {
   /// to members of the thread that happen before the call to shutdown must
   /// be threadsafe!
   void shutdown();
+
+ protected:
+  application_features::ApplicationServer& _server;
 
  protected:
   /// @brief the thread program

@@ -31,6 +31,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -57,7 +58,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
-      _maxWriteBufferNumber(7 + 2), // number of column families plus 2
+      _maxWriteBufferNumber(7 + 2),  // number of column families plus 2
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
@@ -119,7 +120,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
   }
 
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 }
 
 void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -173,7 +174,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "writes",
       new UInt64Parameter(&_delayedWriteRate),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-  options->addOldOption("rocksdb.delayed_write_rate", "rocksdb.delayed-write-rate");
+  options->addOldOption("rocksdb.delayed_write_rate",
+                        "rocksdb.delayed-write-rate");
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "minimum number of write buffers that will be merged "
@@ -320,18 +322,24 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "skip corrupted records in WAL recovery",
                      new BooleanParameter(&_skipCorrupted),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-  
-  options->addOption("--rocksdb.limit-open-files-at-startup",
-                     "limit the amount of .sst files RocksDB will inspect at startup, in order to startup reduce IO",
-                     new BooleanParameter(&_limitOpenFilesAtStartup),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30405).setIntroducedIn(30500);
-  
-  options->addOption("--rocksdb.allow-fallocate",
-                     "if true, allow RocksDB to use fallocate calls. if false, fallocate calls are bypassed",
-                     new BooleanParameter(&_allowFAllocate),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30405).setIntroducedIn(30500);
+
+  options
+      ->addOption("--rocksdb.limit-open-files-at-startup",
+                  "limit the amount of .sst files RocksDB will inspect at "
+                  "startup, in order to startup reduce IO",
+                  new BooleanParameter(&_limitOpenFilesAtStartup),
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30405)
+      .setIntroducedIn(30500);
+
+  options
+      ->addOption("--rocksdb.allow-fallocate",
+                  "if true, allow RocksDB to use fallocate calls. if false, "
+                  "fallocate calls are bypassed",
+                  new BooleanParameter(&_allowFAllocate),
+                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30405)
+      .setIntroducedIn(30500);
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -420,9 +428,9 @@ void RocksDBOptionFeature::start() {
       << ", enable_pipelined_write: " << _enablePipelinedWrite
       << ", optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
       << ", use_direct_reads: " << std::boolalpha << _useDirectReads
-      << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha << _useDirectIoForFlushAndCompaction
-      << ", use_fsync: " << std::boolalpha << _useFSync
-      << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
+      << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha
+      << _useDirectIoForFlushAndCompaction << ", use_fsync: " << std::boolalpha
+      << _useFSync << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
       << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup
       << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
 }

@@ -44,6 +44,9 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 class QueryList;
 }
@@ -155,6 +158,8 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
+  arangodb::application_features::ApplicationServer& _server;
+
   TRI_voc_tick_t const _id;  // internal database id
   std::string  _name; // database name
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
@@ -204,6 +209,10 @@ struct TRI_vocbase_t {
 
   /// @brief determine whether a data-source name is a system data-source name
   static bool IsSystemName(std::string const& name) noexcept;
+
+  arangodb::application_features::ApplicationServer& server() const {
+    return _server;
+  }
 
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }

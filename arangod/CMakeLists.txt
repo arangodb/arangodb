@@ -335,6 +335,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryExecutor.cpp
   Aql/SubqueryStartExecutionNode.cpp
+  Aql/SubqueryStartExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
@@ -388,6 +389,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
+  StorageEngine/RocksDBOptionFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
 )
@@ -558,6 +560,15 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
+  FeaturePhases/AgencyFeaturePhase.cpp
+  FeaturePhases/AqlFeaturePhase.cpp
+  FeaturePhases/BasicFeaturePhaseServer.cpp
+  FeaturePhases/ClusterFeaturePhase.cpp
+  FeaturePhases/DatabaseFeaturePhase.cpp
+  FeaturePhases/FinalFeaturePhase.cpp
+  FeaturePhases/FoxxFeaturePhase.cpp
+  FeaturePhases/ServerFeaturePhase.cpp
+  FeaturePhases/V8FeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
@@ -571,6 +582,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
+  GeneralServer/SslServerFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
@@ -792,6 +804,7 @@ target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/
 # .
 
 target_link_libraries(arango_agency arango)
+target_link_libraries(arango_agency arango_iresearch)
 
 target_link_libraries(arango_aql arango_geo)
 target_link_libraries(arango_aql arango_graph)
@@ -861,6 +874,7 @@ target_link_libraries(arango_v8server arango_replication)
 target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
 
 target_link_libraries(arango_vocbase arango_agency)
+target_link_libraries(arango_vocbase arango_cluster_methods)
 target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)

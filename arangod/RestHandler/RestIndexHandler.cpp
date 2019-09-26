@@ -23,6 +23,7 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
@@ -50,8 +51,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestIndexHandler::RestIndexHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestIndexHandler::execute() {
   // extract the request type
@@ -75,7 +77,8 @@ RestStatus RestIndexHandler::execute() {
 std::shared_ptr<LogicalCollection> RestIndexHandler::collection(std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      return ClusterInfo::instance()->getCollectionNT(_vocbase.name(), cName);
+      return server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+          _vocbase.name(), cName);
     } else {
       return _vocbase.lookupCollection(cName);
     }

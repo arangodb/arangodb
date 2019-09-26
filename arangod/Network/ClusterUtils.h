@@ -52,8 +52,6 @@ OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
                                     OperationOptions options,
                                     std::unordered_map<int, size_t> const& errorCounter);
 
-void pruneConnectionsToServers(std::vector<std::string> const& servers);
-
 }  // namespace network
 }  // namespace arangodb
 

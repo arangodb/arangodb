@@ -23,6 +23,7 @@
 
 #include "NonceFeature.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Nonce.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -35,7 +36,7 @@ namespace arangodb {
 NonceFeature::NonceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Nonce"), _size(4 * 1024 * 1024) {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

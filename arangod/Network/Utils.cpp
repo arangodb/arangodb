@@ -26,9 +26,11 @@
 #include "Agency/Agent.h"
 #include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -36,18 +38,24 @@
 namespace arangodb {
 namespace network {
 
-int resolveDestination(DestinationId const& dest, network::EndpointSpec& spec) {
+int resolveDestination(NetworkFeature& feature, DestinationId const& dest,
+                       network::EndpointSpec& spec) {
+  
+  // Now look up the actual endpoint:
+  if (!feature.server().hasFeature<ClusterFeature>()) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
+  return resolveDestination(ci, dest, spec);
+}
+
+int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
+                       network::EndpointSpec& spec) {
   using namespace arangodb;
 
   if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
-  }
-
-  // Now look up the actual endpoint:
-  auto* ci = ClusterInfo::instance();
-  if (!ci) {
-    return TRI_ERROR_SHUTTING_DOWN;
   }
 
   // This sets result.shardId, result.serverId and result.endpoint,
@@ -59,7 +67,7 @@ int resolveDestination(DestinationId const& dest, network::EndpointSpec& spec) {
   if (dest.compare(0, 6, "shard:", 6) == 0) {
     spec.shardId = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(spec.shardId);
+      std::shared_ptr<std::vector<ServerID>> resp = ci.getResponsibleServer(spec.shardId);
       if (!resp->empty()) {
         spec.serverId = (*resp)[0];
       } else {
@@ -78,7 +86,7 @@ int resolveDestination(DestinationId const& dest, network::EndpointSpec& spec) {
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
-  spec.endpoint = ci->getServerEndpoint(spec.serverId);
+  spec.endpoint = ci.getServerEndpoint(spec.serverId);
   if (spec.endpoint.empty()) {
     if (spec.serverId.find(',') != std::string::npos) {
       TRI_ASSERT(false);

@@ -20,27 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AQLPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_BASIC_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_SERVER_BASIC_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AQLPhase") {
-  setOptional(false);
-  startsAfter("V8Phase");
-
-  startsAfter("CommunicationPhase");
-  startsAfter("Aql");
-  startsAfter("AQLFunctions");
-  startsAfter("ArangoSearchAnalyzer");
-  startsAfter("ArangoSearch");
-  startsAfter("OptimizerRules");
-  startsAfter("Pregel");
-  startsAfter("QueryRegistry");
-  startsAfter("SystemDatabase");
-  startsAfter("TraverserEngineRegistry");
-}
+class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
+ public:
+  explicit BasicFeaturePhaseServer(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

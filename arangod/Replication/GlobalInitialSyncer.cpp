@@ -85,7 +85,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
 Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (_state.applier._server.isStopping()) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
@@ -165,7 +165,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   try {
     // actually sync the database
     for (auto const& dbEntry : VPackObjectIterator(databases)) {
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_state.applier._server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       } else if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
@@ -251,7 +251,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
+      Result r = methods::Databases::create(_state.applier._server, dbName,
+                                            VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)
@@ -326,10 +327,13 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
-    auto* sysDbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-    auto r = sysDbFeature ? methods::Databases::drop(sysDbFeature->use().get(), dbname)
-                          : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    auto r = _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
+                 ? methods::Databases::drop(_state.applier._server
+                                                .getFeature<arangodb::SystemDatabaseFeature>()
+                                                .use()
+                                                .get(),
+                                            dbname)
+                 : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
       LOG_TOPIC("0a282", WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
@@ -349,7 +353,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (_state.applier._server.isStopping()) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 

@@ -218,10 +218,8 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   }
 
   // check wether we need fishbowl collection, or not.
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  if (!security->isFoxxStoreDisabled()) {
+  ServerSecurityFeature& security = vocbase.server().getFeature<ServerSecurityFeature>();
+  if (!security.isFoxxStoreDisabled()) {
     systemCollections.push_back(StaticStrings::FishbowlCollection);
   }
 
@@ -461,7 +459,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
   res = ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
 
   if (res.fail()) {
-    LOG_TOPIC("e32fy", ERR, Logger::STARTUP)
+    LOG_TOPIC("e32fe", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -469,7 +467,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fx", ERR, Logger::STARTUP)
+    LOG_TOPIC("e32fd", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -485,11 +483,7 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
                                                  arangodb::velocypack::Slice const& /*upgradeParams*/) {
   // drop legacy collection if upgrading the system vocbase and collection found
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<  // find feature
-      arangodb::SystemDatabaseFeature  // feature type
-      >();
-
-  if (!sysDatabase) {
+  if (!vocbase.server().hasFeature<arangodb::SystemDatabaseFeature>()) {
     LOG_TOPIC("8783e", WARN, Logger::STARTUP)
         << "failure to find '" << arangodb::SystemDatabaseFeature::name()
         << "' feature while registering legacy static analyzers with vocbase '"
@@ -498,9 +492,8 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
 
     return false;  // internal error
   }
-
-  auto sysVocbase = sysDatabase->use();
-
+  auto& sysDatabase = vocbase.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
   TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
 #endif
 

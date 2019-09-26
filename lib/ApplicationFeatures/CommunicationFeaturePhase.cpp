@@ -17,23 +17,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_SERVER_FEATURE_PHASE_H 1
-
-#include "ApplicationFeaturePhase.h"
+#include "CommunicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-class ServerFeaturePhase : public ApplicationFeaturePhase {
- public:
-  explicit ServerFeaturePhase(ApplicationServer& server);
-};
+CommunicationFeaturePhase::CommunicationFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "CommunicationPhase") {
+  setOptional(false);
+}
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

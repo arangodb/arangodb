@@ -38,7 +38,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
  public:
-  RestTransactionHandler(GeneralRequest*, GeneralResponse*);
+  RestTransactionHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTransactionHandler"; }

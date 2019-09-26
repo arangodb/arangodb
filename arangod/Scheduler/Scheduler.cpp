@@ -49,8 +49,8 @@ namespace arangodb {
 
 class SchedulerThread : virtual public Thread {
  public:
-  explicit SchedulerThread(Scheduler& scheduler)
-      : Thread("Scheduler"), _scheduler(scheduler) {}
+  explicit SchedulerThread(application_features::ApplicationServer& server, Scheduler& scheduler)
+      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
   ~SchedulerThread() {} // shutdown is called by derived implementation!
 
  protected:
@@ -59,8 +59,9 @@ class SchedulerThread : virtual public Thread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(Scheduler& scheduler)
-      : Thread("SchedCron"), SchedulerThread(scheduler) {}
+  explicit SchedulerCronThread(application_features::ApplicationServer& server,
+                               Scheduler& scheduler)
+      : Thread(server, "SchedCron"), SchedulerThread(server, scheduler) {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -69,7 +70,8 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler() /*: _stopping(false)*/
+Scheduler::Scheduler(application_features::ApplicationServer& server)
+    : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
 }
@@ -77,7 +79,7 @@ Scheduler::Scheduler() /*: _stopping(false)*/
 Scheduler::~Scheduler() {}
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(*this));
+  _cronThread.reset(new SchedulerCronThread(_server, *this));
   return _cronThread->start();
 }
 

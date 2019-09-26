@@ -78,8 +78,6 @@ class RebootId {
 
 }  // namespace arangodb
 
-inline std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
-  return r.print(o);
-}
+std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r);
 
 #endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H
