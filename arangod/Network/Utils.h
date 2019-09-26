@@ -42,7 +42,7 @@ class ClusterInfo;
 namespace network {
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-int resolveDestination(NetworkFeature&, DestinationId const& dest, network::EndpointSpec&);
+int resolveDestination(NetworkFeature const&, DestinationId const& dest, network::EndpointSpec&);
 int resolveDestination(ClusterInfo&, DestinationId const& dest, network::EndpointSpec&);
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,

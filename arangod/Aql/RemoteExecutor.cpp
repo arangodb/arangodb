@@ -37,6 +37,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/CommonDefines.h"
+#include "VocBase/vocbase.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -403,7 +404,8 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
                                                             std::string const& urlPart,
                                                             VPackBuffer<uint8_t> body) {
-  network::ConnectionPool* pool = NetworkFeature::pool();
+  NetworkFeature const& nf = _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
@@ -415,7 +417,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                     urlPart + _queryId;
 
   arangodb::network::EndpointSpec spec;
-  int res = network::resolveDestination(_server, spec);
+  int res = network::resolveDestination(nf, _server, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return Result(res);
   }

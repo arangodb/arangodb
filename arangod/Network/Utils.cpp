@@ -38,7 +38,7 @@
 namespace arangodb {
 namespace network {
 
-int resolveDestination(NetworkFeature& feature, DestinationId const& dest,
+int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
                        network::EndpointSpec& spec) {
   
   // Now look up the actual endpoint:
