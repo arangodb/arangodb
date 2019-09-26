@@ -39,13 +39,12 @@ namespace aql {
 /// parts to securely test all borders
 
 namespace fetcherHelper {
-
 /// Helper method that splits a single baseBlock into multiple AqlItemBlocks.
 /// Where to split is defined by the piecesBitMap handed it.
 /// If the `n-th` bit piecesBitMap is set, we will add a split after Row `n`.
 /// e.g. we will now have a block from 0 -> n and a block from n+1 -> end
 /// we can apply multiple of these splits, ulimate case, split block into single line blocks.
-std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>> CutMyBlockIntoPieces(
+static std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>> CutMyBlockIntoPieces(
     SharedAqlItemBlockPtr baseBlock, uint64_t piecesBitMap) {
   std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>> toReturn{};
   size_t from = 0;
@@ -69,14 +68,14 @@ std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlIte
 /// of DataRows For simplicity we only test string values here, that AqlValues
 /// of different types work is tested somewhere else.
 template <class Fetcher>
-void PullAndAssertDataRows(Fetcher& testee, std::vector<std::string> dataResults);
+static void PullAndAssertDataRows(Fetcher& testee, std::vector<std::string> dataResults);
 
 /// Helper method to assert that we can now pull all ShadowRows at once, and stop at the next data row
 /// Also asserts that we will never leave the finalState (either HASMORE or DONE)
 template <class Fetcher>
-void PullAndAssertShadowRows(Fetcher& testee,
-                             std::vector<std::pair<uint64_t, std::string>> shadowResults,
-                             ExecutionState finalState) {
+static void PullAndAssertShadowRows(Fetcher& testee,
+                                    std::vector<std::pair<uint64_t, std::string>> shadowResults,
+                                    ExecutionState finalState) {
   ExecutionState state = ExecutionState::HASMORE;
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   // For each entry in shadowResults.
@@ -103,7 +102,7 @@ void PullAndAssertShadowRows(Fetcher& testee,
 }
 
 template <class Fetcher>
-void StaysConstantAfterDone(Fetcher& testee) {
+static void StaysConstantAfterDone(Fetcher& testee) {
   PullAndAssertDataRows(testee, {});
   PullAndAssertShadowRows(testee, {}, ExecutionState::DONE);
 }
