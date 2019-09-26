@@ -201,7 +201,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     for (auto const& collection : testSystemCollections) {
       VPackBuilder options;
       methods::Collections::createSystemCollectionProperties(collection, options,
-                                                             vocbase.isSystem());
+                                                             vocbase);
 
       testSystemCollectionsToCreate.emplace_back(
           CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
@@ -239,7 +239,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
       // if not found, create it
       VPackBuilder options;
       methods::Collections::createSystemCollectionProperties(collection, options,
-                                                             vocbase.isSystem());
+                                                             vocbase);
 
       systemCollectionsToCreate.emplace_back(
           CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
@@ -442,7 +442,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fx", ERR, Logger::STARTUP)
+    LOG_TOPIC("e32fa", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;

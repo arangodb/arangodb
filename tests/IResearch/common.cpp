@@ -246,6 +246,8 @@ size_t i;
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 namespace arangodb {
@@ -327,7 +329,8 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
-    expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
+    arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
+    expectedRules.emplace(translated.toString());
   }
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
@@ -521,8 +524,7 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
                              std::make_shared<arangodb::velocypack::Builder>(),
@@ -632,8 +634,7 @@ void assertFilter(bool parseOk, bool execOk, std::string const& queryString,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -734,8 +735,7 @@ void assertFilterExecutionFail(std::string const& queryString,
 void assertFilterParseFail(std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
@@ -743,6 +743,29 @@ void assertFilterParseFail(std::string const& queryString,
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.fail());
 }
+
+arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id, bool allowSystem) {
+  arangodb::CreateDatabaseInfo info;
+  info.allowSystemDB(allowSystem);
+  auto rv = info.load(name, id);
+  if(rv.fail()) {
+    throw std::runtime_error(rv.errorMessage());
+  }
+  return info;
+};
+
+arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name, uint64_t id) {
+  auto rv =  createInfo(name, id, true);
+  return rv;
+};
+
+arangodb::CreateDatabaseInfo testDBInfo(std::string const& name, uint64_t id) {
+  return createInfo(name, id);
+};
+
+arangodb::CreateDatabaseInfo unknownDBInfo(std::string const& name, uint64_t id) {
+  return createInfo(name, id);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

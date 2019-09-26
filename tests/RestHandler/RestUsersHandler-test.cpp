@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
@@ -124,7 +125,7 @@ class RestUsersHandlerTest : public ::testing::Test {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
+                                             systemDBInfo());
     features.emplace_back(new arangodb::ShardingFeature(server),
                           false);  // required for LogicalCollection::LogicalCollection(...)
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
@@ -196,7 +197,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
       arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
           "Database");
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature->createDatabase(1, "testDatabase", vocbase).ok());
+  ASSERT_TRUE(databaseFeature->createDatabase(testDBInfo(), vocbase).ok());
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
   auto grantResponcePtr = std::make_unique<GeneralResponseMock>();

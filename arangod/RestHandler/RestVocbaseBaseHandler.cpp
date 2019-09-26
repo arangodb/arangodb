@@ -570,10 +570,10 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                      ServerState::instance()->isRunningInCluster())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
-    
+
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    
+
     if (pos > 0 && pos < value.size() &&
         value.compare(pos, std::string::npos, " begin") == 0) {
       if (!ServerState::instance()->isDBServer()) {
@@ -588,7 +588,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         }
       }
     }
-    
+
     auto ctx = mgr->leaseManagedTrx(tid, type);
     if (!ctx) {
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
@@ -608,7 +608,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   if (!found) {
     return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   }
-    
+
   TRI_voc_tid_t tid = 0;
   std::size_t pos = 0;
   try {
@@ -618,10 +618,10 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
                    ServerState::instance()->isRunningInCluster())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
   }
-  
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
+
   if (pos > 0 && pos < value.size()) {
     if (!transaction::isLeaderTransactionId(tid) ||
         !ServerState::instance()->isDBServer()) {

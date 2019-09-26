@@ -47,25 +47,38 @@ struct SortRegister;
 class IdExecutorInfos : public ExecutorInfos {
  public:
   IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear);
+                  std::unordered_set<RegisterId> registersToClear,
+                  std::string const& distributeId = "",
+                  bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
+
+  std::string const& distributeId() { return _distributeId; }
+
+  bool isResponsibleForInitializeCursor() const {
+    return _isResponsibleForInitializeCursor;
+  }
+
+ private:
+  std::string const _distributeId;
+
+  bool const _isResponsibleForInitializeCursor;
 };
 
 // forward declaration
-template <class T>
+template <bool usePassThrough, class T>
 class IdExecutor;
 
 // (empty) implementation of IdExecutor<void>
 template <>
-class IdExecutor<void> {};
+class IdExecutor<true, void> {};
 
 // implementation of ExecutionBlockImpl<IdExecutor<void>>
 template <>
-class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
+class ExecutionBlockImpl<IdExecutor<true, void>> : public ExecutionBlock {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      RegisterId outputRegister, bool doCount)
@@ -151,13 +164,13 @@ class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
   bool const _doCount;
 };
 
-template <class UsedFetcher>
+template <bool usePassThrough, class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
+    static const bool allowsBlockPassthrough = usePassThrough;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
@@ -176,14 +189,23 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  template <bool allowPass = usePassThrough, typename = std::enable_if_t<allowPass>>
   inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
     auto rv = _fetcher.fetchBlockForPassthrough(atMost);
     return {rv.first, {}, std::move(rv.second)};
   }
 
+  template <bool allowPass = usePassThrough, typename = std::enable_if_t<!allowPass>>
+  std::tuple<ExecutionState, NoStats, size_t> skipRows(size_t atMost) {
+    ExecutionState state;
+    size_t skipped;
+    std::tie(state, skipped) = _fetcher.skipRows(atMost);
+    return {state, NoStats{}, skipped};
+  }
+
  private:
   Fetcher& _fetcher;
-};
+};  // namespace aql
 }  // namespace aql
 }  // namespace arangodb
 

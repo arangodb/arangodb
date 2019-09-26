@@ -21,7 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H
 #define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
 
@@ -48,7 +47,8 @@ class SubqueryEndNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -57,7 +57,7 @@ class SubqueryEndNode : public ExecutionNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  bool isEqualTo(ExecutionNode const &other) const override final;
+  bool isEqualTo(ExecutionNode const& other) const override final;
 
   std::vector<Variable const*> getVariablesSetHere() const override final {
     return std::vector<Variable const*>{_outVariable};
@@ -69,7 +69,7 @@ class SubqueryEndNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

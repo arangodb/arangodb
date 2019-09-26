@@ -219,7 +219,7 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_strategy != nullptr);
   if (!_initialized) {
-    ExecutionState state = init();
+    ExecutionState state = init(output.numRowsLeft());
     if (state != ExecutionState::HASMORE) {
       // Can be DONE(unlikely, no input) of WAITING
       return {state, NoStats{}};
@@ -233,7 +233,7 @@ std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlI
       // This is executed on every produceRows, and will replace the row that we have returned last time
       std::tie(_inputRows[_dependencyToFetch].state,
                _inputRows[_dependencyToFetch].row) =
-          _fetcher.fetchRowForDependency(_dependencyToFetch);
+          _fetcher.fetchRowForDependency(_dependencyToFetch, output.numRowsLeft());
       if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, NoStats{}};
       }
@@ -290,7 +290,7 @@ void SortingGatherExecutor::adjustNrDone(size_t dependency) {
   }
 }
 
-ExecutionState SortingGatherExecutor::init() {
+ExecutionState SortingGatherExecutor::init(size_t atMost) {
   if (_numberDependencies == 0) {
     // We need to initialize the dependencies once, they are injected
     // after the fetcher is created.
@@ -308,7 +308,7 @@ ExecutionState SortingGatherExecutor::init() {
   while (_dependencyToFetch < _numberDependencies) {
     std::tie(_inputRows[_dependencyToFetch].state,
              _inputRows[_dependencyToFetch].row) =
-        _fetcher.fetchRowForDependency(_dependencyToFetch);
+        _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
     if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
       return ExecutionState::WAITING;
     }

@@ -21,7 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H
 #define ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H 1
 
@@ -37,14 +36,14 @@ class SubqueryStartNode : public ExecutionNode {
 
  public:
   SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-  SubqueryStartNode(ExecutionPlan* plan, size_t id)
-      : ExecutionNode(plan, id) {}
+  SubqueryStartNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
   CostEstimate estimateCost() const override final;
 
   NodeType getType() const override final { return SUBQUERY_START; }
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -56,8 +55,7 @@ class SubqueryStartNode : public ExecutionNode {
   bool isEqualTo(ExecutionNode const& other) const override final;
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif
-

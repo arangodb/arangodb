@@ -67,7 +67,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,

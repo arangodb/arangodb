@@ -41,8 +41,9 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slic
     : ExecutionNode(plan, base),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
-void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                         std::unordered_set<ExecutionNode const*>& seen) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);

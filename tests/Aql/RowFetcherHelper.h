@@ -91,9 +91,6 @@ class SingleRowFetcherHelper
 
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
 
-  // Backwards Compatible
-  bool isDone() const { return _returnedDoneOnFetchRow; }
-
   arangodb::aql::AqlItemBlockManager& itemBlockManager() {
     return _itemBlockManager;
   }
@@ -168,7 +165,7 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
 
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow() override;
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(size_t atMost = 1) override;
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;

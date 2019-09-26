@@ -20,14 +20,13 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "gtest/gtest.h"
 
 #include "Aql/Ast.h"
-#include "Aql/Query.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/SubqueryStartExecutionNode.h"
+#include "Aql/Query.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/SubqueryStartExecutionNode.h"
 
 #include "Logger/LogMacros.h"
 
@@ -43,30 +42,30 @@ namespace tests {
 namespace aql {
 
 class ExecutionNodeTest : public ::testing::Test {
-protected:
+ protected:
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   Ast ast;
   ExecutionPlan plan;
 
-public:
- ExecutionNodeTest()
-     : fakedQuery(server.createFakeQuery()),
-       ast(fakedQuery.get()),
-       plan(&ast)
-           {};
+ public:
+  ExecutionNodeTest()
+      : fakedQuery(server.createFakeQuery()), ast(fakedQuery.get()), plan(&ast){};
 };
 
 TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   VPackBuilder builder;
 
   std::unique_ptr<SubqueryStartNode> node, nodeFromVPack;
+  std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryStartNode>(&plan, 0);
 
   builder.openArray();
-  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS);
+  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
   builder.close();
+  EXPECT_NE(seen.find(node.get()), seen.end())
+      << "The node has not been added into the seen list";
 
   nodeFromVPack = std::make_unique<SubqueryStartNode>(&plan, builder.slice()[0]);
 
@@ -88,12 +87,16 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip) {
   Variable outvar("name", 1);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
+  std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryEndNode>(&plan, 0, &outvar);
 
   builder.openArray();
-  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS);
+  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
   builder.close();
+
+  EXPECT_NE(seen.find(node.get()), seen.end())
+      << "The node has not been added into the seen list";
 
   nodeFromVPack = std::make_unique<SubqueryEndNode>(&plan, builder.slice()[0]);
 
@@ -111,8 +114,6 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_different_id) {
   ASSERT_FALSE(node1->isEqualTo(*node2));
 }
 
-
-
-} // namespace aql
-} // namespace tests
-} // namespace arangodb
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb
