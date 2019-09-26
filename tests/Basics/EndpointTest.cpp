@@ -34,6 +34,8 @@
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
 #include "Endpoint/EndpointUnixDomain.h"
+#include "Logger/LogTopic.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -58,6 +60,8 @@ using namespace std;
   delete e;
 
 TEST(EndpointTest, EndpointInvalid) {
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
+
   Endpoint* e = nullptr;
 
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory(""));
@@ -87,6 +91,8 @@ TEST(EndpointTest, EndpointInvalid) {
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
+
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

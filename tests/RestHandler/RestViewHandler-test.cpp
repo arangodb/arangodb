@@ -25,6 +25,7 @@
 
 #include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
+#include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #if USE_ENTERPRISE
@@ -95,69 +96,22 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class RestViewHandlerTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
 
-  RestViewHandlerTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+  RestViewHandlerTest() {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
 
-    // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for VocbaseContext
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::renameView(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for LogicalView::create(...)
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    auto* viewTypesFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
-
-    viewTypesFeature->emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
-                                  "testViewType")),
-                              viewFactory);
+    auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
+    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
+                                 "testViewType")),
+                             viewFactory);
   }
 
   ~RestViewHandlerTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
   }
@@ -170,12 +124,13 @@ class RestViewHandlerTest : public ::testing::Test {
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
@@ -283,14 +238,15 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
@@ -391,14 +347,15 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.addSuffix("testView");
     request.addSuffix("rename");
@@ -551,14 +508,15 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.addSuffix("testView");
     request.addSuffix("properties");
@@ -781,14 +739,15 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::GET);
@@ -928,14 +887,15 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.addSuffix("testView");
     request.addSuffix("properties");
@@ -1078,7 +1038,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView1 = vocbase.createView(createView1Json->slice());
     ASSERT_TRUE((false == !logicalView1));
     auto logicalView2 = vocbase.createView(createView2Json->slice());
@@ -1087,7 +1047,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server.server(), requestPtr.release(),
+                                      responcePtr.release());
 
     request.setRequestType(arangodb::rest::RequestType::GET);
 

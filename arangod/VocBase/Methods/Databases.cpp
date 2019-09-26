@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -69,24 +70,23 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
 }
 
 std::vector<std::string> Databases::list(std::string const& user) {
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  if (databaseFeature == nullptr) {
+  auto& server = application_features::ApplicationServer::server();
+  if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
 
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      ClusterInfo* ci = ClusterInfo::instance();
-      return ci->databases(true);
+      ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
+      return ci.databases(true);
     } else {
       // list of all databases
-      return databaseFeature->getDatabaseNames();
+      return databaseFeature.getDatabaseNames();
     }
   } else {
     // slow path for user case
-    return databaseFeature->getDatabaseNamesForUser(user);
+    return databaseFeature.getDatabaseNamesForUser(user);
   }
 }
 
@@ -157,7 +157,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
           break;
         }
 
-        if (application_features::ApplicationServer::isStopping()) {
+        if (info.server().isStopping()) {
           res.reset(TRI_ERROR_SHUTTING_DOWN);
           break;
         }
@@ -183,8 +183,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
-  ClusterInfo* ci = ClusterInfo::instance();
-  Result res = ci->createIsBuildingDatabaseCoordinator(info);
+  ClusterInfo& ci = info.server().getFeature<ClusterFeature>().clusterInfo();
+  Result res = ci.createIsBuildingDatabaseCoordinator(info);
 
   // Even entering the database as building failed; This can happen
   // because a database with this name already exists, or because we could
@@ -194,10 +194,10 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  auto failureGuard = scopeGuard([ci, &info]() {
+  auto failureGuard = scopeGuard([&ci, info]() {
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
       << "Failed to create database '" << info.getName() << "', rolling back.";
-    Result res = ci->cancelCreateDatabaseCoordinator(info);
+    Result res = ci.cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
       // this cannot happen since cancelCreateDatabaseCoordinator keeps retrying
       // indefinitely until the cancellation is either successful or the cluster
@@ -228,13 +228,13 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
-    return ci->createFinalizeDatabaseCoordinator(info);
+    return ci.createFinalizeDatabaseCoordinator(info);
   }
 
   // We leave this handling here to be able to capture
   // error messages and return
   // Cleanup entries in agency.
-  res = ci->cancelCreateDatabaseCoordinator(info);
+  res = ci.cancelCreateDatabaseCoordinator(info);
   if (!res.ok()) {
     // this should never happen as cancelCreateDatabaseCoordinator keeps retrying
     // until either cancellation is successful or the cluster is shut down.
@@ -247,14 +247,14 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 // Create a database on SingleServer, DBServer,
 Result Databases::createOther(CreateDatabaseInfo const& info) {
   // Without the database feature, we can't create a database
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  if (databaseFeature == nullptr) {
+  if (!info.server().hasFeature<DatabaseFeature>()) {
     events::CreateDatabase(info.getName(), TRI_ERROR_INTERNAL);
     return {TRI_ERROR_INTERNAL};
   }
+  DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
 
   TRI_vocbase_t* vocbase = nullptr;
-  Result createResult = databaseFeature->createDatabase(info, vocbase);
+  Result createResult = databaseFeature.createDatabase(info, vocbase);
   if (createResult.fail()) {
     return createResult;
   }
@@ -276,7 +276,8 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   return std::move(upgradeRes.result());
 }
 
-arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& users,
+arangodb::Result Databases::create(application_features::ApplicationServer& server,
+                                   std::string const& dbName, VPackSlice const& users,
                                    VPackSlice const& options) {
   arangodb::Result res;
 
@@ -288,7 +289,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
-  CreateDatabaseInfo createInfo;
+  CreateDatabaseInfo createInfo(server);
   res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
@@ -300,7 +301,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
 
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
     if (!createInfo.validId()) {
-      createInfo.setId(ClusterInfo::instance()->uniqid());
+      auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
+      createInfo.setId(clusterInfo.uniqid());
     }
     res = createCoordinator(createInfo);
   } else {  // Single, DBServer, Agency
@@ -320,9 +322,9 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto* sysDbFeature =
-          arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
-      auto database = sysDbFeature->use();
+      auto& server = application_features::ApplicationServer::server();
+      auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
+      auto database = sysDbFeature.use();
 
       TRI_ExpireFoxxQueueDatabaseCache(database.get());
     } catch (...) {
@@ -347,8 +349,8 @@ int dropDBCoordinator(std::string const& dbName) {
 
   vocbase->release();
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto res = ci->dropDatabaseCoordinator(dbName, 120.0);
+  ClusterInfo& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  auto res = ci.dropDatabaseCoordinator(dbName, 120.0);
 
   if (!res.ok()) {
     events::DropDatabase(dbName, res.errorNumber());

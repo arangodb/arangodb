@@ -43,6 +43,7 @@ class AgentCallback : public arangodb::ClusterCommCallback {
   void shutdown();
 
  private:
+  application_features::ApplicationServer* _server;
   Agent* _agent;
   index_t _last;
   std::string _slaveID;

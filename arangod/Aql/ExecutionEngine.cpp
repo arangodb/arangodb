@@ -181,9 +181,9 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 }
 
 /// @brief create the engine
-ExecutionEngine::ExecutionEngine(Query* query, SerializationFormat format)
+ExecutionEngine::ExecutionEngine(Query& query, SerializationFormat format)
     : _stats(),
-      _itemBlockManager(query->resourceMonitor(), format),
+      _itemBlockManager(query.resourceMonitor(), format),
       _blocks(),
       _root(nullptr),
       _query(query),
@@ -368,7 +368,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   bool _isCoordinator;
   bool const _pushToSingleServer;
   QueryId _lastClosed;
-  Query* _query;
+  Query& _query;
   // This is a handle to the last gather node that we see while traversing the
   // plan The guarantee is that we only have the combination `Remote <- Gather
   // <- before` Therefore we will always assert that this is NULLPTR with the
@@ -376,15 +376,13 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   GatherNode const* _lastGatherNode;
 
  public:
-  explicit DistributedQueryInstanciator(Query* query, bool pushToSingleServer)
+  explicit DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
       : _dbserverParts(query),
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
         _lastClosed(0),
         _query(query),
-        _lastGatherNode(nullptr) {
-    TRI_ASSERT(_query);
-  }
+        _lastGatherNode(nullptr) {}
 
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
@@ -471,7 +469,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 
     auto cleanupGuard = scopeGuard([this, &queryIds]() {
       _dbserverParts.cleanupEngines(ClusterComm::instance(), TRI_ERROR_INTERNAL,
-                                    _query->vocbase().name(), queryIds);
+                                    _query.vocbase().name(), queryIds);
     });
     std::unordered_map<size_t, size_t> nodeAliases;
     ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, nodeAliases);
@@ -481,12 +479,12 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    res = _coordinatorParts.buildEngines(_query, registry, _query->vocbase().name(),
-                                         _query->queryOptions().shardIds, queryIds);
+    res = _coordinatorParts.buildEngines(_query, registry, _query.vocbase().name(),
+                                         _query.queryOptions().shardIds, queryIds);
 
     if (res.ok()) {
-      TRI_ASSERT(_query->engine() != nullptr);
-      _query->engine()->_stats.addAliases(std::move(nodeAliases));
+      TRI_ASSERT(_query.engine() != nullptr);
+      _query.engine()->_stats.addAliases(std::move(nodeAliases));
       cleanupGuard.cancel();
     }
 
@@ -532,7 +530,7 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
   Result res{TRI_ERROR_INTERNAL};
   ExecutionState state = ExecutionState::WAITING;
   try {
-    std::shared_ptr<SharedQueryState> sharedState = _query->sharedState();
+    std::shared_ptr<SharedQueryState> sharedState = _query.sharedState();
     if (sharedState != nullptr) {
       sharedState->setContinueCallback();
 
@@ -567,22 +565,20 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
 }
 
 /// @brief create an execution engine from a plan
-ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegistry,
-                                                      Query* query, ExecutionPlan* plan,
+ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegistry,
+                                                      Query& query, ExecutionPlan& plan,
                                                       bool planRegisters) {
   auto role = arangodb::ServerState::instance()->getRole();
 
-  TRI_ASSERT(queryRegistry != nullptr);
-
-  plan->findVarUsage();
+  plan.findVarUsage();
   if (planRegisters) {
-    plan->planRegisters();
+    plan.planRegisters();
   }
 
   std::unique_ptr<ExecutionEngine> engine;
   ExecutionBlock* root = nullptr;
 #ifdef USE_ENTERPRISE
-  bool const pushToSingleServer = plan->hasAppliedRule(
+  bool const pushToSingleServer = plan.hasAppliedRule(
       static_cast<int>(OptimizerRule::RuleLevel::clusterOneShardRule));
 #else
   bool const pushToSingleServer = false;
@@ -591,9 +587,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, pushToSingleServer);
-    plan->root()->walk(inst);
+    plan.root()->walk(inst);
 
-    auto result = inst.buildEngines(queryRegistry);
+    auto result = inst.buildEngines(&queryRegistry);
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
@@ -608,7 +604,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
     engine.reset(new ExecutionEngine(query, SerializationFormat::SHADOWROWS));
 
     SingleServerQueryInstanciator inst(*engine);
-    plan->root()->walk(inst);
+    plan.root()->walk(inst);
 
     root = inst.root;
     TRI_ASSERT(root != nullptr);
@@ -658,7 +654,7 @@ void ExecutionEngine::root(ExecutionBlock* root) {
   _root = root;
 }
 
-Query* ExecutionEngine::getQuery() const { return _query; }
+Query* ExecutionEngine::getQuery() const { return &_query; }
 
 bool ExecutionEngine::initializeCursorCalled() const {
   return _initializeCursorCalled;

@@ -20,41 +20,30 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabasePhase.h"
+#include "ServerFeaturePhase.h"
+
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "RestServer/EndpointFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "RestServer/UpgradeFeature.h"
+#include "Statistics/StatisticsFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "DatabasePhase") {
+ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "ServerPhase") {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<AqlFeaturePhase>();
 
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("CheckVersion");
-  startsAfter("Database");
-  startsAfter("EngineSelector");
-  startsAfter("Flush");
-  startsAfter("InitDatabase");
-#ifdef USE_ENTERPRISE
-  startsAfter("Ldap");
-#endif
-  startsAfter("Lockfile");
-  startsAfter("MMFilesCompaction");
-  startsAfter("MMFilesEngine");
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("MMFilesPersistentIndex");
-  startsAfter("MMFilesWalRecovery");
-  startsAfter("Replication");
-  startsAfter("RocksDBEngine");
-  startsAfter("RocksDBOption");
-  startsAfter("RocksDBRecoveryManager");
-  startsAfter("ServerId");
-  startsAfter("StorageEngine");
-  startsAfter("SystemDatabase");
-  startsAfter("TransactionManager");
-  startsAfter("ViewTypes");
+  startsAfter<EndpointFeature>();
+  startsAfter<GeneralServerFeature>();
+  startsAfter<ServerFeature>();
+  startsAfter<SslServerFeature>();
+  startsAfter<StatisticsFeature>();
+  startsAfter<UpgradeFeature>();
 }
 
 }  // namespace application_features

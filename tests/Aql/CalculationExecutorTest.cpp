@@ -44,7 +44,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // required for QuerySetup
-#include "../Mocks/Servers.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -87,6 +87,7 @@ class CalculationExecutorTest : public ::testing::Test {
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        server(),
         fakedQuery(server.createFakeQuery()),
         ast(fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
@@ -118,7 +119,7 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 }
 
@@ -135,11 +136,11 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 }
 
@@ -155,24 +156,24 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 
   // 1
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // 2
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // 3
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!row.produced());
 
   // verify calculation
@@ -199,39 +200,39 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
 
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
   // 1
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
   // 2
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
   // 3
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!row.produced());
 }
 

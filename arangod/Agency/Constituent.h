@@ -52,7 +52,7 @@ class Agent;
 // RAFT leader election
 class Constituent : public Thread {
  public:
-  Constituent();
+  Constituent(application_features::ApplicationServer&);
 
   // clean up and exit election
   virtual ~Constituent();

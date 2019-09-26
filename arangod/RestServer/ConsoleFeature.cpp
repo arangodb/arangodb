@@ -25,6 +25,7 @@
 #include "ConsoleFeature.h"
 
 #include "Basics/messages.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -45,13 +46,13 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
       _operationMode(OperationMode::MODE_SERVER),
       _consoleThread(nullptr) {
-  startsAfter("AgencyPhase");
+  startsAfter<AgencyFeaturePhase>();
 }
 
 void ConsoleFeature::start() {
-  auto server = ApplicationServer::getFeature<ServerFeature>("Server");
+  auto& serverFeature = server().getFeature<ServerFeature>();
 
-  _operationMode = server->operationMode();
+  _operationMode = serverFeature.operationMode();
 
   if (_operationMode != OperationMode::MODE_CONSOLE) {
     return;
@@ -59,11 +60,10 @@ void ConsoleFeature::start() {
 
   LOG_TOPIC("a4313", TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
 
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
-  auto database = sysDbFeature->use();
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
 
-  _consoleThread.reset(new ConsoleThread(ApplicationFeature::server(), database.get()));
+  _consoleThread.reset(new ConsoleThread(server(), database.get()));
   _consoleThread->start();
 }
 

@@ -20,43 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_V8_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_V8_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-BasicFeaturePhase::BasicFeaturePhase(ApplicationServer& server, bool isClient)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
-  setOptional(false);
-  startsAfter("GreetingsPhase");
-  startsAfter("Sharding");
-
-#ifdef USE_ENTERPRISE
-  startsAfter("Encryption");
-#endif
-  startsAfter("Ssl");
-
-  if (isClient) {
-    startsAfter("Client");
-  }
-
-  if (!isClient) {
-    startsAfter("Audit");
-    startsAfter("Daemon");
-    startsAfter("DatabasePath");
-    startsAfter("Environment");
-    startsAfter("FileDescriptors");
-    startsAfter("Language");
-    startsAfter("MaxMapCount");
-    startsAfter("Nonce");
-    startsAfter("PageSize");
-    startsAfter("Privilege");
-    startsAfter("Scheduler");
-    startsAfter("Supervisor");
-    startsAfter("Temp");
-    startsAfter("WindowsService");
-  }
-}
+class V8FeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit V8FeaturePhase(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

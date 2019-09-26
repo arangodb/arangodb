@@ -30,9 +30,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminRoutingHandler::RestAdminRoutingHandler(GeneralRequest* request,
+RestAdminRoutingHandler::RestAdminRoutingHandler(application_features::ApplicationServer& server,
+                                                 GeneralRequest* request,
                                                  GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminRoutingHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
