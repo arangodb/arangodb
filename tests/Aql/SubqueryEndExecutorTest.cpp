@@ -29,10 +29,17 @@
 #include "Aql/Stats.h"
 #include "Aql/SubqueryEndExecutor.h"
 
+#include "Logger/LogMacros.h"
+
+#include "Basics/VelocyPackHelper.h"
+
+
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
+using namespace arangodb::basics;
 
 namespace {
 SubqueryEndExecutorInfos MakeBaseInfos() {
@@ -181,9 +188,14 @@ class SubqueryEndExecutorTest : public ::testing::Test {
     ASSERT_EQ(outputBlock->size(), inputBlock->size());
   }
 
-  void ExpectedValue(SharedAqlItemBlockPtr const& block, size_t row, bool isRelevant) {
-    InputAqlItemRow input{block, row};
+  void ExpectedValue(OutputAqlItemRow& itemRow, size_t rowIdx, const std::string expectedString) const {
+    auto block = itemRow.stealBlock();
+    auto const expected = VPackParser::fromJson(expectedString)->slice();
+
+    EXPECT_TRUE(!block->isShadowRow(rowIdx));
+    InputAqlItemRow input{block, rowIdx};
     LOG_DEVEL << input.getValue(0).slice().toJson();
+    EXPECT_TRUE(VelocyPackHelper::equal(input.getValue(0).slice(), expected, false));
   }
 };
 
@@ -220,8 +232,7 @@ TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
   // Writing the empty result produces one output
   EXPECT_EQ(output.numRowsWritten(), 1);
 
-  // auto block = output.stealBlock();
-  // ExpectedValue(block, 0, true);
+  ExpectedValue(output, 0, "[]");
 }
 
 TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
@@ -246,10 +257,7 @@ TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
   // Writing the output
   EXPECT_EQ(output.numRowsWritten(), 1);
 
-  auto block = output.stealBlock();
-  LOG_DEVEL << "output" << block->size();
-  ExpectedValue(block, 0, true);
-
+  ExpectedValue(output, 0, "[1]");
 }
 
 TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
@@ -278,7 +286,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
 
   auto block = output.stealBlock();
   LOG_DEVEL << "output" << block->size();
-  ExpectedValue(block, 0, true);
+//  ExpectedValue(block, 0, true);
 }
 
 TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
