@@ -50,11 +50,6 @@ SubqueryEndExecutorInfos MakeBaseInfos() {
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>({0}));
 
-  // std::unordered_set<RegisterId> toKeep;
-  // for (RegisterId r = 0; r < regs; ++r) {
-  //   toKeep.emplace(r);
-  // }
-
   return SubqueryEndExecutorInfos(inputRegisters, outputRegisters, 1, 1, {}, {},
                                   nullptr, RegisterId{0});
 }
@@ -62,125 +57,13 @@ SubqueryEndExecutorInfos MakeBaseInfos() {
 }  // namespace
 
 class SubqueryEndExecutorTest : public ::testing::Test {
+public:
+  SubqueryEndExecutorTest() : infos(MakeBaseInfos()) {};
  protected:
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  SubqueryEndExecutorInfos infos;
 
-  void InsertNewShadowRowAfter(std::set<size_t> ns, SharedAqlItemBlockPtr const& inputBlock,
-                               SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
-
-    outputBlock.reset(new AqlItemBlock(itemBlockManager,
-                                       inputBlock->size() + ns.size(), numRegisters));
-
-    // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
-    }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
-                            registersToKeep, registersToClear);
-
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
-      ASSERT_FALSE(testee.isFull());
-      // simply copy over every row, and insert a shadowRow after it
-      InputAqlItemRow source{inputBlock, rowIdx};
-      testee.copyRow(source);
-      ASSERT_TRUE(testee.produced());
-      testee.advanceRow();
-      if (ns.find(rowIdx) != ns.end()) {
-        testee.createShadowRow(source);
-        ASSERT_TRUE(testee.produced());
-        testee.advanceRow();
-      }
-    }
-    outputBlock = testee.stealBlock();
-    ASSERT_EQ(outputBlock->size(), inputBlock->size() + ns.size());
-  }
-
-  void IncreaseShadowRowDepthAt(std::set<size_t> ns, SharedAqlItemBlockPtr const& inputBlock,
-                                SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
-
-    outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), numRegisters));
-
-    // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
-    }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
-                            registersToKeep, registersToClear);
-
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
-      ASSERT_FALSE(testee.isFull());
-
-      if (inputBlock->isShadowRow(rowIdx)) {
-        ShadowAqlItemRow source{inputBlock, rowIdx};
-        if (ns.find(rowIdx) != ns.end()) {
-          testee.increaseShadowRowDepth(source);
-        } else {
-          testee.copyRow(source);
-        }
-        ASSERT_TRUE(testee.produced());
-        testee.advanceRow();
-      } else {
-        InputAqlItemRow source{inputBlock, rowIdx};
-        testee.copyRow(source);
-        ASSERT_TRUE(testee.produced());
-        testee.advanceRow();
-      }
-    }
-    outputBlock = testee.stealBlock();
-    ASSERT_EQ(outputBlock->size(), inputBlock->size());
-  }
-
-  void ReplaceByShadowRowAt(std::set<size_t> ns, SharedAqlItemBlockPtr const& inputBlock,
-                            SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
-
-    outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), numRegisters));
-
-    // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
-    }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
-                            registersToKeep, registersToClear);
-
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
-      ASSERT_FALSE(testee.isFull());
-      // simply copy over every row, and insert a shadowRow after it
-      InputAqlItemRow source{inputBlock, rowIdx};
-      if (ns.find(rowIdx) != ns.end()) {
-        testee.createShadowRow(source);
-        ASSERT_TRUE(testee.produced());
-        testee.advanceRow();
-      } else {
-        testee.copyRow(source);
-        ASSERT_TRUE(testee.produced());
-        testee.advanceRow();
-      }
-    }
-    outputBlock = testee.stealBlock();
-    ASSERT_EQ(outputBlock->size(), inputBlock->size());
-  }
 
   void ExpectedValues(OutputAqlItemRow& itemRow,
                       const std::vector<std::string> expectedStrings) const {
@@ -215,21 +98,18 @@ TEST_F(SubqueryEndExecutorTest, check_properties) {
 
 TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
   SharedAqlItemBlockPtr outputBlock;
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}});
-
-  ReplaceByShadowRowAt({0}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}}, {{0, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
   SubqueryEndExecutor testee(fetcher, infos);
 
   NoStats stats{};
   ExecutionState state{ExecutionState::HASMORE};
+
   outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
   OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
+
   std::tie(state, stats) = testee.produceRows(output);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 1);
@@ -239,14 +119,11 @@ TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
 
 TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
   SharedAqlItemBlockPtr outputBlock;
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}});
-
-  InsertNewShadowRowAfter({0}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{1}, {1}}, {{1, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
-  auto infos = MakeBaseInfos();
   SubqueryEndExecutor testee(fetcher, infos);
 
   NoStats stats{};
@@ -263,15 +140,10 @@ TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
 
 TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
   SharedAqlItemBlockPtr outputBlock;
-
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {34}});
-
-  InsertNewShadowRowAfter({1}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{42}, {34}, {1}}, {{2, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
 
   SubqueryEndExecutor testee(fetcher, infos);
 
@@ -291,14 +163,10 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
 TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
   SharedAqlItemBlockPtr outputBlock;
 
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {34}});
-
-  InsertNewShadowRowAfter({0, 1}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{42}, {1}, {34}, {1}}, {{1, 0}, {3, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
 
   SubqueryEndExecutor testee(fetcher, infos);
 
@@ -314,73 +182,13 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
   ExpectedValues(output, {"[42]", "[34]"});
 }
 
-TEST_F(SubqueryEndExecutorTest, two_shadowrows_after_input) {
-  SharedAqlItemBlockPtr outputBlock;
-
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {34}});
-
-  InsertNewShadowRowAfter({0, 1}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
-
-  SubqueryEndExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  ExecutionState state{ExecutionState::HASMORE};
-
-  outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size() + 1, 1));
-  OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_TRUE(state == ExecutionState::DONE);
-  EXPECT_EQ(output.numRowsWritten(), 2);
-}
-
-// TODO: This is a "death test" with malformed shadow row layout (an irrelevant shadow row before any other row)
-// See https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#death-tests-and-threads
-using SubqueryEndExecutorTest_DeathTest = SubqueryEndExecutorTest;
-TEST_F(SubqueryEndExecutorTest_DeathTest, misplaced_irrelevant_shadowrow) {
-  SharedAqlItemBlockPtr outputBlock;
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{42}, {42}, {42}});
-
-  InsertNewShadowRowAfter({0,1}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-  IncreaseShadowRowDepthAt({1}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
-
-  SubqueryEndExecutor testee(fetcher, infos);
-
-  NoStats stats{};
-  ExecutionState state{ExecutionState::HASMORE};
-
-  outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
-  OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  EXPECT_DEATH(std::tie(state, stats) = testee.produceRows(output), ".*");
-}
-
-TEST_F(SubqueryEndExecutorTest, one_input_one_shadowrow_one_irrelevant) {
+TEST_F(SubqueryEndExecutorTest, two_input_one_shadowrow_two_irrelevant) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}, {42}, {42}});
-
-  ReplaceByShadowRowAt({2, 3, 4}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-  IncreaseShadowRowDepthAt({3, 4}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-  IncreaseShadowRowDepthAt({4}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
+      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}, {42}, {42}},
+                    {{2, 0}, {3, 1}, {4, 2}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
 
   SubqueryEndExecutor testee(fetcher, infos);
 
@@ -403,18 +211,10 @@ TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
 
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}, {42}, {42}});
-
-  ReplaceByShadowRowAt({2, 3, 4}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-  IncreaseShadowRowDepthAt({3, 4}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
-  IncreaseShadowRowDepthAt({4}, inputBlock, outputBlock);
-  inputBlock.swap(outputBlock);
+      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}, {42}, {42}},
+                    {{2, 0}, {3, 1}, {4, 2}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
-
-  auto infos = MakeBaseInfos();
 
   SubqueryEndExecutor testee(fetcher, infos);
 
@@ -440,4 +240,45 @@ TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
   EXPECT_EQ(output2.numRowsWritten(), 2);
 
   ExpectedValues(output2, {"[ [42, 42] ]", ""});
+}
+
+// TODO: This is a "death test" with malformed shadow row layout (an irrelevant shadow row before any other row)
+// See https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#death-tests-and-threads
+
+using SubqueryEndExecutorTest_DeathTest = SubqueryEndExecutorTest;
+
+TEST_F(SubqueryEndExecutorTest_DeathTest, no_shadow_row) {
+  SharedAqlItemBlockPtr outputBlock;
+  SharedAqlItemBlockPtr inputBlock =
+    buildBlock<1>(itemBlockManager, {{1}});
+
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+
+  SubqueryEndExecutor testee(fetcher, infos);
+
+  NoStats stats{};
+  ExecutionState state{ExecutionState::HASMORE};
+
+  outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
+  OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear()};
+  EXPECT_DEATH(std::tie(state, stats) = testee.produceRows(output), ".*");
+}
+
+TEST_F(SubqueryEndExecutorTest_DeathTest, misplaced_irrelevant_shadowrow) {
+  SharedAqlItemBlockPtr outputBlock;
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}}, {{1, 1}, {2, 1}});
+
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+
+  SubqueryEndExecutor testee(fetcher, infos);
+
+  NoStats stats{};
+  ExecutionState state{ExecutionState::HASMORE};
+
+  outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
+  OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear()};
+  EXPECT_DEATH(std::tie(state, stats) = testee.produceRows(output), ".*");
 }
