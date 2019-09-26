@@ -24,9 +24,13 @@
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Meta/static_assert_size.h"
 
 #include <velocypack/Iterator.h>
@@ -55,9 +59,19 @@ void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  TRI_ASSERT(false);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
 
-  return nullptr;
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+
+  // The const_cast has been taken from previous implementation.
+  ExecutorInfos infos(inputRegisters, outputRegisters,
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                      calcRegsToKeep());
+  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this,
+                                                                     std::move(infos));
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
