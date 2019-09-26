@@ -28,8 +28,6 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -38,7 +36,9 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
+class FilterStats;
 template <bool>
 class SingleRowFetcher;
 
@@ -54,7 +54,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; }
+  RegisterId getInputRegister() const noexcept;
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -68,9 +68,9 @@ class FilterExecutorInfos : public ExecutorInfos {
 class FilterExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = FilterExecutorInfos;

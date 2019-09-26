@@ -74,13 +74,12 @@ struct NoopCb final : public arangodb::ClusterCommCallback {
 
 EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, Query const* query)
+    std::unordered_map<ShardID, ServerID> const& shardMapping, Query const& query)
     : _node(node), _hasShard(false) {
-  TRI_ASSERT(query != nullptr);
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
   std::unordered_set<std::string> const& restrictToShards =
-      query->queryOptions().shardIds;
+      query.queryOptions().shardIds;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
     _edgeCollections.emplace_back(
@@ -93,9 +92,17 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // It might in fact be empty, if we only have edge collections in a graph.
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
-    _vertexCollections.emplace(col->name(),
-                               getAllLocalShards(shardMapping, server,
-                                                 col->shardIds(restrictToShards)));
+    auto shards = getAllLocalShards(shardMapping, server,
+                                    col->shardIds(restrictToShards));
+#ifdef USE_ENTERPRISE
+    for (auto const& s : shards) {
+      if (query.trx()->isInaccessibleCollectionId(col->getPlanId())) {
+        _inaccessibleShards.insert(s);
+        _inaccessibleShards.insert(std::to_string(col->id()));
+      }
+    }
+#endif
+    _vertexCollections.emplace(col->name(), std::move(shards));
   }
 }
 
@@ -182,8 +189,8 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
   TRI_ASSERT(infoBuilder.isOpenArray());
 }
 
-EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query* query) noexcept
-    : _query(query), _shardLocking(query), _lastSnippetId(1) {
+EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query& query) noexcept
+    : _query(query), _shardLocking(&query), _lastSnippetId(1) {
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
@@ -191,9 +198,8 @@ void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* g
     auto const& vCols = graphNode->vertexColls();
     if (vCols.empty()) {
       std::map<std::string, Collection*> const* allCollections =
-          _query->collections()->collections();
-      TRI_ASSERT(_query);
-      auto& resolver = _query->resolver();
+          _query.collections()->collections();
+      auto& resolver = _query.resolver();
       for (auto const& it : *allCollections) {
         // If resolver cannot resolve this collection
         // it has to be a view.
@@ -279,19 +285,19 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  double ttl = _query->queryOptions().ttl;
+  double ttl = _query.queryOptions().ttl;
 
   std::string const url(
-      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name()) +
+      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query.vocbase().name()) +
       "/_api/aql/setup?ttl=" + std::to_string(ttl));
 
   auto cleanupGuard = scopeGuard([this, &cc, &queryIds]() {
-    cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds);
+    cleanupEngines(cc, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
   });
 
   // Build Lookup Infos
   VPackBuilder infoBuilder;
-  transaction::Methods* trx = _query->trx();
+  transaction::Methods* trx = _query.trx();
 
   for (auto const& server : dbServers) {
     std::string const serverDest = "server:" + server;
@@ -345,7 +351,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoSlice.toJson(), headers, SETUP_TIMEOUT);
-    _query->incHttpRequests(1);
+    _query.incHttpRequests(1);
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << server << " responded with " << res->getErrorCode() << " -> "
@@ -485,7 +491,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
                        url + basics::StringUtils::itoa(engine.second), noBody,
                        headers, cb, shortTimeout, false, 2.0);
     }
-    _query->incHttpRequests(allEngines->size());
+    _query.incHttpRequests(allEngines->size());
   }
 
   queryIds.clear();
@@ -518,13 +524,13 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
   builder.add(VPackValue("options"));
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
-  if (_query->trx()->state()->options().skipInaccessibleCollections) {
-    aql::QueryOptions opts = _query->queryOptions();
+  if (_query.trx()->state()->options().skipInaccessibleCollections) {
+    aql::QueryOptions opts = _query.queryOptions();
     TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
     auto usedCollections = _shardLocking.getUsedCollections();
     for (auto const& it : usedCollections) {
       TRI_ASSERT(it != nullptr);
-      if (_query->trx()->isInaccessibleCollectionId(it->getPlanId())) {
+      if (_query.trx()->isInaccessibleCollectionId(it->getPlanId())) {
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, it)) {
           opts.inaccessibleCollections.insert(sid);
         }
@@ -533,10 +539,10 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
     }
     opts.toVelocyPack(builder, true);
   } else {
-    _query->queryOptions().toVelocyPack(builder, true);
+    _query.queryOptions().toVelocyPack(builder, true);
   }
 #else
-  _query->queryOptions().toVelocyPack(builder, true);
+  _query.queryOptions().toVelocyPack(builder, true);
 #endif
 }
 
@@ -545,7 +551,7 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
   // This will open and close an Object.
-  _query->ast()->variables()->toVelocyPack(builder);
+  _query.ast()->variables()->toVelocyPack(builder);
 }
 
 // Insert the Snippets information into the message to be send to DBServers

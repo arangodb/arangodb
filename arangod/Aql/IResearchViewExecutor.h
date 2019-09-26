@@ -25,17 +25,17 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "IResearch/ExpressionFilter.h"
-#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
 
-#include "index/heap_iterator.hpp"
+#include <formats/formats.hpp>
+#include <index/heap_iterator.hpp>
+
+#include <utility>
 
 namespace iresearch {
 class score;
@@ -43,13 +43,15 @@ struct document;
 }  // namespace iresearch
 
 namespace arangodb {
+class LogicalCollection;
 
 namespace iresearch {
 struct Scorer;
 }
 
 namespace aql {
-
+struct ExecutionStats;
+class OutputAqlItemRow;
 template <bool>
 class SingleRowFetcher;
 
@@ -65,37 +67,24 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       ExecutionPlan const& plan, Variable const& outVariable, aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth);
 
-  RegisterId getOutputRegister() const noexcept { return _outputRegister; }
-  RegisterId getNumScoreRegisters() const noexcept {
-    return _numScoreRegisters;
-  }
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept {
-    return _reader;
-  }
-  Query& getQuery() const noexcept { return _query; }
-  std::vector<iresearch::Scorer> const& scorers() const noexcept {
-    return _scorers;
-  }
-  ExecutionPlan const& plan() const noexcept { return _plan; }
-  Variable const& outVariable() const noexcept { return _outVariable; }
-  aql::AstNode const& filterCondition() const noexcept {
-    return _filterCondition;
-  }
-  VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
-  int getDepth() const noexcept { return _depth; }
-  bool volatileSort() const noexcept { return _volatileSort; }
-  bool volatileFilter() const noexcept { return _volatileFilter; }
+  RegisterId getOutputRegister() const noexcept;
+  RegisterId getNumScoreRegisters() const noexcept;
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
+  Query& getQuery() const noexcept;
+  std::vector<iresearch::Scorer> const& scorers() const noexcept;
+  ExecutionPlan const& plan() const noexcept;
+  Variable const& outVariable() const noexcept;
+  aql::AstNode const& filterCondition() const noexcept;
+  VarInfoMap const& varInfoMap() const noexcept;
+  int getDepth() const noexcept;
+  bool volatileSort() const noexcept;
+  bool volatileFilter() const noexcept;
 
   // first - sort
   // second - number of sort conditions to take into account
-  std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept {
-    return _sort;
-  }
+  std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept;
 
-  bool isScoreReg(RegisterId reg) const noexcept {
-    return getOutputRegister() < reg &&
-           reg <= getOutputRegister() + getNumScoreRegisters();
-  }
+  bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
   RegisterId const _outputRegister;
@@ -115,24 +104,19 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
 class IResearchViewStats {
  public:
-  IResearchViewStats() noexcept : _scannedIndex(0) {}
+  IResearchViewStats() noexcept;
 
-  void incrScanned() noexcept { _scannedIndex++; }
-  void incrScanned(size_t value) noexcept {
-    _scannedIndex = _scannedIndex + value;
-  }
+  void incrScanned() noexcept;
+  void incrScanned(size_t value) noexcept;
 
-  std::size_t getScanned() const noexcept { return _scannedIndex; }
+  std::size_t getScanned() const noexcept;
 
  private:
   std::size_t _scannedIndex;
 };  // IResearchViewStats
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  IResearchViewStats const& iResearchViewStats) noexcept {
-  executionStats.scannedIndex += iResearchViewStats.getScanned();
-  return executionStats;
-}
+ExecutionStats& operator+=(ExecutionStats& executionStats,
+                           IResearchViewStats const& iResearchViewStats) noexcept;
 
 template <typename Impl>
 struct IResearchViewExecutorTraits;
@@ -144,9 +128,9 @@ class IResearchViewExecutorBase {
     // even with "ordered = true", this block preserves the order; it just
     // writes scorer information in additional register for a following sort
     // block to use.
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
@@ -167,11 +151,7 @@ class IResearchViewExecutorBase {
 
    public:
     explicit ReadContext(aql::RegisterId docOutReg, InputAqlItemRow& inputRow,
-                         OutputAqlItemRow& outputRow)
-        : docOutReg(docOutReg),
-          inputRow(inputRow),
-          outputRow(outputRow),
-          callback(copyDocumentCallback(*this)) {}
+                         OutputAqlItemRow& outputRow);
 
     aql::RegisterId const docOutReg;
     InputAqlItemRow& inputRow;
@@ -183,12 +163,14 @@ class IResearchViewExecutorBase {
   class IndexReadBuffer;
 
   class IndexReadBufferEntry {
+   public:
+    IndexReadBufferEntry() = delete;
+
+   private:
     template <typename ValueType>
     friend class IndexReadBuffer;
 
-    IndexReadBufferEntry() = delete;
-    explicit inline IndexReadBufferEntry(std::size_t keyIdx) noexcept
-        : _keyIdx(keyIdx) {}
+    explicit inline IndexReadBufferEntry(std::size_t keyIdx) noexcept;
 
    protected:
     std::size_t _keyIdx;
@@ -201,20 +183,12 @@ class IResearchViewExecutorBase {
     class ScoreIterator {
      public:
       ScoreIterator() = delete;
-      inline ScoreIterator(std::vector<AqlValue>& scoreBuffer,
-                           std::size_t keyIdx, std::size_t numScores) noexcept
-          : _scoreBuffer(scoreBuffer),
-            _scoreBaseIdx(keyIdx * numScores),
-            _numScores(numScores) {
-        TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
-      }
+      ScoreIterator(std::vector<AqlValue>& scoreBuffer, std::size_t keyIdx,
+                    std::size_t numScores) noexcept;
 
-      inline std::vector<AqlValue>::iterator begin() noexcept {
-        return _scoreBuffer.begin() + _scoreBaseIdx;
-      }
-      inline std::vector<AqlValue>::iterator end() noexcept {
-        return _scoreBuffer.begin() + _scoreBaseIdx + _numScores;
-      }
+      std::vector<AqlValue>::iterator begin() noexcept;
+
+      std::vector<AqlValue>::iterator end() noexcept;
 
      private:
       std::vector<AqlValue>& _scoreBuffer;
@@ -224,67 +198,34 @@ class IResearchViewExecutorBase {
 
    public:
     IndexReadBuffer() = delete;
-    explicit IndexReadBuffer(std::size_t const numScoreRegisters)
-        : _keyBuffer(),
-          _scoreBuffer(),
-          _numScoreRegisters(numScoreRegisters),
-          _keyBaseIdx(0) {}
+    explicit IndexReadBuffer(std::size_t numScoreRegisters);
 
-    inline ValueType const& getValue(IndexReadBufferEntry const bufferEntry) const noexcept {
-      assertSizeCoherence();
-      TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
-      return _keyBuffer[bufferEntry._keyIdx];
-    }
+    ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
-    inline ScoreIterator getScores(IndexReadBufferEntry const bufferEntry) noexcept {
-      assertSizeCoherence();
-      return ScoreIterator{_scoreBuffer, bufferEntry._keyIdx, _numScoreRegisters};
-    }
+    ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
     template <typename... Args>
-    inline void pushValue(Args&&... args) {
-      _keyBuffer.emplace_back(std::forward<Args>(args)...);
-    }
+    void pushValue(Args&&... args);
 
     // A note on the scores: instead of saving an array of AqlValues, we could
     // save an array of floats plus a bitfield noting which entries should be
     // None.
 
-    inline void pushScore(float_t const scoreValue) {
-      _scoreBuffer.emplace_back(AqlValueHintDouble{scoreValue});
-    }
+    void pushScore(float_t scoreValue);
 
-    inline void pushScoreNone() { _scoreBuffer.emplace_back(); }
+    void pushScoreNone();
 
-    inline void reset() noexcept {
-      // Should only be called after everything was consumed
-      TRI_ASSERT(empty());
-      _keyBaseIdx = 0;
-      _keyBuffer.clear();
-      _scoreBuffer.clear();
-    }
+    void reset() noexcept;
 
-    inline std::size_t size() const noexcept {
-      assertSizeCoherence();
-      return _keyBuffer.size() - _keyBaseIdx;
-    }
+    std::size_t size() const noexcept;
 
-    inline bool empty() const noexcept { return size() == 0; }
+    bool empty() const noexcept;
 
-    inline IndexReadBufferEntry pop_front() noexcept {
-      TRI_ASSERT(!empty());
-      TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
-      assertSizeCoherence();
-      IndexReadBufferEntry entry{_keyBaseIdx};
-      ++_keyBaseIdx;
-      return entry;
-    }
+    IndexReadBufferEntry pop_front() noexcept;
 
     // This is violated while documents and scores are pushed, but must hold
     // before and after.
-    inline void assertSizeCoherence() const noexcept {
-      TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
-    };
+    void assertSizeCoherence() const noexcept;
 
    private:
     // _keyBuffer, _scoreBuffer together hold all the
@@ -302,13 +243,16 @@ class IResearchViewExecutorBase {
     std::size_t _keyBaseIdx;
   };
 
+ public:
   IResearchViewExecutorBase() = delete;
-  IResearchViewExecutorBase(IResearchViewExecutorBase&&) = default;
   IResearchViewExecutorBase(IResearchViewExecutorBase const&) = delete;
+
+ protected:
+  IResearchViewExecutorBase(IResearchViewExecutorBase&&) = default;
   IResearchViewExecutorBase(Fetcher& fetcher, Infos&);
   ~IResearchViewExecutorBase() = default;
 
-  Infos const& infos() const noexcept { return _infos; }
+  Infos const& infos() const noexcept;
 
   void fillScores(ReadContext const& ctx, float_t const* begin, float_t const* end);
 
@@ -361,12 +305,7 @@ class IResearchViewExecutor
 
   void fillBuffer(ReadContext& ctx);
 
-  inline bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-    TRI_ASSERT(_collection);
-
-    return Base::writeRow(ctx, bufferEntry,
-                          this->_indexReadBuffer.getValue(bufferEntry), *_collection);
-  }
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   bool resetIterator();
 
@@ -418,19 +357,7 @@ class IResearchViewMergeExecutor
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
             irs::columnstore_reader::values_reader_f&& sortReader,
-            irs::columnstore_reader::values_reader_f&& pkReader) noexcept
-        : docs(std::move(docs)),
-          doc(&doc),
-          score(&score),
-          collection(&collection),
-          sortReader(std::move(sortReader)),
-          pkReader(std::move(pkReader)) {
-      TRI_ASSERT(this->docs);
-      TRI_ASSERT(this->doc);
-      TRI_ASSERT(this->score);
-      TRI_ASSERT(this->collection);
-      TRI_ASSERT(this->pkReader);
-    }
+            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
@@ -448,31 +375,13 @@ class IResearchViewMergeExecutor
   class MinHeapContext {
    public:
     MinHeapContext(iresearch::IResearchViewSort const& sort, size_t sortBuckets,
-                   std::vector<Segment>& segments) noexcept
-        : _less(sort, sortBuckets), _segments(&segments) {}
+                   std::vector<Segment>& segments) noexcept;
 
     // advance
-    bool operator()(const size_t i) const {
-      assert(i < _segments->size());
-      auto& segment = (*_segments)[i];
-      while (segment.docs->next()) {
-        auto const doc = segment.docs->value();
-
-        if (segment.sortReader(doc, segment.sortValue)) {
-          return true;
-        }
-
-        // FIXME read pk as well
-      }
-      return false;
-    }
+    bool operator()(size_t i) const;
 
     // compare
-    bool operator()(const size_t lhs, const size_t rhs) const {
-      assert(lhs < _segments->size());
-      assert(rhs < _segments->size());
-      return _less((*_segments)[rhs].sortValue, (*_segments)[lhs].sortValue);
-    }
+    bool operator()(size_t lhs, size_t rhs) const;
 
     iresearch::VPackComparer _less;
     std::vector<Segment>* _segments;
@@ -485,15 +394,7 @@ class IResearchViewMergeExecutor
 
   void fillBuffer(ReadContext& ctx);
 
-  inline bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-    auto const& id = this->_indexReadBuffer.getValue(bufferEntry);
-    LocalDocumentId const& documentId = id.first;
-    TRI_ASSERT(documentId.isSet());
-    LogicalCollection const* collection = id.second;
-    TRI_ASSERT(collection);
-
-    return Base::writeRow(ctx, bufferEntry, documentId, *collection);
-  }
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   void reset();
   size_t skip(size_t toSkip);

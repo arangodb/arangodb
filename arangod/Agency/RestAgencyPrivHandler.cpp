@@ -43,9 +43,10 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
+RestAgencyPrivHandler::RestAgencyPrivHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
                                              GeneralResponse* response, Agent* agent)
-    : RestBaseHandler(request, response), _agent(agent) {}
+    : RestBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("53e2d", WARN, Logger::AGENCY) << "Empty request to agency!";

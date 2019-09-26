@@ -35,7 +35,10 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
+
+#include <velocypack/Builder.h>
 
 #include <memory>
 
@@ -156,15 +159,15 @@ class SortedCollectExecutor {
 
     void addLine(InputAqlItemRow& input);
     bool isSameGroup(InputAqlItemRow& input);
-    void groupValuesToArray(VPackBuilder& builder);
+    void groupValuesToArray(velocypack::Builder& builder);
     void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow& input);
   };
 
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortedCollectExecutorInfos;

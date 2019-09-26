@@ -79,9 +79,10 @@ struct Options;
 }  // namespace transaction
 
 /// @brief forward declarations
+class ClusterFeature;
 class CollectionNameResolver;
-class LocalDocumentId;
 class Index;
+class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;
 struct OperationCursor;
@@ -452,10 +453,10 @@ class Methods {
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 
-  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) const {
     return false;
   }
-  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) const {
     return false;
   }
   

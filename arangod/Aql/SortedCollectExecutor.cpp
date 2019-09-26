@@ -29,13 +29,19 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-#include "Logger/LogMacros.h"
+#include "Basics/ConditionalDeleter.h"
+
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool SortedCollectExecutor::Properties::preservesOrder;
+constexpr bool SortedCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr bool SortedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 static const AqlValue EmptyValue;
 

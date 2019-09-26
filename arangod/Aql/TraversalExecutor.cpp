@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
+
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
@@ -33,6 +35,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
+
+constexpr bool TraversalExecutor::Properties::preservesOrder;
+constexpr bool TraversalExecutor::Properties::allowsBlockPassthrough;
+constexpr bool TraversalExecutor::Properties::inputSizeRestrictsOutputSize;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,

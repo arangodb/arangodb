@@ -69,7 +69,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
 
  protected:

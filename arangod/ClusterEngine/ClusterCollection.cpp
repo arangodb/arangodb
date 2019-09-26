@@ -26,6 +26,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
@@ -251,7 +252,8 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
 /// @brief return the figures for a collection
 futures::Future<std::shared_ptr<VPackBuilder>> ClusterCollection::figures() {
-  return figuresOnCoordinator(_logicalCollection.vocbase().name(),
+  auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
+  return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
                               std::to_string(_logicalCollection.id()))
       .thenValue([](OperationResult&& opRes) -> std::shared_ptr<VPackBuilder> {
         if (opRes.fail()) {

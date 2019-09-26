@@ -40,8 +40,9 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
   auto const type = _request->requestType();

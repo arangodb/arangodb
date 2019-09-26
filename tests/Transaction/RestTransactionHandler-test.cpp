@@ -67,13 +67,13 @@ class RestTransactionHandlerTest : public ::testing::Test {
   velocypack::Parser parser;
 
   RestTransactionHandlerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo()),
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
         requestPtr(std::make_unique<GeneralRequestMock>(vocbase)),
         request(*requestPtr),
         responcePtr(std::make_unique<GeneralResponseMock>()),
         responce(*responcePtr),
-        handler(requestPtr.release(), responcePtr.release()),
+        handler(setup.server.server(), requestPtr.release(), responcePtr.release()),
         parser(request._payload) {
     EXPECT_TRUE((vocbase.collections(false).empty()));
   }

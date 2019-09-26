@@ -236,8 +236,7 @@ protected:
     // Disable cluster logging
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
                                     arangodb::LogLevel::FATAL);
-    TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                              arangodb::LogLevel::DEFAULT));
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
 
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
@@ -246,6 +245,11 @@ protected:
   ~ClusterRepairsTestBrokenDistribution() {
     // restore old manager
     AgencyCommManager::MANAGER = std::move(oldManager);
+
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

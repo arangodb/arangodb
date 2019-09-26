@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KShortestPathsExecutor.h"
+
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
@@ -32,7 +34,6 @@
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -40,6 +41,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool KShortestPathsExecutor::Properties::preservesOrder;
+constexpr bool KShortestPathsExecutor::Properties::allowsBlockPassthrough;
+constexpr bool KShortestPathsExecutor::Properties::inputSizeRestrictsOutputSize;
 using namespace arangodb::graph;
 
 namespace {

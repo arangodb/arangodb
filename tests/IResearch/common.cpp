@@ -24,6 +24,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -32,6 +33,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -41,17 +43,16 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "V8/v8-utils.h"
 #include "VocBase/KeyGenerator.h"
 #include "common.h"
 #include "gtest/gtest.h"
 #include "search/scorers.hpp"
-
-#include "Basics/icu-helper.h"
 
 #include "search/boolean_filter.hpp"
 
@@ -520,12 +521,10 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
 }
 
 void assertExpressionFilter(
-    std::string const& queryString, irs::boost_t boost /*= irs::no_boost()*/,
+    TRI_vocbase_t& vocbase, std::string const& queryString, irs::boost_t boost /*= irs::no_boost()*/,
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
-
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
                              std::make_shared<arangodb::velocypack::Builder>(),
                              arangodb::aql::PART_MAIN);
@@ -628,14 +627,12 @@ void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
   }
 }
 
-void assertFilter(bool parseOk, bool execOk, std::string const& queryString,
-                  irs::filter const& expected,
+void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
+                  std::string const& queryString, irs::filter const& expected,
                   arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
-
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
@@ -706,37 +703,36 @@ void assertFilter(bool parseOk, bool execOk, std::string const& queryString,
   }
 }
 
-void assertFilterSuccess(std::string const& queryString, irs::filter const& expected,
+void assertFilterSuccess(TRI_vocbase_t& vocbase, std::string const& queryString,
+                         irs::filter const& expected,
                          arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                          std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                          std::string const& refName /*= "d"*/
 ) {
-  return assertFilter(true, true, queryString, expected, exprCtx, bindVars, refName);
+  return assertFilter(vocbase, true, true, queryString, expected, exprCtx, bindVars, refName);
 }
 
-void assertFilterFail(std::string const& queryString,
+void assertFilterFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                       arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                       std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                       std::string const& refName /*= "d"*/
 ) {
   irs::Or expected;
-  return assertFilter(false, false, queryString, expected, exprCtx, bindVars, refName);
+  return assertFilter(vocbase, false, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
-void assertFilterExecutionFail(std::string const& queryString,
+void assertFilterExecutionFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                                arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                                std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                                std::string const& refName /*= "d"*/
 ) {
   irs::Or expected;
-  return assertFilter(true, false, queryString, expected, exprCtx, bindVars, refName);
+  return assertFilter(vocbase, true, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
-void assertFilterParseFail(std::string const& queryString,
+void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
-
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -744,8 +740,8 @@ void assertFilterParseFail(std::string const& queryString,
   ASSERT_TRUE(parseResult.result.fail());
 }
 
-arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id, bool allowSystem) {
-  arangodb::CreateDatabaseInfo info;
+arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id, bool allowSystem) {
+  arangodb::CreateDatabaseInfo info(server);
   info.allowSystemDB(allowSystem);
   auto rv = info.load(name, id);
   if(rv.fail()) {
@@ -754,17 +750,17 @@ arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id, bo
   return info;
 };
 
-arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name, uint64_t id) {
-  auto rv =  createInfo(name, id, true);
+arangodb::CreateDatabaseInfo systemDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
+  auto rv =  createInfo(server, name, id, true);
   return rv;
 };
 
-arangodb::CreateDatabaseInfo testDBInfo(std::string const& name, uint64_t id) {
-  return createInfo(name, id);
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
+  return createInfo(server, name, id);
 };
 
-arangodb::CreateDatabaseInfo unknownDBInfo(std::string const& name, uint64_t id) {
-  return createInfo(name, id);
+arangodb::CreateDatabaseInfo unknownDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
+  return createInfo(server, name, id);
 };
 
 // -----------------------------------------------------------------------------

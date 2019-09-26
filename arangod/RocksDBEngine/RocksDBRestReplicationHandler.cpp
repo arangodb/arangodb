@@ -58,9 +58,10 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
-RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response),
+RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response),
       _manager(globalRocksEngine()->replicationManager()) {}
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {

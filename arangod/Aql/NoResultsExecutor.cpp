@@ -22,18 +22,17 @@
 
 #include "NoResultsExecutor.h"
 
-#include "Basics/Common.h"
-
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortRegister.h"
-
-#include <algorithm>
+#include "Aql/Stats.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool NoResultsExecutor::Properties::preservesOrder;
+constexpr bool NoResultsExecutor::Properties::allowsBlockPassthrough;
+constexpr bool NoResultsExecutor::Properties::inputSizeRestrictsOutputSize;
 
 NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos){};
 NoResultsExecutor::~NoResultsExecutor() = default;

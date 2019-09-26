@@ -22,10 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionPlan.h"
+
+#include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -45,6 +48,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
@@ -913,8 +917,9 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
       view = vocbase.lookupView(viewName);
     } else {
       // need cluster wide view
-      TRI_ASSERT(ClusterInfo::instance());
-      view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+      TRI_ASSERT(vocbase.server().hasFeature<ClusterFeature>());
+      view = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getView(
+          vocbase.name(), viewName);
     }
 
     if (!view) {
@@ -989,8 +994,9 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
     view = vocbase.lookupView(viewName);
   } else {
     // need cluster wide view
-    TRI_ASSERT(ClusterInfo::instance());
-    view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+    TRI_ASSERT(vocbase.server().hasFeature<ClusterFeature>());
+    view = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getView(
+        vocbase.name(), viewName);
   }
 
   if (!view) {

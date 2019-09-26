@@ -37,11 +37,12 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+class NetworkFeature;
 
 namespace network {
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-int resolveDestination(DestinationId const& dest, std::string&);
+int resolveDestination(NetworkFeature&, DestinationId const& dest, std::string&);
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
                       int defaultError);

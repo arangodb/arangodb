@@ -23,12 +23,13 @@
 #ifndef ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 #define ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <queue>
 
 namespace arangodb {

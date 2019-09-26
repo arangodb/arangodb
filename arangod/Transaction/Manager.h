@@ -51,6 +51,7 @@ class Slice;
 
 namespace transaction {
 class Context;
+class ManagerFeature;
 struct Options;
 
 /// @brief Tracks TransasctionState instances
@@ -92,8 +93,9 @@ class Manager final {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(bool keepData)
-      : _keepTransactionData(keepData),
+  explicit Manager(ManagerFeature& feature, bool keepData)
+      : _feature(feature),
+        _keepTransactionData(keepData),
         _nrRunning(0),
         _disallowInserts(false),
         _writeLockHeld(false) {}
@@ -203,6 +205,8 @@ class Manager final {
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
+
+  ManagerFeature& _feature;
 
   /// @brief will be true only for MMFiles
   bool const _keepTransactionData;

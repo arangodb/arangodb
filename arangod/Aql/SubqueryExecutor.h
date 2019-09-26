@@ -27,10 +27,11 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace aql {
-
+class ExecutionBlock;
 class NoStats;
 class OutputAqlItemRow;
 template <bool>
@@ -66,9 +67,9 @@ template<bool isModificationSubquery>
 class SubqueryExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = true;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

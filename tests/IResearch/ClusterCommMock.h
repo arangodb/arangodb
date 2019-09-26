@@ -57,7 +57,7 @@ class ClusterCommMock: public arangodb::ClusterComm {
   std::vector<Request> _requests;
   std::deque<arangodb::ClusterCommResult> _responses;
 
-  ClusterCommMock();
+  ClusterCommMock(arangodb::application_features::ApplicationServer&);
 
   arangodb::OperationID asyncRequest(
      arangodb::CoordTransactionID const coordTransactionID,

@@ -24,15 +24,23 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "Agency/Store.h"
 #include "AgencyMock.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -77,8 +85,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewDBServerTest, test_drop) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE(nullptr != ci);
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase);
 
@@ -106,7 +113,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
         "\"includeAllFields\": true }");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView0\", \"type\": \"arangosearch\" }");
-    auto const wiewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+    auto const wiewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -143,7 +150,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
         "\"includeAllFields\": true }");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView1\", \"type\": \"arangosearch\" }");
-    auto const wiewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+    auto const wiewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -218,8 +225,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_drop_database) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection\" }");
@@ -240,8 +246,8 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   EXPECT_TRUE(
-      (ci->createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice()).ok()));
-  auto logicalWiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+      (ci.createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice()).ok()));
+  auto logicalWiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
   ASSERT_TRUE((false == !logicalWiew));
   auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
   ASSERT_TRUE((false == !wiewImpl));
@@ -253,8 +259,6 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_ensure) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase);
 
@@ -289,15 +293,14 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_make) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE(nullptr != ci);
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // make DBServer view
   {
-    auto const wiewId = ci->uniqid() + 1;  // +1 because LogicalView creation will generate a new ID
+    auto const wiewId = ci.uniqid() + 1;  // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -317,14 +320,13 @@ TEST_F(IResearchViewDBServerTest, test_make) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_open) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE(nullptr != ci);
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // open empty
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -340,7 +342,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
 
   // open non-empty
   {
-    auto const wiewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+    auto const wiewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
     std::string dataPath =
         (((irs::utf8_path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
@@ -349,7 +351,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         "{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -377,8 +379,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_query) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \
@@ -507,8 +508,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{logicalCollection->name()};
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), "42", createJson->slice()).ok()));
-    auto logicalWiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+        (ci.createViewCoordinator(vocbase->name(), "42", createJson->slice()).ok()));
+    auto logicalWiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     EXPECT_TRUE((false == !logicalWiew));
     auto* wiewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -598,8 +599,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_TRUE((nullptr != vocbase));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), "42", createJson->slice()).ok()));
-    auto logicalWiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+        (ci.createViewCoordinator(vocbase->name(), "42", createJson->slice()).ok()));
+    auto logicalWiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     ASSERT_TRUE((false == !logicalWiew));
     auto* wiewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -648,8 +649,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_rename) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE(nullptr != ci);
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // rename empty
   {
@@ -657,7 +657,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
         "{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -705,10 +705,10 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    auto const wiewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+    auto const wiewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -760,7 +760,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -793,7 +793,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -827,7 +827,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -864,8 +864,6 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase);
 
@@ -988,8 +986,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_updateProperties) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // update empty (partial)
   {
@@ -1004,8 +1001,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
-    auto wiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+        (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
+    auto wiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     EXPECT_TRUE((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
     EXPECT_TRUE((nullptr != impl));
@@ -1125,8 +1122,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
-    auto wiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+        (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
+    auto wiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     EXPECT_TRUE((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
     EXPECT_TRUE((nullptr != impl));
@@ -1249,8 +1246,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
-    auto wiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+        (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
+    auto wiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     EXPECT_TRUE((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
     EXPECT_TRUE((nullptr != impl));
@@ -1380,8 +1377,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto logicalCollection1 = vocbase->createCollection(collection1Json->slice());
     EXPECT_TRUE((nullptr != logicalCollection1));
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
-    auto wiew = ci->getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
+        (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
+    auto wiew = ci.getView(vocbase->name(), "42");  // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     EXPECT_TRUE((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
     EXPECT_TRUE((nullptr != impl));
@@ -1492,14 +1489,13 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_visitCollections) {
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE(nullptr != ci);
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // visit empty
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -1518,10 +1514,10 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
         "{ \"name\": \"testCollection\" }");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
-    auto const wiewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+    auto const wiewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;

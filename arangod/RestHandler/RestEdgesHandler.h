@@ -42,7 +42,8 @@ struct Variable;
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestEdgesHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestEdgesHandler(application_features::ApplicationServer&,
+                            GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;

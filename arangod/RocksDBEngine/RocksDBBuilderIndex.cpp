@@ -223,7 +223,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-    if (application_features::ApplicationServer::isStopping()) {
+    if (ridx.collection().vocbase().server().isStopping()) {
       res.reset(TRI_ERROR_SHUTTING_DOWN);
       break;
     }
@@ -298,7 +298,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       : _objectId(oid), _index(idx), _trx(trx), _methods(methods) {}
 
   bool Continue() override {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_index.collection().vocbase().server().isStopping()) {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
     }
     return tmpRes.ok();
