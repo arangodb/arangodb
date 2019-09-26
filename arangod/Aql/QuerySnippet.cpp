@@ -23,6 +23,7 @@
 #include "QuerySnippet.h"
 
 #include "Aql/ClusterNodes.h"
+#include "Aql/Collection.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DistributeConsumerNode.h"
 #include "Aql/ExecutionNode.h"

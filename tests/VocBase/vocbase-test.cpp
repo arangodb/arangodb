@@ -24,7 +24,8 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/common.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -86,57 +87,14 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class VocbaseTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
 
-  VocbaseTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
+  VocbaseTest() {
     // register view factory
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>()
-        ->emplace(arangodb::LogicalDataSource::Type::emplace(
-                      arangodb::velocypack::StringRef("testViewType")),
-                  viewFactory);
-  }
-
-  ~VocbaseTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
+    server.getFeature<arangodb::ViewTypesFeature>().emplace(
+        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        viewFactory);
   }
 };
 
@@ -293,7 +251,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
       "\"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
   // not present collection (no datasource)
   {

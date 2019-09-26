@@ -5,6 +5,32 @@ include_directories(.)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
+## shell common
+################################################################################
+
+set(LIB_ARANGO_SHELL_SOURCES
+  FeaturePhases/BasicFeaturePhaseClient.cpp
+  FeaturePhases/V8ShellFeaturePhase.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp  
+  Utils/ClientManager.cpp
+  Utils/ManagedDirectory.cpp
+  V8Client/ArangoClientHelper.cpp
+)
+
+add_library(lib_arango_shell STATIC
+  ${LIB_ARANGO_SHELL_SOURCES}
+)
+
+target_link_libraries(lib_arango_shell
+  arango
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+)
+
+################################################################################
 ## arangobench
 ################################################################################
 
@@ -24,18 +50,16 @@ add_executable(${BIN_ARANGOBENCH}
   ${ProductVersionFiles_arangobench}
   Benchmark/BenchFeature.cpp
   Benchmark/arangobench.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOBENCH}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -84,20 +108,17 @@ add_executable(${BIN_ARANGOBACKUP}
   ${ProductVersionFiles_arangobackup}
   Backup/BackupFeature.cpp
   Backup/arangobackup.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ClientManager.cpp
   ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
 )
 target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOBACKUP}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -146,21 +167,17 @@ add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ClientManager.cpp
-  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGODUMP}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -207,20 +224,16 @@ add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
   Export/ExportFeature.cpp
   Export/arangoexport.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
 )
 target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -270,21 +283,17 @@ add_executable(${BIN_ARANGOIMPORT}
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Import/arangoimport.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
 )
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   fuerte
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -339,21 +348,17 @@ add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
   Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ClientManager.cpp
-  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 target_include_directories(${BIN_ARANGORESTORE} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGORESTORE}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -401,21 +406,16 @@ add_executable(${BIN_ARANGOSH}
   Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
   Shell/ShellFeature.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
-  Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
 )
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOSH}
   arango_v8
   arango
-  ${GSS_LIBRARIES}
   ${LINENOISE_LIBS}
   ${V8_LIBS}
   fuerte
@@ -423,6 +423,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(
@@ -467,8 +468,6 @@ endif ()
 
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )
@@ -476,11 +475,11 @@ target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/aran
 
 target_link_libraries(${BIN_ARANGOVPACK}
   arango
-  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  lib_arango_shell
 )
 
 install(

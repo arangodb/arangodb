@@ -58,7 +58,8 @@ inline char const* toString(JobStatus jobStatus) {
 
 class RestRepairHandler : public arangodb::RestBaseHandler {
  public:
-  RestRepairHandler(GeneralRequest* request, GeneralResponse* response);
+  RestRepairHandler(application_features::ApplicationServer& server,
+                    GeneralRequest* request, GeneralResponse* response);
 
   char const* name() const override final { return "RestRepairHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }

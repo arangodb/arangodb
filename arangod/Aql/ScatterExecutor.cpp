@@ -22,6 +22,9 @@
 
 #include "ScatterExecutor.h"
 
+#include "Aql/ExecutionEngine.h"
+#include "Basics/Exceptions.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

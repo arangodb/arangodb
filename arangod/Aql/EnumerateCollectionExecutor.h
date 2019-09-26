@@ -26,22 +26,30 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
-#include "Aql/types.h"
+#include "Aql/InputAqlItemRow.h"
 #include "DocumentProducingHelper.h"
-#include "Utils/OperationCursor.h"
 
 #include <memory>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+struct OperationCursor;
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
-class InputAqlItemRow;
+struct Collection;
+class EnumerateCollectionStats;
+class ExecutionEngine;
 class ExecutorInfos;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+struct Variable;
 
 template <bool>
 class SingleRowFetcher;
@@ -62,18 +70,16 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
-  ExecutionEngine* getEngine() { return _engine; };
-  Collection const* getCollection() const { return _collection; }
-  Variable const* getOutVariable() const { return _outVariable; }
-  std::vector<std::string> const& getProjections() const noexcept { return _projections; }
-  transaction::Methods* getTrxPtr() const { return _trxPtr; }
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept {
-    return _coveringIndexAttributePositions;
-  }
-  bool getProduceResult() const { return _produceResult; }
-  bool getUseRawDocumentPointers() const { return _useRawDocumentPointers; }
-  bool getRandom() const { return _random; }
-  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
+  ExecutionEngine* getEngine();
+  Collection const* getCollection() const;
+  Variable const* getOutVariable() const;
+  std::vector<std::string> const& getProjections() const noexcept;
+  transaction::Methods* getTrxPtr() const;
+  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  bool getProduceResult() const;
+  bool getUseRawDocumentPointers() const;
+  bool getRandom() const;
+  RegisterId getOutputRegisterId() const;
 
  private:
   ExecutionEngine* _engine;
@@ -119,24 +125,18 @@ class EnumerateCollectionExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
-  void setProducingFunction(DocumentProducingFunction const& documentProducer) {
-    _documentProducer = documentProducer;
-  }
+  void setProducingFunction(DocumentProducingFunction const& documentProducer);
 
   void initializeCursor();
 
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
 
-  void setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
-    _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
-  }
+  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
   /// @brief whether or not we are allowed to use the covering index
   /// optimization in a callback
-  bool getAllowCoveringIndexOptimization() const noexcept {
-    return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
-  }
+  bool getAllowCoveringIndexOptimization() const noexcept;
 
  private:
   Infos& _infos;

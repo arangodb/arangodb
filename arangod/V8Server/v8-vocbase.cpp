@@ -51,6 +51,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -1125,17 +1126,13 @@ static void JS_ThrowCollectionNotLoaded(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  auto& server = application_features::ApplicationServer::server();
+  auto& databaseFeature = server.getFeature<DatabaseFeature>();
   if (args.Length() == 0) {
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    bool const value = databaseFeature->throwCollectionNotLoadedError();
+    bool const value = databaseFeature.throwCollectionNotLoadedError();
     TRI_V8_RETURN(v8::Boolean::New(isolate, value));
   } else if (args.Length() == 1) {
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    databaseFeature->throwCollectionNotLoadedError(TRI_ObjectToBoolean(isolate, args[0]));
+    databaseFeature.throwCollectionNotLoadedError(TRI_ObjectToBoolean(isolate, args[0]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
   }
@@ -1284,9 +1281,9 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
   std::shared_ptr<arangodb::LogicalCollection> collection;
 
   if (ServerState::instance()->isCoordinator()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-    if (ci) {
-      collection = ci->getCollectionNT(vocbase.name(), std::string(key));
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      collection = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+          vocbase.name(), std::string(key));
     }
   } else {
     collection = vocbase.lookupCollection(std::string(key));
@@ -1473,9 +1470,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  auto& server = application_features::ApplicationServer::server();
+  auto& databaseFeature = server.getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto* vocbase = &GetContextVocBase(isolate);
 
@@ -1486,7 +1482,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature->useDatabase(name);
+  vocbase = databaseFeature.useDatabase(name);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1591,7 +1587,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), dbName,
+                                          users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1679,8 +1676,9 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
-  auto server = application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
-      "Endpoint");
+  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<HttpEndpointProvider>());
+  auto& endpoints = server.getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1690,7 +1688,7 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  for (auto const& it : server->httpEndpoints()) {
+  for (auto const& it : endpoints.httpEndpoints()) {
     v8::Handle<v8::Object> item = v8::Object::New(isolate);
     item->Set(TRI_V8_ASCII_STRING(isolate, "endpoint"), TRI_V8_STD_STRING(isolate, it));
 
@@ -1727,13 +1725,10 @@ static void JS_AuthenticationEnabled(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+  auto& server = application_features::ApplicationServer::server();
+  auto& authentication = server.getFeature<AuthenticationFeature>();
 
-  TRI_ASSERT(authentication != nullptr);
-
-  v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, authentication->isActive());
+  v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, authentication.isActive());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1744,10 +1739,10 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
 #ifdef USE_ENTERPRISE
-  auto ldap =
-      application_features::ApplicationServer::getFeature<LdapFeature>("Ldap");
-  TRI_ASSERT(ldap != nullptr);
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap->isEnabled()));
+  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<LdapFeature>());
+  auto& ldap = server.getFeature<LdapFeature>();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
   // LDAP only enabled in enterprise mode
   TRI_V8_RETURN(v8::False(isolate));
@@ -1761,10 +1756,10 @@ static void JS_KerberosEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
 
 #ifdef USE_ENTERPRISE
-  auto kerberos =
-      application_features::ApplicationServer::getFeature<KerberosFeature>("Kerberos");
-  TRI_ASSERT(kerberos != nullptr);
-  TRI_V8_RETURN(v8::Boolean::New(isolate, kerberos->isEnabled()));
+  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<KerberosFeature>());
+  auto& kerberos = server.getFeature<KerberosFeature>();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, kerberos.isEnabled()));
 #else
   // Kerberos only enabled in enterprise mode
   TRI_V8_RETURN(v8::False(isolate));

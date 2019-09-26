@@ -24,12 +24,12 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "utils/utf8_path.hpp"
-
+#include "Basics/VelocyPackHelper.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewSort.h"
-#include "velocypack/Iterator.h"
+
+#include <velocypack/Iterator.h>
+#include <utils/utf8_path.hpp>
 
 TEST(IResearchComparerTest, test_comparer_single_entry) {
   arangodb::tests::init(true);

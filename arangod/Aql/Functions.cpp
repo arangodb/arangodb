@@ -42,14 +42,15 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/datetime.h"
 #include "Basics/fpconv.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Geo/GeoJson.h"
 #include "Geo/Ellipsoid.h"
-#include "Geo/Utils.h"
+#include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/Utils.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
@@ -4187,13 +4188,14 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
 
   double now = TRI_microtime();
   double const until = now + value.toDouble();
+  auto& server = application_features::ApplicationServer::server();
 
   while (now < until) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    } else if (application_features::ApplicationServer::isStopping()) {
+    } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
     now = TRI_microtime();

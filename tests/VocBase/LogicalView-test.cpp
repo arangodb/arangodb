@@ -38,8 +38,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Parser.h"
+
+#include <velocypack/Parser.h>
 
 namespace {
 struct TestView : public arangodb::LogicalView {
@@ -99,7 +101,7 @@ class LogicalViewTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
   ViewFactory viewFactory;
 
   LogicalViewTest() : engine(server), server(nullptr, nullptr) {
@@ -110,51 +112,42 @@ class LogicalViewTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
 
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ExecContext
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for LogicalView::create(...)
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::create(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
-    auto* viewTypesFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
-
-    viewTypesFeature->emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
-                                  "testViewType")),
-                              viewFactory);
+    auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
+    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
+                                 "testViewType")),
+                             viewFactory);
   }
 
   ~LogicalViewTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
@@ -172,14 +165,14 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no ExecContext
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(viewJson->slice());
     EXPECT_TRUE((true == logicalView->canUse(arangodb::auth::Level::RW)));
   }
 
   // no read access
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -197,7 +190,7 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no write access
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -216,7 +209,7 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // write access (view access is db access as per https://github.com/arangodb/backlog/issues/459)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()

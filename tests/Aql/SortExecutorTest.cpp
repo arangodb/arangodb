@@ -29,15 +29,14 @@
 
 #include "RowFetcherHelper.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
+#include "Aql/Stats.h"
 #include "Aql/Variable.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"

@@ -33,15 +33,18 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
+#include "Shell/ConsoleFeature.h"
 #include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "V8/JSLoader.h"
@@ -77,16 +80,15 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
       _removeCopyInstallation(false),
       _gcInterval(50),
       _name(name),
-      _isolate(nullptr),
-      _console(nullptr) {
+      _isolate(nullptr) {
   requiresElevatedPrivileges(false);
   setOptional(false);
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 
-  startsAfter("BasicsPhase");
-  startsAfter("Console");
-  startsAfter("V8Platform");
-  startsAfter("V8Security");
-  startsAfter("Random");
+  startsAfter<ConsoleFeature>();
+  startsAfter<RandomFeature>();
+  startsAfter<V8PlatformFeature>();
+  startsAfter<V8SecurityFeature>();
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -140,10 +142,7 @@ void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
 }
 
 void V8ShellFeature::start() {
-  _console = application_features::ApplicationServer::getFeature<ConsoleFeature>(
-      "Console");
-  auto platform = application_features::ApplicationServer::getFeature<V8PlatformFeature>(
-      "V8Platform");
+  auto& platform = server().getFeature<V8PlatformFeature>();
 
   if (_copyInstallation) {
     copyInstallationFiles();  // will exit process on error
@@ -152,7 +151,7 @@ void V8ShellFeature::start() {
   LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
       << "using Javascript startup files at '" << _startupDirectory << "'";
 
-  _isolate = platform->createIsolate();
+  _isolate = platform.createIsolate();
 
   v8::Locker locker{_isolate};
 
@@ -309,18 +308,19 @@ void V8ShellFeature::copyInstallationFiles() {
 }
 
 bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
   bool promptError = false;
 
   // for the banner see
   // http://www.network-science.de/ascii/   Font: ogre
 
-  if (!_console->quiet()) {
+  if (!console.quiet()) {
     if (_clientModule == DEFAULT_CLIENT_MODULE) {
       std::string g = ShellColorsFeature::SHELL_COLOR_GREEN;
       std::string r = ShellColorsFeature::SHELL_COLOR_RED;
       std::string z = ShellColorsFeature::SHELL_COLOR_RESET;
 
-      if (!_console->colors()) {
+      if (!console.colors()) {
         g = "";
         r = "";
         z = "";
@@ -328,14 +328,14 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
       // clang-format off
 
-    _console->printLine("");
-    _console->printLine(g + "                                  "     + r + "     _     " + z);
-    _console->printLine(g + "  __ _ _ __ __ _ _ __   __ _  ___ "     + r + " ___| |__  " + z);
-    _console->printLine(g + " / _` | '__/ _` | '_ \\ / _` |/ _ \\"   + r + "/ __| '_ \\ " + z);
-    _console->printLine(g + "| (_| | | | (_| | | | | (_| | (_) "     + r + "\\__ \\ | | |" + z);
-    _console->printLine(g + " \\__,_|_|  \\__,_|_| |_|\\__, |\\___/" + r + "|___/_| |_|" + z);
-    _console->printLine(g + "                       |___/      "     + r + "           " + z);
-    _console->printLine("");
+    console.printLine("");
+    console.printLine(g + "                                  "     + r + "     _     " + z);
+    console.printLine(g + "  __ _ _ __ __ _ _ __   __ _  ___ "     + r + " ___| |__  " + z);
+    console.printLine(g + " / _` | '__/ _` | '_ \\ / _` |/ _ \\"   + r + "/ __| '_ \\ " + z);
+    console.printLine(g + "| (_| | | | (_| | | | | (_| | (_) "     + r + "\\__ \\ | | |" + z);
+    console.printLine(g + " \\__,_|_|  \\__,_|_| |_|\\__, |\\___/" + r + "|___/_| |_|" + z);
+    console.printLine(g + "                       |___/      "     + r + "           " + z);
+    console.printLine("");
 
       // clang-format on
 
@@ -344,10 +344,10 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
       s << "arangosh (" << rest::Version::getVerboseVersionString() << ")\n"
         << "Copyright (c) ArangoDB GmbH";
 
-      _console->printLine(s.str());
-      _console->printLine("");
+      console.printLine(s.str());
+      console.printLine("");
 
-      _console->printWelcomeInfo();
+      console.printWelcomeInfo();
     }
 
     if (v8connection != nullptr) {
@@ -357,38 +357,39 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
             v8connection->endpointSpecification(), v8connection->version(),
             v8connection->role(), v8connection->mode(), v8connection->databaseName(),
             v8connection->username());
-        _console->printLine(msg);
+        console.printLine(msg);
 
         if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
           std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
-          if (_console->colors()) {
+          if (console.colors()) {
             msg = ShellColorsFeature::SHELL_COLOR_RED + msg + ShellColorsFeature::SHELL_COLOR_RESET;
           }
-          _console->printErrorLine(msg);
+          console.printErrorLine(msg);
         }
       } else {
         std::ostringstream is;
 
-        auto client = server()->getFeature<ClientFeature>("Client");
-        is << "Could not connect to endpoint '" << client->endpoint()
+        ClientFeature& client =
+            server().getFeature<HttpEndpointProvider, ClientFeature>();
+        is << "Could not connect to endpoint '" << client.endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "' "
            << " server error message: " << v8connection->lastErrorMessage();
 
-        _console->printErrorLine(is.str());
+        console.printErrorLine(is.str());
 
         if (!v8connection->lastErrorMessage().empty()) {
           std::ostringstream is2;
 
           is2 << "Error message: '" << v8connection->lastErrorMessage() << "'";
 
-          _console->printErrorLine(is2.str());
+          console.printErrorLine(is2.str());
         }
 
         promptError = true;
       }
 
-      _console->printLine("");
+      console.printLine("");
     }
   }
 
@@ -401,23 +402,23 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     std::vector<std::string> const& positionals, bool* promptError) {
   std::shared_ptr<V8ClientConnection> v8connection;
 
-  ClientFeature* client = nullptr;
-
+  bool haveClient = false;
   if (createConnection) {
-    client = server()->getFeature<ClientFeature>("Client");
-
-    if (client != nullptr && client->isEnabled()) {
-      v8connection = std::make_unique<V8ClientConnection>();
-      v8connection->connect(client);
-    } else {
-      client = nullptr;
+    if (server().hasFeature<HttpEndpointProvider>()) {
+      haveClient = true;
+      ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+      if (client.isEnabled()) {
+        v8connection = std::make_unique<V8ClientConnection>(server());
+        v8connection->connect(&client);
+      }
     }
   }
 
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
-  if (createConnection && client != nullptr) {
-    v8connection->initServer(_isolate, context, client);
+  if (createConnection && haveClient) {
+    ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+    v8connection->initServer(_isolate, context, &client);
   }
 
   bool pe = printHello(v8connection.get());
@@ -431,6 +432,8 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
 }
 
 int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+
   auto isolate = _isolate;
   v8::Locker locker{_isolate};
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -444,23 +447,26 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
 
-  V8LineEditor v8LineEditor(_isolate, context, _console->useHistory() ? "." + _name + ".history" : "");
+  V8LineEditor v8LineEditor(_isolate, context,
+                            console.useHistory() ? "." + _name + ".history" : "");
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
         [v8connection]() { v8connection->setInterrupted(true); });
   }
 
-  v8LineEditor.open(_console->autoComplete());
+  v8LineEditor.open(console.autoComplete());
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
 
   uint64_t nrCommands = 0;
 
-  ClientFeature* client = server()->getFeature<ClientFeature>("Client");
-
-  if (!client->isEnabled()) {
-    client = nullptr;
+  ClientFeature* client = nullptr;
+  if (server().hasFeature<HttpEndpointProvider>()) {
+    client = &(server().getFeature<HttpEndpointProvider, ClientFeature>());
+    if (!client->isEnabled()) {
+      client = nullptr;
+    }
   }
 
   bool const isBatch = isatty(STDIN_FILENO) == 0;
@@ -468,9 +474,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   double lastDuration = 0.0;
 
   while (true) {
-    _console->setLastDuration(lastDuration);
-    _console->setPromptError(promptError);
-    auto prompt = _console->buildPrompt(client);
+    console.setLastDuration(lastDuration);
+    console.setPromptError(promptError);
+    auto prompt = console.buildPrompt(client);
 
     ShellBase::EofType eof = ShellBase::EOF_NONE;
     std::string input = v8LineEditor.prompt(prompt._colored, prompt._plain, eof);
@@ -487,7 +493,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     }
     lastEmpty = isBatch;
 
-    _console->log(prompt._plain + input + "\n");
+    console.log(prompt._plain + input + "\n");
 
     std::string i = StringUtils::trim(input);
 
@@ -503,7 +509,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
     v8::TryCatch tryCatch(isolate);
 
-    _console->startPager();
+    console.startPager();
 
     // assume the command succeeds
     promptError = false;
@@ -536,8 +542,8 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
         exception = TRI_StringifyV8Exception(_isolate, &tryCatch);
       }
 
-      _console->printErrorLine(exception);
-      _console->log(exception);
+      console.printErrorLine(exception);
+      console.log(exception);
 
       // this will change the prompt for the next round
       promptError = true;
@@ -547,13 +553,13 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       v8connection->setInterrupted(false);
     }
 
-    _console->stopPager();
-    _console->printLine("");
+    console.stopPager();
+    console.printLine("");
 
-    _console->log("\n");
+    console.log("\n");
 
     // make sure the last command result makes it into the log file
-    _console->flushLog();
+    console.flushLog();
 
     // gc
     if (++nrCommands >= _gcInterval || V8PlatformFeature::isOutOfMemory(_isolate)) {
@@ -565,9 +571,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     }
   }
 
-  if (!_console->quiet()) {
-    _console->printLine("");
-    _console->printByeBye();
+  if (!console.quiet()) {
+    console.printLine("");
+    console.printByeBye();
   }
 
   return promptError ? TRI_ERROR_INTERNAL : TRI_ERROR_NO_ERROR;
@@ -644,7 +650,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
     }
   }
 
-  _console->flushLog();
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  console.flushLog();
 
   return ok;
 }
@@ -686,7 +693,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
     }
   }
 
-  _console->flushLog();
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
+  console.flushLog();
 
   return ok;
 }
@@ -969,12 +977,12 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  ShellFeature* shell =
-      application_features::ApplicationServer::getFeature<ShellFeature>(
-          "Shell");
+  application_features::ApplicationServer& server =
+      application_features::ApplicationServer::server();
+  ShellFeature& shell = server.getFeature<ShellFeature>();
 
-  shell->setExitCode(static_cast<int>(code));
-  
+  shell.setExitCode(static_cast<int>(code));
+
   isolate->TerminateExecution();
 
   TRI_V8_TRY_CATCH_END
@@ -985,6 +993,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8ShellFeature::initGlobals() {
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
   auto context = _isolate->GetCurrentContext();
 
   // string functions
@@ -1003,7 +1012,7 @@ void V8ShellFeature::initGlobals() {
   // is quite
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARANGO_QUIET"),
-                               v8::Boolean::New(_isolate, _console->quiet()));
+                               v8::Boolean::New(_isolate, console.quiet()));
 
   auto ctx = ArangoGlobalContext::CONTEXT;
 
@@ -1015,9 +1024,7 @@ void V8ShellFeature::initGlobals() {
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
+  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
 
   // try to append the current version name to the startup directory,
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
@@ -1034,7 +1041,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security->addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1046,7 +1053,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security->addToInternalWhitelist(it, FSAccessType::READ); //expand
+    v8security.addToInternalWhitelist(it, FSAccessType::READ);  // expand
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1076,10 +1083,11 @@ void V8ShellFeature::initGlobals() {
 
   if (_currentModuleDirectory) {
     modules += sep + FileUtils::currentDirectory().result();
-    v8security->addToInternalWhitelist(FileUtils::currentDirectory().result(), FSAccessType::READ);
+    v8security.addToInternalWhitelist(FileUtils::currentDirectory().result(),
+                                      FSAccessType::READ);
   }
 
-  v8security->dumpAccessLists();
+  v8security.dumpAccessLists();
 
   // we take the last entry in _startupDirectory as global path;
   // all the other entries are only used for the modules
@@ -1089,19 +1097,19 @@ void V8ShellFeature::initGlobals() {
   TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)
-  v8::Local<v8::Value> console = v8::External::New(_isolate, _console);
+  v8::Local<v8::Value> consoleWrapped = v8::External::New(_isolate, &console);
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
-      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,

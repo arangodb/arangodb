@@ -76,7 +76,7 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
 
   ConstantWeightShortestPathFinder* finder;
 
-  ConstantWeightShortestPathFinderTest() : gdb("testVocbase") {
+  ConstantWeightShortestPathFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection("e", "v",
                           {{1, 2},   {2, 3},   {3, 4},   {5, 4},   {6, 5},

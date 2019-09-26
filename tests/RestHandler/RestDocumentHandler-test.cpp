@@ -65,7 +65,8 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_user) {
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(_type);
 
-  arangodb::RestDocumentHandler testee(fakeRequest.release(), fakeResponse.release());
+  arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
+                                       fakeResponse.release());
   ASSERT_EQ(arangodb::RequestLane::CLIENT_SLOW, testee.lane());
 }
 
@@ -77,7 +78,8 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_replication) {
   fakeRequest->values().emplace(arangodb::StaticStrings::IsSynchronousReplicationString,
                                 "abc");
 
-  arangodb::RestDocumentHandler testee(fakeRequest.release(), fakeResponse.release());
+  arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
+                                       fakeResponse.release());
   ASSERT_EQ(arangodb::RequestLane::CLIENT_FAST, testee.lane());
 }
 

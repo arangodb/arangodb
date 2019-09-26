@@ -30,6 +30,7 @@
 
 #include <map>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Rest/HttpRequest.h"
@@ -49,8 +50,9 @@ class TestResponse : public arangodb::HttpResponse {
 // give access to some protected routines for more thorough unit tests
 class TestHandler : public arangodb::MaintenanceRestHandler {
  public:
-  TestHandler(arangodb::GeneralRequest* req, arangodb::GeneralResponse* res)
-      : arangodb::MaintenanceRestHandler(req, res){};
+  TestHandler(arangodb::application_features::ApplicationServer& server,
+              arangodb::GeneralRequest* req, arangodb::GeneralResponse* res)
+      : arangodb::MaintenanceRestHandler(server, req, res){};
 
   bool test_parsePutBody(VPackSlice const& parameters) {
     return parsePutBody(parameters);
@@ -83,7 +85,8 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
                                                json_str.c_str(), json_str.length(), x);
   dummyRequest->setRequestType(arangodb::rest::RequestType::PUT);
   TestResponse* dummyResponse = new TestResponse;
-  TestHandler dummyHandler(dummyRequest, dummyResponse);
+  arangodb::application_features::ApplicationServer dummyServer{nullptr, nullptr};
+  TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
 
   ASSERT_TRUE(true == dummyHandler.test_parsePutBody(body.slice()));
   ASSERT_TRUE(dummyHandler.getActionDesc().has("name"));

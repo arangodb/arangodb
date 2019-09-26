@@ -39,6 +39,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
@@ -46,7 +47,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -55,7 +55,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -433,7 +432,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
   std::unique_ptr<ExecutionEngine> engine(
-      ExecutionEngine::instantiateFromPlan(registry, this, plan.get(),
+      ExecutionEngine::instantiateFromPlan(*registry, *this, *plan,
                                            !_queryString.empty()));
 
   if (_engine == nullptr) {

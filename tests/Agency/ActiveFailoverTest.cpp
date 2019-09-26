@@ -108,6 +108,13 @@ class ActiveFailover : public ::testing::Test {
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     base = createBuilder(agency);
     jobId = "1";
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::FATAL);
+  }
+
+  ~ActiveFailover() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
+                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

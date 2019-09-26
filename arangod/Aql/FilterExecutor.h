@@ -28,8 +28,6 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -38,7 +36,9 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
+class FilterStats;
 template <bool>
 class SingleRowFetcher;
 
@@ -54,7 +54,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; }
+  RegisterId getInputRegister() const noexcept;
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
