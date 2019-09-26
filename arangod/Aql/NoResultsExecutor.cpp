@@ -30,6 +30,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr bool NoResultsExecutor::Properties::preservesOrder;
+constexpr bool NoResultsExecutor::Properties::allowsBlockPassthrough;
+constexpr bool NoResultsExecutor::Properties::inputSizeRestrictsOutputSize;
+
 NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos){};
 NoResultsExecutor::~NoResultsExecutor() = default;
 
