@@ -886,7 +886,19 @@ void AqlItemBlock::makeDataRow(size_t row) {
   _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
 }
 
-AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept { return _manager; }
+/// @brief Return the indexes of shadowRows within this block.
+std::set<size_t> const& AqlItemBlock::getShadowRowIndexes() const noexcept {
+  return _shadowRowIndexes;
+}
+
+/// @brief Quick test if we have any ShadowRows within this block;
+bool AqlItemBlock::hasShadowRows() const noexcept {
+  return !_shadowRowIndexes.empty();
+}
+
+AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
+  return _manager;
+}
 
 size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
 
@@ -897,7 +909,9 @@ void AqlItemBlock::decrRefCount() const noexcept {
   --_refCount;
 }
 
-RegisterCount AqlItemBlock::internalNrRegs() const noexcept { return _nrRegs + 1; }
+RegisterCount AqlItemBlock::internalNrRegs() const noexcept {
+  return _nrRegs + 1;
+}
 size_t AqlItemBlock::getAddress(size_t index, RegisterId varNr) const noexcept {
   TRI_ASSERT(index < _nrItems);
   TRI_ASSERT(varNr < _nrRegs);
