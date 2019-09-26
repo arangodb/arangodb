@@ -188,7 +188,6 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
   for (std::string const& it : _restrictCollections) {
-    LOG_DEVEL << "printing '" << it << "'";
     builder.add(VPackValue(it));
   }
   builder.close();  // restrictCollections
@@ -355,7 +354,6 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
     for (auto const& it : VPackArrayIterator(value)) {
       if (it.isString()) {
-        LOG_DEVEL << "adding '" << it.copyString() << "'";
         configuration._restrictCollections.emplace(it.copyString());
       }
     }
