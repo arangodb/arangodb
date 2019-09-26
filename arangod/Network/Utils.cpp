@@ -38,20 +38,13 @@
 namespace arangodb {
 namespace network {
 
-int resolveDestination(NetworkFeature& feature, DestinationId const& dest,
-                       std::string& endpoint) {
+int resolveDestination(ClusterInfo& ci, DestinationId const& dest, std::string& endpoint) {
   using namespace arangodb;
 
   if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
     endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
   }
-
-  // Now look up the actual endpoint:
-  if (!feature.server().hasFeature<ClusterFeature>()) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
 
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the

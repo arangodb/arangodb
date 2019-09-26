@@ -161,8 +161,9 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
   auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  NetworkFeature& feature = server().getFeature<NetworkFeature>();
-  auto future = network::sendRequest(feature, "server:" + serverId, requestType,
+  auto* pool = server().getFeature<NetworkFeature>().pool();
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto future = network::sendRequest(pool, ci, "server:" + serverId, requestType,
                                      "/_db/" + StringUtils::urlEncode(dbname) +
                                          _request->requestPath() + params,
                                      std::move(*payload), network::Timeout(300), headers);

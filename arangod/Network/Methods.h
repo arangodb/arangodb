@@ -32,9 +32,10 @@
 #include <chrono>
 
 namespace arangodb {
-class NetworkFeature;
+class ClusterInfo;
 
 namespace network {
+class ConnectionPool;
 
 /// Response data structure
 struct Response {
@@ -49,15 +50,16 @@ struct Response {
 using FutureRes = arangodb::futures::Future<Response>;
 
 /// @brief send a request to a given destination
-FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
-                      arangodb::fuerte::RestVerb type, std::string const& path,
-                      velocypack::Buffer<uint8_t> payload, Timeout timeout,
-                      Headers headers = {});
+FutureRes sendRequest(ConnectionPool* pool, ClusterInfo& ci,
+                      DestinationId const& destination, arangodb::fuerte::RestVerb type,
+                      std::string const& path, velocypack::Buffer<uint8_t> payload,
+                      Timeout timeout, Headers headers = {});
 
 /// @brief send a request to a given destination, retry under certain conditions
 /// a retry will be triggered if the connection was lost our could not be established
 /// optionally a retry will be performed in the case of until timeout is exceeded
-FutureRes sendRequestRetry(NetworkFeature& feature, DestinationId const& destination,
+FutureRes sendRequestRetry(ConnectionPool* pool, ClusterInfo& ci,
+                           DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
                            Headers headers = {}, bool retryNotFound = false);

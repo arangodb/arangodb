@@ -26,20 +26,21 @@
 
 #include "gtest/gtest.h"
 
-#include "Network/ConnectionPool.h"
-#include "Network/Methods.h"
-#include "Network/NetworkFeature.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Mocks/Servers.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/Servers.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Cluster/ClusterFeature.h"
+#include "Network/ConnectionPool.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 
@@ -83,7 +84,10 @@ struct DummyPool : public network::ConnectionPool {
 };
 
 struct NetworkMethodsTest : public ::testing::Test {
-  NetworkMethodsTest() : server(false), pool(config()) {
+  NetworkMethodsTest()
+      : server(false),
+        ci(server.getFeature<ClusterFeature>().clusterInfo()),
+        pool(config()) {
     // suppress {threads} scheduler loop caught exception: bad_function_call
     arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
                                     arangodb::LogLevel::FATAL);
@@ -98,15 +102,6 @@ struct NetworkMethodsTest : public ::testing::Test {
   }
 
  protected:
-  
-  void SetUp() override {
-    auto& feature = server.getFeature<arangodb::NetworkFeature>();
-    feature.setPoolTesting(&this->pool);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  
-  // void TearDown() override {}
-  
   static network::ConnectionPool::Config config() {
     network::ConnectionPool::Config config;
     config.numIOThreads = 1;
@@ -117,6 +112,7 @@ struct NetworkMethodsTest : public ::testing::Test {
   }
 
   tests::mocks::MockCoordinator server;
+  ClusterInfo& ci;
   DummyPool pool;
 };
 
@@ -132,8 +128,7 @@ TEST_F(NetworkMethodsTest, simple_request) {
   pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
   
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.getFeature<arangodb::NetworkFeature>();
-  auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+  auto f = network::sendRequest(&pool, ci, "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, network::Timeout(60.0));
 
   network::Response res = std::move(f).get();
@@ -147,8 +142,7 @@ TEST_F(NetworkMethodsTest, request_failure) {
   pool._conn->_err = fuerte::Error::ConnectionClosed;
   
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.getFeature<NetworkFeature>();
-  auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+  auto f = network::sendRequest(&pool, ci, "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, network::Timeout(60.0));
 
   network::Response res = std::move(f).get();
@@ -162,9 +156,9 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   pool._conn->_err = fuerte::Error::CouldNotConnect;
   
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.getFeature<NetworkFeature>();
-  auto f = network::sendRequestRetry(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
-                                     "/", buffer, network::Timeout(5.0));
+  auto f = network::sendRequestRetry(&pool, ci, "tcp://example.org:80",
+                                     fuerte::RestVerb::Get, "/", buffer,
+                                     network::Timeout(5.0));
 
   // the default behaviour should be to retry after 200 ms
   std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -204,8 +198,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
     pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
     
     VPackBuffer<uint8_t> buffer;
-    auto& feature = server.getFeature<NetworkFeature>();
-    auto f = network::sendRequestRetry(feature, "tcp://example.org:80",
+    auto f = network::sendRequestRetry(&pool, ci, "tcp://example.org:80",
                                        fuerte::RestVerb::Get, "/", buffer,
                                        network::Timeout(5.0), {}, true);
 
