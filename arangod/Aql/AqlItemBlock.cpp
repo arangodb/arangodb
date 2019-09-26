@@ -436,7 +436,8 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
 
 /// @brief slice/clone, this does a deep copy of all entries
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
-  TRI_ASSERT(from < to && to <= _nrItems);
+  TRI_ASSERT(from < to);
+  TRI_ASSERT(to <= _nrItems);
 
   std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
@@ -705,12 +706,11 @@ ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
 
 void AqlItemBlock::copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
                                                  size_t sourceRow, size_t targetRow) const {
-  AqlValue const& d(_data[getSubqueryDepthAddress(sourceRow)]);
-  if (d.isNumber()) {
+  if (isShadowRow(sourceRow)) {
+    AqlValue const& d = getShadowRowDepth(sourceRow);
     // Value set, copy it over
     TRI_ASSERT(!d.requiresDestruction());
-    // TODO implement me!!
-    TRI_ASSERT(false);
+    target->setShadowRowDepth(targetRow, d);
   }
 }
 

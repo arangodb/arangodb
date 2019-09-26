@@ -115,9 +115,9 @@ template <bool usePassThrough, class UsedFetcher>
 class IdExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = usePassThrough;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = usePassThrough;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
   using Fetcher = UsedFetcher;
