@@ -316,8 +316,9 @@ class GatherNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(std::make_unique<GatherNode>(plan, _id, _sortmode),
-                       withDependencies, withProperties);
+    auto other = std::make_unique<GatherNode>(plan, _id, _sortmode);
+    other->setConstrainedSortLimit(constrainedSortLimit());
+    return cloneHelper(std::move(other), withDependencies, withProperties);
   }
 
   /// @brief creates corresponding ExecutionBlock
