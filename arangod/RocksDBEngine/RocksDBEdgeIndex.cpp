@@ -695,7 +695,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (collection().vocbase().server().isStopping()) {
       return;
     }
     n++;

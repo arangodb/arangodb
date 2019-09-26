@@ -20,20 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FinalPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_DATABASE_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_DATABASE_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FinalPhase") {
-  setOptional(false);
-  startsAfter("AgencyPhase");
-
-  startsAfter("Console");
-  startsAfter("Script");
-  startsAfter("Shutdown");
-}
+class DatabaseFeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit DatabaseFeaturePhase(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

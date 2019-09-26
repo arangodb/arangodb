@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
@@ -79,7 +80,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 
   _outputDirectory = FileUtils::buildFilename(FileUtils::currentDirectory().result(),
                                               "export");
@@ -184,15 +185,13 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void ExportFeature::prepare() {
-
-  _directory = std::make_unique<ManagedDirectory>(_outputDirectory, !_overwrite,
-                                                  true, _useGzip);
+  _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
+                                                  !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
         LOG_TOPIC("72723",FATAL, Logger::FIXME) << "cannot write to output directory '"
                                         << _outputDirectory << "'";
-
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
         LOG_TOPIC("81812",FATAL, Logger::FIXME)
@@ -209,8 +208,7 @@ void ExportFeature::prepare() {
 }
 
 void ExportFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -218,29 +216,34 @@ void ExportFeature::start() {
   std::unique_ptr<SimpleHttpClient> httpClient;
 
   try {
-    httpClient = client->createHttpClient();
+    httpClient = client.createHttpClient();
   } catch (...) {
     LOG_TOPIC("98a44", FATAL, Logger::COMMUNICATION)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client->username(), client->password());
+  httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client.username(), client.password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
     LOG_TOPIC("b620d", ERR, Logger::COMMUNICATION)
-        << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
-        << client->databaseName() << "', username: '" << client->username() << "'";
+        << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
+        << client.databaseName() << "', username: '" << client.username() << "'";
     LOG_TOPIC("f251e", FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
   // successfully connected
-  std::cout << ClientFeature::buildConnectedMessage(httpClient->getEndpointSpecification(), httpClient->getServerVersion(), /*role*/ "", /*mode*/ "", client->databaseName(), client->username()) << std::endl;
+  std::cout << ClientFeature::buildConnectedMessage(httpClient->getEndpointSpecification(),
+                                                    httpClient->getServerVersion(),
+                                                    /*role*/ "", /*mode*/ "",
+                                                    client.databaseName(),
+                                                    client.username())
+            << std::endl;
 
   uint64_t exportedSize = 0;
 

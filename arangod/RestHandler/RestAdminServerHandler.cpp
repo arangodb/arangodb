@@ -36,8 +36,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminServerHandler::RestAdminServerHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestAdminServerHandler::RestAdminServerHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -119,10 +121,11 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
 
+  auto& server = application_features::ApplicationServer::server();
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
-      available = !application_features::ApplicationServer::isStopping();
+      available = !server.isStopping();
       break;
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
@@ -209,11 +212,10 @@ void RestAdminServerHandler::handleMode() {
 
 
 void RestAdminServerHandler::handleDatabaseDefaults() {
-  auto defaults = getVocbaseOptions(VPackSlice::emptyObjectSlice());
+  auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
   builder.openObject();
   addVocbaseOptionsToOpenObject(builder, defaults);
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
-

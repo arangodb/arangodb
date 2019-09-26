@@ -133,8 +133,9 @@ namespace arangodb {
 
 class SupervisedSchedulerThread : virtual public Thread {
  public:
-  explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler)
-      : Thread("Scheduler"), _scheduler(scheduler) {}
+  explicit SupervisedSchedulerThread(application_features::ApplicationServer& server,
+                                     SupervisedScheduler& scheduler)
+      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
   ~SupervisedSchedulerThread() {}  // shutdown is called by derived implementation!
 
  protected:
@@ -143,26 +144,30 @@ class SupervisedSchedulerThread : virtual public Thread {
 
 class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
-      : Thread("SchedMan"), SupervisedSchedulerThread(scheduler) {}
+  explicit SupervisedSchedulerManagerThread(application_features::ApplicationServer& server,
+                                            SupervisedScheduler& scheduler)
+      : Thread(server, "SchedMan"), SupervisedSchedulerThread(server, scheduler) {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); };
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
-      : Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
+  explicit SupervisedSchedulerWorkerThread(application_features::ApplicationServer& server,
+                                           SupervisedScheduler& scheduler)
+      : Thread(server, "SchedWorker"), SupervisedSchedulerThread(server, scheduler) {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); }
 };
 
 }  // namespace arangodb
 
-SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads,
+SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
+                                         uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
                                          uint64_t fifo1Size, uint64_t fifo2Size)
-    : _numWorkers(0),
+    : Scheduler(server),
+      _numWorkers(0),
       _stopping(false),
       _jobsSubmitted(0),
       _jobsDequeued(0),
@@ -276,7 +281,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
 }
 
 bool SupervisedScheduler::start() {
-  _manager.reset(new SupervisedSchedulerManagerThread(*this));
+  _manager.reset(new SupervisedSchedulerManagerThread(_server, *this));
   if (!_manager->start()) {
     LOG_TOPIC("00443", ERR, Logger::THREADS)
         << "could not start supervisor thread";
@@ -629,7 +634,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
       _stop(false),
       _working(false),
       _ready(false),
-      _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
+      _thread(new SupervisedSchedulerWorkerThread(scheduler._server, scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 

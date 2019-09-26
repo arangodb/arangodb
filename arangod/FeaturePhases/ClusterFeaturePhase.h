@@ -20,23 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ServerPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_CLUSTER_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_CLUSTER_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ServerPhase") {
-  setOptional(false);
-  startsAfter("AQLPhase");
-
-  startsAfter("Endpoint");
-  startsAfter("GeneralServer");
-  startsAfter("Server");
-  startsAfter("SslServer");
-  startsAfter("Statistics");
-  startsAfter("Upgrade");
-}
+class ClusterFeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit ClusterFeaturePhase(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

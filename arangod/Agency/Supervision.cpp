@@ -159,8 +159,8 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision()
-    : arangodb::CriticalThread("Supervision"),
+Supervision::Supervision(application_features::ApplicationServer& server)
+    : arangodb::CriticalThread(server, "Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
@@ -892,7 +892,7 @@ void Supervision::run() {
   }
 
   if (shutdown) {
-    ApplicationServer::server->beginShutdown();
+    _server.beginShutdown();
   }
 }
 

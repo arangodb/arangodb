@@ -47,7 +47,11 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class ClusterCommThread;
+class ClusterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
@@ -215,7 +219,7 @@ struct ClusterCommResult {
   /// @brief routine to set the destination
   //////////////////////////////////////////////////////////////////////////////
 
-  void setDestination(std::string const& dest, bool logConnectionErrors);
+  void setDestination(ClusterInfo& ci, std::string const& dest, bool logConnectionErrors);
 
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
@@ -461,7 +465,7 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm();
+  ClusterComm(application_features::ApplicationServer&);
   ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 
@@ -606,7 +610,7 @@ class ClusterComm {
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.
-  explicit ClusterComm(bool);
+  explicit ClusterComm(application_features::ApplicationServer&, bool);
 
   std::string createCommunicatorDestination(std::string const& destination,
                                             std::string const& path) const;
@@ -681,6 +685,9 @@ class ClusterComm {
   static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
                                  double timeout, int line);
 
+  /// underlying application server
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
@@ -710,7 +717,7 @@ class ClusterCommThread : public Thread {
   ClusterCommThread& operator=(ClusterCommThread const&);
 
  public:
-  ClusterCommThread();
+  ClusterCommThread(application_features::ApplicationServer&);
   ~ClusterCommThread();
  public:
   void beginShutdown() override;

@@ -44,7 +44,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // required for QuerySetup
-#include "../Mocks/Servers.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -87,6 +87,7 @@ class CalculationExecutorTest : public ::testing::Test {
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        server(),
         fakedQuery(server.createFakeQuery()),
         ast(fakedQuery.get()),
         one(ast.createNodeValueInt(1)),

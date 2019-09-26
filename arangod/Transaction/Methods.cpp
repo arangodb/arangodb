@@ -49,6 +49,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1355,8 +1356,8 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     }
   }
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1486,8 +1487,8 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1799,8 +1800,8 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     }
   }
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -2110,8 +2111,8 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -2576,15 +2577,16 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(std::string const& collectionName,
                                                        transaction::CountType type) {
-  ClusterInfo* ci = ClusterInfo::instance();
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
     return OperationResult(TRI_ERROR_SHUTTING_DOWN);
   }
+  ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  auto collinfo = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto collinfo = ci.getCollectionNT(vocbase().name(), collectionName);
   if (collinfo == nullptr) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -3079,8 +3081,8 @@ int transaction::Methods::lockCollections() {
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
   return collection->lookupIndex(iid);
 }
@@ -3088,8 +3090,8 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
 
   // update selectivity estimates if they were expired
   if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
@@ -3269,6 +3271,7 @@ Future<Result> Methods::replicateOperations(
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
   network::Timeout const timeout(chooseTimeout(count, payload->size()));
+  auto& networkFeature = vocbase().server().getFeature<NetworkFeature>();
   for (auto const& f : *followerList) {
     // TODO we could steal the payload at least once
     VPackBuffer<uint8_t> buffer;
@@ -3276,8 +3279,9 @@ Future<Result> Methods::replicateOperations(
 
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry("server:" + f, requestType,
-                                            path, std::move(buffer), timeout, headers, /*retryNotFound*/true);
+    auto future = network::sendRequestRetry(networkFeature, "server:" + f, requestType,
+                                            path, std::move(buffer), timeout,
+                                            headers, /*retryNotFound*/ true);
     futures.emplace_back(std::move(future));
   }
 

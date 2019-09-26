@@ -218,9 +218,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     // testing
     _shardingStrategy = std::make_unique<ShardingStrategyNone>();
   } else {
-    _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>(
-                            "Sharding")
-                            ->fromVelocyPack(info, this);
+    auto& server = _collection->vocbase().server();
+    _shardingStrategy = server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
   }
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
@@ -237,9 +236,9 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
   TRI_ASSERT(_collection != nullptr);
 
   // set the sharding strategy
-  _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>(
-                          "Sharding")
-                          ->create(other._shardingStrategy->name(), this);
+  auto& server = _collection->vocbase().server();
+  _shardingStrategy =
+      server.getFeature<ShardingFeature>().create(other._shardingStrategy->name(), this);
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
@@ -334,9 +333,9 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   if (!usesSameShardingStrategy(other)) {
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other collection
-    auto shr = application_features::ApplicationServer::getFeature<ShardingFeature>(
-        "Sharding");
-    _shardingStrategy = shr->create(other->shardingStrategyName(), this);
+    auto& server = _collection->vocbase().server();
+    auto& shr = server.getFeature<ShardingFeature>();
+    _shardingStrategy = shr.create(other->shardingStrategyName(), this);
   }
 
   _distributeShardsLike = cid;

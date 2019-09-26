@@ -40,43 +40,38 @@ class LogicalDataSourceTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   LogicalDataSourceTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
   }
 
   ~LogicalDataSourceTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
   }
 };
@@ -88,7 +83,7 @@ class LogicalDataSourceTest : public ::testing::Test {
 TEST_F(LogicalDataSourceTest, test_category) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -123,7 +118,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
       }
     };
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
@@ -135,7 +130,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 TEST_F(LogicalDataSourceTest, test_construct) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
@@ -173,7 +168,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
       }
     };
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testView\" }");
@@ -188,7 +183,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 TEST_F(LogicalDataSourceTest, test_defaults) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -225,7 +220,7 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
       }
     };
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
