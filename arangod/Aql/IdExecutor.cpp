@@ -36,6 +36,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+template <bool usePassThrough, class T>
+constexpr bool IdExecutor<usePassThrough, T>::Properties::preservesOrder;
+template <bool usePassThrough, class T>
+constexpr bool IdExecutor<usePassThrough, T>::Properties::allowsBlockPassthrough;
+template <bool usePassThrough, class T>
+constexpr bool IdExecutor<usePassThrough, T>::Properties::inputSizeRestrictsOutputSize;
+
 ExecutionBlockImpl<IdExecutor<true, void>>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                          ExecutionNode const* node,
                                                          RegisterId outputRegister, bool doCount)
