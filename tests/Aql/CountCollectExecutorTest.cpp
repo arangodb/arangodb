@@ -25,10 +25,10 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CountCollectExecutor.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -50,7 +50,7 @@ class CountCollectExecutorTest : public ::testing::Test {
   std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
 
   CountCollectExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         nrOutputReg(2),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputReg)),
         outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(

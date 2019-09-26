@@ -23,7 +23,9 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
+#include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
@@ -104,82 +106,24 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class RestUsersHandlerTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
+  arangodb::SystemDatabaseFeature::ptr system;
   ViewFactory viewFactory;
 
-  RestUsersHandlerTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+  RestUsersHandlerTest()
+      : server(), system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
 
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for VocbaseContext
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for UserManager::updateUser(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::ShardingFeature(server),
-                          false);  // required for LogicalCollection::LogicalCollection(...)
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
-                          false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for LogicalView::create(...)
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::V8DealerFeature(server));  // add without calling prepare(), required for DatabaseFeature::createDatabase(...)
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    auto* viewTypesFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
-
-    viewTypesFeature->emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
-                                  "testViewType")),
-                              viewFactory);
+    auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
+    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
+                                 "testViewType")),
+                             viewFactory);
   }
 
   ~RestUsersHandlerTest() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::EngineSelectorFeature::ENGINE =
-        nullptr;  // nullify only after DatabaseFeature::unprepare()
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
   }
@@ -193,11 +137,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   auto usersJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"_users\", \"isSystem\": true }");
   static const std::string userName("testUser");
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
-          "Database");
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature->createDatabase(1, "testDatabase", vocbase).ok());
+  ASSERT_TRUE(databaseFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
   auto grantResponsePtr = std::make_unique<GeneralResponseMock>();
@@ -214,13 +156,15 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   auto& revokeWildcardRequest = *revokeWildcardRequestPtr;
   auto revokeWildcardResponcePtr = std::make_unique<GeneralResponseMock>();
   auto& revokeWildcardResponce = *revokeWildcardResponcePtr;
-  arangodb::RestUsersHandler grantHandler(grantRequestPtr.release(),
-                                          grantResponsePtr.release());
-  arangodb::RestUsersHandler grantWildcardHandler(grantWildcardRequestPtr.release(),
+  arangodb::RestUsersHandler grantHandler(server.server(), grantRequestPtr.release(),
+                                          grantResponcePtr.release());
+  arangodb::RestUsersHandler grantWildcardHandler(server.server(),
+                                                  grantWildcardRequestPtr.release(),
                                                   grantWildcardResponcePtr.release());
-  arangodb::RestUsersHandler revokeHandler(revokeRequestPtr.release(),
+  arangodb::RestUsersHandler revokeHandler(server.server(), revokeRequestPtr.release(),
                                            revokeResponcePtr.release());
-  arangodb::RestUsersHandler revokeWildcardHandler(revokeWildcardRequestPtr.release(),
+  arangodb::RestUsersHandler revokeWildcardHandler(server.server(),
+                                                   revokeWildcardRequestPtr.release(),
                                                    revokeWildcardResponcePtr.release());
 
   grantRequest.addSuffix("testUser");

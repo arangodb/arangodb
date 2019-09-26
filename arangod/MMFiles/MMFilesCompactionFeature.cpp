@@ -24,7 +24,9 @@
 #include "MMFilesCompactionFeature.h"
 
 #include "Basics/Exceptions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -49,9 +51,9 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(application_features::Applica
       _deadSizeThreshold(128 * 1024),
       _deadShare(0.1) {
   setOptional(true);
-  onlyEnabledWith("MMFilesEngine");
+  onlyEnabledWith<MMFilesEngine>();
 
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
   MMFilesCompactionFeature::COMPACTOR = this;
 }

@@ -38,6 +38,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
@@ -77,9 +78,12 @@ namespace {
 std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
     v8::Isolate* isolate, TRI_vocbase_t& vocbase, v8::Handle<v8::Value> const val) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    return ci ? ci->getCollectionNT(vocbase.name(), TRI_ObjectToString(isolate, val)) : nullptr;
+    return vocbase.server().hasFeature<arangodb::ClusterFeature>()
+               ? vocbase.server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo()
+                     .getCollectionNT(vocbase.name(), TRI_ObjectToString(isolate, val))
+               : nullptr;
   }
 
   // number
@@ -243,10 +247,12 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate, VPackBuilder& builder,
 
 std::vector<std::shared_ptr<LogicalCollection>> GetCollections(TRI_vocbase_t& vocbase) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto* ci = ClusterInfo::instance();
-
-    return ci ? ci->getCollections(vocbase.name())
-              : std::vector<std::shared_ptr<LogicalCollection>>();
+    return vocbase.server().hasFeature<arangodb::ClusterFeature>()
+               ? vocbase.server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo()
+                     .getCollections(vocbase.name())
+               : std::vector<std::shared_ptr<LogicalCollection>>();
   }
 
   return vocbase.collections(false);
@@ -260,7 +266,8 @@ static std::vector<std::string> GetCollectionNamesCluster(TRI_vocbase_t* vocbase
   std::vector<std::string> result;
 
   std::vector<std::shared_ptr<LogicalCollection>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->name());
+      vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo().getCollections(
+          vocbase->name());
 
   for (auto& collection : collections) {
     std::string const& name = collection->name();
@@ -1144,13 +1151,16 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
       TRI_ASSERT(builder.isClosed());
 
+      auto& server = application_features::ApplicationServer::server();
+      auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
       // replication checks
       if (builder.slice().get(StaticStrings::ReplicationFactor).isNumber() &&
           builder.slice().get(StaticStrings::ReplicationFactor).getInt() > 0) {
         uint64_t replicationFactor =
             builder.slice().get(StaticStrings::ReplicationFactor).getUInt();
         if (ServerState::instance()->isRunningInCluster() &&
-            replicationFactor > ClusterInfo::instance()->getCurrentDBServers().size()) {
+            replicationFactor > ci.getCurrentDBServers().size()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
         }
       }
@@ -1161,8 +1171,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
         uint64_t minReplicationFactor =
             builder.slice().get(StaticStrings::MinReplicationFactor).getUInt();
         if (ServerState::instance()->isRunningInCluster() &&
-            minReplicationFactor >
-                ClusterInfo::instance()->getCurrentDBServers().size()) {
+            minReplicationFactor > ci.getCurrentDBServers().size()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
         }
       }
@@ -1836,7 +1845,7 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_voc_rid_t revisionId;
 
   methods::Collections::Context ctxt(collection->vocbase(), *collection);
-  auto res = methods::Collections::revisionId(ctxt, revisionId);
+  auto res = methods::Collections::revisionId(collection->vocbase().server(), ctxt, revisionId);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2092,8 +2101,11 @@ static void JS_StatusVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
-    auto ci = ClusterInfo::instance()->getCollectionNT(databaseName,
-                                                       std::to_string(collection->id()));
+    auto ci = collection->vocbase()
+                  .server()
+                  .getFeature<arangodb::ClusterFeature>()
+                  .clusterInfo()
+                  .getCollectionNT(databaseName, std::to_string(collection->id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } else {
@@ -2173,8 +2185,11 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
-    auto ci = ClusterInfo::instance()->getCollectionNT(databaseName,
-                                                       std::to_string(collection->id()));
+    auto ci = collection->vocbase()
+                  .server()
+                  .getFeature<ClusterFeature>()
+                  .clusterInfo()
+                  .getCollectionNT(databaseName, std::to_string(collection->id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     } else {
@@ -2344,7 +2359,8 @@ static void JS_CompletionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   std::vector<std::string> names;
 
   if (ServerState::instance()->isCoordinator()) {
-    if (ClusterInfo::instance()->doesDatabaseExist(vocbase.name())) {
+    if (vocbase.server().getFeature<ClusterFeature>().clusterInfo().doesDatabaseExist(
+            vocbase.name())) {
       names = GetCollectionNamesCluster(&vocbase);
     }
   } else {

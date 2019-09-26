@@ -43,10 +43,12 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   static std::unordered_set<std::string> availableEngineNames();
 
   // return all available storage engines
-  static std::unordered_map<std::string, std::string> availableEngines();
+  static std::unordered_map<std::string, std::type_index> availableEngines();
 
-  // whether the engine has been started yet
-  bool hasStarted() const { return _hasStarted.load(); }
+  // whether the engine has been selected yet
+  bool selected() const { return _selected.load(); }
+
+  StorageEngine& engine();
 
   static std::string const& engineName();
 
@@ -59,10 +61,14 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   // after prepare() and before unprepare()
   static StorageEngine* ENGINE;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setEngineTesting(StorageEngine*);
+#endif
+
  private:
   std::string _engine;
   std::string _engineFilePath;
-  std::atomic<bool> _hasStarted;
+  std::atomic<bool> _selected;
 };
 
 }  // namespace arangodb

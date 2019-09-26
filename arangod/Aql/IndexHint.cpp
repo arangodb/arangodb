@@ -23,15 +23,15 @@
 
 #include "IndexHint.h"
 
+#include "Aql/AstNode.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Aql/AstNode.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 
 #include <ostream>
 

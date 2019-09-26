@@ -37,6 +37,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 
 #include "Mocks/Servers.h"
 
@@ -55,9 +56,10 @@ namespace aql {
 
 class TokenTranslator : public TraverserCache {
  public:
-  TokenTranslator(Query* query) 
-      : TraverserCache(query),
-         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(), arangodb::basics::VelocyPackHelper::VPackEqual()) {}
+  TokenTranslator(Query* query, BaseOptions* opts)
+      : TraverserCache(query, opts),
+        _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
+               arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() {}
 
   arangodb::velocypack::StringRef makeVertex(std::string const& id) {
@@ -167,7 +169,7 @@ class FakePathFinder : public ShortestPathFinder {
 
 struct TestShortestPathOptions : public ShortestPathOptions {
   TestShortestPathOptions(Query* query) : ShortestPathOptions(query) {
-    std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query);
+    std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
 };
@@ -191,7 +193,16 @@ class ShortestPathExecutorTest : public ::testing::Test {
         regSource(sourceIn),
         regTarget(targetIn),
         brokenSource{"IwillBreakYourSearch"},
-        brokenTarget{"I will also break your search"} {}
+        brokenTarget{"I will also break your search"} {
+    // suppress INFO {cluster} Starting up with role SINGLE
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::ERR);
+  }
+
+  ~ShortestPathExecutorTest() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
 
   void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& result,
                       std::vector<std::pair<std::string, std::string>> const& resultPaths) {
@@ -248,7 +259,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
                            std::shared_ptr<VPackBuilder> const& input,
                            std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor};
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
     NoStats stats{};
@@ -296,7 +307,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
                               std::shared_ptr<VPackBuilder> const& input,
                               std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor};
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
     NoStats stats{};
@@ -331,7 +342,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   }
 
   void RunSimpleTest(bool waiting, ShortestPathExecutorInfos::InputVertex&& source,
-                            ShortestPathExecutorInfos::InputVertex&& target) {
+                     ShortestPathExecutorInfos::InputVertex&& target) {
     RegisterId vOutReg = 2;
     mocks::MockAqlServer server{};
     std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();

@@ -48,8 +48,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCollectionHandler::RestCollectionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestCollectionHandler::RestCollectionHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestCollectionHandler::execute() {
   switch (_request->requestType()) {
@@ -190,7 +192,7 @@ void RestCollectionHandler::handleCommandGet() {
           methods::Collections::Context ctxt(_vocbase, *coll);
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
-          auto res = methods::Collections::revisionId(ctxt, revisionId);
+          auto res = methods::Collections::revisionId(server(), ctxt, revisionId);
 
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
@@ -219,15 +221,15 @@ void RestCollectionHandler::handleCommandGet() {
                                    /*showCount*/ false,
                                    /*detailedCount*/ true);
 
-          auto shards =
-              ClusterInfo::instance()->getShardList(std::to_string(coll->planId()));
+          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+          auto shards = ci.getShardList(std::to_string(coll->planId()));
 
           if (_request->parsedValue("details", false)) {
             // with details
             VPackObjectBuilder arr(&builder, "shards", true);
             for (ShardID const& shard : *shards) {
               std::vector<ServerID> servers;
-              ClusterInfo::instance()->getShardServers(shard, servers);
+              ci.getShardServers(shard, servers);
 
               if (servers.empty()) {
                 continue;
@@ -287,11 +289,10 @@ void RestCollectionHandler::handleCommandPost() {
     return;
   }
 
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
   bool waitForSyncReplication =
       _request->parsedValue("waitForSyncReplication",
-                            cluster->createWaitsForSyncReplication());
+                            cluster.createWaitsForSyncReplication());
 
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
@@ -519,8 +520,11 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             uint64_t replicationFactor =
                 body.get(StaticStrings::ReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
-                replicationFactor >
-                    ClusterInfo::instance()->getCurrentDBServers().size()) {
+                replicationFactor > server()
+                                        .getFeature<ClusterFeature>()
+                                        .clusterInfo()
+                                        .getCurrentDBServers()
+                                        .size()) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
             }
           }
@@ -531,8 +535,11 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             uint64_t minReplicationFactor =
                 body.get(StaticStrings::MinReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
-                minReplicationFactor >
-                    ClusterInfo::instance()->getCurrentDBServers().size()) {
+                minReplicationFactor > server()
+                                           .getFeature<ClusterFeature>()
+                                           .clusterInfo()
+                                           .getCurrentDBServers()
+                                           .size()) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
             }
           }

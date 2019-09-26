@@ -27,10 +27,11 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace aql {
-
+class ExecutionBlock;
 class NoStats;
 class OutputAqlItemRow;
 template <bool>

@@ -121,10 +121,9 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   result->Set(TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj);
 
   // v8 counters
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
-  auto v8Counters = dealer->getCurrentContextNumbers();
+  auto& server = application_features::ApplicationServer::server();
+  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  auto v8Counters = dealer.getCurrentContextNumbers();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
                      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
@@ -137,7 +136,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
                      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
 
-  auto memoryStatistics = dealer->getCurrentMemoryNumbers();
+  auto memoryStatistics = dealer.getCurrentMemoryNumbers();
 
   v8::Handle<v8::Array> v8ListOfMemory = v8::Array::New(isolate, static_cast<int>(memoryStatistics.size()));
   uint32_t pos = 0;

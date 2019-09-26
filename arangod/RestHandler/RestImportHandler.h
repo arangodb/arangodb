@@ -58,7 +58,8 @@ struct RestImportResult {
 
 class RestImportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestImportHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestImportHandler(application_features::ApplicationServer&,
+                             GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;

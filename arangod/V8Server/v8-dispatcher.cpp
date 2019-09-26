@@ -88,9 +88,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  auto& server = application_features::ApplicationServer::server();
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (server.isStopping()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 

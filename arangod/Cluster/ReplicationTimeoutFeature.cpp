@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationTimeoutFeature.h"
+
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -36,7 +38,7 @@ double ReplicationTimeoutFeature::lowerLimit = 30.0;  // longer than heartbeat t
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
-  startsAfter("DatabasePhase");
+  startsAfter<application_features::DatabaseFeaturePhase>();
 }
 
 void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

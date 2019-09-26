@@ -24,12 +24,12 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -57,7 +57,7 @@ class NoResultsExecutorTest : public ::testing::Test {
   OutputAqlItemRow result;
 
   NoResultsExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(make_shared_unordered_set()),
         registersToClear(make_shared_unordered_set()),

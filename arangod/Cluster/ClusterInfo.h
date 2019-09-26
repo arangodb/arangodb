@@ -44,7 +44,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Databases.h"
+#include "VocBase/VocbaseInfo.h"
 
 
 namespace arangodb {
@@ -382,7 +382,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -390,21 +390,12 @@ class ClusterInfo final {
 
   TEST_VIRTUAL ~ClusterInfo();
 
- public:
-  static void createInstance(AgencyCallbackRegistry*);
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the unique instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* instance();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
 
-  static void cleanup();
+  void cleanup();
 
- public:
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -541,13 +532,13 @@ class ClusterInfo final {
   /// If any error happens on the way, a pending database will be cleaned up
   ///
   //////////////////////////////////////////////////////////////////////////////
-  Result createIsBuildingDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
-  Result createFinalizeDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
+  Result createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database);
+  Result createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes database and collection entries within the agency plan
   //////////////////////////////////////////////////////////////////////////////
-  Result cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
+  Result cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
@@ -854,12 +845,13 @@ class ClusterInfo final {
   }
 
  private:
-  Result buildIsBuildingSlice(methods::CreateDatabaseInfo const& database,
+  void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
-  Result buildFinalSlice(methods::CreateDatabaseInfo const& database,
+
+  void buildFinalSlice(CreateDatabaseInfo const& database,
                          VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& database);
+  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -889,6 +881,9 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
+
+  /// underlying application server
+  application_features::ApplicationServer& _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

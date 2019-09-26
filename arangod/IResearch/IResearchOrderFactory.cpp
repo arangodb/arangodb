@@ -27,17 +27,18 @@
 #undef NOEXCEPT
 #endif
 
-#include "search/scorers.hpp"
-
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/fasthash.h"
-#include "IResearchFeature.h"
-#include "IResearchOrderFactory.h"
-#include "VelocyPackHelper.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/VelocyPackHelper.h"
+
+#include <search/scorers.hpp>
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies

@@ -39,6 +39,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
@@ -256,8 +257,8 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
   if (!name.empty()) {
     // try looking up the collection by name then
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      ClusterInfo* ci = ClusterInfo::instance();
-      return ci->getCollectionNT(vocbase.name(), name);
+      ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+      return ci.getCollectionNT(vocbase.name(), name);
     } else {
       return vocbase.lookupCollection(name);
     }

@@ -27,6 +27,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -474,6 +475,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
+  auto& server = application_features::ApplicationServer::server();
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
@@ -523,7 +525,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
-      if (application_features::ApplicationServer::isStopping()) {
+      if (server.isStopping()) {
         return nullptr;  // shutting down
       }
     }
@@ -866,10 +868,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 
   if (fanout) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-    auto ci = ClusterInfo::instance();
-    if (ci == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     if (cc == nullptr) {
@@ -879,7 +878,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     std::vector<ClusterCommRequest> requests;
     auto auth = AuthenticationFeature::instance();
 
-    for (auto const& coordinator : ci->getCurrentCoordinators()) {
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
         // ourselves!
         continue;

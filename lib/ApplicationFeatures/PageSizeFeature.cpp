@@ -33,6 +33,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -46,7 +47,7 @@ size_t PageSizeFeature::PageSize = 0;
 PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void PageSizeFeature::prepare() {

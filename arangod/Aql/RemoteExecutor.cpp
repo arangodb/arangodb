@@ -23,7 +23,10 @@
 #include "RemoteExecutor.h"
 
 #include "Aql/ClusterNodes.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Aql/WakeupQueryCallback.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RecursiveLocker.h"
@@ -264,7 +267,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
-
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
@@ -289,7 +291,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     _lastResponse.reset();
     _hasTriggeredShutdown = true;
   }
-
   if (_lastError.fail()) {
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
@@ -347,7 +348,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_didSendShutdownRequest == false);
+  _didSendShutdownRequest = true;
+#endif
   // For every call we simply forward via HTTP
   VPackBuilder bodyBuilder;
   bodyBuilder.openObject();
@@ -388,15 +392,15 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   std::shared_ptr<ClusterCommCallback> callback =
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
-  // Make sure to cover against the race that this
-  // Request is fullfilled before the register has taken place
-  // @note the only reason for not using recursive mutext always is due to the
-  //       concern that there might be recursive calls in production
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
-  #else
-    MUTEX_LOCKER(locker, _communicationMutex);
-  #endif
+// Make sure to cover against the race that this
+// Request is fullfilled before the register has taken place
+// @note the only reason for not using recursive mutext always is due to the
+//       concern that there might be recursive calls in production
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
+#else
+  MUTEX_LOCKER(locker, _communicationMutex);
+#endif
 
   // We can only track one request at a time.
   // So assert there is no other request in flight!
@@ -409,16 +413,16 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 }
 
 bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* result) {
-  // So we cannot have the response being produced while sending the request.
-  // Make sure to cover against the race that this
-  // Request is fullfilled before the register has taken place
-  // @note the only reason for not using recursive mutext always is due to the
-  //       concern that there might be recursive calls in production
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
-  #else
-    MUTEX_LOCKER(locker, _communicationMutex);
-  #endif
+// So we cannot have the response being produced while sending the request.
+// Make sure to cover against the race that this
+// Request is fullfilled before the register has taken place
+// @note the only reason for not using recursive mutext always is due to the
+//       concern that there might be recursive calls in production
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
+#else
+  MUTEX_LOCKER(locker, _communicationMutex);
+#endif
 
   if (_lastTicketId == result->operationID) {
     // TODO Handle exceptions thrown while we are in this code

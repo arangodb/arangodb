@@ -957,7 +957,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 }
 
 MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t& vocbase)
-    : Thread("MMFilesCompactor"), _vocbase(vocbase) {}
+    : Thread(vocbase.server(), "MMFilesCompactor"), _vocbase(vocbase) {}
 
 MMFilesCompactorThread::~MMFilesCompactorThread() { shutdown(); }
 

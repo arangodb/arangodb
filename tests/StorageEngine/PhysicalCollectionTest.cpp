@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
@@ -40,6 +41,8 @@
 
 using namespace arangodb;
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -48,35 +51,30 @@ class PhysicalCollectionTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<arangodb::application_features::ApplicationFeature*> features;
+  std::vector<std::reference_wrapper<arangodb::application_features::ApplicationFeature>> features;
 
   PhysicalCollectionTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server));  // required for VocbaseContext
-    features.emplace_back(new arangodb::DatabaseFeature(server));
-    features.emplace_back(new arangodb::QueryRegistryFeature(server));  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server));
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>());
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f);
-    }
-
-    for (auto& f : features) {
-      f->prepare();
+      f.get().prepare();
     }
   }
 
   ~PhysicalCollectionTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     for (auto& f : features) {
-      f->unprepare();
+      f.get().unprepare();
     }
   }
 };
@@ -86,8 +84,7 @@ class PhysicalCollectionTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
@@ -212,8 +209,7 @@ class MockIndex : public Index {
 };
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;

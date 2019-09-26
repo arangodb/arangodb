@@ -56,24 +56,23 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
   arangodb::tests::mocks::MockAqlServer server;
 
   IResearchLinkHelperTestSingle() {
-    auto* dbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>("Database");
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     {
-      TRI_vocbase_t* vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+      TRI_vocbase_t* vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
       arangodb::methods::Collections::createSystem(
         *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);
     }
     {
       TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(1, "testVocbaseWithAnalyzer", vocbase);
+      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbaseWithAnalyzer", 1), vocbase);
       arangodb::methods::Collections::createSystem(
-         *vocbase,
+        *vocbase,
          arangodb::tests::AnalyzerCollectionName, false);
     }
     {
       TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(2, "testVocbaseWithView", vocbase);
+      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbaseWithView",2), vocbase);
       arangodb::methods::Collections::createSystem(
         *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);
@@ -81,7 +80,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
           "{ \"id\":102, \"name\": \"foo\" }");
       EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
     }
-  }
+    }
 
   ~IResearchLinkHelperTestSingle() {
   }
@@ -199,21 +198,20 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
 }
 
 TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
-  auto* analyzers =
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  ASSERT_NE(nullptr, analyzers);
-  auto* dbFeature =
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>("Database");
-  ASSERT_NE(nullptr, dbFeature);
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
-    ASSERT_TRUE(analyzers->emplace(emplaceResult, "testVocbaseWithAnalyzer::myIdentity", "identity",
-      VPackParser::fromJson("{ }")->slice()).ok());
+    ASSERT_TRUE(analyzers
+                    .emplace(emplaceResult,
+                             "testVocbaseWithAnalyzer::myIdentity", "identity",
+                             VPackParser::fromJson("{ }")->slice())
+                    .ok());
   }
 
   // existing analyzer  but wrong database
   {
-    auto vocbaseLocal = dbFeature->useDatabase("testVocbaseWithView");
+    auto vocbaseLocal = dbFeature.useDatabase("testVocbaseWithView");
     ASSERT_NE(nullptr, vocbaseLocal);
     auto json = VPackParser::fromJson(
       "{ \"foo\": "
@@ -229,9 +227,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
 
 }
 
-TEST_F(IResearchLinkHelperTestSingle, test_normalize_single) {
-  auto* analyzers =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   TRI_vocbase_t& sysVocbase = server.getSystemDatabase();
 
@@ -247,8 +244,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize_single) {
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
                               builder, json->slice(), false, sysVocbase)
                               .ok()));
-    EXPECT_TRUE((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                         "::testAnalyzer1")));
+    EXPECT_TRUE((true == !analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1")));
   }
 
   // analyzer single-server (inRecovery) fail persist in recovery
@@ -267,7 +263,6 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize_single) {
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
                               builder, json->slice(), false, sysVocbase)
                               .ok()));
-    EXPECT_TRUE((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                         "::testAnalyzer2")));
+    EXPECT_TRUE((true == !analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2")));
   }
 }

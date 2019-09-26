@@ -25,6 +25,7 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutorInfos.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterComm.h"
 #include "Rest/CommonDefines.h"
@@ -130,12 +131,16 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   ///        is responded before the ticket id is registered.
   arangodb::Mutex _communicationMutex;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::atomic<std::thread::id> _communicationMutexOwner; // current thread owning '_communicationMutex' lock (workaround for non-recusrive MutexLocker)
+  std::atomic<std::thread::id> _communicationMutexOwner;  // current thread owning '_communicationMutex' lock (workaround for non-recusrive MutexLocker)
 #endif
 
   OperationID _lastTicketId;
 
   bool _hasTriggeredShutdown;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _didSendShutdownRequest = false;
+#endif
 };
 
 }  // namespace aql

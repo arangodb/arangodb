@@ -23,7 +23,9 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "ExpressionContextMock.h"
 #include "common.h"
 
@@ -55,6 +57,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
@@ -71,20 +74,24 @@
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 
+#include <velocypack/Parser.h>
+
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
 class IResearchFilterInTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
 
-  IResearchFilterInTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
+ private:
+  TRI_vocbase_t* _vocbase;
 
+ protected:
+  IResearchFilterInTest() {
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
@@ -97,56 +104,10 @@ class IResearchFilterInTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
-    // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), false);  // required for IResearchFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
-                          true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases->slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
+    auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
@@ -158,7 +119,7 @@ class IResearchFilterInTest : public ::testing::Test {
         }});
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
@@ -170,43 +131,26 @@ class IResearchFilterInTest : public ::testing::Test {
           return params[0];
         }});
 
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
-    analyzers->emplace(
-      result,
-      "testVocbase::test_analyzer",
-      "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice());
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
+    analyzers.emplace(
+        result, "testVocbase::test_analyzer", "TestAnalyzer",
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
   }
 
   ~IResearchFilterInTest() {
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
+
+  TRI_vocbase_t& vocbase() { return *_vocbase; }
 };  // IResearchFilterSetup
 
 // -----------------------------------------------------------------------------
@@ -223,9 +167,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a in ['1','2','3'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a'] in ['1','2','3'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a'] in ['1','2','3'] RETURN d", expected);
   }
 
   // simple offset
@@ -237,8 +181,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d[1] in ['1','2','3'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d[1] in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d[1] in ['1','2','3'], "
         "'identity') RETURN d",
         expected);
@@ -253,8 +198,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a[1]")).term("3");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a[1] in ['1','2','3'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a[1] in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'][1] in ['1','2','3'] RETURN d", expected);
   }
 
@@ -267,10 +213,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].e.f in ['1','2','3'] RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f in ['1','2','3'] RETURN d", expected);
   }
 
@@ -289,10 +237,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'][412].e.f in ['1','2','3'] "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[412].e.f in ['1','2','3'] RETURN d", expected);
   }
 
@@ -311,10 +261,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d.a['b']['c'][412].e.f in "
         "['1','2','3'], 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d.a.b.c[412].e.f in "
         "['1','2','3'], 'test_analyzer') RETURN d",
         expected);
@@ -336,10 +288,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(d.a['b']['c'][412].e.f in "
         "['1','2','3'], 2.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(d.a.b.c[412].e.f in ['1','2','3'], "
         "2.5) RETURN d",
         expected);
@@ -361,10 +315,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(BOOST(d.a['b']['c'][412].e.f in "
         "['1','2','3'], 2.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(ANALYZER(d.a.b.c[412].e.f in "
         "['1','2','3'], 'test_analyzer'), 2.5) RETURN d",
         expected);
@@ -388,14 +344,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
     }
 
-    assertFilterSuccess(
-        "FOR d IN collection FILTER d.quick.brown.fox in "
-        "['1',null,true,false,2] RETURN d",
-        expected);
-    assertFilterSuccess(
-        "FOR d IN collection FILTER d.quick['brown'].fox in "
-        "['1',null,true,false,2] RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.quick.brown.fox in "
+                        "['1',null,true,false,2] RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.quick['brown'].fox in "
+                        "['1',null,true,false,2] RETURN d",
+                        expected);
   }
 
   // heterogeneous array values, analyzer
@@ -417,10 +373,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     }
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d.quick.brown.fox in "
         "['1',null,true,false,2], 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d.quick['brown'].fox in "
         "['1',null,true,false,2], 'test_analyzer') RETURN d",
         expected);
@@ -445,11 +403,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
     }
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER booST(d.quick.brown.fox in "
+                        "['1',null,true,false,2], 1.5) RETURN d",
+                        expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER booST(d.quick.brown.fox in "
-        "['1',null,true,false,2], 1.5) RETURN d",
-        expected);
-    assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER Boost(d.quick['brown'].fox in "
         "['1',null,true,false,2], 1.5) RETURN d",
         expected);
@@ -475,10 +434,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     }
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(BOOST(d.quick.brown.fox in "
         "['1',null,true,false,2], 1.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(ANALYZER(d.quick['brown'].fox in "
         "['1',null,true,false,2], 'test_analyzer'), 1.5) RETURN d",
         expected);
@@ -490,8 +451,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     expected.add<irs::empty>();
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.quick.brown.fox in [] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.quick.brown.fox in [] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['quick'].brown.fox in [] RETURN d", expected);
   }
 
@@ -518,6 +480,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -534,6 +497,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -552,6 +516,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -570,6 +535,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -599,6 +565,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a.b.c.e.f in ['1', c, '3'] "
         "RETURN d",
         expected,
@@ -627,6 +594,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER d.a.b.c.e.f in x "
         "RETURN d",
         expected, &ctx);
@@ -657,6 +625,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER ANALYZER(d.a.b.c.e.f "
         "in x, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -684,6 +653,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER BOOST(d.a.b.c.e.f in "
         "x, 1.5) RETURN d",
         expected, &ctx);
@@ -715,10 +685,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "ANALYZER(BOOST(d.a.b.c.e.f in x, 1.5), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "BOOST(ANALYZER(d.a.b.c.e.f in x, 'test_analyzer'), 1.5) RETURN d",
         expected, &ctx);
@@ -731,8 +703,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -834,8 +805,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', d, '3' ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -938,8 +908,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1042,8 +1011,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1146,8 +1114,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1240,8 +1207,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "FOR d IN collection FILTER 4 in [ 1, d.b.a, 4 ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1333,7 +1299,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   }
 
   assertExpressionFilter(
-      "FOR d IN collection FILTER 4 in [ 1, 1+d.b, 4 ] RETURN d");
+      vocbase(), "FOR d IN collection FILTER 4 in [ 1, 1+d.b, 4 ] RETURN d");
 
   // heterogeneous references and expression in array
   {
@@ -1361,6 +1327,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER d.a.b.c.e.f in ['1', strVal, boolVal, "
         "numVal+1, nullVal] RETURN d",
@@ -1396,6 +1363,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER boost(boost(d.a.b.c.e.f in ['1', strVal, "
         "boolVal, numVal+1, nullVal], 1), 1.5) RETURN d",
@@ -1432,6 +1400,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(d.a.b.c.e.f in ['1', strVal, boolVal, "
         "numVal+1, nullVal], 'test_analyzer') RETURN d",
@@ -1469,6 +1438,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER boost(ANALYZER(d.a.b.c.e.f in ['1', strVal, "
         "boolVal, numVal+1, nullVal], 'test_analyzer'),2.5) RETURN d",
@@ -1476,6 +1446,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         &ctx  // expression context
     );
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(d.a.b.c.e.f in ['1', strVal, "
         "boolVal, numVal+1, nullVal], 2.5), 'test_analyzer') RETURN d",
@@ -1484,23 +1455,28 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     );
   }
 
-  assertExpressionFilter("FOR d IN myView FILTER [1,2,'3'] in d.a RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER [1,2,'3'] in d.a RETURN d");
 
   // non-deterministic expression name in array
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "in ['1','2','3'] RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN myView FILTER d in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER d[*] in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER d.a[*] in [1,2,3] RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d in [1,2,3] RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d[*] in [1,2,3] RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d.a[*] in [1,2,3] RETURN d");
 
   // no reference provided
   assertFilterExecutionFail(
-      "LET x={} FOR d IN myView FILTER d.a in [1,x.a,3] RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER d.a in [1,x.a,3] RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // false expression
@@ -1508,23 +1484,32 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN myView FILTER [] in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER [] in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER ['d'] in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ['d'] in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 'd.a' in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 'd.a' in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER null in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER null in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER true in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER true in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER false in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER false in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4 in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4 in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4.5 in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4.5 in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 1..2 in [1,2,3] RETURN d", expected,
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 1..2 in [1,2,3] RETURN d", expected,
                         &ExpressionContextMock::EMPTY);  // by some reason arangodb evaluates it to false
   }
 
@@ -1533,14 +1518,16 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN myView FILTER 4 in [1,2,3,4] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4 in [1,2,3,4] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
   // not a value in array
   assertFilterFail(
-      "FOR d IN collection FILTER d.a in ['1',['2'],'3'] RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a in ['1',['2'],'3'] RETURN d");
   assertFilterFail(
+      vocbase(),
       "FOR d IN collection FILTER d.a in ['1', {\"abc\": \"def\"},'3'] RETURN "
       "d");
 
@@ -1558,9 +1545,10 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.e.f in 4..5 RETURN d", expected,
-        &ExpressionContextMock::EMPTY);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.e.f in 4..5 RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b['c'].e.f in 4..5 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -1580,9 +1568,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c.e.f in 4..5, 2.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d['a'].b['c'].e.f in 4..5, 2.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -1603,10 +1593,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyZER(boost(d.a.b.c.e.f in 4..5, 2.5), "
         "'test_analyzer') RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyZER(boost(d['a'].b['c'].e.f in 4..5, "
         "2.5), 'test_analyzer') RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -1626,9 +1618,10 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.e.f in 4.5..5.0 RETURN d", expected,
-        &ExpressionContextMock::EMPTY);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.e.f in 4.5..5.0 RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b['c.e.f'] in 4.5..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -1647,9 +1640,10 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.e.f in 4..5.0 RETURN d", expected,
-        &ExpressionContextMock::EMPTY);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.e.f in 4..5.0 RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c.e['f'] in 4..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -1669,9 +1663,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c.e.f in 4..5.0, 1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d['a']['b'].c.e['f'] in 4..5.0, 1.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -1698,10 +1694,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f in c..c+100 "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100]['b'].c[1].e.f in c..c+100 "
         "RETURN d",
         expected, &ctx);
@@ -1729,10 +1727,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER boost(d.a[100].b.c[1].e.f in "
         "c..c+100, 1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER boost(d.a[100]['b'].c[1].e.f in "
         "c..c+100, 1.5) RETURN d",
         expected, &ctx);
@@ -1760,6 +1760,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1776,6 +1777,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1794,6 +1796,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1812,6 +1815,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1832,12 +1836,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.e.f in '4'..'5' RETURN d", expected,
-        &ExpressionContextMock::EMPTY);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.e.f in '4'..'5' RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b.c.e.f'] in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b.c.e.f'] in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -1855,12 +1861,15 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f[4] in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b.c.e.f'][4] in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b.c.e.f[4]'] in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -1879,14 +1888,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c.e.f[4] in '4'..'5', 1.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a['b.c.e.f'][4] in '4'..'5', 1.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d['a']['b.c.e.f[4]'] in '4'..'5', "
         "1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -1905,9 +1917,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f[4] in '4a'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b.c.e.f[4]'] in '4'..'5av' RETURN "
         "d",
         expected, &ExpressionContextMock::EMPTY);
@@ -1926,6 +1940,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b.c.e.f'][4] in 'a4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -1950,10 +1965,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f in "
         "TO_STRING(c)..TO_STRING(c+2) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f in "
         "TO_STRING(c)..TO_STRING(c+2) RETURN d",
         expected, &ctx);
@@ -1980,6 +1997,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1996,6 +2014,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2014,6 +2033,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2032,6 +2052,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2052,12 +2073,15 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c.e.f in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b['c.e.f'] in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -2075,13 +2099,16 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d[100].a.b.c.e.f in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d[100]['a'].b.c.e.f in false..true RETURN "
         "d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d[100]['a'].b['c.e.f'] in false..true "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -2101,14 +2128,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(d[100].a.b.c.e.f in false..true, "
         "2.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(d[100]['a'].b.c.e.f in false..true, "
         "2.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(d[100]['a'].b['c.e.f'] in "
         "false..true, 2.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -2134,10 +2164,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f in "
         "TO_BOOL(c)..IS_NULL(TO_BOOL(c-2)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f in "
         "TO_BOOL(c)..TO_BOOL(c-2) RETURN d",
         expected, &ctx);
@@ -2164,6 +2196,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2180,6 +2213,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2198,6 +2232,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2216,6 +2251,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2236,9 +2272,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f in null..null RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a.b.c.e.f'] in null..null RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -2256,10 +2294,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[100].b.c[1].e[32].f in null..null "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a[100].b.c[1].e[32].f'] in null..null "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -2285,10 +2325,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a[100].b.c[1].e.f in c..null "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a[100].b.c[1]['e'].f in "
         "c..null RETURN d",
         expected, &ctx);
@@ -2315,10 +2357,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a[100].b.c[1].e.f in "
         "c..null, 1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a[100].b.c[1]['e'].f in "
         "c..null, 1.5) RETURN d",
         expected, &ctx);
@@ -2345,6 +2389,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2361,6 +2406,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2379,6 +2425,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2397,6 +2444,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2416,7 +2464,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a in 'a'..4 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in 'a'..4 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -2432,7 +2481,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a in 1..null RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in 1..null RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -2448,9 +2498,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a in false..5.5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in false..5.5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER d.a in 1..4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in 1..4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -2466,11 +2518,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a in 'false'..1 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in 'false'..1 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER d.a in 0..true RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in 0..true RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER d.a in null..true RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a in null..true RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -2498,52 +2553,68 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
-        "LET x=1..3 FOR d IN collection FILTER d.a.b.c.e.f in x RETURN d", expected, &ctx);
+        vocbase(),
+        "LET x=1..3 FOR d IN collection FILTER d.a.b.c.e.f in x RETURN d",
+        expected, &ctx);
   }
 
   // non-deterministic expression name in range
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "in 4..5 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
       "in _NONDETERM_(4)..5 RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN myView FILTER d in 4..5 RETURN d");
-  assertExpressionFilter("for d IN myView filter d[*] in 4..5 return d");
-  assertExpressionFilter("for d IN myView filter d.a[*] in 4..5 return d");
-  assertExpressionFilter("FOR d IN myView FILTER d.a in d.b..5 RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d in 4..5 RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "for d IN myView filter d[*] in 4..5 return d");
+  assertExpressionFilter(vocbase(),
+                         "for d IN myView filter d.a[*] in 4..5 return d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d.a in d.b..5 RETURN d");
   assertFilterExecutionFail(
-      "LET x={} FOR d IN myView FILTER 4..5 in x.a RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER 4..5 in x.a RETURN d",
       &ExpressionContextMock::EMPTY);  // no reference to x
-  assertFilterExecutionFail("LET x={} FOR d IN myView FILTER 4 in x.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "LET x={} FOR d IN myView FILTER 4 in x.a RETURN d",
                             &ExpressionContextMock::EMPTY);  // no reference to x
-  assertExpressionFilter("for d IN myView filter 4..5 in d.a return d");  // self-reference
-  assertExpressionFilter("FOR d IN myView FILTER 4 in d.b..5 RETURN d");  // self-reference
+  assertExpressionFilter(vocbase(),
+                         "for d IN myView filter 4..5 in d.a return d");  // self-reference
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER 4 in d.b..5 RETURN d");  // self-reference
 
   // false expression
   {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN myView FILTER [] in 4..5 RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER ['d'] in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(), "FOR d IN myView FILTER [] in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 'd.a' in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ['d'] in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER null in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 'd.a' in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER true in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER null in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER false in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER true in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4.3 in 4..5 RETURN d", expected,
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER false in 4..5 RETURN d",
+                        expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(vocbase(), "FOR d IN myView FILTER 4.3 in 4..5 RETURN d", expected,
                         &ExpressionContextMock::EMPTY);  // ArangoDB feature
   }
 
@@ -2552,10 +2623,10 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN myView FILTER 4 in 4..5 RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4 in 4..4+1 RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(vocbase(), "FOR d IN myView FILTER 4 in 4..5 RETURN d",
+                        expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(vocbase(), "FOR d IN myView FILTER 4 in 4..4+1 RETURN d",
+                        expected, &ExpressionContextMock::EMPTY);
   }
 }
 
@@ -2569,8 +2640,10 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a not in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'] not in ['1','2','3'] RETURN d", expected);
   }
 
@@ -2583,6 +2656,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d[1] not in ['1','2','3'] RETURN d", expected);
   }
 
@@ -2595,12 +2669,15 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f not in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'].c.e.f not in ['1','2','3'] RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].e.f not in ['1','2','3'] "
         "RETURN d",
         expected);
@@ -2621,14 +2698,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[323].e.f not in ['1','2','3'] "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'].c[323].e.f not in ['1','2','3'] "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'][323].e.f not in "
         "['1','2','3'] RETURN d",
         expected);
@@ -2650,14 +2730,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c[323].e.f not in "
         "['1','2','3'], 1.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a['b'].c[323].e.f not in "
         "['1','2','3'], 1.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a['b']['c'][323].e.f not in "
         "['1','2','3'], 1.5) RETURN d",
         expected);
@@ -2678,14 +2761,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a.b.c[323].e.f not in "
         "['1','2','3'], 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a['b'].c[323].e.f not in "
         "['1','2','3'], 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a['b']['c'][323].e.f not in "
         "['1','2','3'], 'test_analyzer') RETURN d",
         expected);
@@ -2707,14 +2793,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d.a.b.c[323].e.f not in "
         "['1','2','3'], 'test_analyzer'), 2.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d.a['b'].c[323].e.f not in "
         "['1','2','3'], 2.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d.a['b']['c'][323].e.f not "
         "in ['1','2','3'], 'test_analyzer'), 2.5) RETURN d",
         expected);
@@ -2738,15 +2827,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
     }
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.quick.brown.fox not in "
+                        "['1',null,true,false,2] RETURN d",
+                        expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.quick.brown.fox not in "
-        "['1',null,true,false,2] RETURN d",
-        expected);
-    assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.quick['brown'].fox not in "
         "['1',null,true,false,2] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.quick['brown'].fox not in "
         "['1',null,true,false,2], 'identity') RETURN d",
         expected);
@@ -2771,10 +2862,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     }
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d.quick.brown.fox not in "
         "['1',null,true,false,2], 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(d.quick['brown'].fox not in "
         "['1',null,true,false,2], 'test_analyzer') RETURN d",
         expected);
@@ -2800,10 +2893,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     }
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(ANALYZER(d.quick.brown.fox not in "
         "['1',null,true,false,2], 'test_analyzer'), 1.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER ANALYZER(BOOST(d.quick['brown'].fox not in "
         "['1',null,true,false,2], 1.5), 'test_analyzer') RETURN d",
         expected);
@@ -2815,6 +2910,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     expected.add<irs::all>();
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d", expected);
   }
 
@@ -2841,6 +2937,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2857,6 +2954,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2875,6 +2973,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2893,6 +2992,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2921,10 +3021,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER d.a.b.c.e.f not in x "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(d.a.b.c.e.f "
         "not in x, 'identity') RETURN d",
         expected, &ctx);
@@ -2955,6 +3057,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(d.a.b.c.e.f "
         "not in x, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -2986,10 +3089,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "boost(analyzer(d.a.b.c.e.f not in x, 'test_analyzer'), 3.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "analyzer(boost(d.a.b.c.e.f not in x, 3.5), 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -3017,6 +3122,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a.b.c.e.f not in ['1', c, '3'] "
         "RETURN d",
         expected,
@@ -3050,6 +3156,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER analyzer(d.a.b.c.e.f not in ['1', "
         "c, '3'], 'test_analyzer') RETURN d",
         expected,
@@ -3084,12 +3191,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER boost(analyzer(d.a.b.c.e.f not in "
         "['1', c, '3'], 'test_analyzer'), 1.5) RETURN d",
         expected,
         &ctx  // expression context
     );
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER analyzer(boost(d.a.b.c.e.f not in "
         "['1', c, '3'], 1.5), 'test_analyzer') RETURN d",
         expected,
@@ -3104,8 +3213,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3214,8 +3322,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3324,8 +3431,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3434,8 +3540,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "], 1.5) RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3545,8 +3650,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3655,8 +3759,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3752,8 +3855,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "FOR d IN collection FILTER 4 not in [ 1, d.b.a, 4 ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3851,6 +3953,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   }
 
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 4 not in [ 1, 1+d.b, 4 ] RETURN d");
 
   // heterogeneous references and expression in array
@@ -3879,6 +3982,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER d.a.b.c.e.f not in ['1', strVal, boolVal, "
         "numVal+1, nullVal] RETURN d",
@@ -3914,6 +4018,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // not a constant in array
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER BOOST(d.a.b.c.e.f not in ['1', strVal, "
         "boolVal, numVal+1, nullVal], 2.5) RETURN d",
@@ -3923,18 +4028,21 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   }
 
   assertExpressionFilter(
-      "FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
+      vocbase(), "FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN myView FILTER d not in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER d[*] not in [1,2,3] RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d not in [1,2,3] RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d[*] not in [1,2,3] RETURN d");
   assertExpressionFilter(
-      "FOR d IN myView FILTER d.a[*] not in [1,2,3] RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER 4 not in [1,d,3] RETURN d");
+      vocbase(), "FOR d IN myView FILTER d.a[*] not in [1,2,3] RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER 4 not in [1,d,3] RETURN d");
 
   // no reference provided
   assertFilterExecutionFail(
-      "LET x={} FOR d IN myView FILTER d.a not in [1,x.a,3] RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER d.a not in [1,x.a,3] RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // false expression
@@ -3942,7 +4050,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN myView FILTER 4 not in [1,2,3,4] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4 not in [1,2,3,4] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -3951,23 +4060,32 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN myView FILTER [] not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER [] not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER ['d'] not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ['d'] not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 'd.a' not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 'd.a' not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER null not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER null not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER true not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER true not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER false not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER false not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4 not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4 not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4.5 not in [1,2,3] RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4.5 not in [1,2,3] RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 1..2 not in [1,2,3] RETURN d", expected,
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 1..2 not in [1,2,3] RETURN d", expected,
                         &ExpressionContextMock::EMPTY);  // by some reason arangodb evaluates it to true
   }
 
@@ -3977,36 +4095,45 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     expected.add<irs::all>().boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST([] not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST(['d'] not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST('d.a' not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST(null not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST(true not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST(false not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
-        "FOR d IN myView FILTER BOOST(4 not in [1,2,3],1.5) RETURN d", expected,
-        &ExpressionContextMock::EMPTY);
+        vocbase(), "FOR d IN myView FILTER BOOST(4 not in [1,2,3],1.5) RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST(4.5 not in [1,2,3],1.5) RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER BOOST(1..2 not in [1,2,3],1.5) RETURN d", expected,
         &ExpressionContextMock::EMPTY);  // by some reason arangodb evaluates it to true
   }
 
   // not a value in array
   assertFilterFail(
+      vocbase(),
       "FOR d IN collection FILTER d.a not in ['1',['2'],'3'] RETURN d");
 
   // numeric range
@@ -4024,9 +4151,10 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5 RETURN d", expected,
-        &ExpressionContextMock::EMPTY);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5 RETURN d",
+        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b.c.e.f'] not in 4..5 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4047,10 +4175,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c.e.f not in 4..5, 2.5) RETURN "
         "d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(d.a['b.c.e.f'] not in 4..5, 2.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -4071,9 +4201,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[4].c.e.f not in 4..5 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b[4].c.e.f'] not in 4..5 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4093,9 +4225,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f not in 4.5..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'].c.e.f not in 4.5..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4116,10 +4250,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c.e.f not in 4.5..5.0, 1.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a['b'].c.e.f not in 4.5..5.0, 1.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -4140,13 +4276,16 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[3].b[1].c.e.f not in 4.5..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[3]['b'][1].c.e.f not in 4.5..5.0 "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a[3]['b'][1].c.e.f not in "
         "4.5..5.0, 'test_analyzer') RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -4167,9 +4306,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c['e'].f not in 4..5.0 RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4196,14 +4337,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
         "c..c+100 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
         "c..c+100 LIMIT 100 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100]['b'].c[1].e.f not in "
         "c..c+100 RETURN d",
         expected, &ctx);
@@ -4232,6 +4376,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4248,6 +4393,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4266,6 +4412,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4284,6 +4431,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4305,9 +4453,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f not in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'].c.e.f not in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4327,10 +4477,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c.e.f not in '4'..'5', 2.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a['b'].c.e.f not in '4'..'5', 2.5) "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -4350,9 +4502,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[3].c.e.f not in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'][3].c.e.f not in '4'..'5' RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4378,10 +4532,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
         "TO_STRING(c)..TO_STRING(c+2) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in "
         "TO_STRING(c)..TO_STRING(c+2) RETURN d",
         expected, &ctx);
@@ -4409,6 +4565,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4425,6 +4582,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4443,6 +4601,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4461,6 +4620,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4482,9 +4642,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f not in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c.e.f not in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4503,9 +4665,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f[1] not in false..true RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c.e.f[1] not in false..true "
         "RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -4532,10 +4696,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
         "TO_BOOL(c)..IS_NULL(TO_BOOL(c-2)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in "
         "TO_BOOL(c)..TO_BOOL(c-2) RETURN d",
         expected, &ctx);
@@ -4563,6 +4729,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4579,6 +4746,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4597,6 +4765,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4615,6 +4784,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4636,9 +4806,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e.f not in null..null RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c['e'].f not in null..null RETURN d",
         expected, &ExpressionContextMock::EMPTY);
   }
@@ -4657,9 +4829,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.e[3].f not in null..null RETURN d",
         expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c['e'][3].f not in null..null RETURN "
         "d",
         expected, &ExpressionContextMock::EMPTY);
@@ -4686,10 +4860,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
         "c..null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in "
         "c..null RETURN d",
         expected, &ctx);
@@ -4717,6 +4893,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4733,6 +4910,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4751,6 +4929,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4769,6 +4948,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4789,7 +4969,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in 'a'..4 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in 'a'..4 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -4806,7 +4987,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in 1..null RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in 1..null RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -4823,9 +5005,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in false..5.5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in false..5.5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in 1..4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in 1..4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -4842,11 +5026,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in 'false'..1 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in 'false'..1 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in 0..true RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in 0..true RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER d.a not in null..true RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.a not in null..true RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -4874,58 +5061,76 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=1..3 FOR d IN collection FILTER d.a.b.c.e.f not in x RETURN d",
         expected, &ctx);
   }
 
   // non-deterministic expression name in range
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "not in 4..5 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
       "not in _NONDETERM_(4)..5 RETURN d");
 
   // self-reference
-  assertExpressionFilter("FOR d IN myView FILTER d not in 4..5 RETURN d");
-  assertExpressionFilter("for d IN myView FILTER d[*] not in 4..5 RETURN d");
-  assertExpressionFilter("for d IN myView FILTER d.a[*] not in 4..5 RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER d.a not in d.b..5 RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER 4..5 not in d.a RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d not in 4..5 RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "for d IN myView FILTER d[*] not in 4..5 RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "for d IN myView FILTER d.a[*] not in 4..5 RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER d.a not in d.b..5 RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER 4..5 not in d.a RETURN d");
   assertExpressionFilter(
-      "FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
-  assertExpressionFilter("FOR d IN myView FILTER 4 not in d.a RETURN d");
+      vocbase(), "FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER 4 not in d.a RETURN d");
   assertFilterExecutionFail(
-      "LET x={} FOR d IN myView FILTER 4..5 not in x.a RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER 4..5 not in x.a RETURN d",
       &ExpressionContextMock::EMPTY);  // no reference to x
   assertFilterExecutionFail(
-      "LET x={} FOR d IN myView FILTER 4 in not x.a RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER 4 in not x.a RETURN d",
       &ExpressionContextMock::EMPTY);  // no reference to x
-  assertExpressionFilter("for d IN myView filter 4..5 not in d.a return d");  // self-reference
-  assertExpressionFilter("FOR d IN myView FILTER 4 not in d.b..5 RETURN d");  // self-reference
+  assertExpressionFilter(vocbase(),
+                         "for d IN myView filter 4..5 not in d.a return d");  // self-reference
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER 4 not in d.b..5 RETURN d");  // self-reference
 
   // true expression
   {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN myView FILTER [] not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER [] not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER ['d'] not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ['d'] not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 'd.a' not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 'd.a' not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER null not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER null not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER true not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER true not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER false not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER false not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4.3 not in 4..5 RETURN d", expected,
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4.3 not in 4..5 RETURN d", expected,
                         &ExpressionContextMock::EMPTY);  // ArangoDB feature
   }
 
@@ -4934,9 +5139,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN myView FILTER 4 not in 4..5 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4 not in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN myView FILTER 4 not in 4..4+1 RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER 4 not in 4..4+1 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 }

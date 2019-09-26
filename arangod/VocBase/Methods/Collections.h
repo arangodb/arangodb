@@ -34,6 +34,7 @@
 #include <functional>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 
@@ -102,7 +103,7 @@ struct Collections {
   static std::pair<Result, std::shared_ptr<LogicalCollection>> createSystem(
       TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase);
   static void createSystemCollectionProperties(std::string collectionName,
-                                               VPackBuilder& builder, bool isSystem);
+                                               VPackBuilder& builder, TRI_vocbase_t const&);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
@@ -122,14 +123,15 @@ struct Collections {
 
   static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
 
-  static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
+  static Result revisionId(application_features::ApplicationServer&,
+                           Context& ctxt, TRI_voc_rid_t& rid);
 
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
                               DocCallback const& cb);
 };
 #ifdef USE_ENTERPRISE
-Result ULColCoordinatorEnterprise(std::string const& databaseName,
+Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,
                                   std::string const& collectionCID,
                                   TRI_vocbase_col_status_e status);
 

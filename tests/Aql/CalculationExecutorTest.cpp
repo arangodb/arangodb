@@ -26,14 +26,15 @@
 #include "gtest/gtest.h"
 
 #include "RowFetcherHelper.h"
-#include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
@@ -43,11 +44,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // required for QuerySetup
-#include "../Mocks/Servers.h"
-
-// Query
-#include "RestServer/AqlFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -89,7 +86,8 @@ class CalculationExecutorTest : public ::testing::Test {
   CalculationExecutorInfos infos;
 
   CalculationExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        server(),
         fakedQuery(server.createFakeQuery()),
         ast(fakedQuery.get()),
         one(ast.createNodeValueInt(1)),

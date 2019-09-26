@@ -21,226 +21,36 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
-#include "gtest/gtest.h"
+#include "IResearchQueryCommon.h"
 
-#include "../Mocks/StorageEngineMock.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/Ast.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/Query.h"
-#include "Basics/SmallVector.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterFeature.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
-#include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "V8/v8-globals.h"
-#include "V8Server/V8DealerFeature.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/Methods/Collections.h"
-
-#include "IResearch/VelocyPackHelper.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchQueryScorerTest : public ::testing::Test {
- protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-
-  IResearchQueryScorerTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
-
-    arangodb::tests::init(true);
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    features.emplace_back(new arangodb::FlushFeature(server), false);
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
-                          true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases->slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
-        "_NONDETERM_", ".",
-        arangodb::aql::Function::makeFlags(
-            // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
-           arangodb::aql::VPackFunctionParameters const& params) {
-          TRI_ASSERT(!params.empty());
-          return params[0];
-        }});
-
-    // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
-        "_FORWARD_", ".",
-        arangodb::aql::Function::makeFlags(
-            // fake deterministic
-            arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
-           arangodb::aql::VPackFunctionParameters const& params) {
-          TRI_ASSERT(!params.empty());
-          return params[0];
-        }});
-
-    // external function names must be registred in upper-case
-    // user defined functions have ':' in the external function name
-    // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
-    arangodb::aql::Function customScorer(
-        "CUSTOMSCORER", ".|+",
-        arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
-                                           arangodb::aql::Function::Flags::Cacheable,
-                                           arangodb::aql::Function::Flags::CanRunOnDBServer));
-    arangodb::iresearch::addFunction(*arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS,
-                                     customScorer);
-
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
-
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase, 
-        arangodb::tests::AnalyzerCollectionName, false);
-    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
-    analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", 
-                        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
-
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~IResearchQueryScorerTest() {
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
-};  // IResearchQueryScorerSetup
+class IResearchQueryScorerTest : public IResearchQueryTest {};
 
 }  // namespace
 
@@ -257,8 +67,7 @@ TEST_F(IResearchQueryScorerTest, test) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -388,8 +197,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // wrong number of arguments
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A') "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A') "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -399,8 +208,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // invalid argument
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', {}) "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', {}) "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -410,8 +219,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // invalid argument
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', []) "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', []) "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -421,8 +230,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // invalid argument
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', true) "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', true) "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -432,8 +241,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // invalid argument
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', null) "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', null) "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -443,8 +252,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // invalid argument
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', '42') "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', '42') "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -454,8 +263,8 @@ TEST_F(IResearchQueryScorerTest, test) {
   // non-deterministic argument
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', RAND()) "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', RAND()) "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_FALSE(queryResult.result.ok());
@@ -464,9 +273,9 @@ TEST_F(IResearchQueryScorerTest, test) {
   // constexpr BOOST (true)
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(1==1, 42) "
-      "LIMIT 1 "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(1==1, 42) "
+        "LIMIT 1 "
+        "RETURN { d, score: BOOSTSCORER(d) }";
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
     ASSERT_TRUE(queryResult.data->slice().isArray());
@@ -475,9 +284,9 @@ TEST_F(IResearchQueryScorerTest, test) {
   // constexpr BOOST (false)
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(1==2, 42) "
-      "LIMIT 1 "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(1==2, 42) "
+        "LIMIT 1 "
+        "RETURN { d, score: BOOSTSCORER(d) }";
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
     ASSERT_TRUE(queryResult.data->slice().isArray());
@@ -486,16 +295,16 @@ TEST_F(IResearchQueryScorerTest, test) {
 
   {
     std::string const query =
-      "FOR d IN testView SEARCH BOOST(d.name == 'A', 42) "
-      "RETURN { d, score: BOOSTSCORER(d) }";
+        "FOR d IN testView SEARCH BOOST(d.name == 'A', 42) "
+        "RETURN { d, score: BOOSTSCORER(d) }";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query, {
-      arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-    }));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
 
     std::map<float, arangodb::velocypack::Slice> expectedDocs{
-      {42.f, arangodb::velocypack::Slice(insertedDocsView[0].vpack())}
-    };
+        {42.f, arangodb::velocypack::Slice(insertedDocsView[0].vpack())}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -648,12 +457,11 @@ TEST_F(IResearchQueryScorerTest, test) {
   // test case covers:
   // https://github.com/arangodb/arangodb/issues/9660
   {
-    std::map<size_t, irs::string_ref> expectedDocs{
-      { 2, "A" }
-    };
+    std::map<size_t, irs::string_ref> expectedDocs{{2, "A"}};
 
     std::string const query =
-        "LET x = FIRST(FOR y IN collection_1 FILTER y.seq == 0 RETURN DISTINCT y.name) "
+        "LET x = FIRST(FOR y IN collection_1 FILTER y.seq == 0 RETURN DISTINCT "
+        "y.name) "
         "FOR d IN testView SEARCH d.name == x "
         "LET score = customscorer(d, 1) + 1.0 "
         "COLLECT name = d.name AGGREGATE maxScore = MAX(score) "
@@ -700,7 +508,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -805,7 +614,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -915,7 +725,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1024,7 +835,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1134,7 +946,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1244,7 +1057,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1363,7 +1177,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1473,7 +1288,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1559,7 +1375,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1646,7 +1463,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1764,7 +1582,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1850,7 +1669,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
@@ -1931,7 +1751,8 @@ TEST_F(IResearchQueryScorerTest, test) {
                                arangodb::velocypack::Parser::fromJson("{}"),
                                arangodb::aql::PART_MAIN);
 
-    query.prepare(arangodb::QueryRegistryFeature::registry());
+    query.prepare(arangodb::QueryRegistryFeature::registry(),
+                  arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 

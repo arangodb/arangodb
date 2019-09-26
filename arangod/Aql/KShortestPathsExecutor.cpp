@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KShortestPathsExecutor.h"
+
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
@@ -32,7 +34,6 @@
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -53,7 +54,7 @@ static RegisterId selectOutputRegister(
   TRI_ASSERT(outputRegisters != nullptr);
   TRI_ASSERT(outputRegisters->size() == 1);
   RegisterId reg = *(outputRegisters->begin());
-  TRI_ASSERT(reg != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(reg != RegisterPlan::MaxRegisterId);
   return reg;
 }
 }  // namespace
@@ -63,8 +64,8 @@ KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    std::unique_ptr<graph::KShortestPathsFinder>&& finder,
-    InputVertex&& source, InputVertex&& target)
+    std::unique_ptr<graph::KShortestPathsFinder>&& finder, InputVertex&& source,
+    InputVertex&& target)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
@@ -105,7 +106,7 @@ std::string const& KShortestPathsExecutorInfos::getInputValue(bool isTarget) con
 }
 
 RegisterId KShortestPathsExecutorInfos::getOutputRegister() const {
-  TRI_ASSERT(_outputRegister != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(_outputRegister != RegisterPlan::MaxRegisterId);
   return _outputRegister;
 }
 

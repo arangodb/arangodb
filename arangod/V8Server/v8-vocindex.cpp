@@ -250,9 +250,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // waitForSync can be 3. or 4. parameter
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
-  bool createWaitsForSyncReplication = cluster->createWaitsForSyncReplication();
+  auto& server = application_features::ApplicationServer::server();
+  auto& cluster = server.getFeature<ClusterFeature>();
+  bool createWaitsForSyncReplication = cluster.createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
   if (args.Length() >= 3 && args[args.Length() - 1]->IsObject()) {

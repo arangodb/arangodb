@@ -44,7 +44,7 @@ namespace aql {
 class AqlItemRowsTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
                           std::unordered_set<RegisterId> const& regsToKeep,

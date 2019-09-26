@@ -22,7 +22,8 @@
 
 #include "ServerSecurityFeature.h"
 
-#include "Auth/HardenedApiPrivilege.h"
+#include "GeneralServer/ServerSecurityFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -38,7 +39,7 @@ ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationSe
       _enableFoxxStore(true),
       _hardenedRestApi(false) {
   setOptional(false);
-  startsAfter("ServerPlatform");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

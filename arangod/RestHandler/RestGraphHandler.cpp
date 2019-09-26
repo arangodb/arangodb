@@ -41,8 +41,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-RestGraphHandler::RestGraphHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _gmngr(_vocbase) {}
+RestGraphHandler::RestGraphHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _gmngr(_vocbase) {}
 
 RestStatus RestGraphHandler::execute() {
   Result res = executeGharial();
@@ -341,7 +342,7 @@ void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
 #if 0
   // TODO fix this in a major release upgrade
   if (wasSynchronous) {
-    code = rest::ResponseCode::CREATED; 
+    code = rest::ResponseCode::CREATED;
   }
 #endif
   resetResponse(code);

@@ -29,7 +29,8 @@ namespace arangodb {
 
 class MMFilesRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  MMFilesRestCollectionHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestCollectionHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  protected:
   Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,

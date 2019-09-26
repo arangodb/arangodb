@@ -44,9 +44,10 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(GeneralRequest* request,
+RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();

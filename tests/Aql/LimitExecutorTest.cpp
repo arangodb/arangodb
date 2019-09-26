@@ -61,7 +61,7 @@ class LimitExecutorTest : public ::testing::Test {
   // 7th queryDepth
 
   LimitExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
             std::initializer_list<RegisterId>{})),
@@ -484,7 +484,7 @@ class LimitExecutorTestBase {
 
   LimitExecutorTestBase()
       : monitor(),
-        itemBlockManager(&monitor),
+        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
             std::initializer_list<RegisterId>{})),
         registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
@@ -671,15 +671,17 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_0) {
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {});
+  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{};
   if (fullCount) {
-    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0);
-    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0);
-    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0);
+    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH,
+                                ExecutionState::WAITING, 0);
+    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH,
+                                ExecutionState::WAITING, 0);
+    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH,
+                                ExecutionState::WAITING, 0);
   }
   expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::DONE, 0);
   if (!waiting) {
@@ -785,8 +787,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_10_limit_1) 
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {});
+  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{
@@ -902,8 +903,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {});
+  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{
@@ -953,8 +953,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_read_1_offset_2_limit
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {{4}});
+  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {{4}});
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{
@@ -1007,8 +1006,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_10_limit_12) {
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {});
+  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{
@@ -1059,8 +1057,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {{1}});
+  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {{1}});
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{

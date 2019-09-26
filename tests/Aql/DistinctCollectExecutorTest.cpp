@@ -26,19 +26,17 @@
 #include "gtest/gtest.h"
 
 #include "RowFetcherHelper.h"
-#include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/DistinctCollectExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Query.h"
+#include "Aql/Stats.h"
+#include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -72,7 +70,7 @@ class DistinctCollectExecutorTest : public ::testing::Test {
   NoStats stats;
 
   DistinctCollectExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()) {}
 };
@@ -355,6 +353,6 @@ TEST_F(DistinctCollectExecutorTest,
   ASSERT_TRUE(y.toInt64() == 3);
 }
 
+}  // namespace aql
 }  // namespace tests
-}  // namespace arangodb
 }  // namespace arangodb

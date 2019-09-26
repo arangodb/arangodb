@@ -33,6 +33,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -61,10 +62,10 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
       _flushInterval(1000000),
       _stopped(false) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("StorageEngine");
-  startsAfter("MMFilesLogfileManager");
+  startsAfter<StorageEngineFeature>();
+  startsAfter<MMFilesLogfileManager>();
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -165,7 +166,7 @@ void FlushFeature::prepare() {
 void FlushFeature::start() {
   {
     WRITE_LOCKER(lock, _threadLock);
-    _flushThread.reset(new FlushThread(_flushInterval));
+    _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback([this]() -> Result {

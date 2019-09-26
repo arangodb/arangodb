@@ -56,8 +56,9 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::import;
 
-V8ClientConnection::V8ClientConnection()
-    : _lastHttpReturnCode(0),
+V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server)
+    : _server(server),
+      _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
@@ -91,7 +92,7 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
 
     _lastHttpReturnCode = res->statusCode();
     if (_lastHttpReturnCode >= 400) {
-      auto const& headers = res->messageHeader().meta;
+      auto const& headers = res->messageHeader().meta();
       auto it = headers.find("http/1.1");
       if (it != headers.end()) {
         _lastErrorMessage = (*it).second;
@@ -199,6 +200,10 @@ std::string V8ClientConnection::endpointSpecification() const {
     return _connection->endpoint();
   }
   return "";
+}
+
+application_features::ApplicationServer& V8ClientConnection::server() {
+  return _server;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -376,7 +381,7 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  auto v8connection = std::make_unique<V8ClientConnection>();
+  auto v8connection = std::make_unique<V8ClientConnection>(client->server());
   v8connection->connect(client);
 
   if (v8connection->isConnected() &&
@@ -435,11 +440,10 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
 
   if (args.Length() < 4) {
     if (client->jwtSecret().empty()) {
-      ConsoleFeature* console =
-          ApplicationServer::getFeature<ConsoleFeature>("Console");
+      ConsoleFeature& console = v8connection->server().getFeature<ConsoleFeature>();
 
-      if (console->isEnabled()) {
-        password = console->readPassword("Please specify a password: ");
+      if (console.isEnabled()) {
+        password = console.readPassword("Please specify a password: ");
       } else {
         std::cout << "Please specify a password: " << std::flush;
         password = ConsoleFeature::readPassword();
@@ -455,12 +459,8 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
+  V8SecurityFeature& v8security = v8connection->server().getFeature<V8SecurityFeature>();
+  if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to connect to this endpoint");
   }
@@ -1013,7 +1013,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
-  ImportHelper ih(client, v8connection->endpointSpecification(), params,
+  ImportHelper ih(*client, v8connection->endpointSpecification(), params,
                   DefaultChunkSize, 1);
 
   ih.setQuote(quote);
@@ -1084,7 +1084,7 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
-  ImportHelper ih(client, v8connection->endpointSpecification(), params,
+  ImportHelper ih(*client, v8connection->endpointSpecification(), params,
                   DefaultChunkSize, 1);
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
@@ -1471,7 +1471,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.meta.emplace(std::move(pair));
+    req->header.addMeta(std::move(pair.first), std::move(pair.second));
   }
   if (isFile) {
     std::string const infile = TRI_ObjectToString(isolate, body);
@@ -1538,7 +1538,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.meta.emplace(std::move(pair));
+    req->header.addMeta(std::move(pair.first), std::move(pair.second));
   }
   if (body->IsString()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
@@ -1629,12 +1629,12 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
   // copy all headers
   v8::Local<v8::Object> headers = v8::Object::New(isolate);
-  for (auto const& it : response->header.meta) {
-    v8::Local<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
-    v8::Local<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
-
-    headers->Set(key, val);
+  for (auto const& it : response->header.meta()) {
+    headers->Set(TRI_V8_STD_STRING(isolate, it.first),
+                 TRI_V8_STD_STRING(isolate, it.second));
   }
+  auto content = TRI_V8_STD_STRING(isolate, fuerte::to_string(response->contentType()));
+  headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
 

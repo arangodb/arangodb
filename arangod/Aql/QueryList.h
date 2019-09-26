@@ -38,6 +38,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+class QueryRegistryFeature;
 
 namespace aql {
 
@@ -61,7 +62,7 @@ struct QueryEntryCopy {
 class QueryList {
  public:
   /// @brief create a query list
-  explicit QueryList(TRI_vocbase_t*);
+  explicit QueryList(QueryRegistryFeature&, TRI_vocbase_t*);
 
   /// @brief destroy a query list
   ~QueryList() = default;

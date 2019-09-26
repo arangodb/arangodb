@@ -28,7 +28,12 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -52,6 +57,10 @@ enum class RecoveryState : uint32_t {
   DONE
 };
 
+namespace aql {
+class OptimizerRulesFeature;
+}
+
 class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
@@ -71,6 +80,7 @@ namespace transaction {
 class Context;
 class ContextData;
 class Manager;
+class ManagerFeature;
 struct Options;
 
 }  // namespace transaction
@@ -89,17 +99,17 @@ class StorageEngine : public application_features::ApplicationFeature {
     // startup
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
+    startsAfter<application_features::BasicFeaturePhaseServer>();
 
-    startsAfter("BasicsPhase");
-    startsAfter("CacheManager");
-    startsBefore("StorageEngine");
-    startsAfter("TransactionManager");
-    startsAfter("ViewTypes");
+    startsAfter<CacheManagerFeature>();
+    startsBefore<StorageEngineFeature>();
+    startsAfter<transaction::ManagerFeature>();
+    startsAfter<ViewTypesFeature>();
   }
 
   virtual bool supportsDfdb() const = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager() = 0;
+  virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
@@ -346,7 +356,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() {}
+  virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() {}

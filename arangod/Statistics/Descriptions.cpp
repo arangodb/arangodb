@@ -362,13 +362,12 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));
   b.close();
 
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
-  if (dealer->isEnabled()) {
+  auto& server = application_features::ApplicationServer::server();
+  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer->getCurrentContextNumbers();
-    auto memoryStatistics = dealer->getCurrentMemoryNumbers();
+    auto v8Counters = dealer.getCurrentContextNumbers();
+    auto memoryStatistics = dealer.getCurrentMemoryNumbers();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));
