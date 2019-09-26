@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,42 +17,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_NORESULTS_EXECUTOR_H
-#define ARANGOD_AQL_NORESULTS_EXECUTOR_H
+#ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
+#define ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 
-#include <memory>
+#include <utility>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
-
 namespace aql {
 
-template <bool>
+template <bool allowsPassThrough>
 class SingleRowFetcher;
-class ExecutorInfos;
 class NoStats;
+class ExecutorInfos;
 class OutputAqlItemRow;
 
-class NoResultsExecutor {
+class SubqueryStartExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
     static constexpr bool allowsBlockPassthrough = false;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
+
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ExecutorInfos;
   using Stats = NoStats;
-  NoResultsExecutor(Fetcher& fetcher, ExecutorInfos&);
-  ~NoResultsExecutor();
+  SubqueryStartExecutor(Fetcher& fetcher, Infos& infos);
+  ~SubqueryStartExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -62,12 +59,25 @@ class NoResultsExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    // Well nevermind the input, but we will always return 0 rows here.
-    return {ExecutionState::DONE, 0};
-  }
+  /**
+   * @brief Estimate of expected number of rows.
+   *
+   * @return ExecutionState, merely taken from upstream,
+   *         size_t number of rows we are likely to produce (at most)
+   *
+   */
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+
+ private:
+  // Fetcher to get data.
+  Fetcher& _fetcher;
+
+  // Upstream state, used to determine if we are done with all subqueries
+  ExecutionState _state;
+
+  // Cache for the input row we are currently working on
+  InputAqlItemRow _input;
 };
 }  // namespace aql
 }  // namespace arangodb
-
 #endif

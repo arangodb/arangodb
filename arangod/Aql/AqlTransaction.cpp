@@ -46,7 +46,7 @@ std::shared_ptr<AqlTransaction> AqlTransaction::create(
   if (options.skipInaccessibleCollections) {
     return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(transactionContext, collections,
                                                                        options, isMainTransaction,
-                                                                       inaccessibleCollections);
+                                                                       std::move(inaccessibleCollections));
   }
 #endif
   return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);
