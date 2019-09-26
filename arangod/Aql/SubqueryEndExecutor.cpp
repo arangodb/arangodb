@@ -138,6 +138,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
           // first call fetchRow again
           TRI_ASSERT(shadowRow.isRelevant() == false);
           output.decreaseShadowRowDepth(shadowRow);
+          output.advanceRow();
         } else {
           // We did not get another shadowRow; either we
           // are DONE or we are getting another relevant
