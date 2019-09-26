@@ -31,6 +31,8 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 using namespace arangodb::aql;
 
 /// @brief create a hash value for the bind parameters
@@ -102,4 +104,19 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
     result.add(element);
   }
   result.close();
+}
+
+BindParameters::BindParameters()
+    : _builder(nullptr), _parameters(), _processed(false) {}
+
+BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder>  builder)
+    : _builder(std::move(builder)), _parameters(), _processed(false) {}
+
+BindParametersType& BindParameters::get() {
+  process();
+  return _parameters;
+}
+
+std::shared_ptr<arangodb::velocypack::Builder> BindParameters::builder() const {
+  return _builder;
 }

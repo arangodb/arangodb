@@ -30,6 +30,9 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace aql {
 

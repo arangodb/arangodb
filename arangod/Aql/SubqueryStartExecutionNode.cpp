@@ -70,7 +70,7 @@ bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   try {
     SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
     return ExecutionNode::isEqualTo(p);
-  } catch (const std::bad_cast& e) {
+  } catch (const std::bad_cast&) {
     return false;
   }
 }

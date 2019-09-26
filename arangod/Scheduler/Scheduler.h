@@ -37,6 +37,9 @@
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace velocypack {
 class Builder;
 }
@@ -47,7 +50,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler();
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -122,6 +125,9 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
   };
+
+ protected:
+  application_features::ApplicationServer& _server;
 
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks

@@ -44,7 +44,7 @@ class MMFilesCollectorThread final : public Thread {
   MMFilesCollectorThread& operator=(MMFilesCollectorThread const&) = delete;
 
  public:
-  explicit MMFilesCollectorThread(MMFilesLogfileManager*);
+  explicit MMFilesCollectorThread(MMFilesLogfileManager&);
   ~MMFilesCollectorThread() { shutdown(); }
 
  public:
@@ -119,7 +119,7 @@ class MMFilesCollectorThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  MMFilesLogfileManager* _logfileManager;
+  MMFilesLogfileManager& _logfileManager;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;

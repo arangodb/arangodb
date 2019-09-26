@@ -91,7 +91,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : Thread("StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
+    : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
 
   for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
@@ -138,10 +138,8 @@ void StatisticsWorker::collectGarbage() {
 }
 
 void StatisticsWorker::collectGarbage(std::string const& name, double start) const {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -258,10 +256,8 @@ void StatisticsWorker::historianAverage() {
 
 std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     std::string const& collectionName, double start) const {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -291,10 +287,8 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -844,10 +838,6 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   ServerStatistics const& serverInfo = ServerStatistics::statistics();
 
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
-
   builder.openObject();
   if (!_clusterId.empty()) {
     builder.add("clusterId", VPackValue(_clusterId));
@@ -936,9 +926,12 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   V8DealerFeature::Statistics v8Counters{};
   // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
-  if (dealer && dealer->isEnabled()) {
-    v8Counters = dealer->getCurrentContextNumbers();
-    // see below: memoryStatistics = dealer->getCurrentMemoryNumbers();
+  if (_server.hasFeature<V8DealerFeature>()) {
+    V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      v8Counters = dealer.getCurrentContextNumbers();
+      // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+    }
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
@@ -968,10 +961,9 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 
   // export ttl statistics
-  TtlFeature* ttlFeature =
-      application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
+  TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
   builder.add(VPackValue("ttl"));
-  ttlFeature->statsToVelocyPack(builder);
+  ttlFeature.statsToVelocyPack(builder);
 
   builder.close();
 

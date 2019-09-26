@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/asio_ns.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -39,6 +40,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -489,8 +491,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
         index = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(
             _logicalCollection, info, id, false);
       }
-    } catch (std::exception const&) {
+    } catch (std::exception const& ex) {
       // ignore the details of all errors here
+      LOG_DEVEL << "caught: " << ex.what();
     }
   }
 
@@ -1015,7 +1018,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
-  arangodb::CreateDatabaseInfo info;
+  arangodb::CreateDatabaseInfo info(server());
   info.load(id, args, VPackSlice::emptyArraySlice());
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -1052,8 +1055,9 @@ std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTra
   return std::unique_ptr<arangodb::transaction::ContextData>();
 }
 
-std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
-  return std::make_unique<arangodb::transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
+    arangodb::transaction::ManagerFeature& feature) {
+  return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
@@ -1237,7 +1241,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
-  arangodb::CreateDatabaseInfo info;
+  arangodb::CreateDatabaseInfo info(server());
   info.allowSystemDB(true);
   auto rv = info.load(++vocbaseCount, args, VPackSlice::emptyArraySlice());
   if(rv.fail()) {
@@ -1405,10 +1409,12 @@ int TransactionCollectionMock::use(int nestingLevel) {
 
   if (!_collection) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      auto* ci = arangodb::ClusterInfo::instance();
-      TRI_ASSERT(ci);
+      auto& ci = _transaction->vocbase()
+                     .server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo();
       _collection =
-          ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+          ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     } else {
       _collection = _transaction->vocbase().useCollection(_cid, status);
     }

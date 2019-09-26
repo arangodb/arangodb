@@ -104,12 +104,15 @@ CostEstimate SubqueryEndNode::estimateCost() const {
 
 bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
   TRI_ASSERT(_outVariable != nullptr);
-
+  if (other.getType() != getType()) {
+    return false;
+  }
   try {
     SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
     TRI_ASSERT(p._outVariable != nullptr);
     return ExecutionNode::isEqualTo(p) && _outVariable->isEqualTo(*(p._outVariable));
-  } catch (const std::bad_cast& e) {
+  } catch (const std::bad_cast&) {
+    TRI_ASSERT(false);
     return false;
   }
 }

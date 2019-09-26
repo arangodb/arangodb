@@ -859,11 +859,38 @@ function ahuacatlListTestSuite () {
   };
 }
 
+function ahuacatlDocumentAppendTestSuite () {
+  var collectionName = "UnitTestList";
+  var collection; 
+
+  return {
+
+    setUpAll : function () {
+      internal.db._drop(collectionName);
+      collection = internal.db._create(collectionName);
+    },
+
+    tearDownAll: function () {
+      internal.db._drop(collectionName);
+    },
+
+    testAppendWithDocuments : function () {
+      for (let i = 0; i < 2000; ++i) {
+        collection.insert({ _key: "test" + i, value: i });
+      }
+
+      let query = "LET results = APPEND((FOR doc IN " + collectionName + " FILTER doc.value < 1000 RETURN doc), (FOR doc IN " + collectionName + " FILTER doc.value >= 500 RETURN doc), true) FOR doc IN results SORT doc.updated LIMIT 2000 RETURN doc";
+      assertEqual(2000, getQueryResults(query).length);
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlListTestSuite);
+jsunity.run(ahuacatlDocumentAppendTestSuite);
 
 return jsunity.done();
 

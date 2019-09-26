@@ -138,8 +138,9 @@ class RebootTrackerTest : public ::testing::Test {
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
 #endif
   RebootTrackerTest()
-      : scheduler(std::make_unique<SupervisedScheduler>(2, 64, 128, 1024 * 1024, 4096)),
-        mockApplicationServer() {
+      : mockApplicationServer(),
+        scheduler(std::make_unique<SupervisedScheduler>(mockApplicationServer.server(),
+                                                        2, 64, 128, 1024 * 1024, 4096)) {
     // Suppress this INFO message:
     // When trying to register callback '': The server PRMR-srv-A is not known. If this server joined the cluster in the last seconds, this can happen.
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
@@ -150,12 +151,12 @@ class RebootTrackerTest : public ::testing::Test {
 #endif
   using PeerState = RebootTracker::PeerState;
 
+  MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
   static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER), decltype(*scheduler)>::value,
                 "Use the correct scheduler in the tests");
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
-  MockRestServer mockApplicationServer;
 
   void SetUp() { scheduler->start(); }
   void TearDown() { scheduler->shutdown(); }

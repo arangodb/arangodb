@@ -59,7 +59,7 @@ class EngineInfoContainerDBServerServerBased {
    public:
     TraverserEngineShardLists(GraphNode const*, ServerID const& server,
                               std::unordered_map<ShardID, ServerID> const& shardMapping,
-                              Query const* query);
+                              Query const& query);
 
     ~TraverserEngineShardLists() {}
 
@@ -96,7 +96,7 @@ class EngineInfoContainerDBServerServerBased {
   };
 
  public:
-  explicit EngineInfoContainerDBServerServerBased(Query* query) noexcept;
+  explicit EngineInfoContainerDBServerServerBased(Query& query) noexcept;
 
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map
@@ -177,7 +177,7 @@ class EngineInfoContainerDBServerServerBased {
 
   std::vector<std::shared_ptr<QuerySnippet>> _closedSnippets;
 
-  Query* _query;
+  Query& _query;
 
   // @brief List of all graphNodes that need to create TraverserEngines on
   // DBServers

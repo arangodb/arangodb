@@ -26,8 +26,10 @@
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -47,8 +49,9 @@ std::unordered_map<velocypack::StringRef, int> OptimizerRulesFeature::_ruleLooku
 OptimizerRulesFeature::OptimizerRulesFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
-  startsAfter("V8Phase");
-  startsAfter("Aql");
+  startsAfter<V8FeaturePhase>();
+
+  startsAfter<AqlFeature>();
 }
 
 void OptimizerRulesFeature::prepare() { addRules(); }

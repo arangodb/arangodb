@@ -95,6 +95,8 @@ class SingleRowFetcherHelper
     return _itemBlockManager;
   }
 
+  bool isDone() const { return _returnedDoneOnFetchRow; };
+
  private:
   arangodb::aql::SharedAqlItemBlockPtr& getItemBlock() { return _itemBlock; }
   arangodb::aql::SharedAqlItemBlockPtr const& getItemBlock() const {

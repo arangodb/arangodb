@@ -382,7 +382,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -390,21 +390,12 @@ class ClusterInfo final {
 
   TEST_VIRTUAL ~ClusterInfo();
 
- public:
-  static void createInstance(AgencyCallbackRegistry*);
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the unique instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* instance();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
 
-  static void cleanup();
+  void cleanup();
 
- public:
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -890,6 +881,9 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
+
+  /// underlying application server
+  application_features::ApplicationServer& _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

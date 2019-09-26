@@ -22,8 +22,7 @@
 
 #include "SortExecutor.h"
 
-#include "Basics/Common.h"
-
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"

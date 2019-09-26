@@ -81,7 +81,7 @@ class ShardLocking {
 
  public:
   // @brief prepare a shardlocking for the new query.
-  ShardLocking(Query* query) : _query(query) { TRI_ASSERT(_query != nullptr); }
+  explicit ShardLocking(Query* query) : _query(query) { TRI_ASSERT(_query != nullptr); }
 
   // @brief Every ExectionNode that is send to a Database server needs to be passed through this method
   // this class will check if a collection (or more) is used, and will adapt the locking.
