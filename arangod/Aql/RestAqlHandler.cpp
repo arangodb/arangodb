@@ -446,7 +446,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
   TRI_ASSERT(query->engine() != nullptr);
 
   if (query->queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
-    LOG_TOPIC("92c71", INFO, Logger::QUERIES)
+    LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
         << "[query#" << query->id() << "] remote request received: " << operation
         << " registryId=" << idString;
   }
