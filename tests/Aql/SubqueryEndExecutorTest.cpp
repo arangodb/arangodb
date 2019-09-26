@@ -66,7 +66,8 @@ public:
 
 
   void ExpectedValues(OutputAqlItemRow& itemRow,
-                      const std::vector<std::string> expectedStrings) const {
+                      const std::vector<std::string> expectedStrings,
+                      std::unordered_map<size_t, uint64_t> const& shadowRows) const {
     auto block = itemRow.stealBlock();
 
     ASSERT_EQ(expectedStrings.size(), block->size());
@@ -74,7 +75,17 @@ public:
     for (size_t rowIdx = 0; rowIdx < block->size(); rowIdx++) {
       if (block->isShadowRow(rowIdx)) {
         ShadowAqlItemRow shadow{block, rowIdx};
+
+        auto depth = shadowRows.find(rowIdx);
+        if (depth != shadowRows.end()) {
+          EXPECT_EQ(depth->second, shadow.getDepth());
+        } else {
+          FAIL() << "did not expect row " << rowIdx << " to be a shadow row";
+        }
       } else {
+        EXPECT_EQ(shadowRows.find(rowIdx), shadowRows.end())
+          << "expected row " << rowIdx << " to be a shadow row";
+
         auto const expected = VPackParser::fromJson(expectedStrings.at(rowIdx))->slice();
         InputAqlItemRow input{block, rowIdx};
         auto value = input.getValue(0).slice();
@@ -114,7 +125,7 @@ TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 1);
 
-  ExpectedValues(output, {"[]"});
+  ExpectedValues(output, {"[]"}, {});
 }
 
 TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
@@ -135,7 +146,7 @@ TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 1);
 
-  ExpectedValues(output, {"[1]"});
+  ExpectedValues(output, {"[1]"}, {});
 }
 
 TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
@@ -157,7 +168,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 1);
 
-  ExpectedValues(output, {"[42,34]"});
+  ExpectedValues(output, {"[42,34]"}, {});
 }
 
 TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
@@ -179,7 +190,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
   std::tie(state, stats) = testee.produceRows(output);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 2);
-  ExpectedValues(output, {"[42]", "[34]"});
+  ExpectedValues(output, {"[42]", "[34]"}, {});
 }
 
 TEST_F(SubqueryEndExecutorTest, two_input_one_shadowrow_two_irrelevant) {
@@ -202,7 +213,7 @@ TEST_F(SubqueryEndExecutorTest, two_input_one_shadowrow_two_irrelevant) {
   std::tie(state, stats) = testee.produceRows(output);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  ExpectedValues(output, {"[42, 42]", "", ""});
+  ExpectedValues(output, {"[42, 42]", "", ""}, {{1,0}, {2,1}});
 }
 
 TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
@@ -239,7 +250,7 @@ TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output2.numRowsWritten(), 2);
 
-  ExpectedValues(output2, {"[ [42, 42] ]", ""});
+  ExpectedValues(output2, {"[ [42, 42] ]", ""}, {{1,0}});
 }
 
 // TODO: This is a "death test" with malformed shadow row layout (an irrelevant shadow row before any other row)
