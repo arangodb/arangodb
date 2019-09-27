@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Obtain new unique IDs via a background thread.
+
 * Fixed issue #10078: FULLTEXT with sort on same field not working.
 
 * Fixed issue #10062: AQL: could not extract custom attribute.
