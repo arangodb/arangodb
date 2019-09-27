@@ -68,7 +68,6 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   RegisterId outReg = outVar->second.registerId;
   outputRegisters->emplace(outReg);
 
-  // The const_cast has been taken from previous implementation.
   SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                  getRegisterPlan()->nrRegs[getDepth()],
