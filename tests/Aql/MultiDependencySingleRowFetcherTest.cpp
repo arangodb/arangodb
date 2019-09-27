@@ -25,13 +25,10 @@
 
 #include "AqlItemBlockHelper.h"
 #include "DependencyProxyMock.h"
-#include "RowFetcherHelper.h"
+#include "MultiDepFetcherHelper.h"
 #include "gtest/gtest.h"
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/ResourceUsage.h"
@@ -944,6 +941,30 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 15);
+}
+
+TEST_F(MultiDependencySingleRowFetcherTest, shadow_row_test) {
+  size_t numDeps = 1;
+  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  SharedAqlItemBlockPtr block1Dep1 =
+      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}});
+  dependencyProxyMock.getDependencyMock(0)
+      .shouldReturn(ExecutionState::WAITING, nullptr)
+      .andThenReturn(ExecutionState::DONE, std::move(block1Dep1));
+
+  auto const invalidRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  auto const row0 = InputAqlItemRow{block1Dep1, 0};
+
+  MultiDependencySingleRowFetcher testee{dependencyProxyMock};
+  testee.initDependencies();
+
+  runFetcher(testee,
+             {
+                 std::make_pair(FetchRowForDependency{0, 1},
+                                FetchRowForDependency::Result{ExecutionState::WAITING, invalidRow}),
+                 std::make_pair(FetchRowForDependency{0, 1},
+                                FetchRowForDependency::Result{ExecutionState::HASMORE, row0}),
+             });
 }
 
 }  // namespace aql

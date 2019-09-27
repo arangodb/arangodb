@@ -280,12 +280,10 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
 std::size_t InputAqlItemRow::getNrRegisters() const noexcept { return block().getNrRegs(); }
 
 bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
-  TRI_ASSERT(isInitialized());
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
 bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
-  TRI_ASSERT(isInitialized());
   return !(*this == other);
 }
 
