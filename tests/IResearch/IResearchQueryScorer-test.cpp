@@ -58,7 +58,7 @@ class IResearchQueryScorerTest : public IResearchQueryTest {};
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchQueryScorerTest, DISABLED_test) {
+TEST_F(IResearchQueryScorerTest, test) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
