@@ -246,97 +246,6 @@ void addTransactionHeaderForShard(transaction::Methods const& trx, ShardMap cons
                                    "couldnt find shard in shardMap");
   }
 }
-}  // namespace
-
-namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge the baby-object results.
-///        The shard map contains the ordering of elements, the vector in this
-///        Map is expected to be sorted from front to back.
-///        The second map contains the answers for each shard.
-///        The builder in the third parameter will be cleared and will contain
-///        the resulting array. It is guaranteed that the resulting array
-///        indexes
-///        are equal to the original request ordering before it was destructured
-///        for babies.
-////////////////////////////////////////////////////////////////////////////////
-
-static void mergeResults(std::vector<std::pair<ShardID, VPackValueLength>> const& reverseMapping,
-                         std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> const& resultMap,
-                         VPackBuilder& resultBody) {
-  resultBody.clear();
-  resultBody.openArray();
-  for (auto const& pair : reverseMapping) {
-    VPackSlice arr = resultMap.find(pair.first)->second->slice();
-    if (arr.isObject() && arr.hasKey(StaticStrings::Error) &&
-        arr.get(StaticStrings::Error).isBoolean() &&
-        arr.get(StaticStrings::Error).getBoolean()) {
-      // an error occurred, now rethrow the error
-      int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
-      VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
-      if (msg.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
-      } else {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-    }
-    resultBody.add(arr.at(pair.second));
-  }
-  resultBody.close();
-}
-
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Collect the results from all shards (fastpath variant)
-///        All result bodies are stored in resultMap
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-void collectResponsesFromAllShards(
-    std::map<ShardID, std::vector<T>> const& shardMap,
-    std::vector<futures::Try<arangodb::network::Response>> const& responses,
-    std::unordered_map<int, size_t>& errorCounter,
-    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap,
-    fuerte::StatusCode& code) {
-  // FIXME: one builder per baby document is horribly inefficient
-
-  // If none of the shards responds we return a SERVER_ERROR;
-  code = fuerte::StatusInternalError;
-  for (Try<arangodb::network::Response> const& tryRes : responses) {
-    network::Response const& res = tryRes.get();  // throws exceptions upwards
-    ShardID sId = res.destinationShard();
-
-    int commError = network::fuerteToArangoErrorCode(res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
-      // If there was no answer whatsoever, we cannot rely on the shardId
-      // being present in the result struct:
-
-      auto weSend = shardMap.find(sId);
-      TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        tmpBuilder->openObject(/*unindexed*/ true);
-        tmpBuilder->add(StaticStrings::Error, VPackValue(true));
-        tmpBuilder->add(StaticStrings::ErrorNum, VPackValue(commError));
-        tmpBuilder->close();
-      }
-      resultMap.emplace(sId, std::move(tmpBuilder));
-    } else {
-      std::vector<VPackSlice> const& slices = res.response->slices();
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
-      if (!slices.empty()) {
-        tmpBuilder->add(slices[0]);
-      }
-
-      resultMap.emplace(sId, std::move(tmpBuilder));
-      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter, true);
-      code = res.response->statusCode();
-    }
-  }
-}
 
 OperationResult checkResponsesFromAllShards(
     std::vector<futures::Try<arangodb::network::Response>>& responses) {
@@ -430,15 +339,74 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
 template <typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
                                              std::vector<Try<network::Response>> const& results) {
-  std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
+  std::map<ShardID, VPackSlice> resultMap;
+  std::map<ShardID, int> shardError;
   std::unordered_map<int, size_t> errorCounter;
-  fuerte::StatusCode code;
+  
+  fuerte::StatusCode code = fuerte::StatusInternalError;
+  // If none of the shards responded we return a SERVER_ERROR;
 
-  collectResponsesFromAllShards(opCtx.shardMap, results, errorCounter, resultMap, code);
-  TRI_ASSERT(resultMap.size() == results.size());
+  for (Try<arangodb::network::Response> const& tryRes : results) {
+    network::Response const& res = tryRes.get();  // throws exceptions upwards
+    ShardID sId = res.destinationShard();
+
+    int commError = network::fuerteToArangoErrorCode(res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      shardError.emplace(sId, commError);
+    } else {
+      resultMap.emplace(sId, res.response->slice());
+      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter, true);
+      code = res.response->statusCode();
+    }
+  }
+  
+  // merge the baby-object results. reverseMapping contains
+  // the ordering of elements, the vector in this
+  // map is expected to be sorted from front to back.
+  // resultMap contains the answers for each shard.
+  // It is guaranteed that the resulting array indexes are
+  // equal to the original request ordering before it was destructured
 
   VPackBuilder resultBody;
-  mergeResults(opCtx.reverseMapping, resultMap, resultBody);
+  resultBody.openArray();
+  for (auto const& pair : opCtx.reverseMapping) {
+    ShardID const& sId = pair.first;
+    auto const& it = resultMap.find(sId);
+    if (it == resultMap.end()) { // no answer from this shard
+      auto const& it2 = shardError.find(sId);
+      TRI_ASSERT(it2 != shardError.end());
+      
+      auto weSend = opCtx.shardMap.find(sId);
+      TRI_ASSERT(weSend != opCtx.shardMap.end());  // We send sth there earlier.
+      size_t count = weSend->second.size();
+      for (size_t i = 0; i < count; ++i) {
+        resultBody.openObject(/*unindexed*/ true);
+        resultBody.add(StaticStrings::Error, VPackValue(true));
+        resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
+        resultBody.close();
+      }
+      
+    } else {
+      VPackSlice arr = it->second;
+      // we expect an array of baby-documents, but the response might
+      // also be an error, if the DBServer threw a hissy fit
+      if (arr.isObject() && arr.hasKey(StaticStrings::Error) &&
+          arr.get(StaticStrings::Error).isBoolean() &&
+          arr.get(StaticStrings::Error).getBoolean()) {
+        // an error occurred, now rethrow the error
+        int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
+        VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
+        if (msg.isString()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
+        } else {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
+      resultBody.add(arr.at(pair.second));
+    }
+  }
+  resultBody.close();
+  
   return std::forward<F>(func)(code, resultBody.steal(),
                                std::move(opCtx.options), std::move(errorCounter));
 }
@@ -447,8 +415,8 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
 template <typename F>
 OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, OperationOptions options,
                                              std::vector<Try<network::Response>> const& responses) {
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (expectedLen == 0) {  // Only one can answer, we react a bit differently
+    std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
     int nrok = 0;
     int commError = TRI_ERROR_NO_ERROR;
@@ -772,6 +740,8 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
   return result;
 }
+
+namespace arangodb {
 
 /// @brief convert ClusterComm error into arango error code
 int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
@@ -1373,7 +1343,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
         }
         
         return network::clusterResultInsert(res.response->statusCode(),
-                                            res.response->copyPayload(), options, {});
+                                            res.response->stealPayload(), options, {});
       };
       return std::move(futures[0]).thenValue(cb);
     }
