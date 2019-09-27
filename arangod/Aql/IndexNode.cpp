@@ -29,8 +29,11 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -38,8 +41,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
-#include "Aql/Expression.h"
-#include "Aql/SingleRowFetcher.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

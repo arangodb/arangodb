@@ -23,11 +23,9 @@
 #ifndef ARANGOD_AQL_SHADOW_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_SHADOW_AQL_ITEM_ROW_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlValue.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Basics/Common.h"
+
+#include <cstddef>
 
 namespace arangodb {
 namespace aql {
@@ -55,20 +53,16 @@ struct CreateInvalidShadowRowHint {
 
 class ShadowAqlItemRow {
  public:
-  explicit ShadowAqlItemRow(CreateInvalidShadowRowHint)
-      : _block(nullptr), _baseIndex(0) {}
+  explicit ShadowAqlItemRow(CreateInvalidShadowRowHint);
 
   explicit ShadowAqlItemRow(
       // cppcheck-suppress passedByValue
-      SharedAqlItemBlockPtr block, size_t baseIndex)
-      : _block(std::move(block)), _baseIndex(baseIndex) {
-    TRI_ASSERT(isInitialized());
-  }
+      SharedAqlItemBlockPtr block, size_t baseIndex);
 
   /// @brief get the number of data registers in the underlying block.
   ///        Not all of these registers are necessarily filled by this
   ///        ShadowRow. There might be empty registers on deeper levels.
-  std::size_t getNrRegisters() const noexcept { return block().getNrRegs(); }
+  std::size_t getNrRegisters() const noexcept;
 
   /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
   ///        we are in right now. This will only be of importance on nested subqueries.
@@ -76,28 +70,16 @@ class ShadowAqlItemRow {
   ///        of the outer subquery are NOT relevant
   ///        Also note: There is a guarantee that a non-relevant shadowrow, can only be encountered
   ///        right after a shadowrow. And only in descending nesting level. (eg 1. inner most, 2. inner, 3. outer most)
-  bool isRelevant() const noexcept { return getDepth() == 0; }
+  bool isRelevant() const noexcept;
 
   /// @brief Test if this shadow row is initialized, eg has a block and has a valid depth.
-  inline bool isInitialized() const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (_block != nullptr) {
-      // The value needs to always be a positive integer.
-      auto depthVal = block().getShadowRowDepth(_baseIndex);
-      TRI_ASSERT(depthVal.isNumber());
-      TRI_ASSERT(depthVal.toInt64() >= 0);
-    }
-#endif
-    return _block != nullptr;
-  }
+  bool isInitialized() const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-    return _block == other;
-  }
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
 #endif
 
   /**
@@ -107,37 +89,23 @@ class ShadowAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  inline AqlValue const& getValue(RegisterId registerId) const {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(registerId < getNrRegisters());
-    return block().getValueReference(_baseIndex, registerId);
-  }
+  AqlValue const& getValue(RegisterId registerId) const;
 
   /// @brief get the depthValue of the shadow row as AqlValue
-  inline AqlValue const& getShadowDepthValue() const {
-    TRI_ASSERT(isInitialized());
-    return block().getShadowRowDepth(_baseIndex);
-  }
+  AqlValue const& getShadowDepthValue() const;
 
   /// @brief get the depthValue of the shadow row as int64_t >= 0
   ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
-  inline uint64_t getDepth() const {
-    TRI_ASSERT(isInitialized());
-    auto value = block().getShadowRowDepth(_baseIndex);
-    TRI_ASSERT(value.toInt64() >= 0);
-    return static_cast<uint64_t>(value.toInt64());
-  }
+  uint64_t getDepth() const;
+
+  bool operator==(ShadowAqlItemRow const& other) const noexcept;
+
+  bool operator!=(ShadowAqlItemRow const& other) const noexcept;
 
  private:
-  inline AqlItemBlock& block() noexcept {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
+  AqlItemBlock& block() noexcept;
 
-  inline AqlItemBlock const& block() const noexcept {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
+  AqlItemBlock const& block() const noexcept;
 
  private:
   /**
