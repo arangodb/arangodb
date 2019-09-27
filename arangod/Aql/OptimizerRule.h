@@ -215,9 +215,6 @@ struct OptimizerRule {
     removeTraversalPathVariable,
     prepareTraversalsRule,
 
-    // make sort node aware of subsequent limit statements for internal optimizations
-    applySortLimitRule,
-
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
@@ -278,6 +275,9 @@ struct OptimizerRule {
 
     // push collect operations to the db servers
     collectInClusterRule,
+
+    // make sort node aware of subsequent limit statements for internal optimizations
+    applySortLimitRule,
 
     // try to restrict fragments to a single shard if possible
     restrictToSingleShardRule,
