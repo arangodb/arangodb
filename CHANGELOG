@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed a shutdown bug coming from a read/write lock race.
+
 * Fixed a bug in the edge cache's internal memory accounting, which led
   to the edge cache underreporting its current memory usage.
 
