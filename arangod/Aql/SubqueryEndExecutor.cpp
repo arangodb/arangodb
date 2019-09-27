@@ -179,10 +179,10 @@ void SubqueryEndExecutor::resetAccumulator() {
   _accumulator->openArray();
 }
 
-// TODO: Find out what to return here
+// We write at most the number of rows that we get from above (potentially much less if we accumulate a lot)
 std::pair<ExecutionState, size_t> SubqueryEndExecutor::expectedNumberOfRows(size_t atMost) const {
   ExecutionState state{ExecutionState::HASMORE};
   size_t expected = 0;
   std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
-  return {state, expected * 2};
+  return {state, expected};
 }
