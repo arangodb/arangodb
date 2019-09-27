@@ -124,7 +124,7 @@ function optimizerRuleTestSuite() {
         docs.push(  { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
         docs.push(  {                   "c": j,                 "joinme" : "aoeu " + j});
       }
-      skiplist.insert(docs)
+      skiplist.insert(docs);
 
       skiplist.ensureSkiplist("a", "b");
       skiplist.ensureSkiplist("d");

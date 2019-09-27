@@ -49,7 +49,7 @@ function ahuacatlRegexTestSuite () {
       db._drop("UnitTestsAhuacatlRegex");
       c = db._create("UnitTestsAhuacatlRegex");
       
-      docs = [];
+      let docs = [];
       for (var i = 0; i < 1000; ++i) {
         docs.push({ _key: "test" + i });
       }

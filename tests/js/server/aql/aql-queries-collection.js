@@ -74,7 +74,7 @@ function ahuacatlQueryCollectionTestSuite () {
                     { "id" : 206, "name" : "Abigail", "age" : 31, "active" : true, "gender" : "f" },
                     { "id" : 207, "name" : "Isabella", "age" : 30, "active" : true, "gender" : "f" },
                     { "id" : 208, "name" : "Mary", "age" : 29, "active" : true, "gender" : "f" },
-                    { "id" : 209, "name" : "Mariah", "age" : 28, "active" : true, "gender" : "f" }],
+                    { "id" : 209, "name" : "Mariah", "age" : 28, "active" : true, "gender" : "f" }]);
 
       relations.insert([{ "from" : 209, "to" : 205, "type" : "friend" },
                         { "from" : 206, "to" : 108, "type" : "friend" },

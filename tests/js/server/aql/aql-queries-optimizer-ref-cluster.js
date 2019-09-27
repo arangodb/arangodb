@@ -54,7 +54,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
     setUpAll : function () {
       internal.db._drop(cn);
       users = internal.db._create(cn);
-      docs = [
+      users.insert([
         { "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" },
         { "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" },
         { "id" : 102, "name" : "Jacob", "age" : 35, "active" : false, "gender" : "m" },
@@ -65,8 +65,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
         { "id" : 107, "name" : "Anthony", "age" : 30, "active" : true, "gender" : "m" },
         { "id" : 108, "name" : "Jim", "age" : 29, "active" : true, "gender" : "m" },
         { "id" : 109, "name" : "Diego", "age" : 28, "active" : true, "gender" : "m" },
-      ];
-      users.insert(docs);
+      ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
