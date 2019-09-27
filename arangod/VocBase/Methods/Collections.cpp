@@ -34,6 +34,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -791,10 +792,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   return res;
 }
 
-Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll) {
+futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
+                                            LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
-    return Result(TRI_ERROR_FORBIDDEN);
+    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -808,7 +810,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
   Result res = trx.begin();
 
   if (res.fail()) {
-    return res;
+    return futures::makeFuture(res);
   }
 
   auto poster = [](std::function<void()> fn) -> bool {
@@ -827,24 +829,26 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
   if (queue->status() == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   } else {
-    return queue->status();
+    return futures::makeFuture(Result(queue->status()));
   }
 
-  return res;
+  return futures::makeFuture(res);
 }
 
-Result Collections::revisionId(application_features::ApplicationServer& server,
-                               Context& ctxt, TRI_voc_rid_t& rid) {
+futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
     auto cid = std::to_string(ctxt.coll()->id());
-    auto& feature = server.getFeature<ClusterFeature>();
-    return revisionOnCoordinator(feature, databaseName, cid, rid);
+    auto& feature = ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
+    return revisionOnCoordinator(feature, databaseName, cid);
   }
 
-  rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
+  TRI_voc_rid_t rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
-  return TRI_ERROR_NO_ERROR;
+  VPackBuilder builder;
+  builder.add(VPackValue(rid));
+
+  return futures::makeFuture(OperationResult(Result(), builder.steal()));
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
