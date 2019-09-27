@@ -80,6 +80,7 @@ class SingleRowFetcherHelper
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 
   uint64_t nrCalled() { return _nrCalled; }
+  uint64_t nrReturned() { return _nrReturned; }
   uint64_t nrItems() { return _nrItems; }
 
   size_t totalSkipped() const { return _totalSkipped; }
@@ -126,6 +127,7 @@ class SingleRowFetcherHelper
   bool const _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrCalled{};
+  uint64_t _nrReturned{};
   size_t _skipped{};
   size_t _totalSkipped{};
   size_t _curIndexInBlock{};
