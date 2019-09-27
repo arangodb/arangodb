@@ -51,12 +51,18 @@ struct FetchRowForDependency {
   size_t atMost;
 };
 
-// TODO
+// std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
 struct SkipRowsForDependency {
-  using Result = bool;
+  using Result = std::pair<arangodb::aql::ExecutionState, size_t>;
+  size_t dependency;
+  size_t atMost;
 };
 
-// TODO add shadow row interface
+// std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost);
+struct FetchShadowRow {
+  using Result = std::pair<arangodb::aql::ExecutionState, arangodb::aql::ShadowAqlItemRow>;
+  size_t atMost;
+};
 
 template <class FetcherCallT>
 using ConcreteFetcherIOPair = std::pair<FetcherCallT, typename FetcherCallT::Result>;

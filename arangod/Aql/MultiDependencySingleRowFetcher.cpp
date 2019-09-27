@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
-    : _upstreamState{ExecutionState::HASMORE}, _rowIndex{0} {}
+    : _upstreamState{ExecutionState::HASMORE}, _currentBlock{nullptr}, _rowIndex{0} {}
 
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(DependencyProxy<false>& executionBlock)
     : _dependencyProxy(&executionBlock) {}

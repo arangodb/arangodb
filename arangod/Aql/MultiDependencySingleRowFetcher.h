@@ -100,14 +100,11 @@ class MultiDependencySingleRowFetcher {
   size_t numberDependencies();
 
   /**
-   * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the row returned is valid only
-   *        until the next call to fetchRow.
+   * @brief Fetch one new AqlItemRow from the specified upstream dependency.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
-   *        fetch from upstream (should apply only to the LimitExecutor). Will
-   *        not fetch more than the default batch size, so passing something
-   *        greater than it will not have any effect.
+   *        fetch from upstream. Will not fetch more than the default batch
+   *        size, so passing something greater than it will not have any effect.
    *
    * @return A pair with the following properties:
    *         ExecutionState:
