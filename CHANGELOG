@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed error message for error 1928 ("not in orphan") to "collection is
+  not in list of orphan collections".
+
 * Fix strange shutdown hanger which came from the fact that currently
   libgcc/libmusl wrongly detect multi-threadedness in statically linked
   executables.
