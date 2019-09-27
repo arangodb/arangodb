@@ -336,6 +336,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SubqueryExecutor.cpp
   Aql/SubqueryEndExecutor.cpp
   Aql/SubqueryStartExecutionNode.cpp
+  Aql/SubqueryStartExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp

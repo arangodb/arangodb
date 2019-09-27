@@ -24,7 +24,6 @@
 #include "ConstrainedSortExecutor.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
@@ -36,6 +35,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool ConstrainedSortExecutor::Properties::preservesOrder;
+constexpr bool ConstrainedSortExecutor::Properties::allowsBlockPassthrough;
+constexpr bool ConstrainedSortExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {
 

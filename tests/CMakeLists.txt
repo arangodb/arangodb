@@ -55,6 +55,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortedCollectExecutorTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
+  Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
