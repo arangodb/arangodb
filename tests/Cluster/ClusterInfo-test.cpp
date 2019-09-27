@@ -23,19 +23,20 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/AgencyMock.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
+
+#include "IResearch/AgencyMock.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
@@ -45,9 +46,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 
@@ -130,7 +132,11 @@ struct ViewFactory : public arangodb::ViewFactory {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class ClusterInfoTest : public ::testing::Test {
+class ClusterInfoTest : public ::testing::Test,
+                        public LogSuppressor<Logger::AGENCY, LogLevel::FATAL>,
+                        public LogSuppressor<Logger::AUTHENTICATION, LogLevel::ERR>,
+                        public LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
+{
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -152,19 +158,6 @@ class ClusterInfoTest : public ::testing::Test {
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress INFO {cluster} Starting up with role SINGLE
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
@@ -201,10 +194,6 @@ class ClusterInfoTest : public ::testing::Test {
   }
 
   ~ClusterInfoTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
 
     // destroy application features
@@ -219,8 +208,6 @@ class ClusterInfoTest : public ::testing::Test {
     }
 
     ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };

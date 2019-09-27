@@ -21,15 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
 #include "gtest/gtest.h"
-
-#include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/locale_utils.hpp"
+
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -121,17 +122,15 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchLinkMetaTest : public ::testing::Test {
+class IResearchLinkMetaTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCYCOMM, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
   IResearchLinkMetaTest() {
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     auto sysvocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -151,23 +150,6 @@ class IResearchLinkMetaTest : public ::testing::Test {
     analyzers.emplace(result, "testVocbase::empty", "empty",
                       VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
                       irs::flags{irs::frequency::type()});  // cache the 'empty' analyzer for 'testVocbase'
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-  }
-
-  ~IResearchLinkMetaTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(),
-                                    arangodb::LogLevel::DEFAULT);
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

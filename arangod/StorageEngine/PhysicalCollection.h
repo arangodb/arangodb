@@ -23,14 +23,17 @@
 
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+
 #include <set>
+
+#include <velocypack/Builder.h>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -127,7 +130,7 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures();
+  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures();
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created

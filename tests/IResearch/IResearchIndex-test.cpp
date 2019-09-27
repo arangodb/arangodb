@@ -24,22 +24,23 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
+#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "utils/utf8_path.hpp"
+
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
+
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -63,9 +64,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
-#include "utils/utf8_path.hpp"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
@@ -169,7 +171,10 @@ REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normaliz
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchIndexTest : public ::testing::Test {
+class IResearchIndexTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AQL, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -179,17 +184,6 @@ class IResearchIndexTest : public ::testing::Test {
  protected:
   IResearchIndexTest() : server(false) {
     arangodb::tests::init(true);
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR);  // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     server.addFeature<arangodb::FlushFeature>(false);
     server.startFeatures();
@@ -210,14 +204,6 @@ class IResearchIndexTest : public ::testing::Test {
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~IResearchIndexTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }

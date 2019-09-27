@@ -130,6 +130,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
   auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
+  traceGetSomeRequest(bodyString, atMost);
+
   auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -194,6 +196,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
   builder.close();
 
   auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
+
+  traceSkipSomeRequest(bodyString, atMost);
 
   auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
   if (!res.ok()) {
@@ -520,4 +524,25 @@ std::shared_ptr<VPackBuilder> ExecutionBlockImpl<RemoteExecutor>::stealResultBod
   std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
   _lastResponse.reset();
   return responseBodyBuilder;
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(
+    std::shared_ptr<const std::string> const& body, size_t const atMost) {
+  traceRequest("getSome", body, atMost);
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(
+    std::shared_ptr<const std::string> const& body, size_t const atMost) {
+  traceRequest("skipSome", body, atMost);
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(
+    const char* rpc, std::shared_ptr<const std::string> const& sharedPtr, size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_TRACE_1) {
+    auto const queryId = this->_engine->getQuery()->id();
+    auto const remoteQueryId = _queryId;
+    LOG_TOPIC("92c71", INFO, Logger::QUERIES)
+        << "[query#" << queryId << "] remote request sent: " << rpc
+        << " atMost=" << atMost << " registryId=" << remoteQueryId;
+  }
 }

@@ -31,10 +31,10 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Cluster/ClusterFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -83,22 +83,12 @@ struct DummyPool : public network::ConnectionPool {
   std::shared_ptr<DummyConnection> _conn;
 };
 
-struct NetworkMethodsTest : public ::testing::Test {
-  NetworkMethodsTest()
-      : server(false),
-        ci(server.getFeature<ClusterFeature>().clusterInfo()),
-        pool(config()) {
-    // suppress {threads} scheduler loop caught exception: bad_function_call
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
-                                    arangodb::LogLevel::FATAL);
-
+struct NetworkMethodsTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
+  NetworkMethodsTest() : server(false), pool(config()) {
     server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
-  }
-
-  ~NetworkMethodsTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
  protected:

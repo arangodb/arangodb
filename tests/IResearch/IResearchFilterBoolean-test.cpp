@@ -23,15 +23,25 @@
 
 #include "gtest/gtest.h"
 
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "search/all_filter.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
+#include "search/granular_range_filter.hpp"
+#include "search/phrase_filter.hpp"
+#include "search/prefix_filter.hpp"
+#include "search/range_filter.hpp"
+#include "search/term_filter.hpp"
+
+#include <velocypack/Parser.h>
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
-
-#include "ExpressionContextMock.h"
-#include "common.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -62,19 +72,9 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "search/all_filter.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/column_existence_filter.hpp"
-#include "search/granular_range_filter.hpp"
-#include "search/phrase_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/range_filter.hpp"
-#include "search/term_filter.hpp"
-
-#include <velocypack/Parser.h>
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -83,7 +83,9 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchFilterBooleanTest : public ::testing::Test {
+class IResearchFilterBooleanTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -93,16 +95,6 @@ class IResearchFilterBooleanTest : public ::testing::Test {
  protected:
   IResearchFilterBooleanTest() {
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
@@ -141,14 +133,6 @@ class IResearchFilterBooleanTest : public ::testing::Test {
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
       arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice()); // cache analyzer
-  }
-
-  ~IResearchFilterBooleanTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }

@@ -770,12 +770,9 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   return shardId;
 }
 
-bool shouldApplyHeapOptimization(arangodb::aql::ExecutionNode* node,
-                                 arangodb::aql::LimitNode* limit) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(limit != nullptr);
-
-  auto const* loop = node->getLoop();
+bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
+                                 arangodb::aql::LimitNode& limitNode) {
+  auto const* loop = sortNode.getLoop();
   if (loop && arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
     // since currently view node doesn't provide any
     // useful estimation, we apply heap optimization
@@ -783,8 +780,8 @@ bool shouldApplyHeapOptimization(arangodb::aql::ExecutionNode* node,
     return true;
   }
 
-  size_t input = node->getCost().estimatedNrItems;
-  size_t output = limit->limit() + limit->offset();
+  size_t input = sortNode.getCost().estimatedNrItems;
+  size_t output = limitNode.limit() + limitNode.offset();
 
   // first check an easy case
   if (input < 100) {  // TODO fine-tune this cut-off
@@ -6898,11 +6895,15 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
   opt->addPlan(std::move(plan), rule, mod);
 }
 
-static bool isInnerPassthroughNode(ExecutionNode* node) {
+static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
+    case ExecutionNode::REMOTE:
       return true;
+    case ExecutionNode::GATHER:
+      // sorting gather is allowed
+      return ExecutionNode::castTo<GatherNode*>(node)->isSortingGather();
     case ExecutionNode::SINGLETON:
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
@@ -6922,17 +6923,10 @@ static bool isInnerPassthroughNode(ExecutionNode* node) {
     case ExecutionNode::K_SHORTEST_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::RETURN:
-      return false;
-    case ExecutionNode::REMOTE:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
-    case ExecutionNode::GATHER:
     case ExecutionNode::REMOTESINGLE:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "Invalid node type in sort-limit optimizer rule. Please report this "
-          "error. Try turning off the sort-limit rule to get your query "
-          "working.");
+      return false;
     default:;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -6943,39 +6937,45 @@ static bool isInnerPassthroughNode(ExecutionNode* node) {
 
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                   OptimizerRule const& rule) {
-  if (ServerState::instance()->isCoordinator() && plan->fullCount()) {
-    // Disable optimizer rule temporarily. SortingGather must be made aware of
-    // constrained sort for this to work.
-    opt->addPlan(std::move(plan), rule, false);
+  bool mod = false;
+  // If there isn't a limit node, and at least one sort or gather node, there's
+  // nothing to do.
+  if (!plan->contains(EN::LIMIT) || (!plan->contains(EN::SORT) && !plan->contains(EN::GATHER))) {
+    opt->addPlan(std::move(plan), rule, mod);
     return;
   }
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  bool mod = false;
+  SmallVector<ExecutionNode*> limitNodes{a};
 
-  plan->findNodesOfType(nodes, EN::SORT, true);
-  for (ExecutionNode* node : nodes) {
-    ExecutionNode* current = node->getFirstParent();
-    LimitNode* limit = nullptr;
-
-    while (current) {
-      if (isInnerPassthroughNode(current)) {
-        current = current->getFirstParent();  // inspect next node
-      } else if (current->getType() == EN::LIMIT) {
-        limit = ExecutionNode::castTo<LimitNode*>(current);
-        break;  // stop parsing after first LIMIT
-      }  else {
-        break;  // stop parsing on any other node
+  plan->findNodesOfType(limitNodes, EN::LIMIT, true);
+  for (ExecutionNode* node : limitNodes) {
+    auto limitNode = ExecutionNode::castTo<LimitNode*>(node);
+    for (ExecutionNode* current = limitNode->getFirstDependency();
+         current != nullptr; current = current->getFirstDependency()) {
+      if (current->getType() == EN::SORT) {
+        // Apply sort-limit optimization to sort node, if it seems reasonable
+        auto sortNode = ExecutionNode::castTo<SortNode*>(current);
+        if (shouldApplyHeapOptimization(*sortNode, *limitNode)) {
+          sortNode->setLimit(limitNode->offset() + limitNode->limit());
+          mod = true;
+        }
+      } else if (current->getType() == EN::GATHER) {
+        // Make sorting gather nodes aware of the limit, so they may skip after
+        // it
+        auto gatherNode = ExecutionNode::castTo<GatherNode*>(current);
+        if (gatherNode->isSortingGather()) {
+          gatherNode->setConstrainedSortLimit(limitNode->offset() + limitNode->limit());
+          mod = true;
+        }
       }
-    }
 
-    // if we found a limit and we meet the heuristic, make the sort node
-    // aware of the limit
-    if (limit != nullptr && shouldApplyHeapOptimization(node, limit)) {
-      auto sn = static_cast<SortNode*>(node);
-      sn->setLimit(limit->limit() + limit->offset());
-      mod = true;
+      // Stop on nodes that may not be between sort & limit (or between sorting
+      // gather & limit) for the limit to be applied to the sort (or sorting
+      // gather) node safely.
+      if (!isAllowedIntermediateSortLimitNode(current)) {
+        break;
+      }
     }
   }
 

@@ -176,10 +176,9 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
   // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
-  
-  
-//  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError) << fuerte::to_string(res.error);
-  
+
+  // LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, err != fuerte::Error::NoError) << fuerte::to_string(err);
+
   switch (err) {
     case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;
