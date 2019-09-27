@@ -94,7 +94,10 @@ class SubqueryEndExecutor {
   SubqueryEndExecutorInfos& _infos;
 
   // Accumulator for rows between shadow rows
-  VPackBuilder _accumulator;
+  // needs to be a pointer because we steal the
+  // accumulator's buffer and have to re-create
+  // it every time we call resetAccumulator
+  std::unique_ptr<VPackBuilder> _accumulator;
   State _state;
 };
 }  // namespace aql
