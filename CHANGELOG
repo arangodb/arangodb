@@ -1,7 +1,11 @@
 v3.4.9 (XXX-XX-XX)
 -------------------
 
-* Fix config directory handling, so we don't trap into UNC path lookups on windows
+* Fix config directory handling, so we don't trap into UNC path lookups on Windows.
+
+* Fixed issue #10078: FULLTEXT with sort on same field not working.
+
+* Fixed issue #10062: AQL: Could not extract custom attribute.
 
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
@@ -62,6 +66,7 @@ v3.4.9 (XXX-XX-XX)
   /_api/replication/batch, /_api/replication/logger-follow and the internal
   route /_api/replication/addFollower. The new field `syncerId` is also added to
   the response of /_api/replication/logger-state.
+
 
 v3.4.8 (2019-09-09)
 -------------------
