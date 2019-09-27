@@ -845,18 +845,6 @@ function ahuacatlQueryCollectionTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test querying attributes
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAttributesQuery3 : function () {
-      users.save({ "hobbies" : [ "riding", "skating", "swimming" ] });
-
-      var expected = [ [ "riding", "skating", "swimming", null, "swimming" ] ];
-      var actual = getQueryResults("FOR u in " + users.name() + " FILTER HAS(u, 'hobbies') RETURN [ u.hobbies[0], u.hobbies[1], u.hobbies[2], u.hobbies[3], u.hobbies[-1] ]");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test hashing the documents
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -895,8 +883,20 @@ function ahuacatlQueryCollectionTestSuite () {
       var expected = [ 1815371496337334 ];
       var actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
       assertEqual(expected, actual);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test querying attributes
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributesQuery3 : function () {
+      let doc = users.save({ "hobbies" : [ "riding", "skating", "swimming" ] });
+
+      var expected = [ [ "riding", "skating", "swimming", null, "swimming" ] ];
+      var actual = getQueryResults("FOR u in " + users.name() + " FILTER HAS(u, 'hobbies') RETURN [ u.hobbies[0], u.hobbies[1], u.hobbies[2], u.hobbies[3], u.hobbies[-1] ]");
+      assertEqual(expected, actual);
+      users.remove(doc);
+    }
   };
 }
 
