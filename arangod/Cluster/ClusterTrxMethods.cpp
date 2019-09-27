@@ -147,11 +147,10 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
                          .append("/_api/transaction/begin");
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
-  auto& ci = state.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   network::Headers headers;
   headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
-  return network::sendRequest(pool, ci, "server:" + server, fuerte::RestVerb::Post,
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                               std::move(path), std::move(buffer),
                               network::Timeout(::CL_DEFAULT_TIMEOUT), std::move(headers));
 }
@@ -231,11 +230,10 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   }
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<Future<network::Response>> requests;
   for (std::string const& server : state->knownServers()) {
-    requests.emplace_back(network::sendRequest(pool, ci, "server:" + server,
-                                               verb, path, VPackBuffer<uint8_t>(),
+    requests.emplace_back(network::sendRequest(pool, "server:" + server, verb,
+                                               path, VPackBuffer<uint8_t>(),
                                                network::Timeout(::CL_DEFAULT_TIMEOUT)));
   }
 

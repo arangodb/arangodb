@@ -234,6 +234,8 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
   return Ref(list.connections.back().get());
 }
 
+ConnectionPool::Config const& ConnectionPool::config() const { return _config; }
+
 // =============== stupid reference counter ===============
 
 ConnectionPool::Ref::Ref(ConnectionPool::Connection* c) : _conn(c) {

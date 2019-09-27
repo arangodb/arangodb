@@ -93,13 +93,12 @@ auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
 }
 
 /// @brief send a request to a given destination
-FutureRes sendRequest(ConnectionPool* pool, ClusterInfo& ci,
-                      DestinationId const& destination, RestVerb type,
+FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, RestVerb type,
                       std::string const& path, velocypack::Buffer<uint8_t> payload,
                       Timeout timeout, Headers headers) {
   // FIXME build future.reset(..)
 
-  if (!pool) {
+  if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
     return futures::makeFuture(
         Response{destination, Error::Canceled, nullptr});
@@ -107,7 +106,7 @@ FutureRes sendRequest(ConnectionPool* pool, ClusterInfo& ci,
 
   arangodb::network::EndpointSpec endpoint;
 
-  int res = resolveDestination(ci, destination, endpoint);
+  int res = resolveDestination(*pool->config().clusterInfo, destination, endpoint);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return futures::makeFuture(
         Response{destination, Error::Canceled, nullptr});
@@ -141,11 +140,10 @@ FutureRes sendRequest(ConnectionPool* pool, ClusterInfo& ci,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(ConnectionPool* pool, ClusterInfo& ci, DestinationId destination,
-                RestVerb type, std::string path, velocypack::Buffer<uint8_t> payload,
+  RequestsState(ConnectionPool* pool, DestinationId destination, RestVerb type,
+                std::string path, velocypack::Buffer<uint8_t> payload,
                 Timeout timeout, Headers headers, bool retryNotFound)
       : _pool(pool),
-        _ci(ci),
         _destination(std::move(destination)),
         _type(type),
         _path(std::move(path)),
@@ -162,7 +160,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
  private:
   ConnectionPool* _pool;
-  ClusterInfo& _ci;
   DestinationId _destination;
   RestVerb _type;
   std::string _path;
@@ -185,13 +182,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   // scheduler requests that are due
   void startRequest() {
     auto now = std::chrono::steady_clock::now();
-    if (now > _endTime || _ci.server().isStopping()) {
+    if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
       callResponse(Error::Timeout, nullptr);
       return;  // we are done
     }
 
     arangodb::network::EndpointSpec endpoint;
-    int res = resolveDestination(_ci, _destination, endpoint);
+    int res = resolveDestination(*_pool->config().clusterInfo, _destination, endpoint);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       callResponse(Error::Canceled, nullptr);
       return;
@@ -311,13 +308,18 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 };
 
 /// @brief send a request to a given destination, retry until timeout is exceeded
-FutureRes sendRequestRetry(ConnectionPool* pool, ClusterInfo& ci,
-                           DestinationId const& destination,
+FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
                            Headers headers, bool retryNotFound) {
+  if (!pool || !pool->config().clusterInfo) {
+    LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
+        << "connection pool unavailable";
+    return futures::makeFuture(Response{destination, Error::Canceled, nullptr});
+  }
+
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
-  auto rs = std::make_shared<RequestsState>(pool, ci, destination, type, path,
+  auto rs = std::make_shared<RequestsState>(pool, destination, type, path,
                                             std::move(payload), timeout,
                                             std::move(headers), retryNotFound);
   rs->startRequest();  // will auto reference itself

@@ -39,6 +39,7 @@ class Connection;
 class ConnectionBuilder;
 }  // namespace v1
 }  // namespace fuerte
+class ClusterInfo;
 
 namespace network {
 
@@ -53,6 +54,7 @@ class ConnectionPool final {
 
  public:
   struct Config {
+    ClusterInfo* clusterInfo;
     uint64_t minOpenConnections = 1;      /// minimum number of open connections
     uint64_t maxOpenConnections = 25;     /// max number of connections
     uint64_t connectionTtlMilli = 60000;  /// unused connection lifetime
@@ -101,6 +103,8 @@ class ConnectionPool final {
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;
+
+  Config const& config() const;
 
  protected:
   /// @brief connection container
