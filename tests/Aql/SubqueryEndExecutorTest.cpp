@@ -66,7 +66,7 @@ public:
 
 
   void ExpectedValues(OutputAqlItemRow& itemRow,
-                      const std::vector<std::string> expectedStrings,
+                      std::vector<std::string> const& expectedStrings,
                       std::unordered_map<size_t, uint64_t> const& shadowRows) const {
     auto block = itemRow.stealBlock();
 
