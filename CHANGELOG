@@ -1,4 +1,4 @@
-v3.5.1 (2019-09-24)
+v3.5.1 (XXXX-XX-XX)
 -------------------
 
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
