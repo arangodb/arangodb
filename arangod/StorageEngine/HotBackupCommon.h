@@ -30,6 +30,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 
 namespace arangodb {
 
@@ -47,12 +48,18 @@ struct BackupMeta {
   std::string _datetime;
   size_t _sizeInBytes;
   size_t _nrFiles;
+  unsigned int _nrDBServers;
+  std::string _serverId;
+  bool _potentiallyInconsistent;
 
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
   static constexpr const char *DATETIME = "datetime";
   static constexpr const char *SIZEINBYTES = "sizeInBytes";
   static constexpr const char *NRFILES = "nrFiles";
+  static constexpr const char *NRDBSERVERS = "nrDBServers";
+  static constexpr const char *SERVERID = "serverId";
+  static constexpr const char *POTENTIALLYINCONSISTENT = "potentiallyInconsistent";
 
   void toVelocyPack(VPackBuilder &builder) const {
     {
@@ -62,6 +69,11 @@ struct BackupMeta {
       builder.add(DATETIME, VPackValue(_datetime));
       builder.add(SIZEINBYTES, VPackValue(_sizeInBytes));
       builder.add(NRFILES, VPackValue(_nrFiles));
+      builder.add(NRDBSERVERS, VPackValue(_nrDBServers));
+      if (ServerState::instance()->isDBServer()) {
+        builder.add(SERVERID, VPackValue(_serverId));
+      }
+      builder.add(POTENTIALLYINCONSISTENT, VPackValue(_potentiallyInconsistent));
     }
   }
 
@@ -75,15 +87,20 @@ struct BackupMeta {
           slice, SIZEINBYTES, 0);
       meta._nrFiles = basics::VelocyPackHelper::getNumericValue<size_t>(
           slice, NRFILES, 0);
+      meta._nrDBServers = basics::VelocyPackHelper::getNumericValue<unsigned int>(
+          slice, NRDBSERVERS, 1);
+      meta._serverId = basics::VelocyPackHelper::getStringValue(slice, SERVERID, "");
+      meta._potentiallyInconsistent = basics::VelocyPackHelper::getBooleanValue(slice, POTENTIALLYINCONSISTENT, false);
       return meta;
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
     }
   }
 
-  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles) :
+  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles, size_t nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
     _id(id), _version(version), _datetime(datetime),
-    _sizeInBytes(sizeInBytes), _nrFiles(nrFiles) {}
+    _sizeInBytes(sizeInBytes), _nrFiles(nrFiles), _nrDBServers(nrDBServers),
+    _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent) {}
 
 private:
   BackupMeta() {}

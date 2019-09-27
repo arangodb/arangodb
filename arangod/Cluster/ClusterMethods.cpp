@@ -3125,6 +3125,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
         BackupMeta& front = i.second.front();
         front._sizeInBytes = totalSize;
         front._nrFiles = totalFiles;
+        front._serverId = "";  // makes no sense for whole cluster
         hotBackups.insert(std::make_pair(front._id, front));
       }
     }
@@ -3695,6 +3696,7 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
     builder.add("allowInconsistent", VPackValue(force));
+    builder.add("nrDBServers", VPackValue(dbServers.size()));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -3764,9 +3766,9 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
   }
 
   if (sizeValid) {
-    meta = BackupMeta(backupId, timeStamp, version, totalSize, totalFiles);
+    meta = BackupMeta(backupId, timeStamp, version, totalSize, totalFiles, dbServers.size(), "", force);
   } else {
-    meta = BackupMeta(backupId, timeStamp, version, 0, 0);
+    meta = BackupMeta(backupId, timeStamp, version, 0, 0, dbServers.size(), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
       << "Could not determine total size of backup with id '" << backupId
       << "'!";
@@ -4000,7 +4002,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
-    BackupMeta meta(backupId, "", timeStamp, 0, 0);   // Temporary
+    BackupMeta meta(backupId, "", timeStamp, 0, 0, dbServers.size(), "", !gotLocks);   // Temporary
     result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(),
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
@@ -4052,6 +4054,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       report.add("id", VPackValue(timeStamp + "_" + backupId));
       report.add("sizeInBytes", VPackValue(meta._sizeInBytes));
       report.add("nrFiles", VPackValue(meta._nrFiles));
+      report.add("nrDBServers", VPackValue(meta._nrDBServers));
       if (!gotLocks) {
         report.add("potentiallyInconsistent", VPackValue(true));
       }

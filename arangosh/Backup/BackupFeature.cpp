@@ -245,6 +245,15 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
         LOG_TOPIC("55af7", INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
         LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
         LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
+        LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of DBServers: " << meta.get()._nrDBServers;
+        if (!meta.get()._serverId.empty()) {
+          LOG_TOPIC("11112", INFO, arangodb::Logger::BACKUP) << "      serverId: " << meta.get()._serverId;
+        }
+        if (meta.get()._potentiallyInconsistent) {
+          LOG_TOPIC("56241", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: true";
+        } else {
+          LOG_TOPIC("56242", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: false";
+        }
       }
     }
   }
