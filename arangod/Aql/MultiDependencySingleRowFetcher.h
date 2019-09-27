@@ -92,21 +92,7 @@ class MultiDependencySingleRowFetcher {
   MultiDependencySingleRowFetcher();
 
  public:
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
-    ExecutionState state = ExecutionState::DONE;
-    size_t available = 0;
-    for (size_t i = 0; i < numberDependencies(); ++i) {
-      auto res = preFetchNumberOfRowsForDependency(i, atMost);
-      if (res.first == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, 0};
-      }
-      available += res.second;
-      if (res.first == ExecutionState::HASMORE) {
-        state = ExecutionState::HASMORE;
-      }
-    }
-    return {state, available};
-  }
+  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
   // May only be called once, after the dependencies are injected.
   void initDependencies();
@@ -138,74 +124,9 @@ class MultiDependencySingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
-      size_t const dependency, size_t const atMost = ExecutionBlock::DefaultBatchSize()) {
-    TRI_ASSERT(dependency < _dependencyInfos.size());
-    auto& depInfo = _dependencyInfos[dependency];
-    // Fetch a new block iff necessary
-    if (!indexIsValid(depInfo) && !isDone(depInfo)) {
-      // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-      // new one, so we might reuse it immediately!
-      depInfo._currentBlock = nullptr;
+      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-      ExecutionState state;
-      SharedAqlItemBlockPtr newBlock;
-      std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
-      if (state == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-
-      depInfo._currentBlock = std::move(newBlock);
-      depInfo._rowIndex = 0;
-    }
-
-    ExecutionState rowState;
-    InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    if (depInfo._currentBlock == nullptr) {
-      TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-      rowState = ExecutionState::DONE;
-    } else {
-      TRI_ASSERT(depInfo._currentBlock != nullptr);
-      row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
-
-      TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
-      if (isLastRowInBlock(depInfo) && depInfo._upstreamState == ExecutionState::DONE) {
-        depInfo._currentBlock = nullptr;
-        depInfo._rowIndex = 0;
-        rowState = ExecutionState::DONE;
-      } else {
-        depInfo._rowIndex++;
-        rowState = ExecutionState::HASMORE;
-      }
-
-    }
-
-    return {rowState, row};
-  }
-
-  std::pair<ExecutionState, size_t> skipRowsForDependency(
-      size_t const dependency, size_t const atMost) {
-    TRI_ASSERT(dependency < _dependencyInfos.size());
-    auto& depInfo = _dependencyInfos[dependency];
-
-    if (indexIsValid(depInfo)) {
-      std::size_t const rowsLeft = depInfo._currentBlock->size() - depInfo._rowIndex;
-      // indexIsValid guarantees this:
-      TRI_ASSERT(rowsLeft > 0);
-      std::size_t const skip = std::min(rowsLeft, atMost);
-      depInfo._rowIndex += skip;
-
-      return {depInfo._upstreamState, skip};
-    }
-
-    TRI_ASSERT(!indexIsValid(depInfo));
-    if (!isDone(depInfo)) {
-      return skipSomeForDependency(dependency, atMost);
-    }
-
-    // We should not be called after we're done.
-    TRI_ASSERT(false);
-    return {ExecutionState::DONE, 0};
-  }
+  std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
 
   std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
@@ -232,58 +153,16 @@ class MultiDependencySingleRowFetcher {
    */
   RegisterId getNrInputRegisters() const;
 
-  bool indexIsValid(DependencyInfo const& info) const {
-    return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
-  }
+  bool indexIsValid(DependencyInfo const& info) const;
 
-  bool isDone(DependencyInfo const& info) const {
-    return info._upstreamState == ExecutionState::DONE;
-  }
+  bool isDone(DependencyInfo const& info) const;
 
-  bool isLastRowInBlock(DependencyInfo const& info) const {
-    TRI_ASSERT(indexIsValid(info));
-    return info._rowIndex + 1 == info._currentBlock->size();
-  }
+  bool isLastRowInBlock(DependencyInfo const& info) const;
 
-  size_t getRowIndex(DependencyInfo const& info) const {
-    TRI_ASSERT(indexIsValid(info));
-    return info._rowIndex;
-  }
+  size_t getRowIndex(DependencyInfo const& info) const;
+
   std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
-                                                                      size_t atMost) {
-    TRI_ASSERT(dependency < _dependencyInfos.size());
-    auto& depInfo = _dependencyInfos[dependency];
-    // Fetch a new block iff necessary
-    if (!indexIsValid(depInfo) && !isDone(depInfo)) {
-      // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-      // new one, so we might reuse it immediately!
-      depInfo._currentBlock = nullptr;
-
-      ExecutionState state;
-      SharedAqlItemBlockPtr newBlock;
-      std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
-      if (state == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, 0};
-      }
-
-      depInfo._currentBlock = std::move(newBlock);
-      depInfo._rowIndex = 0;
-    }
-
-    if (!indexIsValid(depInfo)) {
-      TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-      return {ExecutionState::DONE, 0};
-    } else {
-      if (isDone(depInfo)) {
-        TRI_ASSERT(depInfo._currentBlock != nullptr);
-        TRI_ASSERT(depInfo._currentBlock->size() > depInfo._rowIndex);
-        return {depInfo._upstreamState, depInfo._currentBlock->size() - depInfo._rowIndex};
-      }
-      // In the HAS_MORE case we do not know exactly how many rows there are.
-      // So we need to return an uppter bound (atMost) here.
-      return {depInfo._upstreamState, atMost};
-    }
-  }
+                                                                      size_t atMost);
 };
 
 }  // namespace aql
