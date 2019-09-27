@@ -105,14 +105,15 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit
-        auto buffer = _accumulator->steal();
         bool shouldDelete = true;
-        AqlValue resultDocVec{buffer.get(), shouldDelete};
+        AqlValue resultDocVec{_buffer.get(), shouldDelete};
         if (shouldDelete) {
-          buffer->clear();
+          // resultDocVec told us to delete our data
+          _buffer->clear();
         } else {
-          // ownership of the buffer lies with resultDocVec now
-          buffer.reset();
+          // relinquish ownership of _buffer, as it now belongs to
+          // resultDocVec
+          _buffer.reset();
         }
         AqlValueGuard guard{resultDocVec, true};
 
@@ -174,7 +175,8 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 }
 
 void SubqueryEndExecutor::resetAccumulator() {
-  _accumulator.reset(new VPackBuilder);
+  _buffer.reset(new arangodb::velocypack::Buffer<uint8_t>);
+  _accumulator.reset(new VPackBuilder(*_buffer));
   TRI_ASSERT(_accumulator != nullptr);
   _accumulator->openArray();
 }

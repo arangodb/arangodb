@@ -93,11 +93,12 @@ class SubqueryEndExecutor {
   Fetcher& _fetcher;
   SubqueryEndExecutorInfos& _infos;
 
-  // Accumulator for rows between shadow rows
-  // needs to be a pointer because we steal the
-  // accumulator's buffer and have to re-create
-  // it every time we call resetAccumulator
+  // Accumulator for rows between shadow rows.
+  // We need to allocate the buffer ourselves because we need to keep
+  // control of it to hand over to an AqlValue
+  std::unique_ptr<arangodb::velocypack::Buffer<uint8_t>> _buffer;
   std::unique_ptr<VPackBuilder> _accumulator;
+
   State _state;
 };
 }  // namespace aql
