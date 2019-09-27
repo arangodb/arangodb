@@ -59,7 +59,6 @@ SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
-  NoStats stats;
 
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
   ShadowAqlItemRow shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
@@ -71,7 +70,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!inputRow.isInitialized());
-          return {state, std::move(stats)};
+          return {state, NoStats{}};
         }
 
         // We got a data row, put it into the accumulator
@@ -97,7 +96,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!shadowRow.isInitialized());
-          return {ExecutionState::WAITING, std::move(stats)};
+          return {ExecutionState::WAITING, NoStats{}};
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
         TRI_ASSERT(shadowRow.isInitialized() == true);
@@ -117,7 +116,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         resetAccumulator();
 
         if (state ==  ExecutionState::DONE) {
-          return {ExecutionState::DONE, std::move(stats)};
+          return {ExecutionState::DONE, NoStats{}};
         } else {
           _state = FORWARD_IRRELEVANT_SHADOW_ROWS;
         }
@@ -128,7 +127,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
 
         if (state == ExecutionState::WAITING) {
-          return {ExecutionState::WAITING, std::move(stats)};
+          return {ExecutionState::WAITING, NoStats{}};
         }
 
         if (shadowRow.isInitialized()) {
@@ -149,7 +148,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         }
 
         if (state == ExecutionState::DONE) {
-          return {ExecutionState::DONE, std::move(stats)};
+          return {ExecutionState::DONE, NoStats{}};
         }
         break;
       }
