@@ -177,7 +177,7 @@ void errorCodesFromHeaders(network::Headers headers,
 namespace {
 
 int toArangoErrorCodeInternal(fuerte::Error err) {
-  // This function creates an error code from a ClusterCommResult,
+  // This function creates an error code from a fuerte::Error,
   // but only if it is a communication error. If the communication
   // was successful and there was an HTTP error code, this function
   // returns TRI_ERROR_NO_ERROR.

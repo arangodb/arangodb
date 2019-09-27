@@ -119,6 +119,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _didSendShutdownRequest = false;
 #endif
+
+  void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceRequest(const char* rpc, velocypack::Slice slice, size_t atMost);
 };
 
 }  // namespace aql

@@ -131,13 +131,19 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
   // We need to send a request here
   VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject();
-  builder.add("atMost", VPackValue(atMost));
-  builder.close();
+  {
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add("atMost", VPackValue(atMost));
+    builder.close();
+    traceGetSomeRequest(builder.slice(), atMost);
+  }
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome/",
                               std::move(buffer));
+
+
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -196,13 +202,16 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
   // For every call we simply forward via HTTP
 
   VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject(/*unindexed*/ true);
-  builder.add("atMost", VPackValue(atMost));
-  builder.close();
-
+  {
+    VPackBuilder builder(buffer);
+    builder.openObject(/*unindexed*/ true);
+    builder.add("atMost", VPackValue(atMost));
+    builder.close();
+    traceSkipSomeRequest(builder.slice(), atMost);
+  }
   auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/skipSome/",
                               std::move(buffer));
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -454,4 +463,25 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   ++_engine->_stats.requests;
 
   return {TRI_ERROR_NO_ERROR};
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(
+    VPackSlice slice, size_t const atMost) {
+  traceRequest("getSome", slice, atMost);
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(
+    VPackSlice slice, size_t const atMost) {
+  traceRequest("skipSome", slice, atMost);
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(
+    const char* rpc, VPackSlice slice, size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_TRACE_1) {
+    auto const queryId = this->_engine->getQuery()->id();
+    auto const remoteQueryId = _queryId;
+    LOG_TOPIC("92c71", INFO, Logger::QUERIES)
+        << "[query#" << queryId << "] remote request sent: " << rpc
+        << " atMost=" << atMost << " registryId=" << remoteQueryId;
+  }
 }
