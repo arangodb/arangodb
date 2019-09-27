@@ -86,11 +86,14 @@ class ConnectionPool final {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  Ref leaseConnection(EndpointSpec const&);
+  Ref leaseConnection(std::string const& endpoint);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
+  
+  /// @brief shutdown all connections
+  void drainConnections();
 
   /// @brief shutdown all connections
   void shutdown();
@@ -99,7 +102,7 @@ class ConnectionPool final {
   void pruneConnections();
   
   /// @brief cancel connections to this endpoint
-  void cancelConnections(EndpointSpec const&);
+  void cancelConnections(std::string const& endpoint);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;
