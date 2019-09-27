@@ -48,10 +48,12 @@ function ahuacatlRegexTestSuite () {
     setUp : function () {
       db._drop("UnitTestsAhuacatlRegex");
       c = db._create("UnitTestsAhuacatlRegex");
-
+      
+      docs = [];
       for (var i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i });
+        docs.push({ _key: "test" + i });
       }
+      c.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

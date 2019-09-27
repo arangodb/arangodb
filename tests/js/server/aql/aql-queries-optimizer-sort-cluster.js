@@ -53,20 +53,22 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        collection.save({ "value" : i, "value2" : i });
+        docs.push({ "value" : i, "value2" : i });
       }
+      collection.push(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
 	internal.db._drop(cn);
     },
 
@@ -637,13 +639,15 @@ function sortTestsuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, { numberOfShards : 9 });
 
+      let docs = [];
       for (var i = 0; i < testStrings.length; i++) {
-        collection.save({ "value" : i, "testString" : testStrings[i] });
+        docs.push({ "value" : i, "testString" : testStrings[i] });
       }
+      collection.insert(docs);
 
       testStringsSorted=AQL_EXECUTE("FOR t IN @bla SORT t RETURN t", {"bla": testStrings}).json;
 
@@ -653,7 +657,7 @@ function sortTestsuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

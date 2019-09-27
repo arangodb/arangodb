@@ -51,7 +51,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       c = internal.db._create(cn);
     },
@@ -60,7 +60,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 
