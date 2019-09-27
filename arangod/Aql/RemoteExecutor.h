@@ -141,6 +141,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _didSendShutdownRequest = false;
 #endif
+
+  void traceGetSomeRequest(std::shared_ptr<const std::string> const& sharedPtr, size_t atMost);
+  void traceSkipSomeRequest(std::shared_ptr<const std::string> const& body, size_t atMost);
+  void traceRequest(const char* rpc, std::shared_ptr<const std::string> const& sharedPtr, size_t atMost);
 };
 
 }  // namespace aql
