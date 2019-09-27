@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10062: AQL: could not extract custom attribute.
+
 * Fix compilation issue with clang 10.
 
 * Fixed error message for error 1928 ("not in orphan") to "collection is
