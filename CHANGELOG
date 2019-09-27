@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fix compilation issue with clang 10.
+
 * Fixed error message for error 1928 ("not in orphan") to "collection is
   not in list of orphan collections".
 
