@@ -130,7 +130,9 @@ void NetworkFeature::prepare() {
   config.maxOpenConnections = _maxOpenConnections;
   config.connectionTtlMilli = _connectionTtlMilli;
   config.verifyHosts = _verifyHosts;
-  config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
+  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+    config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
+  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
