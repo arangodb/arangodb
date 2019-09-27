@@ -932,12 +932,12 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
 
-  auto& network = feature.server().getFeature<NetworkFeature>();
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     network::Headers headers;
     auto future =
-        network::sendRequest(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequest(pool, ci, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  "/_api/collection/" +
                                  StringUtils::urlEncode(p.first) + "/revision",
@@ -998,7 +998,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
 
-  auto& network = feature.server().getFeature<NetworkFeature>();
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     VPackBuffer<uint8_t> buffer;
@@ -1006,7 +1006,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
     network::Headers headers;
     auto future =
-        network::sendRequest(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequest(pool, ci, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  "/_api/collection/" + StringUtils::urlEncode(p.first) +
                                  "/loadIndexesIntoMemory",
@@ -1053,12 +1053,12 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
 
-  auto& network = feature.server().getFeature<NetworkFeature>();
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     network::Headers headers;
     auto future =
-        network::sendRequest(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequest(pool, ci, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  "/_api/collection/" +
                                  StringUtils::urlEncode(p.first) + "/figures",
@@ -1127,12 +1127,12 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  auto& network = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
     auto future =
-        network::sendRequestRetry(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequestRetry(pool, ci, "shard:" + p.first, fuerte::RestVerb::Get,
                                   "/_db/" + StringUtils::urlEncode(dbname) +
                                       "/_api/collection/" +
                                       StringUtils::urlEncode(p.first) + "/count",
