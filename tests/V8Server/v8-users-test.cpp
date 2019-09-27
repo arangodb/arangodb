@@ -23,16 +23,14 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/common.h"
+#include "velocypack/Builder.h"
+
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -48,7 +46,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Builder.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 // The following v8 headers must be included late, or MSVC fails to compile
 // (error in mswsockdef.h), because V8's win32-headers.h #undef some macros like
@@ -127,7 +128,9 @@ struct ViewFactory : public arangodb::ViewFactory {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class V8UsersTest : public ::testing::Test {
+class V8UsersTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
@@ -137,20 +140,10 @@ class V8UsersTest : public ::testing::Test {
       : server(), system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     arangodb::tests::v8Init();  // on-time initialize V8
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
                                  "testViewType")),
                              viewFactory);
-  }
-
-  ~V8UsersTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

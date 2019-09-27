@@ -20,17 +20,18 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
+#include <type_traits>
+
 #include "gtest/gtest.h"
+
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
 
 #include "Cluster/RebootTracker.h"
 #include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
-
-#include "Mocks/Servers.h"
-
-#include <memory>
-#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -129,7 +130,8 @@ TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
                             "its old callback again";
 }
 
-class RebootTrackerTest : public ::testing::Test {
+class RebootTrackerTest : public ::testing::Test,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
  protected:
 // MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler
 // needs 64. Disable warning:
@@ -140,12 +142,7 @@ class RebootTrackerTest : public ::testing::Test {
   RebootTrackerTest()
       : mockApplicationServer(),
         scheduler(std::make_unique<SupervisedScheduler>(mockApplicationServer.server(),
-                                                        2, 64, 128, 1024 * 1024, 4096)) {
-    // Suppress this INFO message:
-    // When trying to register callback '': The server PRMR-srv-A is not known. If this server joined the cluster in the last seconds, this can happen.
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::WARN);
-  }
+                                                        2, 64, 128, 1024 * 1024, 4096)) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

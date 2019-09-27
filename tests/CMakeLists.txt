@@ -180,6 +180,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
+  Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Network/ConnectionPoolTest.cpp

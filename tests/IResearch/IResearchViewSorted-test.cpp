@@ -21,17 +21,20 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
 #include "gtest/gtest.h"
 
+#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "utils/utf8_path.hpp"
+
+#include <velocypack/Iterator.h>
+
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -46,6 +49,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
@@ -67,12 +71,9 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include "IResearch/VelocyPackHelper.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
-
-#include <velocypack/Iterator.h>
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -81,23 +82,14 @@ namespace {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchViewSortedTest : public ::testing::Test {
+class IResearchViewSortedTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
   IResearchViewSortedTest() : server(false) {
     arangodb::tests::init(true);
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     server.addFeature<arangodb::FlushFeature>(false);
     server.startFeatures();
@@ -130,15 +122,6 @@ class IResearchViewSortedTest : public ::testing::Test {
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~IResearchViewSortedTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };  // IResearchViewSortedSetup
 

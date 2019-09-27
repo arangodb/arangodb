@@ -26,15 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
 #include "fakeit.hpp"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -130,7 +131,8 @@ VPackBuilder createJob(std::string const& collection, std::string const& from,
   return builder;
 }
 
-class MoveShardTest : public ::testing::Test {
+class MoveShardTest : public ::testing::Test,
+                      public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   write_ret_t fakeWriteResult;
@@ -140,15 +142,7 @@ class MoveShardTest : public ::testing::Test {
       : baseStructure(createRootNode()),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        jobId("1") {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
-                                    arangodb::LogLevel::FATAL);
-  }
-
-  ~MoveShardTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-  }
+        jobId("1") {}
 };
 
 TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {

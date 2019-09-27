@@ -20,18 +20,18 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../IResearch/common.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "gtest/gtest.h"
+
+#include "velocypack/Parser.h"
+
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterComm.h"
-#include "gtest/gtest.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -43,13 +43,20 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/FlushThread.h"
 #include "V8Server/V8DealerFeature.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class FlushFeatureTest : public ::testing::Test {
+class FlushFeatureTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::WARN>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL> {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() {
@@ -63,14 +70,6 @@ class FlushFeatureTest : public ::testing::Test {
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::WARN);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
 
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
@@ -111,12 +110,6 @@ class FlushFeatureTest : public ::testing::Test {
 
     ClusterCommControl::reset();
 
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };

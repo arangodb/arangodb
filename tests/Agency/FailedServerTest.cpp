@@ -29,17 +29,19 @@
 
 #include "fakeit.hpp"
 
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <iostream>
+
+#include "Mocks/LogLevels.h"
+
 #include "Agency/AddFollower.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
-
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -101,7 +103,9 @@ inline std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-class FailedServerTest : public ::testing::Test {
+class FailedServerTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
  protected:
   std::string const jobId = "1";
   std::shared_ptr<Builder> transBuilder;

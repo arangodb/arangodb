@@ -26,20 +26,21 @@
 
 #include "gtest/gtest.h"
 
-#include "Network/ConnectionPool.h"
-#include "Network/Methods.h"
-#include "Network/NetworkFeature.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Mocks/Servers.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Network/ConnectionPool.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 
@@ -82,19 +83,12 @@ struct DummyPool : public network::ConnectionPool {
   std::shared_ptr<DummyConnection> _conn;
 };
 
-struct NetworkMethodsTest : public ::testing::Test {
+struct NetworkMethodsTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
   NetworkMethodsTest() : server(false), pool(config()) {
-    // suppress {threads} scheduler loop caught exception: bad_function_call
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
-                                    arangodb::LogLevel::FATAL);
-
     server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
-  }
-
-  ~NetworkMethodsTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
  protected:
