@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fix strange shutdown hanger which came from the fact that currently
+  libgcc/libmusl wrongly detect multi-threadedness in statically linked
+  executables.
+
 * Fixed a shutdown bug coming from a read/write lock race.
 
 * Fixed a bug in the edge cache's internal memory accounting, which led
