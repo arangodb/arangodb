@@ -66,9 +66,9 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
 class SubqueryEndExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
