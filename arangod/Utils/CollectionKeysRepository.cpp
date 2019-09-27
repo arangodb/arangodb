@@ -208,7 +208,8 @@ size_t CollectionKeysRepository::count() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run a garbage collection on the data
+/// @brief run a garbage collection on the data, returns if anything was left
+/// over.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::garbageCollect(bool force) {
@@ -216,6 +217,8 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
   found.reserve(MaxCollectCount);
 
   auto const now = TRI_microtime();
+
+  bool leftOvers;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -250,9 +253,11 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
         ++it;
       }
     }
+    leftOvers = !_keys.empty();
   }
 
   // when we get here, all instances in found will be destroyed
-  // outside the lock
-  return (!found.empty());
+  // outside the lock, since the vector with all its unique_ptrs
+  // will be destroyed.
+  return leftOvers;
 }
