@@ -824,7 +824,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
                                          node.second.toBuilder().slice(),
                                          node.first, errors, feature, actions);
 
-    if (actions.size() != 2) {
+    if (actions.size() != 1) {
       std::cout << actions << std::endl;
     }
     ASSERT_TRUE(actions.size() == 1);

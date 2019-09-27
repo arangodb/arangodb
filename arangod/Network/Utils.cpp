@@ -26,9 +26,11 @@
 #include "Agency/Agent.h"
 #include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -36,7 +38,8 @@
 namespace arangodb {
 namespace network {
 
-int resolveDestination(DestinationId const& dest, std::string& endpoint) {
+int resolveDestination(NetworkFeature& feature, DestinationId const& dest,
+                       std::string& endpoint) {
   using namespace arangodb;
 
   if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
@@ -45,10 +48,10 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   }
 
   // Now look up the actual endpoint:
-  auto* ci = ClusterInfo::instance();
-  if (!ci) {
+  if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
   }
+  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
 
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the
@@ -59,7 +62,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   if (dest.compare(0, 6, "shard:", 6) == 0) {
     ShardID shardID = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(shardID);
+      std::shared_ptr<std::vector<ServerID>> resp = ci.getResponsibleServer(shardID);
       if (!resp->empty()) {
         serverID = (*resp)[0];
       } else {
@@ -78,7 +81,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
-  endpoint = ci->getServerEndpoint(serverID);
+  endpoint = ci.getServerEndpoint(serverID);
   if (endpoint.empty()) {
     if (serverID.find(',') != std::string::npos) {
       TRI_ASSERT(false);
@@ -180,10 +183,9 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
   // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
-  
-  
-//  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError) << fuerte::to_string(res.error);
-  
+
+  // LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, err != fuerte::Error::NoError) << fuerte::to_string(err);
+
   switch (err) {
     case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;

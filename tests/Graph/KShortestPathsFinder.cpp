@@ -75,7 +75,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
 
   KShortestPathsFinder* finder;
 
-  KShortestPathsFinderTest() : gdb("testVocbase") {
+  KShortestPathsFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection(
         "e", "v",

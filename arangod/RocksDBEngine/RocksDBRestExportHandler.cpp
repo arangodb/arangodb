@@ -45,10 +45,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestExportHandler::RocksDBRestExportHandler(GeneralRequest* request,
+RocksDBRestExportHandler::RocksDBRestExportHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response,
                                                    aql::QueryRegistry* queryRegistry)
-    : RestCursorHandler(request, response, queryRegistry), _restrictions() {}
+    : RestCursorHandler(server, request, response, queryRegistry), _restrictions() {}
 
 RestStatus RocksDBRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {

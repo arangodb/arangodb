@@ -311,6 +311,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
+      subQueryNodes.emplace_back(en);
       break;
     }
 

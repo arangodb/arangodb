@@ -21,17 +21,21 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../IResearch/common.h"
 #include "gtest/gtest.h"
 
-#include "../IResearch/RestHandlerMock.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
+
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+
+#include "IResearch/RestHandlerMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Aql/QueryRegistry.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -45,14 +49,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "../Mocks/Servers.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
-
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-
-#include "Logger/LogMacros.h"
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 #define ASSERT_ARANGO_OK(x) \
   { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
@@ -96,15 +95,16 @@ REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::norma
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class RestAnalyzerHandlerTest : public ::testing::Test {
+class RestAnalyzerHandlerTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& _system_vocbase;
 
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
-  arangodb::DatabaseFeature* dbFeature;
-  arangodb::AuthenticationFeature* authFeature;
+  arangodb::iresearch::IResearchAnalyzerFeature& analyzers;
+  arangodb::DatabaseFeature& dbFeature;
+  arangodb::AuthenticationFeature& authFeature;
   arangodb::auth::UserManager* userManager;
 
   struct ExecContext : public arangodb::ExecContext {
@@ -119,32 +119,16 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   RestAnalyzerHandlerTest()
       : server(),
         _system_vocbase(server.getSystemDatabase()),
+        analyzers(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
+        dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
+        authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
+        userManager(authFeature.userManager()),
         execContext(),
         execContextScope(&execContext),
         queryRegistry(0) {
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-
-    authFeature = arangodb::AuthenticationFeature::instance();
-    TRI_ASSERT(authFeature != nullptr);
-
-    userManager = authFeature->userManager();
-    TRI_ASSERT(userManager != nullptr);
-
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 
     userManager->setQueryRegistry(&queryRegistry);
-
-    analyzers = arangodb::application_features::ApplicationServer::server
-                    ->lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-                        "ArangoSearchAnalyzer"s);
-    TRI_ASSERT(analyzers != nullptr);
 
     // TODO: This should at the very least happen in the mock
     // create system vocbase
@@ -153,19 +137,9 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
                                                    arangodb::tests::AnalyzerCollectionName,
                                                    false);
     }
-    dbFeature = arangodb::application_features::ApplicationServer::server
-                    ->lookupFeature<arangodb::DatabaseFeature>("Database");
-    TRI_ASSERT(dbFeature != nullptr);
-
     createAnalyzers();
 
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
-  }
-  ~RestAnalyzerHandlerTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   // Creates the analyzers that are used in all the tests
@@ -177,17 +151,17 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
 
     ASSERT_ARANGO_OK(
-        analyzers->emplace(result, name, "identity"s,
+        analyzers.emplace(result, name, "identity"s,
                            VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2";
     ASSERT_ARANGO_OK(
-        analyzers->emplace(result, name, "identity"s,
+        analyzers.emplace(result, name, "identity"s,
                            VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer"s;
     ASSERT_ARANGO_OK(
-        analyzers->emplace(result, name, "rest-analyzer-empty"s,
+        analyzers.emplace(result, name, "rest-analyzer-empty"s,
                            VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
                            irs::flags{irs::frequency::type()}));
   };
@@ -197,22 +171,22 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"" + name + "\" } ]"));
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases->slice())));
 
     grantOnDb({{name, arangodb::auth::Level::RW},
                {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
     arangodb::Result res;
     std::tie(res, std::ignore) =
-        arangodb::methods::Collections::createSystem(*dbFeature->useDatabase(name),
+        arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
                                                      arangodb::tests::AnalyzerCollectionName,
                                                      false);
 
     ASSERT_TRUE(res.ok());
 
-    ASSERT_ARANGO_OK(analyzers->emplace(result, name + "::testAnalyzer1",
+    ASSERT_ARANGO_OK(analyzers.emplace(result, name + "::testAnalyzer1",
                                         "identity"s, VPackSlice::noneSlice()));
-    ASSERT_ARANGO_OK(analyzers->emplace(result, name + "::testAnalyzer2",
+    ASSERT_ARANGO_OK(analyzers.emplace(result, name + "::testAnalyzer2",
                                         "identity"s, VPackSlice::noneSlice()));
   }
 
@@ -261,7 +235,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
 
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(),
+                                                   requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openArray();
@@ -292,7 +267,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -326,7 +301,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -360,7 +335,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -395,7 +370,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -429,7 +404,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -465,7 +440,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -485,7 +460,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
   EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
   EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
   EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
   EXPECT_NE(nullptr, analyzer);
 }
@@ -497,7 +472,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -532,7 +507,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_success) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
@@ -553,7 +528,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_success) {
   EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
   EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
   EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
   EXPECT_NE(nullptr, analyzer);
 }
@@ -565,7 +540,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_known) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("identity");
@@ -598,7 +573,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   TRI_ASSERT(responcePtr != nullptr);
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
@@ -628,7 +603,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix(arangodb::StaticStrings::SystemDatabase +
@@ -664,12 +639,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
              {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
   {
-    TRI_vocbase_t& vocbase = *dbFeature->useDatabase("FooDb2");
+    TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+    arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::GET);
     request.addSuffix("FooDb::testAnalyzer1");
@@ -680,12 +655,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   }
   {
-    TRI_vocbase_t& vocbase = *dbFeature->useDatabase("FooDb2");
+    TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+    arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::GET);
     request.addSuffix(arangodb::StaticStrings::SystemDatabase +
@@ -696,12 +671,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   }
   {
-    TRI_vocbase_t& vocbase = *dbFeature->useDatabase("FooDb2");
+    TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+    arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::GET);
     request.addSuffix("::testAnalyzer1");
@@ -719,7 +694,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("testAnalyzer1");
@@ -749,7 +724,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
@@ -778,7 +753,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
@@ -805,12 +780,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_author
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
 
   // TODO
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo());
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
@@ -837,12 +812,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_au
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
 
   // TODO
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo());
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
@@ -872,7 +847,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
@@ -929,7 +904,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
@@ -976,13 +951,13 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
   grantOnDb({{"testVocbase"s, arangodb::auth::Level::RW},
              {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
-  TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
+  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   grantOnDb({{"testVocbase"s, arangodb::auth::Level::RO},
@@ -1042,12 +1017,12 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
 
   createDatabase("testVocbase"s);
 
-  TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
+  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
@@ -1085,8 +1060,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
-               expected.size() == slice.get("result").length()))
-      << "expected: " << expected << " got: " << slice.toJson();
+               expected.size() == slice.get("result").length()));
 
   for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
     auto subSlice = *itr;
@@ -1106,12 +1080,12 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authorized) {
   createDatabase("testVocbase"s);
 
-  TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
+  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
@@ -1168,13 +1142,13 @@ TEST_F(RestAnalyzerHandlerTest,
        test_list_non_system_database_system_not_authorized_not_authorized) {
   createDatabase("testVocbase"s);
 
-  TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
+  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
@@ -1224,7 +1198,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_invalid_params) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
@@ -1254,7 +1228,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_unknown_analyzer) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("unknown");
@@ -1285,7 +1259,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer1");
@@ -1308,7 +1282,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
                    slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
 
   // Check it's not gone
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1321,14 +1295,14 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer2");
   request.values().emplace("force", "false");
 
   // Hold a reference to mark analyzer in use
-  auto inUseAnalyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                       "::testAnalyzer2");
   ASSERT_NE(nullptr, inUseAnalyzer);
 
@@ -1348,7 +1322,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_CONFLICT ==
                    slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer2");
   // Check it's not gone
   ASSERT_NE(analyzer, nullptr);
@@ -1362,14 +1336,14 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer2");
   request.values().emplace("force", "true");
 
   // hold ref to mark in-use
-  auto inUseAnalyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                       "::testAnalyzer2");
   ASSERT_NE(nullptr, inUseAnalyzer);
 
@@ -1388,7 +1362,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2" ==
                    slice.get("name").copyString()));
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer2");
   ASSERT_EQ(nullptr, analyzer);
 }
@@ -1401,7 +1375,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_with_db_name) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix(arangodb::StaticStrings::SystemDatabase +
@@ -1410,7 +1384,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_with_db_name) {
   auto status = handler.execute();
   EXPECT_TRUE((arangodb::RestStatus::DONE == status));
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
   EXPECT_EQ(nullptr, analyzer);
 }
@@ -1422,7 +1396,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer1");
@@ -1442,7 +1416,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                    slice.get("name").copyString()));
-  auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
   ASSERT_EQ(nullptr, analyzer);
 }

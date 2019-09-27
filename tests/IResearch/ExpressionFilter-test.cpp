@@ -21,14 +21,26 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
+#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "analysis/token_attributes.hpp"
+#include "index/directory_reader.hpp"
+#include "search/all_filter.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "search/scorers.hpp"
+#include "store/memory_directory.hpp"
+#include "store/store_utils.hpp"
+#include "utils/type_limits.hpp"
+#include "utils/utf8_path.hpp"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include "velocypack/Iterator.h"
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -61,21 +73,9 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include "ExpressionContextMock.h"
-#include "utils/utf8_path.hpp"
-#include "velocypack/Iterator.h"
-
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "IResearch/ExpressionFilter.h"
-#include "analysis/token_attributes.hpp"
-#include "index/directory_reader.hpp"
-#include "search/all_filter.hpp"
-#include "search/cost.hpp"
-#include "search/score.hpp"
-#include "search/scorers.hpp"
-#include "store/memory_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/type_limits.hpp"
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -237,70 +237,58 @@ DEFINE_FACTORY_DEFAULT(custom_sort)
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchExpressionFilterSetup {
+struct IResearchExpressionFilterTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::IResearchLogSuppressor {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
-  IResearchExpressionFilterSetup() : engine(server), server(nullptr, nullptr) {
+  IResearchExpressionFilterTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init(true);
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     systemDBInfo());
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
+                              system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
+    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
+                          false);  // must be before AqlFeature
+    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
                           true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+                          true);
+    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    server.getFeature<arangodb::aql::AqlFunctionFeature>().add(arangodb::aql::Function{
         "_REFERENCE_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
@@ -311,33 +299,25 @@ struct IResearchExpressionFilterSetup {
           return params[0];
         }});
 
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
-  ~IResearchExpressionFilterSetup() {
+  ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };  // TestSetup
 }  // namespace
@@ -346,9 +326,7 @@ struct IResearchExpressionFilterSetup {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST(IResearchExpressionFilterTest, test) {
-  IResearchExpressionFilterSetup setup ADB_IGNORE_UNUSED;
-
+TEST_F(IResearchExpressionFilterTest, test) {
   arangodb::velocypack::Builder testData;
   {
     irs::utf8_path resource;
@@ -390,7 +368,7 @@ TEST(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   // create view
   {

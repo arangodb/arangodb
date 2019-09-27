@@ -41,8 +41,10 @@ using namespace arangodb::rest;
 
 class ClusterCommTester : public ClusterComm {
  public:
-  ClusterCommTester()
-      : ClusterComm(false), _oldSched(nullptr), _testerSched(1, 2, 3, 4, 5) {
+  ClusterCommTester(application_features::ApplicationServer& server)
+      : ClusterComm(server, false),
+        _oldSched(nullptr),
+        _testerSched(server, 1, 2, 3, 4, 5) {
     // fake a scheduler object
     _oldSched = SchedulerFeature::SCHEDULER;
     SchedulerFeature::SCHEDULER = &_testerSched;
@@ -85,7 +87,8 @@ class ClusterCommTester : public ClusterComm {
 };  // class ClusterCommTester
 
 TEST(ClusterCommTest, no_matching_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   CoordTransactionID id = TRI_NewTickServer();
 
@@ -96,7 +99,8 @@ TEST(ClusterCommTest, no_matching_response) {
 }  // no matching responses
 
 TEST(ClusterCommTest, single_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id;
   CoordTransactionID transId;
@@ -120,7 +124,8 @@ TEST(ClusterCommTest, single_response) {
 }  // single response
 
 TEST(ClusterCommTest, out_of_order_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id_first, id_other;
   CoordTransactionID transId;
@@ -145,7 +150,8 @@ TEST(ClusterCommTest, out_of_order_response) {
 }  // out of order response
 
 TEST(ClusterCommTest, simple_function_timeout) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   CoordTransactionID transId;
   ClusterCommTimeout startTime, endTime, diff;
@@ -172,7 +178,8 @@ TEST(ClusterCommTest, simple_function_timeout) {
 }  // simple function time out
 
 TEST(ClusterCommTest, time_delayed_out_of_order_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id_first, id_other;
   CoordTransactionID transId;

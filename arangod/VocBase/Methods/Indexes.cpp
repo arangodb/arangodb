@@ -115,7 +115,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     // add code for estimates here
     std::unordered_map<std::string, double> estimates;
 
-    int rv = selectivityEstimatesOnCoordinator(databaseName, cid, estimates);
+    auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
+    int rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
     if (rv != TRI_ERROR_NO_ERROR) {
       return Result(rv, "could not retrieve estimates");
     }
@@ -124,7 +125,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     flags &= ~Index::makeFlags(Index::Serialize::Estimates);
 
     VPackBuilder tmpInner;
-    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
+    auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto c = ci.getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, flags, [&](arangodb::Index const* idx) {
       return withHidden || !idx->isHidden();
     });
@@ -328,11 +330,10 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
                                        VPackSlice const& indexDef, bool create,
                                        VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = collection->vocbase().server().getFeature<ClusterFeature>();
 
-  return ClusterInfo::instance()->ensureIndexCoordinator(  // create index
-    *collection, indexDef, create, resultBuilder, cluster->indexCreationTimeout());
+  return cluster.clusterInfo().ensureIndexCoordinator(  // create index
+      *collection, indexDef, create, resultBuilder, cluster.indexCreationTimeout());
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& input,
@@ -657,7 +658,8 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);
 #else
-    res = ClusterInfo::instance()->dropIndexCoordinator(  // drop index
+    auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    res = ci.dropIndexCoordinator(  // drop index
         collection->vocbase().name(), std::to_string(collection->id()), iid, 0.0  // args
     );
 #endif

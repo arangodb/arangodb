@@ -432,7 +432,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
   std::unique_ptr<ExecutionEngine> engine(
-      ExecutionEngine::instantiateFromPlan(registry, this, plan.get(),
+      ExecutionEngine::instantiateFromPlan(*registry, *this, *plan,
                                            !_queryString.empty()));
 
   if (_engine == nullptr) {
@@ -483,7 +483,7 @@ ExecutionPlan* Query::preparePlan() {
 
   auto trx = AqlTransaction::create(std::move(ctx), _collections.collections(),
                                     _queryOptions.transactionOptions,
-                                    _part == PART_MAIN, inaccessibleCollections);
+                                    _part == PART_MAIN, std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
   _trx = trx;
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

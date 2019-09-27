@@ -62,7 +62,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::string const& algoName, VPackSlice const& config)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
-      _algorithm(AlgoRegistry::createAlgorithm(algoName, config)),
+      _algorithm(AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   if (!config.isObject()) {
@@ -501,19 +501,19 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
 
   } else if (ss->isCoordinator()) {  // we are in the cluster
 
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<LogicalCollection> lc = ci->getCollection(vocbase->name(), collectionID);
+    ClusterInfo& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase->name(), collectionID);
     if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
     collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci->getShardList(std::to_string(lc->id()));
+        ci.getShardList(std::to_string(lc->id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID>> servers = ci->getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID>> servers = ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }

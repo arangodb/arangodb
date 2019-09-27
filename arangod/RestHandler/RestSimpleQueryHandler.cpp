@@ -38,10 +38,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleQueryHandler::RestSimpleQueryHandler(GeneralRequest* request,
+RestSimpleQueryHandler::RestSimpleQueryHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
                                                GeneralResponse* response,
                                                arangodb::aql::QueryRegistry* queryRegistry)
-    : RestCursorHandler(request, response, queryRegistry) {}
+    : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestSimpleQueryHandler::execute() {
   // extract the sub-request type
