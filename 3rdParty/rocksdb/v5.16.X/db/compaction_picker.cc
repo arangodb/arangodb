@@ -227,7 +227,7 @@ bool CompactionPicker::ExpandInputsToCleanCut(const std::string& /*cf_name*/,
   // GetOverlappingInputs will always do the right thing for level-0.
   // So we don't need to do any expansion if level == 0.
   if (level == 0) {
-    return true;
+//    return true;
   }
 
   InternalKey smallest, largest;
@@ -1218,11 +1218,13 @@ void LevelCompactionBuilder::SetupInitialFiles() {
           // In these cases, to reduce L0 file count and thus reduce likelihood
           // of write stalls, we can attempt compacting a span of files within
           // L0.
+#if 0
           if (PickIntraL0Compaction()) {
             output_level_ = 0;
             compaction_reason_ = CompactionReason::kLevelL0FilesNum;
             break;
           }
+#endif
         }
       }
     }

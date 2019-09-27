@@ -179,7 +179,7 @@ void FlushJob::PickMemTable() {
   edit_->SetColumnFamily(cfd_->GetID());
 
   // path 0 for level 0 file.
-  meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
+//  meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
 
   base_ = cfd_->current();
   base_->Ref();  // it is likely that we do not need this reference
@@ -279,6 +279,7 @@ Status FlushJob::WriteLevel0Table() {
   db_mutex_->AssertHeld();
   const uint64_t start_micros = db_options_.env->NowMicros();
   Status s;
+  std::vector<FileMetaData *> meta_vec;
   {
     auto write_hint = cfd_->CalculateSSTWriteHint(0);
     db_mutex_->Unlock();
@@ -347,7 +348,7 @@ Status FlushJob::WriteLevel0Table() {
 
       uint64_t oldest_key_time =
           mems_.front()->ApproximateOldestKeyTime();
-
+      
       s = BuildTable(
           dbname_, db_options_.env, *cfd_->ioptions(), mutable_cf_options_,
           env_options_, cfd_->table_cache(), iter.get(),
@@ -359,8 +360,11 @@ Status FlushJob::WriteLevel0Table() {
           mutable_cf_options_.paranoid_file_checks, cfd_->internal_stats(),
           TableFileCreationReason::kFlush, event_logger_, job_context_->job_id,
           Env::IO_HIGH, &table_properties_, 0 /* level */, current_time,
-          oldest_key_time, write_hint);
+          oldest_key_time, write_hint, versions_, &meta_vec);
       LogFlush(db_options_.info_log);
+      for (auto meta : meta_vec) {
+        meta_.fd.file_size += meta->fd.GetFileSize();
+      }
     }
     ROCKS_LOG_INFO(db_options_.info_log,
                    "[%s] [JOB %d] Level-0 flush table #%" PRIu64 ": %" PRIu64
@@ -387,10 +391,21 @@ Status FlushJob::WriteLevel0Table() {
     // threads could be concurrently producing compacted files for
     // that key range.
     // Add file to L0
-    edit_->AddFile(0 /* level */, meta_.fd.GetNumber(), meta_.fd.GetPathId(),
-                   meta_.fd.GetFileSize(), meta_.smallest, meta_.largest,
-                   meta_.fd.smallest_seqno, meta_.fd.largest_seqno,
-                   meta_.marked_for_compaction);
+    for (auto meta : meta_vec) {
+      edit_->AddFile(0 /* level */, meta->fd.GetNumber(), meta->fd.GetPathId(),
+                     meta->fd.GetFileSize(), meta->smallest, meta->largest,
+                     meta->fd.smallest_seqno, meta->fd.largest_seqno,
+                     meta->marked_for_compaction);
+    ROCKS_LOG_INFO(db_options_.info_log,
+                   "[%s] [JOB %d] Level-0 flush table DETAIL #%" PRIu64 ": %" PRIu64
+                   " bytes %s"
+                   "%s",
+                   cfd_->GetName().c_str(), job_context_->job_id,
+                   meta->fd.GetNumber(), meta->fd.GetFileSize(),
+                   s.ToString().c_str(),
+                   meta->marked_for_compaction ? " (needs compaction)" : "");
+      delete meta;
+    }
   }
 
   // Note that here we treat flush as level 0 compaction in internal stats

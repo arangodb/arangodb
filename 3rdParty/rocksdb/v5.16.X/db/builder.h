@@ -35,6 +35,7 @@ class VersionEdit;
 class TableBuilder;
 class WritableFileWriter;
 class InternalStats;
+class VersionSet;
 
 // @param column_family_name Name of the column family that is also identified
 //    by column_family_id, or empty string if unknown. It must outlive the
@@ -79,6 +80,7 @@ extern Status BuildTable(
     const Env::IOPriority io_priority = Env::IO_HIGH,
     TableProperties* table_properties = nullptr, int level = -1,
     const uint64_t creation_time = 0, const uint64_t oldest_key_time = 0,
-    Env::WriteLifeTimeHint write_hint = Env::WLTH_NOT_SET);
+    Env::WriteLifeTimeHint write_hint = Env::WLTH_NOT_SET, VersionSet * version_set = nullptr,
+    std::vector<FileMetaData *> * meta_vec = nullptr);
 
 }  // namespace rocksdb
