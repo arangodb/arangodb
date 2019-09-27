@@ -30,11 +30,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::preservesOrder;
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::allowsBlockPassthrough;
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryExecutorInfos::SubqueryExecutorInfos(

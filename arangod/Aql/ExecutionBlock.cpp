@@ -276,13 +276,6 @@ ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
 
 transaction::Methods* ExecutionBlock::transaction() const { return _trx; }
 
-bool ExecutionBlock::handleAsyncResult(ClusterCommResult* result) {
-  // This indicates that a node uses async functionality
-  // but does not react to the response.
-  TRI_ASSERT(false);
-  return true;
-}
-
 void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   TRI_ASSERT(ep != nullptr);
   // We can never have the same dependency twice

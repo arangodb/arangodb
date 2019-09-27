@@ -40,10 +40,6 @@ namespace itemBlock {
 /// set to nullptr, just to be sure.
 SharedAqlItemBlockPtr concatenate(AqlItemBlockManager&,
                                   std::vector<SharedAqlItemBlockPtr>& blocks);
-
-void forRowInBlock(SharedAqlItemBlockPtr const& block,
-                   std::function<void(InputAqlItemRow&&)> const& callback);
-
 }  // namespace itemBlock
 
 }  // namespace aql
