@@ -92,18 +92,6 @@ class MultiDependencySingleRowFetcher {
   MultiDependencySingleRowFetcher();
 
  public:
-  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize()) {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
     ExecutionState state = ExecutionState::DONE;
     size_t available = 0;
