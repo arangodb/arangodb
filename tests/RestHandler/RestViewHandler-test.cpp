@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"

@@ -22,6 +22,34 @@
 
 #include "TestHelper.h"
 
+void arangodb::TestHelper::mockDatabase() {}
+void arangodb::TestHelper::unmockDatabase() {}
+void arangodb::TestHelper::setupV8() {}
+v8::Local<v8::Context> arangodb::TestHelper::v8Context() {}
+TRI_v8_global_t* arangodb::TestHelper::v8Globals() {}
+
+std::unique_ptr<arangodb::ExecContext> arangodb::TestHelper::createExecContext(auth::AuthUser const&,
+									       auth::DatabaseResource const&) {}
+
+void arangodb::TestHelper::createUser(std::string const& username, std::function<void(auth::User*)> callback) {}
+
+TRI_vocbase_t* arangodb::TestHelper::createDatabase(std::string const& dbName) {}
+
+std::shared_ptr<arangodb::LogicalCollection> arangodb::TestHelper::createCollection(TRI_vocbase_t*,
+										    auth::CollectionResource const&) {}
+
+std::shared_ptr<arangodb::LogicalView> arangodb::TestHelper::createView(TRI_vocbase_t*,
+									auth::CollectionResource const&) {}
+
+void arangodb::TestHelper::callFunction(v8::Handle<v8::Value>, std::vector<v8::Local<v8::Value>>&) {}
+
+void arangodb::TestHelper::callFunctionThrow(v8::Handle<v8::Value>,
+					     std::vector<v8::Local<v8::Value>>&, int errorCode) {}
+
+#if 0
+
+
+
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -327,5 +355,7 @@ struct ViewFactory : public arangodb::ViewFactory {
 };
 
 
+
+#endif
 
 #endif

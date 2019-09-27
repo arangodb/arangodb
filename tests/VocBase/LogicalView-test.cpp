@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+
+#include "../IResearch/common.h"
 #include "../Mocks/StorageEngineMock.h"
 
 #include <velocypack/Parser.h>
@@ -37,6 +39,10 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 struct TestView : public arangodb::LogicalView {

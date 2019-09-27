@@ -99,30 +99,20 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& _system_vocbase;
 
-  struct ExecContextProxy : public arangodb::ExecContext {
-    ExecContextProxy(arangodb::auth::AuthUser const& user,
-		     arangodb::auth::DatabaseResource&& database,
-		     arangodb::auth::Level systemLevel,
-		     arangodb::auth::Level dbLevel)
-      : ExecContext(user, std::move(database), systemLevel, dbLevel) {}
-  };
-
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
-  arangodb::DatabaseFeature* dbFeature;
-  arangodb::AuthenticationFeature* authFeature;
+  arangodb::iresearch::IResearchAnalyzerFeature& analyzers;
+  arangodb::DatabaseFeature& dbFeature;
+  arangodb::AuthenticationFeature& authFeature;
   arangodb::auth::UserManager* userManager;
-  ExecContextProxy execContext;
-  arangodb::ExecContext::Scope execContextScope;
+  arangodb::ExecContext::Scope execContextScope;  // (&execContext);
   arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()
 
   RestAnalyzerHandlerTest()
       : server(),
         _system_vocbase(server.getSystemDatabase()),
-        execContext(arangodb::auth::AuthUser{"nobody"},
-                    arangodb::auth::DatabaseResource{""},
-                    arangodb::auth::Level::NONE,
-                    arangodb::auth::Level::NONE),
+        analyzers(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
+        dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
+        authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
+        userManager(authFeature.userManager()),
 	execContextScope(&execContext),
         queryRegistry(0) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
@@ -134,20 +124,9 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::FATAL);
 
-    authFeature = arangodb::AuthenticationFeature::instance();
-    TRI_ASSERT(authFeature != nullptr);
-
-    userManager = authFeature->userManager();
-    TRI_ASSERT(userManager != nullptr);
-
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 
     userManager->setQueryRegistry(&queryRegistry);
-
-    analyzers = arangodb::application_features::ApplicationServer::server
-                    ->lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-                        "ArangoSearchAnalyzer"s);
-    TRI_ASSERT(analyzers != nullptr);
 
     // TODO: This should at the very least happen in the mock
     // create system vocbase
@@ -156,14 +135,11 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
                                                    arangodb::tests::AnalyzerCollectionName,
                                                    false);
     }
-    dbFeature = arangodb::application_features::ApplicationServer::server
-                    ->lookupFeature<arangodb::DatabaseFeature>("Database");
-    TRI_ASSERT(dbFeature != nullptr);
-
     createAnalyzers();
 
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
   }
+
   ~RestAnalyzerHandlerTest() {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::DEFAULT);

@@ -121,6 +121,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GraphTestTools.cpp
   Graph/KShortestPathsFinder.cpp
+  Helper/TestHelper.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
@@ -186,9 +187,9 @@ set(ARANGODB_TESTS_SOURCES
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
-  RestHandler/RestAnalyzerHandler-test.cpp
+  # RestHandler/RestAnalyzerHandler-test.cpp
   RestHandler/RestDocumentHandler-test.cpp
-  RestHandler/RestUsersHandler-test.cpp
+  # RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
@@ -204,7 +205,7 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp
-  V8Server/v8-analyzers-test.cpp
+  # V8Server/v8-analyzers-test.cpp
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
   VocBase/vocbase-test.cpp

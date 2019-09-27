@@ -959,6 +959,7 @@ Future<Result> transaction::Methods::commitAsync() {
   }
 
   if (!_state->isReadOnlyTransaction()) {
+    auto const& exec = ExecContext::current();
     bool cancelRW = ServerState::readOnly() && !exec.hasAccess(auth::InternalWritesPrivilege{});
     if (exec.isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");

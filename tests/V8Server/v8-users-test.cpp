@@ -37,32 +37,42 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
+namespace {
+std::string const COLLECTION_NAME = "testDataSource";
+std::string const DB_NAME = "testDatabase";
+std::string const USERNAME = "testUser";
+std::string const WILDCARD = "*";
+
+arangodb::auth::CollectionResource const COLLECTION_RESOURCE{DB_NAME, COLLECTION_NAME};
+
+std::vector<v8::Local<v8::Value>> grantArgs;
+std::vector<v8::Local<v8::Value>> grantWildcardArgs;
+std::vector<v8::Local<v8::Value>> revokeArgs;
+std::vector<v8::Local<v8::Value>> revokeWildcardArgs;
+
+v8::Handle<v8::Value> fn_grantCollection;
+v8::Handle<v8::Value> fn_revokeCollection;
+
+TRI_vocbase_t* vocbase = nullptr;
+
+constexpr arangodb::auth::Level RW = arangodb::auth::Level::RW;
+constexpr arangodb::auth::Level RO = arangodb::auth::Level::RO;
+}  // namespace
+
 class V8UsersTest : public ::testing::Test {
  public:
-  static std::string const COLLECTION_NAME;
-  static std::string const DB_NAME;
-  static std::string const USERNAME;
-  static std::string const WILDCARD;
-
-  static arangodb::auth:CollectionResource const COLLECTION_RESOURCE;
-
-  static std::vector<v8::Local<v8::Value>> grantArgs;
-  static std::vector<v8::Local<v8::Value>> grantWildcardArgs;
-  static std::vector<v8::Local<v8::Value>> revokeArgs;
-  static std::vector<v8::Local<v8::Value>> revokeWildcardArgs;
-
-  static v8::Handle<v8::Value> fn_grantCollection;
-  static v8::Handle<v8::Value> fn_revokeCollection;
-
-  static TRI_vocbase_t* vocbase;
-
-  static constexpr arangodb::auth::Level RW = arangodb::auth::Level::RW;
-  static constexpr arangodb::auth::Level RO = arangodb::auth::Level::RO;
+  static arangodb::TestHelper helper;
 
  protected:
-  arangodb::TestHelper helper;
+  std::unique_ptr<arangodb::ExecContext> exec;
+  arangodb::ExecContext::Scope execContextScope;
 
-  V8UsersTest() : helper() {
+  V8UsersTest()
+      : exec(helper
+                 .createExecContext(arangodb::auth::AuthUser{USERNAME},
+                                    arangodb::auth::DatabaseResource{DB_NAME})
+                 .release()),
+        execContextScope(exec.get()) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
@@ -77,88 +87,71 @@ class V8UsersTest : public ::testing::Test {
   static void SetUpTestSuite() {
     helper.mockDatabase();
 
-    vocbase = helper.createDatabase(V8UsersTest::DB_NAME);
+    vocbase = helper.createDatabase(DB_NAME);
 
     helper.setupV8();
 
-    v8isolate = helper.v8Isolate();
-    v8g = helper.v8Globals();
+    auto v8isolate = helper.v8Isolate();
+    auto v8g = helper.v8Globals();
 
-  v8::Context::Scope contextScope(helper.v8Context());
-  auto exec =
-      helper.createExecContext(arangodb::auth::AuthUser{V8UsersTest::USERNAME},
-                               arangodb::auth::DatabaseResource{V8UsersTest::DB_NAME});
-  arangodb::ExecContext::Scope execContextScope(exec.get());
+    v8::Context::Scope contextScope(helper.v8Context());
 
-  auto arangoUsers =
-      v8::Local<v8::ObjectTemplate>::New(v8isolate, v8g->UsersTempl)->NewInstance();
-  auto fn_grantCollection =
-      arangoUsers->Get(TRI_V8_ASCII_STRING(v8isolate, "grantCollection"));
-  EXPECT_TRUE((fn_grantCollection->IsFunction()));
+    auto arangoUsers =
+        v8::Local<v8::ObjectTemplate>::New(v8isolate, v8g->UsersTempl)->NewInstance();
+    auto fn_grantCollection =
+        arangoUsers->Get(TRI_V8_ASCII_STRING(v8isolate, "grantCollection"));
+    EXPECT_TRUE((fn_grantCollection->IsFunction()));
 
-  std::vector<v8::Local<v8::Value>> grantArgs = {
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::USERNAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::DB_NAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::COLLECTION_NAME),
-      TRI_V8_STD_STRING(v8isolate,
-                        arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)),
-  };
+    grantArgs = {
+        TRI_V8_STD_STRING(v8isolate, USERNAME),
+        TRI_V8_STD_STRING(v8isolate, DB_NAME),
+        TRI_V8_STD_STRING(v8isolate, COLLECTION_NAME),
+        TRI_V8_STD_STRING(v8isolate, arangodb::auth::convertFromAuthLevel(RW)),
+    };
 
-  auto fn_revokeCollection =
-      arangoUsers->Get(TRI_V8_ASCII_STRING(v8isolate, "revokeCollection"));
-  EXPECT_TRUE((fn_revokeCollection->IsFunction()));
+    fn_revokeCollection =
+        arangoUsers->Get(TRI_V8_ASCII_STRING(v8isolate, "revokeCollection"));
+    EXPECT_TRUE((fn_revokeCollection->IsFunction()));
 
-  std::vector<v8::Local<v8::Value>> revokeArgs = {
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::USERNAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::DB_NAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::COLLECTION_NAME),
-  };
+    revokeArgs = {
+        TRI_V8_STD_STRING(v8isolate, USERNAME),
+        TRI_V8_STD_STRING(v8isolate, DB_NAME),
+        TRI_V8_STD_STRING(v8isolate, COLLECTION_NAME),
+    };
 
-  std::vector<v8::Local<v8::Value>> grantWildcardArgs = {
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::USERNAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::DB_NAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::WILDCARD),
-      TRI_V8_STD_STRING(v8isolate,
-                        arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)),
-  };
+    grantWildcardArgs = {
+        TRI_V8_STD_STRING(v8isolate, USERNAME),
+        TRI_V8_STD_STRING(v8isolate, DB_NAME),
+        TRI_V8_STD_STRING(v8isolate, WILDCARD),
+        TRI_V8_STD_STRING(v8isolate, arangodb::auth::convertFromAuthLevel(RW)),
+    };
 
-  std::vector<v8::Local<v8::Value>> revokeWildcardArgs = {
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::USERNAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::DB_NAME),
-      TRI_V8_STD_STRING(v8isolate, V8UsersTest::WILDCARD),
-  };
-
-  void TearDownTestSuite() {
-    helper.unmockDatabase();
+    revokeWildcardArgs = {
+        TRI_V8_STD_STRING(v8isolate, USERNAME),
+        TRI_V8_STD_STRING(v8isolate, DB_NAME),
+        TRI_V8_STD_STRING(v8isolate, WILDCARD),
+    };
   }
+
+  void TearDownTestSuite() { helper.unmockDatabase(); }
 };
 
-std::string const V8UsersTest::COLLECTION_NAME = "testDataSource";
-std::string const V8UsersTest::DB_NAME = "testDatabase";
-std::string const V8UsersTest::USERNAME = "testUser";
-std::string const V8UsersTest::WILDCARD = "*";
-
-arangodb::auth:CollectionResource const COLLECTION_RESOURCE{
-  V8UsersTest::DB_NAME,
-  V8UsersTest::COLLECTION_NAME};
-
-TRI_vocbase_t* V8UsersTest::vocbase = nullptr;
+arangodb::TestHelper V8UsersTest::helper;
 
 // -----------------------------------------------------------------------------
 // test auth missing (grant)
 // -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_grant_collection_non_existing) {
-  helper.createUser(V8UsersTest::USERNAME, [](arangodb::auth::User* user) {});
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {});
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
-  helper.callFunctionThrow(fn_grantCollection, grantArgs,
-			   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  helper.callFunctionThrow(fn_grantCollection, grantArgs, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // -----------------------------------------------------------------------------
@@ -166,18 +159,18 @@ TEST_F(V8UsersTest, v8_users_test_grant_collection_non_existing) {
 // -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_revoke_collection_non_existing) {
-  helper.createUser(V8UsersTest::USERNAME, [V8UsersTest::COLLECTION_RESOURCE](arangodb::auth::User* user) {
-		      user->grantCollection(V8UsersTest::COLLECTION_RESOURCE, RO);
-		    });
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
+    user->grantCollection(COLLECTION_RESOURCE, RO);
+  });
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
   helper.callFunctionThrow(fn_revokeCollection, revokeArgs,
-			   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+                           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // -----------------------------------------------------------------------------
@@ -185,16 +178,16 @@ TEST_F(V8UsersTest, v8_users_test_revoke_collection_non_existing) {
 // -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_grant_collection) {
-  auto collection = helper.createCollection(vocbase, V8UsersTest::COLLECTION_RESOURCE);
-  helper.createUser(V8UsersTest::USERNAME, [](arangodb::auth::User* user) {});
+  auto collection = helper.createCollection(vocbase, COLLECTION_RESOURCE);
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {});
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
   helper.callFunction(fn_grantCollection, grantArgs);
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // -----------------------------------------------------------------------------
@@ -202,18 +195,18 @@ TEST_F(V8UsersTest, v8_users_test_grant_collection) {
 // -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_revoke_collection) {
-  auto collection = helper.createCollection(vocbase, V8UsersTest::COLLECTION_RESOURCE);
-  helper.createUser(V8UsersTest::USERNAME, [V8UsersTest::COLLECTION_RESOURCE](arangodb::auth::User* user) {
-		      user->grantCollection(V8UsersTest::COLLECTION_RESOURCE, RO);
-		    });
+  auto collection = helper.createCollection(vocbase, COLLECTION_RESOURCE);
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
+    user->grantCollection(COLLECTION_RESOURCE, RO);
+  });
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
   helper.callFunction(fn_revokeCollection, revokeArgs);
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // ---------------------------------------------------------------------------
@@ -221,19 +214,18 @@ TEST_F(V8UsersTest, v8_users_test_revoke_collection) {
 // ---------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_grant_view) {
-  auto view = helper.createView(vocbase, V8UsersTest::COLLECTION_RESOURCE);
-  helper.createUser(V8UsersTest::USERNAME, [V8UsersTest::COLLECTION_RESOURCE](arangodb::auth::User* user) {
-		      user->grantCollection(V8UsersTest::COLLECTION_RESOURCE, RO);
-		    });
+  auto view = helper.createView(vocbase, COLLECTION_RESOURCE);
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
+    user->grantCollection(COLLECTION_RESOURCE, RO);
+  });
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
-  helper.callFunctionThrow(fn_grantCollection, grantArgs,
-			   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  helper.callFunctionThrow(fn_grantCollection, grantArgs, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // -----------------------------------------------------------------------------
@@ -241,19 +233,19 @@ TEST_F(V8UsersTest, v8_users_test_grant_view) {
 // -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_revoke_view) {
-  auto view = helper.createView(vocbase, V8UsersTest::COLLECTION_RESOURCE);
-  helper.createUser(V8UsersTest::USERNAME, [V8UsersTest::COLLECTION_RESOURCE](arangodb::auth::User* user) {
-		      user->grantCollection(V8UsersTest::COLLECTION_RESOURCE, RO);
-		    });
+  auto view = helper.createView(vocbase, COLLECTION_RESOURCE);
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
+    user->grantCollection(COLLECTION_RESOURCE, RO);
+  });
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
   helper.callFunctionThrow(fn_revokeCollection, revokeArgs,
-			   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+                           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // ---------------------------------------------------------------------------
@@ -261,16 +253,16 @@ TEST_F(V8UsersTest, v8_users_test_revoke_view) {
 // ---------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_grant_wildcard_collection) {
-  auto collection = helper.createCollection(vocbase, V8UsersTest::COLLECTION_RESOURCE);
-  helper.createUser(V8UsersTest::USERNAME, [](arangodb::auth::User*) {});
+  auto collection = helper.createCollection(vocbase, COLLECTION_RESOURCE);
+  helper.createUser(USERNAME, [](arangodb::auth::User*) {});
 
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
   helper.callFunction(fn_grantCollection, grantWildcardArgs);
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
 
 // -----------------------------------------------------------------------------
@@ -278,16 +270,16 @@ TEST_F(V8UsersTest, v8_users_test_grant_wildcard_collection) {
 // ---------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_revoke_wildcard_collection) {
-  auto collection = helper.createCollection(vocbase, V8UsersTest::COLLECTION_RESOURCE);
-  helper.createUser(V8UsersTest::USERNAME, [V8UsersTest::COLLECTION_RESOURCE](arangodb::auth::User* user) {
-		      user->grantCollection(V8UsersTest::COLLECTION_RESOURCE, RO);
-		    });
+  auto collection = helper.createCollection(vocbase, COLLECTION_RESOURCE);
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
+    user->grantCollection(COLLECTION_RESOURCE, RO);
+  });
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 
   helper.callFunction(fn_revokeCollection, revokeWildcardArgs);
 
-  EXPECT_TRUE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RO));
-  EXPECT_FALSE(exec->hasAccess(V8UsersTest::COLLECTION_RESOURCE, RW));
+  EXPECT_TRUE(exec->hasAccess(COLLECTION_RESOURCE, RO));
+  EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
 }
