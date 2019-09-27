@@ -24,6 +24,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -68,6 +69,11 @@ std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipSomeForDe
   depInfo._upstreamState = res.first;
 
   return res;
+}
+
+std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fetchShadowRow(size_t const atMost) {
+  TRI_ASSERT(false);
+  // TODO implement this
 }
 
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()

@@ -37,6 +37,7 @@ namespace aql {
 class AqlItemBlock;
 template <bool>
 class DependencyProxy;
+class ShadowAqlItemRow;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
@@ -217,6 +218,9 @@ class MultiDependencySingleRowFetcher {
     TRI_ASSERT(false);
     return {ExecutionState::DONE, 0};
   }
+
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
  private:
   DependencyProxy<false>* _dependencyProxy;
