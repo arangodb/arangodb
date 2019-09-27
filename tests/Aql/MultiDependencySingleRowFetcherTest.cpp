@@ -943,28 +943,48 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 15);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest, shadow_row_test) {
+TEST_F(MultiDependencySingleRowFetcherTest, simple_fetch_shadow_row_test) {
   size_t numDeps = 1;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+
   SharedAqlItemBlockPtr block1Dep1 =
-      buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}});
+      buildBlock<1>(itemBlockManager, {{{0}}, {{1}}, {{2}}, {{3}}});
+  block1Dep1->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+  block1Dep1->setShadowRowDepth(3, AqlValue{AqlValueHintUInt{0}});
+
   dependencyProxyMock.getDependencyMock(0)
-      .shouldReturn(ExecutionState::WAITING, nullptr)
-      .andThenReturn(ExecutionState::DONE, std::move(block1Dep1));
+      .shouldReturn(ExecutionState::DONE, block1Dep1);
 
   auto const invalidRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  auto const invalidShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   auto const row0 = InputAqlItemRow{block1Dep1, 0};
+  auto const shadowRow1 = ShadowAqlItemRow{block1Dep1, 1};
+  auto const row2 = InputAqlItemRow{block1Dep1, 2};
+  auto const shadowRow3 = ShadowAqlItemRow{block1Dep1, 3};
 
   MultiDependencySingleRowFetcher testee{dependencyProxyMock};
   testee.initDependencies();
 
-  runFetcher(testee,
-             {
-                 std::make_pair(FetchRowForDependency{0, 1},
-                                FetchRowForDependency::Result{ExecutionState::WAITING, invalidRow}),
-                 std::make_pair(FetchRowForDependency{0, 1},
-                                FetchRowForDependency::Result{ExecutionState::HASMORE, row0}),
-             });
+  runFetcher(
+      testee,
+      {
+          std::make_pair(FetchRowForDependency{0, 1000},
+                         FetchRowForDependency::Result{ExecutionState::DONE, row0}),
+          std::make_pair(FetchRowForDependency{0, 1000},
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+          std::make_pair(FetchShadowRow{1000},
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow1}),
+          std::make_pair(FetchRowForDependency{0, 1000},
+                         FetchRowForDependency::Result{ExecutionState::DONE, row2}),
+          std::make_pair(FetchRowForDependency{0, 1000},
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+          std::make_pair(FetchShadowRow{1000},
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow3}),
+          std::make_pair(FetchRowForDependency{0, 1000},
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+          std::make_pair(FetchShadowRow{1000},
+              FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow}),
+      });
 }
 
 }  // namespace aql

@@ -69,7 +69,7 @@ using ConcreteFetcherIOPair = std::pair<FetcherCallT, typename FetcherCallT::Res
 
 using FetcherIOPair =
     boost::variant<ConcreteFetcherIOPair<PrefetchNumberOfRows>, ConcreteFetcherIOPair<FetchRowForDependency>,
-                   ConcreteFetcherIOPair<SkipRowsForDependency>>;
+                   ConcreteFetcherIOPair<SkipRowsForDependency>, ConcreteFetcherIOPair<FetchShadowRow>>;
 
 void runFetcher(arangodb::aql::MultiDependencySingleRowFetcher& testee,
                 std::vector<FetcherIOPair> const& inputOutputPairs);
