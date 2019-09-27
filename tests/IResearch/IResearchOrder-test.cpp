@@ -23,9 +23,15 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
-#include "ExpressionContextMock.h"
-#include "common.h"
+#include "search/scorers.hpp"
+#include "utils/misc.hpp"
+
+#include <velocypack/Parser.h>
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -44,11 +50,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-
-#include "search/scorers.hpp"
-#include "utils/misc.hpp"
-
-#include <velocypack/Parser.h>
 
 namespace {
 
@@ -203,7 +204,10 @@ void assertOrderParseFail(arangodb::application_features::ApplicationServer& ser
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchOrderTest : public ::testing::Test {
+class IResearchOrderTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::IResearchLogSuppressor {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
@@ -213,11 +217,6 @@ class IResearchOrderTest : public ::testing::Test {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
@@ -251,8 +250,6 @@ class IResearchOrderTest : public ::testing::Test {
   ~IResearchOrderTest() {
     arangodb::aql::AqlFunctionFeature(server).unprepare();  // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features

@@ -24,6 +24,8 @@
 #define ARANGOD_VOC_BASE_API_COLLECTIONS_H 1
 
 #include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -121,10 +123,10 @@ struct Collections {
       double timeout                      // single-server drop timeout
   );
 
-  static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
+  static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
+                                        LogicalCollection const& coll);
 
-  static Result revisionId(application_features::ApplicationServer&,
-                           Context& ctxt, TRI_voc_rid_t& rid);
+  static futures::Future<OperationResult> revisionId(Context& ctxt);
 
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
