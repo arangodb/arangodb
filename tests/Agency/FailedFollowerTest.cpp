@@ -25,9 +25,17 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
+
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedFollower.h"
@@ -35,11 +43,6 @@
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
-
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -114,7 +117,9 @@ Node createNode(char const* c) {
 
 Node createRootNode() { return createNode(agency); }
 
-class FailedFollowerTest : public ::testing::Test {
+class FailedFollowerTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
  protected:
   std::shared_ptr<Builder> transBuilder;
   Node baseStructure;

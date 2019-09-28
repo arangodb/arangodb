@@ -91,16 +91,37 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
     _returnedDone = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curRowIndex};
+  auto res = SingleRowFetcher<passBlocksThrough>::fetchRow();
   nextRow();
-  ExecutionState state;
-  if (_nrCalled < _nrItems) {
-    state = ExecutionState::HASMORE;
-  } else {
+  if (res.first == ExecutionState::DONE) {
     _returnedDone = true;
-    state = ExecutionState::DONE;
   }
-  return {state, _lastReturnedRow};
+  return res;
+}
+
+template <bool passBlocksThrough>
+// NOLINTNEXTLINE google-default-arguments
+std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchShadowRow(size_t) {
+  // If this assertion fails, the Executor has fetched more rows after DONE.
+  TRI_ASSERT(_nrCalled <= _nrItems);
+  if (wait()) {
+    // if once DONE is returned, always return DONE
+    if (_returnedDone) {
+      return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+    }
+    return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  }
+  _nrCalled++;
+  if (_nrCalled > _nrItems) {
+    _returnedDone = true;
+    return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  }
+  auto res = SingleRowFetcher<passBlocksThrough>::fetchShadowRow();
+  _curRowIndex++;
+  if (res.first == ExecutionState::DONE) {
+    _returnedDone = true;
+  }
+  return res;
 }
 
 template <bool passBlocksThrough>
@@ -147,8 +168,20 @@ SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const
   bool const done = isLastBlock && askingForMore;
 
   ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
-
   return {state, _itemBlock->slice(from, to)};
+}
+
+template <bool passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
+SingleRowFetcherHelper<passBlocksThrough>::fetchBlock(size_t const atMost) {
+  size_t const remainingRows = _blockSize - _curIndexInBlock;
+  size_t const to = _curRowIndex + (std::min)(atMost, remainingRows);
+
+  bool const done = to >= _nrItems;
+
+  ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
+  SingleRowFetcherHelper<passBlocksThrough>::_upstreamState = state;
+  return {state, _itemBlock->slice(_curRowIndex, to)};
 }
 
 // -----------------------------------------

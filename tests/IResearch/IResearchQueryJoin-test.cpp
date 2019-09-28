@@ -40,7 +40,7 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -63,16 +63,14 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
   // entities collection
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"entities\" }");
+    auto json = VPackParser::fromJson("{ \"name\": \"entities\" }");
     entities = vocbase.createCollection(json->slice());
     ASSERT_TRUE((nullptr != entities));
   }
 
   // links collection
   {
-    auto json = VPackParser::fromJson(
-        "{ \"name\": \"links\", \"type\": 3 }");
+    auto json = VPackParser::fromJson("{ \"name\": \"links\", \"type\": 3 }");
     links = vocbase.createCollection(json->slice());
     ASSERT_TRUE((nullptr != links));
   }
@@ -247,24 +245,24 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
   // add collection_1
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_1\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
   }
 
   // add collection_2
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_2\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection2));
   }
 
   // add collection_3
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_3\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_3\" }");
     logicalCollection3 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection3));
   }
@@ -276,8 +274,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
   // add logical collection with the same name as view
   {
-    auto collectionJson =
-        VPackParser::fromJson("{ \"name\": \"testView\" }");
+    auto collectionJson = VPackParser::fromJson("{ \"name\": \"testView\" }");
     // TRI_vocbase_t::createCollection(...) throws exception instead of returning a nullptr
     EXPECT_ANY_THROW(vocbase.createCollection(collectionJson->slice()));
   }
@@ -390,8 +387,8 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
   {
     std::string const query =
         "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c  RETURN x";
-    auto const boundParameters = VPackParser::fromJson(
-        "{ \"@dataSource\" : \"collection_1\" }");
+    auto const boundParameters =
+        VPackParser::fromJson("{ \"@dataSource\" : \"collection_1\" }");
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
     EXPECT_TRUE(queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -413,24 +410,24 @@ TEST_F(IResearchQueryJoinTest, test) {
 
   // add collection_1
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_1\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
   }
 
   // add collection_2
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_2\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection2));
   }
 
   // add collection_3
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_3\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_3\" }");
     logicalCollection3 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection3));
   }

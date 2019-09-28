@@ -106,14 +106,13 @@ FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
         Response{destination, Error::Canceled, nullptr});
   }
 
-  arangodb::network::EndpointSpec endpoint;
-
-  int res = resolveDestination(feature, destination, endpoint);
+  arangodb::network::EndpointSpec spec;
+  int res = resolveDestination(feature, destination, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return futures::makeFuture(
         Response{destination, Error::Canceled, nullptr});
   }
-  TRI_ASSERT(!endpoint.empty());
+  TRI_ASSERT(!spec.endpoint.empty());
 
   auto req = prepareRequest(type, path, std::move(payload), timeout, std::move(headers));
 
@@ -126,7 +125,7 @@ FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
     : destination(dest), ref(std::move(r)), promise() {}
   };
   static_assert(sizeof(std::shared_ptr<Pack>) <= 2*sizeof(void*), "does not fit in sfo");
-  auto p = std::make_shared<Pack>(destination, pool->leaseConnection(endpoint));
+  auto p = std::make_shared<Pack>(destination, pool->leaseConnection(spec.endpoint));
 
   auto conn = p->ref.connection();
   auto f = p->promise.getFuture();
@@ -189,8 +188,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;  // we are done
     }
 
-    arangodb::network::EndpointSpec endpoint;
-    int res = resolveDestination(_feature, _destination, endpoint);
+    // actual server endpoint is always re-evaluated
+    arangodb::network::EndpointSpec spec;
+    int res = resolveDestination(_feature, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       callResponse(Error::Canceled, nullptr);
       return;
@@ -206,7 +206,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     auto localTO = std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
     TRI_ASSERT(localTO.count() > 0);
 
-    auto ref = pool->leaseConnection(endpoint);
+    auto ref = pool->leaseConnection(spec.endpoint);
     auto req = prepareRequest(_type, _path, _payload, localTO, _headers);
     auto self = RequestsState::shared_from_this();
     auto cb = [self, ref](fuerte::Error err,

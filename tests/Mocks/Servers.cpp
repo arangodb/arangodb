@@ -417,15 +417,6 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 }
 
 MockV8Server::MockV8Server(bool start) : MockServer() {
-  // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::WARN);
-  // suppress log messages since tests check error conditions
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::FATAL);
-  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
-
   // setup required application features
   SetupV8Phase(*this);
 
@@ -434,26 +425,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   }
 }
 
-MockV8Server::~MockV8Server() {
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::DEFAULT);
-}
-
 MockAqlServer::MockAqlServer(bool start) : MockServer() {
-  // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::WARN);
-  // suppress INFO {cluster} Starting up with role SINGLE
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::ERR);
-  // suppress log messages since tests check error conditions
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::FATAL);
-  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
-
   // setup required application features
   SetupAqlPhase(*this);
 
@@ -464,13 +436,6 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
 
 MockAqlServer::~MockAqlServer() {
   arangodb::AqlFeature(_server).stop();  // unset singleton instance
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                  arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::DEFAULT);
 }
 
 std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransaction() const {
@@ -498,29 +463,12 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::WARN);
-  // suppress log messages since tests check error conditions
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::FATAL);
-  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
-
   addFeature<arangodb::QueryRegistryFeature>(false);
 
   SetupV8Phase(*this);
   if (start) {
     startFeatures();
   }
-}
-
-MockRestServer::~MockRestServer() {
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::DEFAULT);
 }
 
 MockClusterServer::MockClusterServer()
@@ -532,21 +480,6 @@ MockClusterServer::MockClusterServer()
       _agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   _oldRole = arangodb::ServerState::instance()->getRole();
-
-  // Handle logging
-  // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-  // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                  arangodb::LogLevel::ERR);
-
-  // suppress INFO {cluster} Starting up with role PRIMARY
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
-
-  // suppress log messages since tests check error conditions
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::FATAL);
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                  arangodb::LogLevel::FATAL);
-  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 
   // Add features
   SetupAqlPhase(*this);

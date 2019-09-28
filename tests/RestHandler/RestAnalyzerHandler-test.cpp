@@ -21,17 +21,21 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../IResearch/common.h"
 #include "gtest/gtest.h"
 
-#include "../IResearch/RestHandlerMock.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
+
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+
+#include "IResearch/RestHandlerMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Aql/QueryRegistry.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -45,14 +49,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "../Mocks/Servers.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
-
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-
-#include "Logger/LogMacros.h"
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 #define ASSERT_ARANGO_OK(x) \
   { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
@@ -96,7 +95,9 @@ REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::norma
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class RestAnalyzerHandlerTest : public ::testing::Test {
+class RestAnalyzerHandlerTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& _system_vocbase;
@@ -125,15 +126,6 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
         execContext(),
         execContextScope(&execContext),
         queryRegistry(0) {
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 
     userManager->setQueryRegistry(&queryRegistry);
@@ -148,12 +140,6 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     createAnalyzers();
 
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
-  }
-  ~RestAnalyzerHandlerTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   // Creates the analyzers that are used in all the tests
@@ -1074,8 +1060,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
-               expected.size() == slice.get("result").length()))
-      << "expected: " << expected << " got: " << slice.toJson();
+               expected.size() == slice.get("result").length()));
 
   for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
     auto subSlice = *itr;

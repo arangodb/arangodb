@@ -26,17 +26,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
 #include "fakeit.hpp"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/Node.h"
-
 #include "Random/RandomGenerator.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -156,7 +156,8 @@ VPackBuilder createJob(std::string const& server) {
   return builder;
 }
 
-class CleanOutServerTest : public ::testing::Test {
+class CleanOutServerTest : public ::testing::Test,
+                           public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   write_ret_t fakeWriteResult;
@@ -172,14 +173,6 @@ class CleanOutServerTest : public ::testing::Test {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
-                                    arangodb::LogLevel::FATAL);
-  }
-
-  ~CleanOutServerTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

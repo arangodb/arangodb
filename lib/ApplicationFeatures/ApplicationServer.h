@@ -232,7 +232,13 @@ class ApplicationServer {
          _features.emplace(std::type_index(typeid(As)),
                            std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
-     return *dynamic_cast<As*>(result.first->second.get());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+     auto obj = dynamic_cast<As*>(result.first->second.get());
+     TRI_ASSERT(obj != nullptr);
+     return *obj;
+#else
+     return *static_cast<As*>(result.first->second.get());
+#endif
    }
 
    // checks for the existence of a feature by type. will not throw when used
@@ -256,7 +262,13 @@ class ApplicationServer {
      if (it == _features.end()) {
        throwFeatureNotFoundException(type.name());
      }
-     return *dynamic_cast<AsType*>(it->second.get());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+     auto obj = dynamic_cast<AsType*>(it->second.get());
+     TRI_ASSERT(obj != nullptr);
+     return *obj;
+#else
+     return *static_cast<AsType*>(it->second.get());
+#endif
    }
 
    // returns a const reference to a feature. will throw when used for
@@ -269,7 +281,13 @@ class ApplicationServer {
      if (it == _features.end()) {
        throwFeatureNotFoundException(typeid(Type).name());
      }
-     return *dynamic_cast<AsType*>(it->second.get());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+     auto obj = dynamic_cast<AsType*>(it->second.get());
+     TRI_ASSERT(obj != nullptr);
+     return *obj;
+#else
+     return *static_cast<AsType*>(it->second.get());
+#endif
    }
 
    // returns the feature with the given name if known and enabled
