@@ -450,7 +450,6 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 set(LIB_ARANGO_AGENCY_SOURCES
   Agency/AgentConfiguration.cpp
   Agency/ResignLeadership.cpp
-  Agency/StoreCallback.cpp
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp

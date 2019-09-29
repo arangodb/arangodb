@@ -287,7 +287,7 @@ class Buffer {
 };
 
 typedef Buffer<char> CharBuffer;
-typedef Buffer<char> UInt8Buffer;
+typedef Buffer<uint8_t> UInt8Buffer;
 
 template<typename T>
 struct BufferNonDeleter {

@@ -27,11 +27,11 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 
 #include <chrono>
-#include <numeric>
 #include <thread>
 
 using namespace arangodb::consensus;

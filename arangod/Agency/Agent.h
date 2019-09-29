@@ -26,7 +26,6 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
-#include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Compactor.h"
@@ -149,7 +148,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void resign(term_t otherTerm = 0);
 
   /// @brief collect store callbacks for removal
-  void trashStoreCallback(std::string const& url, query_t const& body);
+  void trashStoreCallback(std::string const& url, velocypack::Slice body);
 
  private:
 
