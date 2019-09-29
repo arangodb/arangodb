@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -64,10 +65,17 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   VPackSlice shardKeysSlice = info.get(StaticStrings::ShardKeys);
   if (ServerState::instance()->isCoordinator()) {
-    if ((_numberOfShards == 0 && !isSmart) || _numberOfShards > 1000) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid number of shards");
+    if (_numberOfShards == 0 && !isSmart) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid number of shards");
     }
+    // intentionally no call to validateNumberOfShards here,
+    // because this constructor is called from the constructor of
+    // LogicalCollection, and we want LogicalCollection to be created
+    // with any configured number of shards in case the maximum allowed
+    // number of shards is set or decreased in a cluster with already
+    // existing collections that would violate the setting.
+    // so we validate the number of shards against the maximum only
+    // when a collection is created by a user, and on a restore
   }
 
   VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
@@ -460,4 +468,23 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
                                       VPackStringRef const& key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
+}
+
+Result ShardingInfo::validateNumberOfShards(arangodb::velocypack::Slice slice,
+                                            application_features::ApplicationServer& server) {
+  Result res;
+
+  auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
+  if (numberOfShardsSlice.isNumber()) {
+    auto& cl = server.getFeature<ClusterFeature>();
+    uint32_t const maxNumberOfShards = cl.maxNumberOfShards();
+    uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
+    if (maxNumberOfShards > 0 &&
+        numberOfShards > maxNumberOfShards) {
+      res.reset(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
+                std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
+    }
+  }
+
+  return res;
 }

@@ -1,6 +1,14 @@
 devel
 -----
 
+* Added option `--cluster.max-number-of-shards` for restricting the 
+  maximum number of shards when creating new collections. The default
+  value for this setting is `1000`, which is also the previously hard-coded
+  built-in limit. A value of `0` for this option means "unrestricted".
+  When the setting is adjusted, it will not affect already existing
+  collections, but only collections that are created or restored
+  afterwards.
+
 * Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
   in the cluster. It now also may speed up fullCount with sorted indexes and a
   limit.

@@ -70,6 +70,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _systemReplicationFactor = 2;
   std::uint32_t _defaultReplicationFactor = 1; // default replication factor for non-system collections
   std::uint32_t _minReplicationFactor = 1;     // default minimum replication factor
+  std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
 
@@ -94,6 +95,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t systemReplicationFactor() const { return _systemReplicationFactor; };
   std::uint32_t defaultReplicationFactor() const { return _defaultReplicationFactor; };
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; };
+  std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; };
 
   void stop() override final;
 

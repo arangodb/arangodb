@@ -145,6 +145,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--cluster.max-number-of-shards",
+                     "maximum number of shards when creating new collections (0 = unrestricted)",
+                     new UInt32Parameter(&_maxNumberOfShards)).setIntroducedIn(30502).setIntroducedIn(30600);
 
   options->addOption(
       "--cluster.index-create-timeout",

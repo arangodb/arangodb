@@ -44,6 +44,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
@@ -278,6 +279,12 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                arangodb::velocypack::Value(info.name));
 
     if (ServerState::instance()->isCoordinator()) {
+      // will throw if the number of shards in slice is higher than configured
+      Result res = ShardingInfo::validateNumberOfShards(info.properties, vocbase.server());
+      if (res.fail()) {
+        return res;
+      }
+      
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
@@ -296,7 +303,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
       // system collections will be sharded normally - we avoid a self reference when creating _graphs
       if (vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
-        if(!hasDistribute) {
+        if (!hasDistribute) {
           helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
           hasDistribute = true;
         } else if (distribute.isString() && distribute.compareString("") == 0) {

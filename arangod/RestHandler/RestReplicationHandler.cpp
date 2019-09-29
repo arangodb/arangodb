@@ -49,6 +49,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1087,6 +1088,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
     // we don't care about deleted collections
     return Result();
+  }
+  
+  Result res = ShardingInfo::validateNumberOfShards(parameters, _vocbase.server());
+  if (res.fail()) {
+    return res;
   }
 
   auto& dbName = _vocbase.name();
