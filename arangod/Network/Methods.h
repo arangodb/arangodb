@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
+#include "Network/ConnectionPool.h"
 
 #include <fuerte/message.h>
 #include <velocypack/Buffer.h>
@@ -35,13 +36,26 @@ namespace arangodb {
 class ClusterInfo;
 
 namespace network {
-class ConnectionPool;
 
 /// Response data structure
 struct Response {
   DestinationId destination;
   fuerte::Error error;  /// connectivity error
   std::unique_ptr<arangodb::fuerte::Response> response;
+  
+  bool ok() const {
+    return fuerte::Error::NoError == this->error;
+  }
+  
+  bool fail() const { return !ok(); }
+    
+  // returns a slice of the payload if there was no error
+  velocypack::Slice slice() const {
+    if (error == fuerte::Error::NoError && response) {
+      return response->slice();
+    }
+    return velocypack::Slice(); // none slice
+  }
   
  public:
   std::string destinationShard() const; /// @brief shardId or empty

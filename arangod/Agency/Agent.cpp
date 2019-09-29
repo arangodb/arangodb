@@ -30,7 +30,6 @@
 #include <thread>
 
 #include "Agency/AgentCallback.h"
-#include "Agency/GossipCallback.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -1707,10 +1706,9 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Add whatever is missing in our list.
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
-query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
-  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << in->slice().toJson();
+query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
+  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << slice.toJson();
 
-  VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20001,

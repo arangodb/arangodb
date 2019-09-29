@@ -24,6 +24,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -84,17 +85,17 @@ std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix)
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix +
          prefix + "/";
 }
-
-void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
-      LOG_TOPIC("16eb0", ERR, Logger::PREGEL)
-          << "Error sending request to " << req.destination
-          << ". Payload: " << res.answer->payload().toJson();
-    }
-  }
-}
+//
+//void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
+//  for (auto const& req : requests) {
+//    auto& res = req.result;
+//    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
+//      LOG_TOPIC("16eb0", ERR, Logger::PREGEL)
+//          << "Error sending request to " << req.destination
+//          << ". Payload: " << res.answer->payload().toJson();
+//    }
+//  }
+//}
 
 int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                         std::string const& collectionName, std::string const& shardKey,

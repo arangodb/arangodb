@@ -179,7 +179,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
+  query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();
