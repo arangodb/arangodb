@@ -236,13 +236,6 @@ bool Inception::restartingActiveAgent() {
     return false;
   }
 
-  auto cc = ClusterComm::instance();
-
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return false;
-  }
-
   LOG_TOPIC("d7476", INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
 
   using namespace std::chrono;
@@ -264,6 +257,9 @@ bool Inception::restartingActiveAgent() {
 
   seconds const timeout(3600);
   long waitInterval(500000);
+  
+  auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   CONDITION_LOCKER(guard, _cv);
 
@@ -281,12 +277,9 @@ bool Inception::restartingActiveAgent() {
 
     auto gp = myConfig.gossipPeers();
     std::vector<std::string> informed;
-    
-    auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
-    network::ConnectionPool* cp = nf.pool();
 
     for (std::string const& p : gp) {
-      if (this->isStopping() && _agent.isStopping() && cc == nullptr) {
+      if (this->isStopping() || _agent.isStopping()) {
         return false;
       }
       
@@ -318,10 +311,9 @@ bool Inception::restartingActiveAgent() {
       active.erase(std::remove(active.begin(), active.end(), i), active.end());
     }
     
-
     for (auto& p : pool) {
       if (p.first != myConfig.id() && p.first != "") {
-        if (this->isStopping() || _agent.isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent.isStopping()) {
           return false;
         }
         
@@ -347,7 +339,7 @@ bool Inception::restartingActiveAgent() {
 
               // Contact leader to update endpoint
               if (theirLeaderId != theirId) {
-                if (this->isStopping() || _agent.isStopping() || cc == nullptr) {
+                if (this->isStopping() || _agent.isStopping()) {
                   return false;
                 }
                 
