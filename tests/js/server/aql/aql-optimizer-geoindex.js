@@ -128,7 +128,7 @@ function legacyOptimizerRuleTestSuite() {
     },
 
     testLegacyRuleBasics : function () {
-      if(enabled.basics){
+      if (enabled.basics) {
         geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
         var queries = [
@@ -219,7 +219,7 @@ function legacyOptimizerRuleTestSuite() {
     }, // testRuleBasics
 
     testLegacyRuleRemoveNodes : function () {
-      if(enabled.removeNodes){
+      if (enabled.removeNodes) {
         var queries = [
           [ "FOR d IN " + colName  + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName  + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
@@ -250,8 +250,8 @@ function legacyOptimizerRuleTestSuite() {
       }
     }, // testRuleSort
 
-    testLegacyRuleSorted : function(){
-      if(enabled.sorted){
+    testLegacyRuleSorted : function() {
+      if (enabled.sorted) {
         var old=0;
         var query = "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) RETURN distance(d.lat, d.lon, 0, 0)";
         var result = AQL_EXECUTE(query);
