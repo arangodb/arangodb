@@ -54,8 +54,6 @@ icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpre
   return _query->regexCache()->buildSplitMatcher(splitExpression, trx, isEmptyExpression);
 }
 
-bool QueryExpressionContext::killed() const { return _query->killed(); }
-
 TRI_vocbase_t& QueryExpressionContext::vocbase() const {
   return _query->vocbase();
 }

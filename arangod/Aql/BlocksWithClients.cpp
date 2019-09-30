@@ -77,7 +77,9 @@ BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode cons
 }
 
 std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
-  throwIfKilled();  // check if we were aborted
+  if (_engine->getQuery()->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 
   auto res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
@@ -127,11 +129,6 @@ size_t BlocksWithClients::getClientId(std::string const& shardId) const {
   return it->second;
 }
 
-void BlocksWithClients::throwIfKilled() {
-  if (_engine->getQuery()->killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}
 std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClients::getSome(size_t) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
