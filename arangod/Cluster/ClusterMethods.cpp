@@ -3995,7 +3995,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
-    BackupMeta meta(backupId, "", timeStamp, 0, 0, dbServers.size(), "", !gotLocks);   // Temporary
+    BackupMeta meta(backupId, "", timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
     result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(),
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
