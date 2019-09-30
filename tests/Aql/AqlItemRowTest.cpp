@@ -312,74 +312,135 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
 }
 
-TEST_F(AqlItemRowsTest, input_row_eq_operators) {
+static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
+
+template <class RowType>
+class AqlItemRowsCommonEqTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+};
+
+using RowTypes = ::testing::Types<InputAqlItemRow, ShadowAqlItemRow>;
+
+TYPED_TEST_CASE(AqlItemRowsCommonEqTest, RowTypes);
+
+TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
+  using RowType = TypeParam;
+  // We use the same value (and shadow row depth) for all rows, so we surely
+  // test identicality.
   SharedAqlItemBlockPtr block =
-      buildBlock<1>(itemBlockManager, {{{0}}, {{0}}});
+      buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
   SharedAqlItemBlockPtr otherBlock =
-      buildBlock<1>(itemBlockManager, {{{0}}});
+      buildBlock<1>(this->itemBlockManager, {{{0}}});
+  if (std::is_same<RowType, ShadowAqlItemRow>::value) {
+    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+    block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+    otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+  }
 
   // same rows must be equal
-  EXPECT_TRUE((InputAqlItemRow{block, 0}.operator==(InputAqlItemRow{block, 0})));
-  EXPECT_TRUE((InputAqlItemRow{block, 0} == InputAqlItemRow{block, 0}));
-  EXPECT_TRUE((InputAqlItemRow{block, 1}.operator==(InputAqlItemRow{block, 1})));
-  EXPECT_TRUE((InputAqlItemRow{block, 1} == InputAqlItemRow{block, 1}));
-  EXPECT_FALSE((InputAqlItemRow{block, 0}.operator!=(InputAqlItemRow{block, 0})));
-  EXPECT_FALSE((InputAqlItemRow{block, 0} != InputAqlItemRow{block, 0}));
-  EXPECT_FALSE((InputAqlItemRow{block, 1}.operator!=(InputAqlItemRow{block, 1})));
-  EXPECT_FALSE((InputAqlItemRow{block, 1} != InputAqlItemRow{block, 1}));
+  EXPECT_TRUE((RowType{block, 0}.operator==(RowType{block, 0})));
+  EXPECT_TRUE((RowType{block, 0} == RowType{block, 0}));
+  EXPECT_TRUE((RowType{block, 1}.operator==(RowType{block, 1})));
+  EXPECT_TRUE((RowType{block, 1} == RowType{block, 1}));
+  EXPECT_FALSE((RowType{block, 0}.operator!=(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 0} != RowType{block, 0}));
+  EXPECT_FALSE((RowType{block, 1}.operator!=(RowType{block, 1})));
+  EXPECT_FALSE((RowType{block, 1} != RowType{block, 1}));
 
   // different rows in the same block must be non-equal
-  EXPECT_FALSE((InputAqlItemRow{block, 0}.operator==(InputAqlItemRow{block, 1})));
-  EXPECT_FALSE((InputAqlItemRow{block, 0} == InputAqlItemRow{block, 1}));
-  EXPECT_FALSE((InputAqlItemRow{block, 1}.operator==(InputAqlItemRow{block, 0})));
-  EXPECT_FALSE((InputAqlItemRow{block, 1} == InputAqlItemRow{block, 0}));
-  EXPECT_TRUE((InputAqlItemRow{block, 0}.operator!=(InputAqlItemRow{block, 1})));
-  EXPECT_TRUE((InputAqlItemRow{block, 0} != InputAqlItemRow{block, 1}));
-  EXPECT_TRUE((InputAqlItemRow{block, 1}.operator!=(InputAqlItemRow{block, 0})));
-  EXPECT_TRUE((InputAqlItemRow{block, 1} != InputAqlItemRow{block, 0}));
+  EXPECT_FALSE((RowType{block, 0}.operator==(RowType{block, 1})));
+  EXPECT_FALSE((RowType{block, 0} == RowType{block, 1}));
+  EXPECT_FALSE((RowType{block, 1}.operator==(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 1} == RowType{block, 0}));
+  EXPECT_TRUE((RowType{block, 0}.operator!=(RowType{block, 1})));
+  EXPECT_TRUE((RowType{block, 0} != RowType{block, 1}));
+  EXPECT_TRUE((RowType{block, 1}.operator!=(RowType{block, 0})));
+  EXPECT_TRUE((RowType{block, 1} != RowType{block, 0}));
 
   // rows in different blocks must be non-equal
-  EXPECT_FALSE((InputAqlItemRow{block, 0}.operator==(InputAqlItemRow{otherBlock, 0})));
-  EXPECT_FALSE((InputAqlItemRow{block, 0} == InputAqlItemRow{otherBlock, 0}));
-  EXPECT_FALSE((InputAqlItemRow{block, 1}.operator==(InputAqlItemRow{otherBlock, 0})));
-  EXPECT_FALSE((InputAqlItemRow{block, 1} == InputAqlItemRow{otherBlock, 0}));
-  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0}.operator==(InputAqlItemRow{block, 0})));
-  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0} == InputAqlItemRow{block, 0}));
-  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0}.operator==(InputAqlItemRow{block, 1})));
-  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0} == InputAqlItemRow{block, 1}));
-  EXPECT_TRUE((InputAqlItemRow{block, 0}.operator!=(InputAqlItemRow{otherBlock, 0})));
-  EXPECT_TRUE((InputAqlItemRow{block, 0} != InputAqlItemRow{otherBlock, 0}));
-  EXPECT_TRUE((InputAqlItemRow{block, 1}.operator!=(InputAqlItemRow{otherBlock, 0})));
-  EXPECT_TRUE((InputAqlItemRow{block, 1} != InputAqlItemRow{otherBlock, 0}));
-  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0}.operator!=(InputAqlItemRow{block, 0})));
-  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0} != InputAqlItemRow{block, 0}));
-  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0}.operator!=(InputAqlItemRow{block, 1})));
-  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0} != InputAqlItemRow{block, 1}));
+  EXPECT_FALSE((RowType{block, 0}.operator==(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{block, 0} == RowType{otherBlock, 0}));
+  EXPECT_FALSE((RowType{block, 1}.operator==(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{block, 1} == RowType{otherBlock, 0}));
+  EXPECT_FALSE((RowType{otherBlock, 0}.operator==(RowType{block, 0})));
+  EXPECT_FALSE((RowType{otherBlock, 0} == RowType{block, 0}));
+  EXPECT_FALSE((RowType{otherBlock, 0}.operator==(RowType{block, 1})));
+  EXPECT_FALSE((RowType{otherBlock, 0} == RowType{block, 1}));
+  EXPECT_TRUE((RowType{block, 0}.operator!=(RowType{otherBlock, 0})));
+  EXPECT_TRUE((RowType{block, 0} != RowType{otherBlock, 0}));
+  EXPECT_TRUE((RowType{block, 1}.operator!=(RowType{otherBlock, 0})));
+  EXPECT_TRUE((RowType{block, 1} != RowType{otherBlock, 0}));
+  EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 0})));
+  EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 0}));
+  EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 1})));
+  EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 1}));
 }
 
-TEST_F(AqlItemRowsTest, input_row_equivalence) {
+TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
+  using RowType = TypeParam;
   SharedAqlItemBlockPtr block =
-      buildBlock<1>(itemBlockManager, {{{0}}, {{1}}});
+      buildBlock<1>(this->itemBlockManager, {{{0}}, {{1}}});
   SharedAqlItemBlockPtr otherBlock =
-      buildBlock<1>(itemBlockManager, {{{1}}});
+      buildBlock<1>(this->itemBlockManager, {{{1}}});
+  if (std::is_same<RowType, ShadowAqlItemRow>::value) {
+    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+    block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+    otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+  }
 
   // same rows must be considered equivalent
-  EXPECT_TRUE((InputAqlItemRow{block, 0}.equates(InputAqlItemRow{block, 0})));
-  EXPECT_TRUE((InputAqlItemRow{block, 1}.equates(InputAqlItemRow{block, 1})));
+  EXPECT_TRUE((RowType{block, 0}.equates(RowType{block, 0})));
+  EXPECT_TRUE((RowType{block, 1}.equates(RowType{block, 1})));
 
   // different rows must be non-equivalent
-  EXPECT_FALSE((InputAqlItemRow{block, 0}.equates(InputAqlItemRow{block, 1})));
-  EXPECT_FALSE((InputAqlItemRow{block, 1}.equates(InputAqlItemRow{block, 0})));
+  EXPECT_FALSE((RowType{block, 0}.equates(RowType{block, 1})));
+  EXPECT_FALSE((RowType{block, 1}.equates(RowType{block, 0})));
 
   // different row in different block must be non-equivalent, even with the same index
-  EXPECT_FALSE((InputAqlItemRow{block, 0}.equates(InputAqlItemRow{otherBlock, 0})));
-  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0}.equates(InputAqlItemRow{block, 0})));
+  EXPECT_FALSE((RowType{block, 0}.equates(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{otherBlock, 0}.equates(RowType{block, 0})));
 
   // an equivalent row in a different block must be considered equivalent, even with a different index
-  EXPECT_TRUE((InputAqlItemRow{block, 1}.equates(InputAqlItemRow{otherBlock, 0})));
-  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0}.equates(InputAqlItemRow{block, 1})));
+  EXPECT_TRUE((RowType{block, 1}.equates(RowType{otherBlock, 0})));
+  EXPECT_TRUE((RowType{otherBlock, 0}.equates(RowType{block, 1})));
 }
 
+class AqlShadowRowsEqTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+};
+
+TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
+  // In this test, we check for (non-)equivalence of shadow row depth.
+  // This is essentially the same test as (AqlItemRowsCommonEqTest, row_equivalence),
+  // but instead of the values differing, the shadow row depth does.
+  SharedAqlItemBlockPtr block =
+      buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
+  SharedAqlItemBlockPtr otherBlock =
+      buildBlock<1>(this->itemBlockManager, {{{0}}});
+  block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+  block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{1}});
+  otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{1}});
+
+  // same rows must be considered equivalent
+  EXPECT_TRUE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0})));
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 1})));
+
+  // different rows must be non-equivalent
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 1})));
+  EXPECT_FALSE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 0})));
+
+  // different row in different block must be non-equivalent, even with the same index
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{otherBlock, 0})));
+  EXPECT_FALSE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 0})));
+
+  // an equivalent row in a different block must be considered equivalent, even with a different index
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{otherBlock, 0})));
+  EXPECT_TRUE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 1})));
+}
 
 }  // namespace aql
 }  // namespace tests
