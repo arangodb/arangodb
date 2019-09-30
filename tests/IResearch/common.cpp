@@ -304,25 +304,6 @@ void init(bool withICU /*= false*/) {
   }
 }
 
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
-void v8Init() {
-  struct init_t {
-    std::shared_ptr<v8::Platform> platform;
-    init_t() {
-      platform = std::shared_ptr<v8::Platform>(v8::platform::CreateDefaultPlatform(),
-                                               [](v8::Platform* p) -> void {
-                                                 v8::V8::Dispose();
-                                                 v8::V8::ShutdownPlatform();
-                                                 delete p;
-                                               });
-      v8::V8::InitializePlatform(platform.get());  // avoid SIGSEGV duing 8::Isolate::New(...)
-      v8::V8::Initialize();  // avoid error: "Check failed: thread_data_table_"
-    }
-  };
-  static const init_t init;
-  (void)(init);
-}
-
 bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
                  std::vector<int> expectedRulesIds,
                  std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,

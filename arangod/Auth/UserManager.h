@@ -105,6 +105,8 @@ class UserManager {
   Result storeUser(bool replace, std::string const& user, std::string const& pass,
                    bool active, velocypack::Slice extras);
 
+  Result storeUser(auth::User const&);
+
   /// Enumerate list of all users
   Result enumerateUsers(std::function<bool(auth::User&)>&&, bool retryOnConflict);
 

@@ -23,9 +23,9 @@
 
 #include "gtest/gtest.h"
 
-#include "../Helper/TestHelper.h"
 #include "../IResearch/common.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Helper/TestHelper.h"
+#include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 
@@ -61,18 +61,16 @@ constexpr arangodb::auth::Level RO = arangodb::auth::Level::RO;
 
 class V8UsersTest : public ::testing::Test {
  public:
-  static arangodb::TestHelper helper;
+  static arangodb::tests::TestHelper helper;
 
  protected:
-  std::unique_ptr<arangodb::ExecContext> exec;
+  arangodb::ExecContext* exec;
   arangodb::ExecContext::Scope execContextScope;
 
-  V8UsersTest()
-      : exec(helper
-                 .createExecContext(arangodb::auth::AuthUser{USERNAME},
-                                    arangodb::auth::DatabaseResource{DB_NAME})
-                 .release()),
-        execContextScope(exec.get()) {
+  V8UsersTest() : 
+    exec(helper.createExecContext(arangodb::auth::AuthUser{USERNAME},
+				  arangodb::auth::DatabaseResource{DB_NAME})),
+    execContextScope(exec) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
@@ -85,11 +83,11 @@ class V8UsersTest : public ::testing::Test {
   }
 
   static void SetUpTestSuite() {
-    helper.mockDatabase();
+    helper.viewFactoryInit(helper.mockAqlServerInit());
 
     vocbase = helper.createDatabase(DB_NAME);
 
-    helper.setupV8();
+    helper.v8Setup(vocbase);
 
     auto v8isolate = helper.v8Isolate();
     auto v8g = helper.v8Globals();
@@ -98,6 +96,7 @@ class V8UsersTest : public ::testing::Test {
 
     auto arangoUsers =
         v8::Local<v8::ObjectTemplate>::New(v8isolate, v8g->UsersTempl)->NewInstance();
+
     auto fn_grantCollection =
         arangoUsers->Get(TRI_V8_ASCII_STRING(v8isolate, "grantCollection"));
     EXPECT_TRUE((fn_grantCollection->IsFunction()));
@@ -133,10 +132,10 @@ class V8UsersTest : public ::testing::Test {
     };
   }
 
-  void TearDownTestSuite() { helper.unmockDatabase(); }
+  void TearDownTestSuite() {}
 };
 
-arangodb::TestHelper V8UsersTest::helper;
+arangodb::tests::TestHelper V8UsersTest::helper;
 
 // -----------------------------------------------------------------------------
 // test auth missing (grant)

@@ -35,7 +35,7 @@ namespace auth {
 enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
 
 // Supported source types of users sources
-enum class Source : char { Local, LDAP, TEST };
+enum class Source : char { Local, LDAP, Test };
 
 auth::Level convertToAuthLevel(velocypack::Slice grants);
 auth::Level convertToAuthLevel(std::string const& grant);

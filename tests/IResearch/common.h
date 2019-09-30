@@ -86,11 +86,6 @@ std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
   return std::shared_ptr<T>(oldValue, [location](T* p) -> void { *location = p; });
 }
 
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
-void v8Init();
-
-v8::Isolate* v8Isolate();
-
 bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
                  std::vector<int> expectedRulesIds,
                  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,

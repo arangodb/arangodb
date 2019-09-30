@@ -253,6 +253,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   if (entry.source() != auth::Source::Local) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
+
   if (!IsRole(entry.username()) && entry.username() != "root") {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     TRI_ASSERT(af != nullptr);
@@ -471,6 +472,14 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
     triggerGlobalReload();
   }
   return r;
+}
+
+Result auth::UserManager::storeUser(auth::User const& user) {
+  if (user.source() != auth::Source::Test) {
+    return Result(TRI_ERROR_USER_INVALID_NAME);
+  }
+
+  return storeUserInternal(user, true);
 }
 
 Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func,

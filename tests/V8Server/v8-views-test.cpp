@@ -27,6 +27,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../Helper/TestHelper.h"
 #include "../IResearch/common.h"
 #include "Mocks/Servers.h"
 
@@ -125,7 +126,7 @@ class V8ViewsTest : public ::testing::Test {
   ViewFactory viewFactory;
 
   V8ViewsTest() {
-    arangodb::tests::v8Init();  // on-time initialize V8
+    arangodb::tests::TestHelper::v8Init();  // on-time initialize V8
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
