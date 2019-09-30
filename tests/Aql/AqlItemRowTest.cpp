@@ -24,6 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemRowPrinter.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"

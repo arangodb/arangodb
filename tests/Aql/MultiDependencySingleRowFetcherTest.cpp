@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
+#include "AqlItemRowPrinter.h"
 #include "DependencyProxyMock.h"
 #include "MultiDepFetcherHelper.h"
 #include "gtest/gtest.h"
@@ -1010,9 +1011,9 @@ TEST_F(MultiDependencySingleRowFetcherTest, shadow_rows_2_deps) {
   auto const dep2row4 = InputAqlItemRow{block1Dep2, 0};
   auto const dep2row6 = InputAqlItemRow{block1Dep2, 2};
   auto const shadowRow1 = ShadowAqlItemRow{block1Dep1, 1};
-  ASSERT_EQ(shadowRow1, (ShadowAqlItemRow{block1Dep2, 1}));
+  ASSERT_TRUE(shadowRow1.equates (ShadowAqlItemRow{block1Dep2, 1}));
   auto const shadowRow3 = ShadowAqlItemRow{block1Dep1, 3};
-  ASSERT_EQ(shadowRow3, (ShadowAqlItemRow{block1Dep2, 3}));
+  ASSERT_TRUE(shadowRow3.equates (ShadowAqlItemRow{block1Dep2, 3}));
 
   MultiDependencySingleRowFetcher testee{dependencyProxyMock};
   testee.initDependencies();
