@@ -34,6 +34,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortExecutor.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -78,23 +80,26 @@ template <bool passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
-  TRI_ASSERT(_nrCalled <= _nrItems);
+  TRI_ASSERT(_nrReturned <= _nrItems);
   if (wait()) {
     // if once DONE is returned, always return DONE
-    if (_returnedDone) {
+    if (_returnedDoneOnFetchRow) {
       return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   _nrCalled++;
-  if (_nrCalled > _nrItems) {
-    _returnedDone = true;
+  if (_nrReturned >= _nrItems) {
+    _returnedDoneOnFetchRow = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   auto res = SingleRowFetcher<passBlocksThrough>::fetchRow();
+  if (res.second.isInitialized()) {
+    _nrReturned++;
+  }
   nextRow();
   if (res.first == ExecutionState::DONE) {
-    _returnedDone = true;
+    _returnedDoneOnFetchRow = true;
   }
   return res;
 }
@@ -103,23 +108,27 @@ template <bool passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
 std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchShadowRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
-  TRI_ASSERT(_nrCalled <= _nrItems);
+  TRI_ASSERT(_nrReturned <= _nrItems);
   if (wait()) {
     // if once DONE is returned, always return DONE
-    if (_returnedDone) {
+    if (_returnedDoneOnFetchShadowRow) {
       return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
     }
     return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
   }
   _nrCalled++;
-  if (_nrCalled > _nrItems) {
-    _returnedDone = true;
-    return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  // Allow for a shadow row
+  if (_nrReturned >= _nrItems) {
+     _returnedDoneOnFetchShadowRow = true;
+     return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
   }
   auto res = SingleRowFetcher<passBlocksThrough>::fetchShadowRow();
-  _curRowIndex++;
+  if (res.second.isInitialized()) {
+    _nrReturned++;
+  }
+  nextRow();
   if (res.first == ExecutionState::DONE) {
-    _returnedDone = true;
+    _returnedDoneOnFetchShadowRow = true;
   }
   return res;
 }

@@ -80,6 +80,8 @@ class SingleRowFetcherHelper
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 
   uint64_t nrCalled() { return _nrCalled; }
+  uint64_t nrReturned() { return _nrReturned; }
+  uint64_t nrItems() { return _nrItems; }
 
   size_t totalSkipped() const { return _totalSkipped; }
 
@@ -90,11 +92,11 @@ class SingleRowFetcherHelper
 
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
 
-  bool isDone() const { return _returnedDone; }
-
   arangodb::aql::AqlItemBlockManager& itemBlockManager() {
     return _itemBlockManager;
   }
+
+  bool isDone() const { return _returnedDoneOnFetchRow; };
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr& getItemBlock() { return _itemBlock; }
@@ -120,10 +122,12 @@ class SingleRowFetcherHelper
   }
 
  private:
-  bool _returnedDone = false;
+  bool _returnedDoneOnFetchRow = false;
+  bool _returnedDoneOnFetchShadowRow = false;
   bool const _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrCalled{};
+  uint64_t _nrReturned{};
   size_t _skipped{};
   size_t _totalSkipped{};
   size_t _curIndexInBlock{};
