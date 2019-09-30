@@ -291,7 +291,28 @@ function findTestCases(options) {
   return [found, allTestFiles];
 }
 
+function isClusterTest(options) {
+  let rc = false;
+  if (!options.hasOwnProperty('test') || (typeof (options.test) !== 'undefined')) {
+    if (typeof (options.test) === 'string') {
+      rc = (options.test.search('-cluster') >= 0);
+    } else {
+      options.test.forEach(
+        filter => {
+          if (filter.search('-cluster') >= 0) {
+            rc = true;
+          }
+        }
+      );
+    }
+  }
+  return rc;
+}
+
 function findTest(options) {
+  if (isClusterTest(options)) {
+    options.cluster = true;
+  }
   let rc = findTestCases(options);
   if (rc[0]) {
     print(rc[1]);
@@ -343,6 +364,9 @@ function autoTest(options) {
         }
       }
     };
+  }
+  if (isClusterTest(options)) {
+    options.cluster = true;
   }
   let rc = findTestCases(options);
   if (rc[0]) {
