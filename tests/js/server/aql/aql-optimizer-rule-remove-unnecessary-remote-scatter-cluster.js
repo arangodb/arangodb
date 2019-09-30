@@ -60,7 +60,7 @@ function optimizerRuleTestSuite () {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAall : function () {
+    setUpAll : function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
