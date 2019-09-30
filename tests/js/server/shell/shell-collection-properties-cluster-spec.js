@@ -119,7 +119,6 @@ describe('Update collection properties', function() {
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
-          print(e);
             expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
         }
 
