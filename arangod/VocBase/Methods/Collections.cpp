@@ -584,6 +584,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto info = ci->getCollection(collection.vocbase().name(),
                                   std::to_string(collection.id()));
 
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(props);
+    if (res.fail()) {
+      return res;
+    }
+    
     return info->properties(props, partialUpdate);
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
