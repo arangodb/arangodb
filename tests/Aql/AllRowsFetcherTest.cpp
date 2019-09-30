@@ -377,31 +377,33 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
 namespace fetcherHelper {
 template <>
 void PullAndAssertDataRows<AllRowsFetcher>(AllRowsFetcher& testee,
-                                           std::vector<std::string> dataResults) {
+                                           std::vector<std::string> const& dataResults) {
   AqlItemMatrix const* matrix = nullptr;
   ExecutionState state = ExecutionState::HASMORE;
 
   // Fetch all rows until done
   std::tie(state, matrix) = testee.fetchAllRows();
   EXPECT_EQ(state, ExecutionState::DONE);
-  ASSERT_NE(matrix, nullptr);
+  if (!dataResults.empty() || matrix != nullptr) {
+    ASSERT_NE(matrix, nullptr);
 
-  // Assert that all rows come out in order and only these
-  EXPECT_EQ(matrix->size(), dataResults.size());
-  auto rowIndexes = matrix->produceRowIndexes();
-  ASSERT_EQ(rowIndexes.size(), dataResults.size());
+    // Assert that all rows come out in order and only these
+    EXPECT_EQ(matrix->size(), dataResults.size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(rowIndexes.size(), dataResults.size());
 
-  for (size_t i = 0; i < rowIndexes.size(); ++i) {
-    auto row = matrix->getRow(rowIndexes[i]);
-    ASSERT_TRUE(row.isInitialized());
-    EXPECT_TRUE(row.getValue(0).slice().isEqualString(dataResults[i]));
+    for (size_t i = 0; i < rowIndexes.size(); ++i) {
+      auto row = matrix->getRow(rowIndexes[i]);
+      ASSERT_TRUE(row.isInitialized());
+      EXPECT_TRUE(row.getValue(0).slice().isEqualString(dataResults[i]));
+    }
   }
 
   AqlItemMatrix const* nextMatrix;
   // Now assert that we will forever stay in the DONE state and do not move on.
   std::tie(state, nextMatrix) = testee.fetchAllRows();
   EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(nextMatrix, matrix);
+  EXPECT_EQ(nextMatrix, nullptr);
 }
 }  // namespace fetcherHelper
 
@@ -410,6 +412,7 @@ TEST_SHADOWROW_PATTERN_2(AllRowsFetcher, AllRowsFetcherPattern2Test);
 TEST_SHADOWROW_PATTERN_3(AllRowsFetcher, AllRowsFetcherPattern3Test);
 TEST_SHADOWROW_PATTERN_4(AllRowsFetcher, AllRowsFetcherPattern4Test);
 TEST_SHADOWROW_PATTERN_5(AllRowsFetcher, AllRowsFetcherPattern5Test);
+TEST_SHADOWROW_PATTERN_6(AllRowsFetcher, AllRowsFetcherPattern6Test);
 
 }  // namespace aql
 }  // namespace tests

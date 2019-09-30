@@ -32,12 +32,16 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
+  if (_dataFetched) {
+    return {ExecutionState::DONE, nullptr};
+  }
   // Avoid unnecessary upstream calls
-  _dataFetched = true;
+
   auto state = fetchData();
   if (state == ExecutionState::WAITING) {
     return {state, nullptr};
   }
+  _dataFetched = true;
   return {state, _aqlItemMatrix.get()};
 }
 
@@ -171,7 +175,8 @@ std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_
       _dataFetched = false;
     }
   }
-  if (_aqlItemMatrix->size() > 0 || _aqlItemMatrix->stoppedOnShadowRow()) {
+  if (!_dataFetched &&
+      (_aqlItemMatrix->size() > 0 || _aqlItemMatrix->stoppedOnShadowRow())) {
     state = ExecutionState::HASMORE;
   }
   return {state, row};

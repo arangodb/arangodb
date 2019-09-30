@@ -1148,7 +1148,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
 namespace fetcherHelper {
 template <>
 void PullAndAssertDataRows<SingleRowFetcher<false>>(SingleRowFetcher<false>& testee,
-                                                    std::vector<std::string> dataResults) {
+                                                    std::vector<std::string> const& dataResults) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
 
@@ -1175,6 +1175,7 @@ TEST_SHADOWROW_PATTERN_2(MyFetcher, SingleRowFetcherPattern2Test);
 TEST_SHADOWROW_PATTERN_3(MyFetcher, SingleRowFetcherPattern3Test);
 TEST_SHADOWROW_PATTERN_4(MyFetcher, SingleRowFetcherPattern4Test);
 TEST_SHADOWROW_PATTERN_5(MyFetcher, SingleRowFetcherPattern5Test);
+TEST_SHADOWROW_PATTERN_6(MyFetcher, SingleRowFetcherPattern6Test);
 
 }  // namespace aql
 }  // namespace tests

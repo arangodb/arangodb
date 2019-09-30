@@ -68,7 +68,7 @@ static std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::Share
 /// of DataRows For simplicity we only test string values here, that AqlValues
 /// of different types work is tested somewhere else.
 template <class Fetcher>
-static void PullAndAssertDataRows(Fetcher& testee, std::vector<std::string> dataResults);
+static void PullAndAssertDataRows(Fetcher& testee, std::vector<std::string> const& dataResults);
 
 /// Helper method to assert that we can now pull all ShadowRows at once, and stop at the next data row
 /// Also asserts that we will never leave the finalState (either HASMORE or DONE)
@@ -323,6 +323,49 @@ static void StaysConstantAfterDone(Fetcher& testee) {
                                                                                               \
   INSTANTIATE_TEST_CASE_P(TestName##Instanciation, TestName,                                  \
                           testing::Range(static_cast<uint64_t>(0),                            \
+                                         static_cast<uint64_t>(std::pow(2, 9))));
+
+// Section sixth Pattern, 10 input rows, no shadow rows.
+
+#define TEST_SHADOWROW_PATTERN_6(Fetcher, TestName)                                  \
+  class TestName : public testing::TestWithParam<uint64_t> {                         \
+   protected:                                                                        \
+    ResourceMonitor monitor;                                                         \
+    DependencyProxyMock<false> dependencyProxyMock{monitor, 1};                      \
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS}; \
+    Fetcher testee{dependencyProxyMock};                                             \
+                                                                                     \
+    void SetUp() override {                                                          \
+      SharedAqlItemBlockPtr baseBlock =                                              \
+          buildBlock<1>(itemBlockManager, {{{R"("a")"}},                             \
+                                           {{R"("b")"}},                             \
+                                           {{R"("c")"}},                             \
+                                           {{R"("d")"}},                             \
+                                           {{R"("e")"}},                             \
+                                           {{R"("f")"}},                             \
+                                           {{R"("g")"}},                             \
+                                           {{R"("h")"}},                             \
+                                           {{R"("i")"}},                             \
+                                           {{R"("j")"}}});                           \
+      uint64_t splits = GetParam();                                                  \
+      ASSERT_LE(splits, (std::pow)(2, baseBlock->size() - 1));                       \
+      auto toReturn = fetcherHelper::CutMyBlockIntoPieces(baseBlock, splits);        \
+      dependencyProxyMock.shouldReturn(toReturn);                                    \
+    }                                                                                \
+  };                                                                                 \
+                                                                                     \
+  TEST_P(TestName, handle_shadow_rows) {                                             \
+    /* The result should be always identical,*/                                      \
+    /* it does not matter how the blocks */                                          \
+    /* are splitted. We start with our single data row */                            \
+    fetcherHelper::PullAndAssertDataRows(testee, {"a", "b", "c", "d", "e",           \
+                                                  "f", "g", "h", "i", "j"});         \
+    fetcherHelper::PullAndAssertShadowRows(testee, {}, ExecutionState::DONE);        \
+    fetcherHelper::StaysConstantAfterDone(testee);                                   \
+  }                                                                                  \
+                                                                                     \
+  INSTANTIATE_TEST_CASE_P(TestName##Instanciation, TestName,                         \
+                          testing::Range(static_cast<uint64_t>(0),                   \
                                          static_cast<uint64_t>(std::pow(2, 9))));
 
 }  // namespace fetcherHelper
