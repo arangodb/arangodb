@@ -22,6 +22,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "Cluster/ClusterTypes.h"
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
@@ -3662,9 +3664,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   // We keep the currently registered timestamps in Current/ServersRegistered,
   // such that we can wait until all have reregistered and are up:
-  ci->loadServers();
-  std::unordered_map<std::string, std::string> serverTimestamps =
-      ci->getServerTimestamps();
+  ci->loadCurrentDBServers();
+  auto const preServersKnown = ci->rebootIds();
 
   // Restore all db servers
   std::string previous;
@@ -3684,13 +3685,17 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Not all DBservers came back in time!");
     }
-    ci->loadServers();
-    std::unordered_map<std::string, std::string> newServerTimestamps =
-        ci->getServerTimestamps();
+    ci->loadCurrentDBServers();
+    auto const postServersKnown = ci->rebootIds();
+    if (ci->getCurrentDBServers().size() < dbServers.size()) {
+      LOG_TOPIC("8dce7", INFO, Logger::BACKUP) << "Waiting for all db servers to return";
+      continue;
+    }
+
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (serverTimestamps[dbs] != newServerTimestamps[dbs]) {
+      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
         ++good;
       }
     }
@@ -3710,8 +3715,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   return arangodb::Result();
 }
 
-std::vector<std::string> lockPath =
-    std::vector<std::string>{"result", "lockId"};
+std::vector<std::string> lockPath = std::vector<std::string>{"result", "lockId"};
 
 arangodb::Result lockDBServerTransactions(std::string const& backupId,
                                           std::vector<ServerID> const& dbServers,
@@ -3735,6 +3739,7 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
     VPackObjectBuilder o(&lock);
     lock.add("id", VPackValue(backupId));
     lock.add("timeout", VPackValue(lockWait));
+    lock.add("unlockTimeout", VPackValue(5.0 + lockWait));
   }
 
   LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
@@ -4101,10 +4106,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     }
     std::vector<ServerID> dbServers = ci->getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait = 2.0;
+    double lockWait(0.1);
     while (cc != nullptr && steady_clock::now() < end) {
-      auto iterEnd = steady_clock::now() + duration<double>(lockWait);
-
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
@@ -4116,12 +4119,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         break;
       }
       if (lockWait < 30.0) {
-        lockWait *= 1.1;
+        lockWait *= 1.25;
       }
-      double tmp = duration<double>(iterEnd - steady_clock::now()).count();
-      if (tmp > 0) {
-        std::this_thread::sleep_for(duration<double>(tmp));
-      }
+      std::this_thread::sleep_for(seconds(1));
     }
 
     bool gotLocks = result.ok();
