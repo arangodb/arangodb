@@ -53,9 +53,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response) {}
+MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response) {}
 
 MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
@@ -417,9 +418,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   // pull the latest state again, so that the last tick we hand out is always >=
   // the last included tick value in the results
-  while (state.lastCommittedTick < dump._lastFoundTick &&
-         !application_features::ApplicationServer::isStopping()) {
-    state = MMFilesLogfileManager::instance()->state();
+  while (state.lastCommittedTick < dump._lastFoundTick && !_vocbase.server().isStopping()) {
+    state = _vocbase.server().getFeature<MMFilesLogfileManager>().state();
     std::this_thread::sleep_for(std::chrono::microseconds(500));
   }
 

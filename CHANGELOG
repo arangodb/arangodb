@@ -3,6 +3,10 @@ devel
 
 * DB server locking / unlocking for hot backup revisited and enhanced
 
+* Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
+  in the cluster. It now also may speed up fullCount with sorted indexes and a
+  limit.
+
 * Fix config directory handling, so we don't trap into UNC path lookups on windows
 
 * Prevent spurious log message "Scheduler queue is filled more than 50% in last x s"

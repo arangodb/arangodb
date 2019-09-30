@@ -79,9 +79,10 @@ struct Options;
 }  // namespace transaction
 
 /// @brief forward declarations
+class ClusterFeature;
 class CollectionNameResolver;
-class LocalDocumentId;
 class Index;
+class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;
 struct OperationCursor;
@@ -370,8 +371,14 @@ class Methods {
   Future<OperationResult> truncateAsync(std::string const& collectionName,
                                         OperationOptions const& options);
 
+  /// deprecated, use async variant
+  virtual OperationResult count(std::string const& collectionName, CountType type) {
+    return countAsync(collectionName, type).get();
+  }
+
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, CountType type);
+  virtual futures::Future<OperationResult> countAsync(std::string const& collectionName,
+                                                      CountType type);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -446,13 +453,13 @@ class Methods {
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 
-  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) const {
     return false;
   }
-  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) const {
     return false;
   }
-  
+
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
 
@@ -527,10 +534,12 @@ class Methods {
   TransactionCollection* trxCollection(
       std::string const& name, AccessMode::Type type = AccessMode::Type::READ) const;
 
-  OperationResult countCoordinator(std::string const& collectionName, CountType type);
+  futures::Future<OperationResult> countCoordinator(std::string const& collectionName,
+                                                    CountType type);
 
-  OperationResult countCoordinatorHelper(std::shared_ptr<LogicalCollection> const& collinfo,
-                                         std::string const& collectionName, CountType type);
+  futures::Future<OperationResult> countCoordinatorHelper(
+      std::shared_ptr<LogicalCollection> const& collinfo,
+      std::string const& collectionName, CountType type);
 
   OperationResult countLocal(std::string const& collectionName, CountType type);
 

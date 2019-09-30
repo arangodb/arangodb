@@ -37,13 +37,14 @@ var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+  
+const ruleName = "use-index-for-sort";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
-  var ruleName = "use-index-for-sort";
   var secondRuleName = "use-indexes";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");

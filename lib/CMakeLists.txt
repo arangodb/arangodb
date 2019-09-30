@@ -122,27 +122,16 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
-  ApplicationFeatures/AgencyPhase.cpp
-  ApplicationFeatures/CommunicationPhase.cpp
-  ApplicationFeatures/AQLPhase.cpp
-  ApplicationFeatures/BasicPhase.cpp
-  ApplicationFeatures/ClusterPhase.cpp
-  ApplicationFeatures/DatabasePhase.cpp
-  ApplicationFeatures/FinalPhase.cpp
-  ApplicationFeatures/FoxxPhase.cpp
-  ApplicationFeatures/GreetingsPhase.cpp
-  ApplicationFeatures/ServerPhase.cpp
-  ApplicationFeatures/V8Phase.cpp
-  ApplicationFeatures/V8ShellPhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
+  ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
+  ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
-  ApplicationFeatures/RocksDBOptionFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
@@ -250,7 +239,6 @@ add_library(arango STATIC
   SimpleHttpClient/SslClientConnection.cpp
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
-  Ssl/SslServerFeature.cpp
   Ssl/ssl-helper.cpp
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp

@@ -69,8 +69,8 @@ void Constituent::configure(Agent* agent) {
 }
 
 // Default ctor
-Constituent::Constituent()
-    : Thread("Constituent"),
+Constituent::Constituent(application_features::ApplicationServer& server)
+    : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),

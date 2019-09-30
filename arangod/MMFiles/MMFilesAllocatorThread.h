@@ -39,7 +39,7 @@ class MMFilesAllocatorThread final : public Thread {
   MMFilesAllocatorThread& operator=(MMFilesAllocatorThread const&) = delete;
 
  public:
-  explicit MMFilesAllocatorThread(MMFilesLogfileManager*);
+  explicit MMFilesAllocatorThread(MMFilesLogfileManager&);
   ~MMFilesAllocatorThread() { shutdown(); }
 
  public:
@@ -74,7 +74,7 @@ class MMFilesAllocatorThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  MMFilesLogfileManager* _logfileManager;
+  MMFilesLogfileManager& _logfileManager;
 
   /// @brief condition variable for the allocator thread
   basics::ConditionVariable _condition;

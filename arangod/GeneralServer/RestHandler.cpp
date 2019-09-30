@@ -28,12 +28,14 @@
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
@@ -50,10 +52,12 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : _canceled(false),
       _request(request),
       _response(response),
+      _server(server),
       _statistics(nullptr),
       _state(HandlerState::PREPARE),
       _handlerId(0) {}
@@ -119,7 +123,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+  std::string serverId =
+      server().getFeature<ClusterFeature>().clusterInfo().getCoordinatorByShortID(shortId);
 
   if (serverId.empty()) {
     // no mapping in agency, try to handle the request here
@@ -156,7 +161,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
   auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  auto future = network::sendRequest("server:" + serverId, requestType,
+  NetworkFeature& feature = server().getFeature<NetworkFeature>();
+  auto future = network::sendRequest(feature, "server:" + serverId, requestType,
                                      "/_db/" + StringUtils::urlEncode(dbname) +
                                          _request->requestPath() + params,
                                      std::move(*payload), network::Timeout(300), headers);

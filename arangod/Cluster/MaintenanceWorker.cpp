@@ -36,7 +36,7 @@ namespace maintenance {
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::unordered_set<std::string> const& labels)
-    : Thread("MaintenanceWorker"),
+    : Thread(feature.server(), "MaintenanceWorker"),
       _feature(feature),
       _curAction(nullptr),
       _loopState(eFIND_ACTION),
@@ -48,7 +48,7 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
-    : Thread("MaintenanceWorker"),
+    : Thread(feature.server(), "MaintenanceWorker"),
       _feature(feature),
       _curAction(directAction),
       _loopState(eRUN_FIRST),

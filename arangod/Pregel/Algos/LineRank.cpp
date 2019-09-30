@@ -38,8 +38,9 @@ static std::string const kLastIteration = "lastIteration";
 static const float RESTART_PROB = 0.15f;
 static const float EPS = 0.0000001f;
 
-LineRank::LineRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("LineRank", params) {
+LineRank::LineRank(application_features::ApplicationServer& server,
+                   arangodb::velocypack::Slice params)
+    : SimpleAlgorithm(server, "LineRank", params) {
   // VPackSlice t = params.get("convergenceThreshold");
   //_threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
 }

@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include <memory>
 
@@ -83,6 +84,11 @@ class SingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
+
+  // TODO: atMost?
+  // NOLINTNEXTLINE google-default-arguments
+  TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
@@ -140,8 +146,13 @@ class SingleRowFetcher {
    *        Part of the Fetcher, and may be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+#endif
   ExecutionState _upstreamState;
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ private:
+#endif
   /**
    * @brief Input block currently in use. Used for memory management by the
    *        SingleRowFetcher. May be moved if the Fetcher implementations
@@ -162,12 +173,15 @@ class SingleRowFetcher {
    *        until the next fetchRow() call.
    */
   InputAqlItemRow _currentRow;
+  ShadowAqlItemRow _currentShadowRow;
 
  private:
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+
+  bool fetchBlockIfNecessary(size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -186,54 +200,9 @@ class SingleRowFetcher {
     TRI_ASSERT(indexIsValid());
     return _rowIndex;
   }
+
+  ExecutionState returnState(bool isShadowRow) const;
 };
-
-template <bool passBlocksThrough>
-std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
-  // Fetch a new block iff necessary
-  if (!indexIsValid()) {
-    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-    // new one, so we might reuse it immediately!
-    _currentBlock = nullptr;
-
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlock(atMost);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    }
-
-    _currentBlock = std::move(newBlock);
-    _rowIndex = 0;
-  }
-
-  ExecutionState rowState;
-
-  if (_currentBlock == nullptr) {
-    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
-    _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    rowState = ExecutionState::DONE;
-  } else {
-    TRI_ASSERT(_currentBlock != nullptr);
-    _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
-
-    TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
-    if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
-      rowState = ExecutionState::DONE;
-    } else {
-      rowState = ExecutionState::HASMORE;
-    }
-
-    _rowIndex++;
-  }
-  return {rowState, _currentRow};
-}
-
-template <bool passBlocksThrough>
-bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
-  return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
-}
-
 }  // namespace aql
 }  // namespace arangodb
 

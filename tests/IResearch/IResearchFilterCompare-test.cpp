@@ -23,13 +23,25 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
-#include "ExpressionContextMock.h"
-#include "common.h"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "search/all_filter.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
+#include "search/granular_range_filter.hpp"
+#include "search/phrase_filter.hpp"
+#include "search/prefix_filter.hpp"
+#include "search/range_filter.hpp"
+#include "search/term_filter.hpp"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include <velocypack/Parser.h>
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -60,19 +72,9 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "search/all_filter.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/column_existence_filter.hpp"
-#include "search/granular_range_filter.hpp"
-#include "search/phrase_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/range_filter.hpp"
-#include "search/term_filter.hpp"
-
-#include <velocypack/Parser.h>
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -81,80 +83,23 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchFilterCompareTest : public ::testing::Test {
+class IResearchFilterCompareTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
 
-  IResearchFilterCompareTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
+ private:
+  TRI_vocbase_t* _vocbase;
 
+ protected:
+  IResearchFilterCompareTest() {
     arangodb::tests::init();
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), false);  // required for IResearchFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
-                          true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto databases = VPackBuilder();
-    databases.openArray();
-    databases.add(systemDatabaseArgs);
-    databases.close();
-
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases.slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
+    auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
@@ -166,7 +111,7 @@ class IResearchFilterCompareTest : public ::testing::Test {
         }});
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
@@ -178,43 +123,19 @@ class IResearchFilterCompareTest : public ::testing::Test {
           return params[0];
         }});
 
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(testDBInfo(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
-    analyzers->emplace(
-      result,
-      "testVocbase::test_analyzer",
-      "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice()); // cache analyzer
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
+    analyzers.emplace(
+        result, "testVocbase::test_analyzer", "TestAnalyzer",
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
   }
 
-  ~IResearchFilterCompareTest() {
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
+  TRI_vocbase_t& vocbase() { return *_vocbase; }
 };  // IResearchFilterSetup
 
 // -----------------------------------------------------------------------------
@@ -227,10 +148,14 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'] == '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' == d['a'] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'] == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d['a'] RETURN d", expected);
   }
 
   // simple offset, string
@@ -238,8 +163,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d[1] == '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' == d[1] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[1] == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d[1] RETURN d", expected);
   }
 
   // complex attribute, string
@@ -247,14 +174,18 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a['b'].c == '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b'].c == '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a['b'].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b'].c == '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d.a.b.c RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' == d.a['b'].c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' == d['a']['b']['c'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' == d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute with offset, string
@@ -265,16 +196,18 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term("1");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[23].c == '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c == '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b'][23].c == '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'][23].c == '1' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][23].c == '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' == d.a.b[23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' == d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' == d.a['b'][23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' == d.a['b'][23].c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d['a']['b'][23]['c'] RETURN d", expected);
   }
 
@@ -287,22 +220,28 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b[23].c == '1', 0.5) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a['b'][23].c == '1', 0.5)  RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d['a']['b'][23].c == '1', 0.5)  "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost('1' == d.a.b[23].c, 0.5)  RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost('1' == d.a['b'][23].c, 0.5)  RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost('1' == d['a']['b'][23]['c'], 0.5)  "
         "RETURN d",
         expected);
@@ -316,26 +255,32 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a.b[23].c == '1', "
         "'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a['b'][23].c == '1', "
         "'test_analyzer')  RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d['a']['b'][23].c == '1', "
         "'test_analyzer')  RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer('1' == d.a.b[23].c, "
         "'test_analyzer')  RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer('1' == d.a['b'][23].c, "
         "'test_analyzer')  RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer('1' == d['a']['b'][23]['c'], "
         "'test_analyzer')  RETURN d",
         expected);
@@ -350,10 +295,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d.a.b[23].c == '1', 0.5), "
         "'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d.a['b'][23].c == '1', "
         "'test_analyzer'), 0.5)  RETURN d",
         expected);
@@ -374,29 +321,34 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c == TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23].c == TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d['a']['b'][23].c == "
         "TO_STRING(c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == "
-        "d['a']['b'][23]['c'] RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == "
+                        "d['a']['b'][23]['c'] RETURN d",
+                        expected, &ctx);
   }
 
   // dynamic complex attribute name with deterministic expression
@@ -415,12 +367,14 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "== '1' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '1' == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -437,6 +391,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -455,6 +410,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -473,6 +429,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -485,8 +442,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == true RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true == d.a.b.c RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c == true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true == d.a.b.c RETURN d", expected);
   }
 
   // complex attribute with offset, true
@@ -495,10 +454,11 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleBool("a[1].b.c")).term(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a[1].b.c == true RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a[1].b.c == true RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER true == d.a[1].b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER true == d.a[1].b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(true == d.a[1].b.c, "
         "'test_analyzer') RETURN d",
         expected);
@@ -513,8 +473,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .boost(2.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a[1].b.c == true, 2.5) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(true == d.a[1].b.c, 2.5) RETURN d", expected);
   }
 
@@ -524,12 +486,14 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool == false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool == false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b['c.bool'] == false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false == d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false == d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false == d['a'].b['c'].bool RETURN d", expected);
   }
 
@@ -538,9 +502,10 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN myView FILTER 1 == true RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(vocbase(), "FOR d IN myView FILTER 1 == true RETURN d",
+                        expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN myView FILTER analyzer(boost(1 == true, 1.5), "
         "'test_analyzer') RETURN d",
         expected, &ExpressionContextMock::EMPTY);
@@ -559,34 +524,41 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleBool("a.b[23].c")).term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c == TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23].c == TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d['a']['b'][23].c == "
         "TO_BOOL(c-41) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == "
+                        "d['a']['b'][23]['c'] RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == "
-        "d['a']['b'][23]['c'] RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) == "
         "d['a']['b'][23]['c'], 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) == "
         "d['a']['b'][23]['c'], 'identity') RETURN d",
         expected, &ctx);
@@ -608,12 +580,14 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "== true RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER true == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -630,6 +604,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -648,6 +623,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -666,6 +642,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -679,17 +656,18 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool == null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool == null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b'].c.bool == null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'].c.bool == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c.bool == null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null == d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null == d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null == d['a.b.c.bool'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null == d['a.b.c.bool'] RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null == d.a.b.c['bool'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null == d.a.b.c['bool'] RETURN d", expected);
   }
 
   // complex attribute with offset, null
@@ -698,18 +676,24 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleNull("a[1].b[2].c[3].bool")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1].b[2].c[3].bool == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1]['b'][2].c[3].bool == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'][1]['b'][2].c[3].bool == null RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null == d.a[1].b[2].c[3].bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null == d['a[1].b[2].c[3].bool'] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null == d.a[1].b[2].c[3]['bool'] RETURN d", expected);
   }
 
@@ -726,34 +710,41 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleNull("a.b[23].c")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a.b[23].c == (c && true) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer(d.a.b[23].c == (c && "
         "true), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a['b'][23].c == (c && false) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d['a']['b'][23].c == (c && "
         "true) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) == d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) == d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=null FOR d IN collection FILTER (c && false) == "
+                        "d['a']['b'][23]['c'] RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=null FOR d IN collection FILTER (c && false) == "
-        "d['a']['b'][23]['c'] RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer((c && false) == "
         "d['a']['b'][23]['c'], 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -775,10 +766,12 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a.b[23].c == (c && "
         "true), 1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a['b'][23].c == (c && "
         "false), 1.5) RETURN d",
         expected, &ctx);
@@ -800,12 +793,14 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "== null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER null == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -822,6 +817,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -840,6 +836,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -858,6 +855,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -876,20 +874,23 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b'].c.numeric == 3 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'].c.numeric == 3 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric == 3.0 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric == 3.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c['numeric'] == 3.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 3 == d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 3 == d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 == d['a.b.c'].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 == d.a['b.c.numeric'] RETURN d", expected);
   }
 
@@ -904,22 +905,29 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleNumeric("a.b[3].c.numeric")).term(term->value());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[3].c.numeric == 3 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[3].c.numeric == 3 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'][3].c.numeric == 3 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[3].c.numeric == 3.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[3].c['numeric'] == 3.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 3 == d.a.b[3].c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 3 == d.a.b[3].c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 == d.a.b[3].c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 == d['a.b[3].c'].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 == d.a['b[3].c.numeric'] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(3.0 == d.a['b[3].c.numeric'], "
         "'test_analyzer') RETURN d",
         expected);
@@ -939,6 +947,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .boost(5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b[3].c.numeric == 3, 5) RETURN d", expected);
   }
 
@@ -960,24 +969,30 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::by_term>().field(mangleNumeric("a.b[23].c")).term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c == (c + 1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23].c == (c + 1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d['a']['b'][23].c == (c + 1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c + 1.5) == d.a.b[23].c RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c + 1.5) == d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c + 1.5) == d['a']['b'][23]['c'] "
         "RETURN d",
         expected, &ctx);
@@ -1004,6 +1019,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost((c + 1.5) == "
         "d.a['b'][23].c, c+1) RETURN d",
         expected, &ctx);
@@ -1030,12 +1046,14 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "== 42.5 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 42.5 == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1052,6 +1070,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1070,6 +1089,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1088,6 +1108,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1100,7 +1121,8 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess("FOR d IN collection FILTER 3 == 2 == d.a.b.c RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER 3 == 2 == d.a.b.c RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -1115,57 +1137,73 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     expected.add<irs::empty>();
 
     assertFilterSuccess(
-        "LET k={} FOR d IN collection FILTER k.a == '1' RETURN d", expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a == '1' RETURN d",
+        expected, &ctx);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "== '1' RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER '1' == "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a == _NONDETERM_('1') RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a == _NONDETERM_('1') RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET k={} FOR d IN collection FILTER k.a == _NONDETERM_('1') RETURN d");
 
   // unsupported expression (d referenced inside) -> wrap it
   assertExpressionFilter(
-      "FOR d IN collection FILTER 3 == (2 == d.a.b.c) RETURN d");
+      vocbase(), "FOR d IN collection FILTER 3 == (2 == d.a.b.c) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 3 == boost(2 == d.a.b.c, 1.5) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER analyzer(3, 'test_analyzer') == (2 == "
       "d.a.b.c) RETURN d");
 
   // expression with self-reference is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d == '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d[*] == '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a[*] == '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' == d RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a == 1+d.b RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d == '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d[*] == '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a[*] == '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' == d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a == 1+d.b RETURN d");
 
   // unsupported node types : fail on parse
-  assertFilterFail("FOR d IN collection FILTER d.a == {} RETURN d");
-  assertFilterFail("FOR d IN collection FILTER {} == d.a RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER d.a == {} RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER {} == d.a RETURN d");
 
   // unsupported node types : fail on execution
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a == 1..2 RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER d.a == 1..2 RETURN d",
                             &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER 1..2 == d.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER 1..2 == d.a RETURN d",
                             &ExpressionContextMock::EMPTY);
 
   // expression is not supported by IResearch -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric == 2 == 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 2 == d.a.b.c.numeric == 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 2 == boost(d.a.b.c.numeric == 3, 1.5) RETURN "
       "d");
 }
@@ -1179,10 +1217,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .field(mangleStringIdentity("a"))
         .term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a != '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'] != '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' != d.a RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' != d['a'] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'] != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d['a'] RETURN d", expected);
   }
 
   // simple offset
@@ -1193,8 +1235,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .field(mangleStringIdentity("[4]"))
         .term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d[4] != '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' != d[4] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[4] != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d[4] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -1205,18 +1249,22 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .field(mangleStringIdentity("a.b.c"))
         .term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'].b.c != '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b'].c != '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b'].c != '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b']['c'] != '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' != d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' != d['a'].b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] != '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d.a.b.c RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' != d['a'].b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' != d['a']['b'].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d['a']['b'].c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' != d['a']['b']['c'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -1228,20 +1276,24 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term("1");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[23].c != '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c != '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a'].b[23].c != '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b[23].c != '1' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][23].c != '1' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][23]['c'] != '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' != d.a.b[23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' != d['a'].b[23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' != d['a'].b[23].c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' != d['a']['b'][23].c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' != d['a']['b'][23]['c'] RETURN d", expected);
   }
 
@@ -1261,29 +1313,34 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c != TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23].c != TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d['a']['b'][23].c != "
         "TO_STRING(c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != "
-        "d['a']['b'][23]['c'] RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != "
+                        "d['a']['b'][23]['c'] RETURN d",
+                        expected, &ctx);
   }
 
   // string expression, boost, analyzer
@@ -1303,6 +1360,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER "
         "analyzer(boost(analyzer(d.a.b[23].c != TO_STRING(c+1), 'identity'), "
         "c+1), 'test_analyzer') RETURN d",
@@ -1326,6 +1384,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(boost(d.a.b[23].c != "
         "TO_STRING(c+1), c+1), 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -1348,12 +1407,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "!= '1' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '1' != "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1370,6 +1431,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1388,6 +1450,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1406,6 +1469,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1421,11 +1485,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .field(mangleBool("a.b.c"))
         .term(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c != true RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a'].b.c != true RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true != d.a.b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b.c != true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true != d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER true != d['a']['b']['c'] RETURN d", expected);
   }
 
@@ -1438,12 +1505,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool != false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool != false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'].bool != false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false != d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false != d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false != d['a']['b'].c.bool RETURN d", expected);
   }
 
@@ -1456,14 +1525,18 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[12].b.c.bool != false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'][12]['b']['c'].bool != false RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false != d.a[12].b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false != d['a'][12]['b'].c.bool RETURN d", expected);
   }
 
@@ -1476,12 +1549,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool != null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool != null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].bool != null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null != d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null != d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null != d['a']['b'].c.bool RETURN d", expected);
   }
 
@@ -1494,12 +1569,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c[3].bool != null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c[3].bool != null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'][3].bool != null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null != d.a.b.c[3].bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null != d.a.b.c[3].bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null != d['a']['b'].c[3].bool RETURN d", expected);
   }
 
@@ -1519,29 +1596,34 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c != TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23].c != TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d['a']['b'][23].c != "
         "TO_BOOL(c-41) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) != "
         "d.a.b[23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != "
-        "d['a']['b'][23]['c'] RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != "
+                        "d['a']['b'][23]['c'] RETURN d",
+                        expected, &ctx);
   }
 
   // boolean expression, boost
@@ -1561,6 +1643,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c != "
         "TO_BOOL(c-41), c+1) RETURN d",
         expected, &ctx);
@@ -1583,12 +1666,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "!= true RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER true != "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1605,6 +1690,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1623,6 +1709,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1641,6 +1728,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1664,33 +1752,39 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a.b[23].c != (c && true) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a['b'][23].c != (c && false) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d['a']['b'][23].c != (c && "
         "true) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) != d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer((c && false) != "
         "d.a.b[23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) != d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=null FOR d IN collection FILTER (c && false) != "
-        "d['a']['b'][23]['c'] RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=null FOR d IN collection FILTER (c && false) != "
+                        "d['a']['b'][23]['c'] RETURN d",
+                        expected, &ctx);
   }
 
   // null expression, boost
@@ -1710,6 +1804,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a.b[23].c != (c && "
         "true), 1.5) RETURN d",
         expected, &ctx);
@@ -1732,12 +1827,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "!= null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER null != "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1754,6 +1851,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1772,6 +1870,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1790,6 +1889,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1811,16 +1911,18 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(term->value());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c.numeric != 3 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric != 3.0 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric != 3.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 3 != d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 3 != d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric RETURN d", expected);
   }
 
@@ -1838,16 +1940,20 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(term->value());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c.numeric[1] != 3 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c.numeric[1] != 3.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 3 != d.a.b.c.numeric[1] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 3 != d.a.b.c.numeric[1] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 != d.a.b.c.numeric[1] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric[1] RETURN d", expected);
   }
 
@@ -1872,28 +1978,35 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c != (c + 1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23].c != (c + 1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d['a']['b'][23].c != (c + 1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c + 1.5) != d.a.b[23].c RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c + 1.5) != d.a['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c + 1.5) != d['a']['b'][23]['c'] "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer((c + 1.5) != "
         "d['a']['b'][23]['c'], 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -1921,6 +2034,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c != (c + 1.5), "
         "c+1) RETURN d",
         expected, &ctx);
@@ -1948,12 +2062,14 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "!= 42.5 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 42.5 != "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1970,6 +2086,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -1988,6 +2105,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2006,6 +2124,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2021,7 +2140,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
         .field(mangleBool("a.b.c"))
         .term(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER 3 != 2 != d.a.b.c RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER 3 != 2 != d.a.b.c RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -2036,7 +2156,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     expected.add<irs::all>();
 
     assertFilterSuccess(
-        "LET k={} FOR d IN collection FILTER k.a != '1' RETURN d", expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a != '1' RETURN d",
+        expected, &ctx);
   }
 
   // expression without reference to loop variable, reachable criteria, boost
@@ -2050,6 +2171,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     expected.add<irs::all>().boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET k={} FOR d IN collection FILTER boost(k.a != '1', 1.5) RETURN d",
         expected, &ctx);
   }
@@ -2059,67 +2181,86 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN collection FILTER ['d'] != '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER ['d'] != '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN collection FILTER [] != '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER [] != '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "!= '1' RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "boost(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_("
       "'a')] != '1', 1.5) RETURN d",
       1.5, wrappedExpressionExtractor);
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER '1' != "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a != _NONDETERM_('1') RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a != _NONDETERM_('1') RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET k={} FOR d IN collection FILTER k.a != _NONDETERM_('1') RETURN d");
 
   // unsupported expression (d referenced inside) -> wrap it
   assertExpressionFilter(
-      "FOR d IN collection FILTER 3 != (2 != d.a.b.c) RETURN d");
+      vocbase(), "FOR d IN collection FILTER 3 != (2 != d.a.b.c) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 3 != boost(2 != d.a.b.c, 1.5) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER analyzer(3, 'test_analyzer') != (2 != "
       "d.a.b.c) RETURN d");
 
   // expression is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d != '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d[*] != '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a[*] != '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' != d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d != '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d[*] != '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a[*] != '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' != d RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 2 != d.a.b.c.numeric != 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 2 == d.a.b.c.numeric != 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric != 2 != 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric != 2 == 3 RETURN d");
 
   // expression with self-reference is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d.a == 1+d.b RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a == 1+d.b RETURN d");
 
   // unsupported node types : fail on parse
-  assertFilterFail("FOR d IN collection FILTER d.a != {} RETURN d");
-  assertFilterFail("FOR d IN collection FILTER {} != d.a RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER d.a != {} RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER {} != d.a RETURN d");
   // unsupported node types : fail on execution
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a != 1..2 RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER d.a != 1..2 RETURN d",
                             &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER 1..2 != d.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER 1..2 != d.a RETURN d",
                             &ExpressionContextMock::EMPTY);
 }
 
@@ -2132,10 +2273,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a >= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'] >= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' <= d.a RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' <= d['a'] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a >= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'] >= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' <= d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' <= d['a'] RETURN d", expected);
   }
 
   // simple string offset
@@ -2146,8 +2291,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d[23] >= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' <= d[23] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[23] >= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' <= d[23] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -2158,12 +2305,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c >= '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b']['c'] >= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' <= d.a.b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b']['c'] >= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' <= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' <= d['a']['b'].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' <= d['a']['b'].c RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -2175,12 +2324,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>("1");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[23].c >= '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c >= '1' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'][23]['c'] >= '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' <= d.a.b[23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' <= d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' <= d['a']['b'][23].c RETURN d", expected);
   }
 
@@ -2200,21 +2351,24 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c >= TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= "
         "TO_STRING(c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) <= d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) <= "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) <= "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
   }
 
   // string expression, boost, analyzer
@@ -2234,10 +2388,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(analyzer(d.a.b[23].c >= "
         "TO_STRING(c+1), 'test_analyzer'), c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(boost(d.a.b[23].c >= "
         "TO_STRING(c+1), c + 1), 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -2260,12 +2416,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         ">= '42' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '42' <= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2282,6 +2440,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2300,6 +2459,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2318,6 +2478,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2333,11 +2494,15 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c >= true RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= true RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true <= d.a.b.c RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true <= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER true <= d['a']['b']['c'] RETURN d", expected);
   }
 
@@ -2350,12 +2515,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c[223] >= true RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c[223] >= true RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'][223] >= true RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER true <= d.a.b.c[223] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER true <= d.a.b.c[223] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER true <= d['a']['b']['c'][223] RETURN d", expected);
   }
 
@@ -2368,12 +2535,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool >= false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool >= false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c.bool >= false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false <= d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false <= d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a['b']['c'].bool RETURN d", expected);
   }
 
@@ -2393,18 +2562,22 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c >= TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= "
         "TO_BOOL(c-41) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) <= d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) <= "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -2427,6 +2600,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c >= "
         "TO_BOOL(c-41), 1.5) RETURN d",
         expected, &ctx);
@@ -2449,12 +2623,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         ">= false RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER false <= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2471,6 +2647,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2489,6 +2666,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2507,6 +2685,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2523,12 +2702,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.nil >= null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil >= null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'].nil >= null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null <= d.a.b.c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null <= d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null <= d['a']['b'].c.nil RETURN d", expected);
   }
 
@@ -2541,12 +2722,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[23].c.nil >= null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c.nil >= null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][23]['c'].nil >= null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null <= d.a.b[23].c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null <= d.a.b[23].c.nil RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null <= d['a']['b'][23].c.nil RETURN d", expected);
   }
 
@@ -2566,22 +2749,26 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a.b[23].c >= (c && false) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] >= (c && "
         "true) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) <= d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=null FOR d IN collection FILTER (c && false) <= "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=null FOR d IN collection FILTER (c && false) <= "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer((c && false) <= "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -2604,6 +2791,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a.b[23].c >= (c && "
         "false), 1.5) RETURN d",
         expected, &ctx);
@@ -2626,12 +2814,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         ">= null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER null <= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2648,6 +2838,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2666,6 +2857,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2684,6 +2876,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2703,16 +2896,18 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric >= 13 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c.numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric >= 13.0 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric >= 13.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13 <= d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13 <= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13.0 <= d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13.0 <= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 <= d['a']['b']['c'].numeric RETURN d", expected);
   }
 
@@ -2728,16 +2923,22 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[223].numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c[223].numeric >= 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[223].numeric >= 13.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13 <= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 <= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 <= d['a']['b']['c'][223].numeric "
         "RETURN d",
         expected);
@@ -2762,16 +2963,20 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c >= (c+1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= (c+1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) <= d.a.b[23].c RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer((c+1.5) <= "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -2797,6 +3002,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c >= (c+1.5), "
         "c+1) RETURN d",
         expected, &ctx);
@@ -2822,12 +3028,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         ">= 42.5 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 42.5 <= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2844,6 +3052,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2862,6 +3071,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2880,6 +3090,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -2895,7 +3106,8 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER 3 >= 2 >= d.a.b.c RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER 3 >= 2 >= d.a.b.c RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -2910,7 +3122,8 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     expected.add<irs::empty>();
 
     assertFilterSuccess(
-        "LET k='' FOR d IN collection FILTER k.a >= '1' RETURN d", expected, &ctx);
+        vocbase(), "LET k='' FOR d IN collection FILTER k.a >= '1' RETURN d",
+        expected, &ctx);
   }
 
   // array in expression
@@ -2918,58 +3131,75 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN collection FILTER [] >= '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER [] >= '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN collection FILTER ['d'] >= '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER ['d'] >= '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       ">= '1' RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER '1' >= "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a >= _NONDETERM_('1') RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a >= _NONDETERM_('1') RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET k={} FOR d IN collection FILTER k.a >= _NONDETERM_('1') RETURN d");
 
   // unsupported expression (d referenced inside) -> wrap it
   assertExpressionFilter(
-      "FOR d IN collection FILTER 3 >= (2 >= d.a.b.c) RETURN d");
+      vocbase(), "FOR d IN collection FILTER 3 >= (2 >= d.a.b.c) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 3 >= boost(2 >= d.a.b.c, 1.5) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER analyzer(3, 'test_analyzer') >= boost(2 >= "
       "d.a.b.c, 1.5) RETURN d");
 
   // expression is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d >= '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d[*] >= '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a[*] >= '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' <= d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d >= '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d[*] >= '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a[*] >= '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' <= d RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 2 >= d.a.b.c.numeric >= 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
 
   // expression with self-reference is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d.a >= 1+d.b RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a >= 1+d.b RETURN d");
 
   // unsupported node types
-  assertFilterFail("FOR d IN collection FILTER d.a >= {} RETURN d");
-  assertFilterFail("FOR d IN collection FILTER {} <= d.a RETURN d");
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a >= 1..2 RETURN d",
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER d.a >= {} RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER {} <= d.a RETURN d");
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER d.a >= 1..2 RETURN d",
                             &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER 1..2 <= d.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER 1..2 <= d.a RETURN d",
                             &ExpressionContextMock::EMPTY);
 }
 
@@ -2982,10 +3212,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a > '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'] > '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' < d.a RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' < d['a'] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'] > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d['a'] RETURN d", expected);
   }
 
   // simple string offset
@@ -2996,8 +3230,10 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d[23] > '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' < d[23] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[23] > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d[23] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -3008,12 +3244,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c > '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b']['c'] > '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' < d.a.b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' < d['a']['b'].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' < d['a']['b'].c RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -3024,12 +3262,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b[23].c > '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b'][23]['c'] > '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' < d.a.b[23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'][23]['c'] > '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' < d.a.b[23].c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' < d['a']['b'][23].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' < d['a']['b'][23].c RETURN d", expected);
   }
 
   // string expression
@@ -3048,18 +3288,22 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c > TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] > "
         "TO_STRING(c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) < d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_STRING(c+1) < "
         "d['a']['b'][23].c, 'identity') RETURN d",
         expected, &ctx);
@@ -3082,10 +3326,12 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(boost(d.a.b[23].c > "
         "TO_STRING(c+1), c+1), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(analyzer(d.a['b'][23]['c'] "
         "> TO_STRING(c+1),'test_analyzer'),c+1) RETURN d",
         expected, &ctx);
@@ -3108,12 +3354,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "> '42' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '42' < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3130,6 +3378,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3148,6 +3397,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3166,6 +3416,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3181,11 +3432,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c > true RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b']['c'] > true RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true < d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true < d['a'].b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] > true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true < d.a.b.c RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true < d['a'].b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -3197,12 +3451,13 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool > false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool > false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a'].b.c.bool > false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b.c.bool > false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false < d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false < d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d['a']['b']['c'].bool RETURN d", expected);
   }
 
@@ -3215,12 +3470,16 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[223].bool > false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c[223].bool > false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.a.b.c[223].bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d['a']['b']['c'][223].bool RETURN "
         "d",
         expected);
@@ -3242,22 +3501,27 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c > TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] > TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) < d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) < d['a']['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) < "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -3280,6 +3544,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c > "
         "TO_BOOL(c-41), c+1) RETURN d",
         expected, &ctx);
@@ -3302,12 +3567,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "> false RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER false < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3324,6 +3591,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3342,6 +3610,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3360,6 +3629,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3376,13 +3646,13 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.nil > null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil > null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a'].b.c.nil > null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a'].b.c.nil > null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null < d.a.b.c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null < d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null < d['a'].b.c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null < d['a'].b.c.nil RETURN d", expected);
   }
 
   // null expression
@@ -3401,22 +3671,26 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a.b[23].c > (c && false) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] > (c && true) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) < d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=null FOR d IN collection FILTER (c && false) < "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=null FOR d IN collection FILTER (c && false) < "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer((c && false) < "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -3439,6 +3713,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a.b[23].c > (c && "
         "false), c+42) RETURN d",
         expected, &ctx);
@@ -3461,12 +3736,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "> null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER null < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3483,6 +3760,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3501,6 +3779,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3519,6 +3798,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3535,12 +3815,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[23].c.nil > null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[23].c.nil > null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][23]['c'].nil > null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null < d.a.b[23].c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null < d.a.b[23].c.nil RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d['a']['b'][23].c.nil RETURN d", expected);
   }
 
@@ -3556,16 +3838,18 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric > 13 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'].numeric > 13 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric > 13.0 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13 < d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13.0 < d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13.0 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 < d['a']['b'].c.numeric RETURN d", expected);
   }
 
@@ -3581,12 +3865,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].numeric > 13.5 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13.5 < d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13.5 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.5 < d['a']['b'].c.numeric RETURN d", expected);
   }
 
@@ -3602,18 +3888,24 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'][1]['b'].c[223].numeric > 13 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13 < d.a[1].b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 < d.a[1].b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 < d['a'][1]['b']['c'][223].numeric "
         "RETURN d",
         expected);
@@ -3638,20 +3930,25 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c > (c+1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] > (c+1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) < d.a.b[23].c RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) < d['a']['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer((c+1.5) < "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -3677,6 +3974,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c > (c+1.5),c+1) "
         "RETURN d",
         expected, &ctx);
@@ -3702,12 +4000,14 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .insert<irs::Bound::MIN>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "> 42.5 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 42.5 < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3724,6 +4024,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3742,6 +4043,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3760,6 +4062,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3775,7 +4078,8 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER 3 > 2 > d.a.b.c RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER 3 > 2 > d.a.b.c RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -3790,7 +4094,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     expected.add<irs::empty>();
 
     assertFilterSuccess(
-        "LET k={} FOR d IN collection FILTER k.a > '1' RETURN d", expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a > '1' RETURN d", expected, &ctx);
   }
 
   // array in expression
@@ -3798,58 +4102,72 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN collection FILTER [] > '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER [] > '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN collection FILTER ['d'] > '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER ['d'] > '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "> '1' RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER '1' > "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a > _NONDETERM_('1') RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a > _NONDETERM_('1') RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET k={} FOR d IN collection FILTER k.a > _NONDETERM_('1') RETURN d");
 
   // unsupported expression (d referenced inside) -> wrap it
   assertExpressionFilter(
-      "FOR d IN collection FILTER 3 > (2 > d.a.b.c) RETURN d");
+      vocbase(), "FOR d IN collection FILTER 3 > (2 > d.a.b.c) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 3 > boost(2 > d.a.b.c, 1.5) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER analyzer(3, 'test_analyzer') > boost(2 > "
       "d.a.b.c, 1.5) RETURN d");
 
   // expression is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d > '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d[*] > '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a[*] > '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' < d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d > '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d[*] > '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a[*] > '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' < d RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER 2 > d.a.b.c.numeric > 3 RETURN d");
+      vocbase(), "FOR d IN collection FILTER 2 > d.a.b.c.numeric > 3 RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
 
   // expression with self-reference is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d.a > 1+d.b RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a > 1+d.b RETURN d");
 
   // unsupported node types
-  assertFilterFail("FOR d IN collection FILTER d.a > {} RETURN d");
-  assertFilterFail("FOR d IN collection FILTER {} < d.a RETURN d");
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a > 1..2 RETURN d",
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER d.a > {} RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER {} < d.a RETURN d");
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER d.a > 1..2 RETURN d",
                             &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER 1..2 < d.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER 1..2 < d.a RETURN d",
                             &ExpressionContextMock::EMPTY);
 }
 
@@ -3862,10 +4180,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a <= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'] <= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' >= d.a RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' >= d['a'] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a <= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'] <= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' >= d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' >= d['a'] RETURN d", expected);
   }
 
   // simple string offset
@@ -3876,8 +4198,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d[23] <= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' >= d[23] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[23] <= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' >= d[23] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -3888,12 +4212,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c <= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c <= '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b'].c <= '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' >= d.a.b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b'].c <= '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' >= d['a']['b']['c'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' >= d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -3905,12 +4231,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>("1");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a[1].b.c[42] <= '1' RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a[1].b.c[42] <= '1' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'][1]['b'].c[42] <= '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' >= d.a[1].b.c[42] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' >= d.a[1].b.c[42] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' >= d['a'][1]['b']['c'][42] RETURN d", expected);
   }
 
@@ -3930,21 +4258,24 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c <= TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] <= "
         "TO_STRING(c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) >= d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) >= "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) >= "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
   }
 
   // string expression, analyzer, boost
@@ -3964,10 +4295,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(boost(d.a.b[23].c <= "
         "TO_STRING(c+1), c+1), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(analyzer(d.a['b'][23]['c'] "
         "<= TO_STRING(c+1), 'test_analyzer'), c+1) RETURN d",
         expected, &ctx);
@@ -3990,12 +4323,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "<= '42' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '42' >= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4012,6 +4347,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4030,6 +4366,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4048,6 +4385,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4063,12 +4401,15 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c <= true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c <= true RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] <= true RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER true >= d.a['b']['c'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER true >= d.a['b']['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, true
@@ -4080,12 +4421,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[42].c <= true RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[42].c <= true RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][42]['c'] <= true RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER true >= d.a.b[42].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER true >= d.a.b[42].c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER true >= d.a['b'][42]['c'] RETURN d", expected);
   }
 
@@ -4098,12 +4441,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool <= false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool <= false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c.bool <= false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false >= d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false >= d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false >= d.a['b']['c'].bool RETURN d", expected);
   }
 
@@ -4123,22 +4468,26 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c <= TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] <= "
         "TO_BOOL(c-41) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) >= d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) >= "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) >= "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) >= "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -4161,6 +4510,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c <= "
         "TO_BOOL(c-41),c+1) RETURN d",
         expected, &ctx);
@@ -4183,12 +4533,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "<= false RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER false >= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4205,6 +4557,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4223,6 +4576,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4241,6 +4595,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4257,12 +4612,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.nil <= null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil <= null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].nil <= null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null >= d.a.b.c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null >= d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null >= d['a']['b']['c'].nil RETURN d", expected);
   }
 
@@ -4275,12 +4632,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.nil[1] <= null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil[1] <= null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].nil[1] <= null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null >= d.a.b.c.nil[1] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null >= d.a.b.c.nil[1] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null >= d['a']['b']['c'].nil[1] RETURN d", expected);
   }
 
@@ -4300,22 +4659,26 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a.b[23].c <= (c && false) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] <= (c && "
         "true) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) >= d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=null FOR d IN collection FILTER (c && false) >= "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=null FOR d IN collection FILTER (c && false) >= "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer((c && false) >= "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -4338,6 +4701,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a.b[23].c <= (c && "
         "false), c+42) RETURN d",
         expected, &ctx);
@@ -4360,12 +4724,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "<= null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER null >= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4382,6 +4748,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4400,6 +4767,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4418,6 +4786,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4437,16 +4806,18 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric <= 13 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric <= 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'].numeric <= 13 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric <= 13.0 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric <= 13.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13 >= d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13 >= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13.0 >= d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13.0 >= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 >= d.a['b']['c'].numeric RETURN d", expected);
   }
 
@@ -4462,18 +4833,24 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[223].numeric <= 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'][223].numeric <= 13 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[223].numeric <= 13.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13 >= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 >= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 >= d.a['b']['c'][223].numeric RETURN "
         "d",
         expected);
@@ -4498,20 +4875,25 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c <= (c+1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] <= (c+1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) >= d.a.b[23].c RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) >= d['a']['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer((c+1.5) >= "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -4537,6 +4919,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .boost(42.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c <= (c+1.5), "
         "c+1.5) RETURN d",
         expected, &ctx);
@@ -4562,12 +4945,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "<= 42.5 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 42.5 >= "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4584,6 +4969,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4602,6 +4988,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4620,6 +5007,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4635,7 +5023,8 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess("FOR d IN collection FILTER 3 <= 2 <= d.a.b.c RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER 3 <= 2 <= d.a.b.c RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -4650,7 +5039,8 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
     expected.add<irs::all>();
 
     assertFilterSuccess(
-        "LET k={} FOR d IN collection FILTER k.a <= '1' RETURN d", expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a <= '1' RETURN d",
+        expected, &ctx);
   }
 
   // array in expression
@@ -4658,58 +5048,75 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN collection FILTER [] <= '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER [] <= '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN collection FILTER ['d'] <= '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER ['d'] <= '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "<= '1' RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER '1' <= "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a <= _NONDETERM_('1') RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a <= _NONDETERM_('1') RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET k={} FOR d IN collection FILTER k.a <= _NONDETERM_('1') RETURN d");
 
   // unsupported expression (d referenced inside) -> wrap it
   assertExpressionFilter(
-      "FOR d IN collection FILTER 3 <= (2 <= d.a.b.c) RETURN d");
+      vocbase(), "FOR d IN collection FILTER 3 <= (2 <= d.a.b.c) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 3 <= boost(2 <= d.a.b.c, 1.5) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER analyzer(3, 'test_analyzer') <= (2 <= "
       "d.a.b.c) RETURN d");
 
   // expression is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d <= '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d[*] <= '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a[*] <= '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' >= d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d <= '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d[*] <= '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a[*] <= '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' >= d RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 2 <= d.a.b.c.numeric <= 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
 
   // expression with self-reference is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d.a <= 1+d.b RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a <= 1+d.b RETURN d");
 
   // unsupported node types
-  assertFilterFail("FOR d IN collection FILTER d.a <= {} RETURN d");
-  assertFilterFail("FOR d IN collection FILTER {} >= d.a RETURN d");
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a <= 1..2 RETURN d",
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER d.a <= {} RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER {} >= d.a RETURN d");
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER d.a <= 1..2 RETURN d",
                             &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER 1..2 >= d.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER 1..2 >= d.a RETURN d",
                             &ExpressionContextMock::EMPTY);
 }
 
@@ -4722,10 +5129,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a < '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d['a'] < '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' > d['a'] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'] < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d.a RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d['a'] RETURN d", expected);
   }
 
   // simple offset
@@ -4736,8 +5147,10 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d[42] < '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' > d[42] RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d[42] < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d[42] RETURN d", expected);
   }
 
   // complex attribute name, string
@@ -4748,12 +5161,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c < '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b']['c'] < '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b']['c'] < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER '1' > d['a']['b']['c'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER '1' > d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute name with offset, string
@@ -4764,11 +5179,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b[42].c < '1' RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b'][42]['c'] < '1' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b[42].c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a['b'][42]['c'] < '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER '1' > d.a.b[42].c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d['a']['b'][42]['c'] RETURN d", expected);
   }
 
@@ -4788,21 +5206,24 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c < TO_STRING(c+1) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] < "
         "TO_STRING(c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) > d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) > "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER TO_STRING(c+1) > "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
   }
 
   // string expression, analyzer, boost
@@ -4822,10 +5243,12 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(analyzer(d.a.b[23].c < "
         "TO_STRING(c+1), 'test_analyzer'), c+1) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(boost(d.a['b'][23]['c'] "
         "< TO_STRING(c+1),c+1), 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -4848,12 +5271,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "< '42' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '42' > "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4870,6 +5295,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4888,6 +5314,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4906,6 +5333,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4921,12 +5349,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a.b.c < true RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a']['b']['c'] < true RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER true > d.a.b.c RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d['a']['b']['c'] < true RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER true > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER true > d['a']['b']['c'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER true > d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -4938,13 +5368,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.bool < false RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.bool < false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].bool < false RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false > d.a.b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false > d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER false > d['a'].b.c.bool RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER false > d['a'].b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute with offset, false
@@ -4956,14 +5387,18 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c[42].bool[42] < false RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'][42].bool[42] < false RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false > d.a.b.c[42].bool[42] RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false > d['a'].b.c[42].bool[42] RETURN d", expected);
   }
 
@@ -4983,22 +5418,27 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c < TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] < TO_BOOL(c-41) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) > d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) > d['a']['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer(TO_BOOL(c-41) > "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -5021,6 +5461,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c < "
         "TO_BOOL(c-41),c+1) RETURN d",
         expected, &ctx);
@@ -5043,12 +5484,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "< false RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER false > "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5065,6 +5508,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5083,6 +5527,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5101,6 +5546,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5117,13 +5563,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.nil < null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.nil < null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].nil < null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null > d.a.b.c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null > d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null > d['a'].b.c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null > d['a'].b.c.nil RETURN d", expected);
   }
 
   // complex null attribute with offset
@@ -5135,12 +5582,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b[42].c.nil < null RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b[42].c.nil < null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'][42]['c'].nil < null RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER null > d.a.b[42].c.nil RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER null > d.a.b[42].c.nil RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null > d['a'].b[42].c.nil RETURN d", expected);
   }
 
@@ -5160,22 +5609,26 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a.b[23].c < (c && false) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] < (c && true) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER (c && false) > d.a.b[23].c "
         "RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=null FOR d IN collection FILTER (c && false) > "
+                        "d['a']['b'][23].c RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
-        "LET c=null FOR d IN collection FILTER (c && false) > "
-        "d['a']['b'][23].c RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER analyzer((c && false) > "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -5198,6 +5651,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER boost(d.a.b[23].c < (c && "
         "false), c+42) RETURN d",
         expected, &ctx);
@@ -5220,12 +5674,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "< null RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER null > "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5242,6 +5698,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5260,6 +5717,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5278,6 +5736,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5297,16 +5756,18 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric < 13 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'].numeric < 13 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d.a.b.c.numeric < 13.0 RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 13.0 RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13 > d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13 > d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER 13.0 > d.a.b.c.numeric RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER 13.0 > d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 > d['a']['b']['c'].numeric RETURN d", expected);
   }
 
@@ -5322,16 +5783,22 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1]['b'][42]['c'].numeric < 13 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13 > d.a[1].b[42].c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 > d.a[1].b[42].c.numeric RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 13.0 > d['a'][1]['b'][42]['c'].numeric "
         "RETURN d",
         expected);
@@ -5356,20 +5823,25 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a.b[23].c < (c+1.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] < (c+1.5) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) > d.a.b[23].c RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER (c+1.5) > d['a']['b'][23].c "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER analyzer((c+1.5) > "
         "d['a']['b'][23].c, 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -5395,6 +5867,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .boost(42);
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER boost(d.a.b[23].c < (c+1.5), c+1) "
         "RETURN d",
         expected, &ctx);
@@ -5420,12 +5893,14 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .insert<irs::Bound::MAX>(stream);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "< 42.5 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 42.5 > "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5442,6 +5917,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5460,6 +5936,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5478,6 +5955,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -5493,7 +5971,8 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess("FOR d IN collection FILTER 3 < 2 < d.a.b.c RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER 3 < 2 < d.a.b.c RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -5508,7 +5987,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
     expected.add<irs::all>();
 
     assertFilterSuccess(
-        "LET k={} FOR d IN collection FILTER k.a < '1' RETURN d", expected, &ctx);
+        vocbase(), "LET k={} FOR d IN collection FILTER k.a < '1' RETURN d", expected, &ctx);
   }
 
   // array in expression
@@ -5516,57 +5995,71 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN collection FILTER [] < '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER [] < '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN collection FILTER ['d'] < '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER ['d'] < '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "< '1' RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER '1' < "
       "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
       "RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a < _NONDETERM_('1') RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a < _NONDETERM_('1') RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET k={} FOR d IN collection FILTER k.a < _NONDETERM_('1') RETURN d");
 
   // unsupported expression (d referenced inside) -> wrap it
   assertExpressionFilter(
-      "FOR d IN collection FILTER 3 < (2 < d.a.b.c) RETURN d");
+      vocbase(), "FOR d IN collection FILTER 3 < (2 < d.a.b.c) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER 3 < boost(2 < d.a.b.c, 1.5) RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "FOR d IN collection FILTER analyzer(3, 'test_analyzer') < boost(2 < "
       "d.a.b.c, 1.5) RETURN d");
 
   // expression is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d < '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d[*] < '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER d.a[*] < '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' > d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d < '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d[*] < '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a[*] < '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' > d RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER 2 < d.a.b.c.numeric < 3 RETURN d");
+      vocbase(), "FOR d IN collection FILTER 2 < d.a.b.c.numeric < 3 RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
+      vocbase(), "FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
 
   // expression with self-reference is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER d.a < 1+d.b RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER d.a < 1+d.b RETURN d");
 
   // unsupported node types
-  assertFilterFail("FOR d IN collection FILTER d.a < {} RETURN d");
-  assertFilterFail("FOR d IN collection FILTER {} > d.a RETURN d");
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a < 1..2 RETURN d",
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER d.a < {} RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN collection FILTER {} > d.a RETURN d");
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER d.a < 1..2 RETURN d",
                             &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER 1..2 > d.a RETURN d",
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN collection FILTER 1..2 > d.a RETURN d",
                             &ExpressionContextMock::EMPTY);
 }

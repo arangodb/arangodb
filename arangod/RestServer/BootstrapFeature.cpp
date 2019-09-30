@@ -24,8 +24,10 @@
 
 #include "Agency/AgencyComm.h"
 #include "Aql/QueryList.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
@@ -37,6 +39,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 
@@ -51,11 +54,12 @@ static std::string const boostrapKey = "Bootstrap";
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, ::FEATURE_NAME), _isReady(false), _bark(false) {
-  startsAfter("ServerPhase");
-  startsAfter(SystemDatabaseFeature::name());
+  startsAfter<application_features::ServerFeaturePhase>();
+
+  startsAfter<SystemDatabaseFeature>();
 
   // TODO: It is only in FoxxPhase because of:
-  startsAfter("FoxxQueues");
+  startsAfter<FoxxQueuesFeature>();
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:
@@ -82,9 +86,9 @@ namespace {
 /// Initialize certain agency entries, like Plan, system collections
 /// and various similar things. Only runs through on a SINGLE coordinator.
 /// must only return if we are boostrap lead or bootstrap is done
-void raceForClusterBootstrap() {
+void raceForClusterBootstrap(BootstrapFeature& feature) {
   AgencyComm agency;
-  auto ci = ClusterInfo::instance();
+  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(boostrapKey);
     if (!result.successful()) {
@@ -130,9 +134,9 @@ void raceForClusterBootstrap() {
         << "raceForClusterBootstrap: race won, we do the bootstrap";
 
     // let's see whether a DBserver is there:
-    ci->loadCurrentDBServers();
+    ci.loadCurrentDBServers();
 
-    auto dbservers = ci->getCurrentDBServers();
+    auto dbservers = ci.getCurrentDBServers();
 
     if (dbservers.size() == 0) {
       LOG_TOPIC("0ad1c", TRACE, Logger::STARTUP)
@@ -142,10 +146,10 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    auto* sysDbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
     arangodb::SystemDatabaseFeature::ptr vocbase =
-        sysDbFeature ? sysDbFeature->use() : nullptr;
+        feature.server().hasFeature<arangodb::SystemDatabaseFeature>()
+            ? feature.server().getFeature<arangodb::SystemDatabaseFeature>().use()
+            : nullptr;
     auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
                               : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
@@ -267,10 +271,10 @@ void runActiveFailoverStart(std::string const& myId) {
 }  // namespace
 
 void BootstrapFeature::start() {
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
+      server().hasFeature<arangodb::SystemDatabaseFeature>()
+          ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   TRI_ASSERT(vocbase.get() != nullptr);
 
@@ -283,7 +287,7 @@ void BootstrapFeature::start() {
     // the root user
     if (ServerState::isCoordinator(role)) {
       LOG_TOPIC("724e0", DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
-      raceForClusterBootstrap();
+      raceForClusterBootstrap(*this);
 
       if (v8Enabled) {
         ::runCoordinatorJS(vocbase.get());
@@ -345,12 +349,10 @@ void BootstrapFeature::start() {
 
 void BootstrapFeature::unprepare() {
   // notify all currently running queries about the shutdown
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->killAll(true);

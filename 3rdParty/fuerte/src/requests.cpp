@@ -48,7 +48,7 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
 
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
                                        StringMap const& parameters,
-                                       VPackSlice const& payload) {
+                                       VPackSlice const payload) {
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;

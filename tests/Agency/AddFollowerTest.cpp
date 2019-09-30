@@ -25,20 +25,23 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
+
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AddFollower.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
-
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -102,7 +105,8 @@ inline static std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-class AddFollowerTest : public ::testing::Test {
+class AddFollowerTest : public ::testing::Test,
+                        public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   Builder builder;

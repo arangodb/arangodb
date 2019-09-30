@@ -45,9 +45,10 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
+RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
-    : RestVocbaseBaseHandler(request, response), _agent(agent) {}
+    : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)

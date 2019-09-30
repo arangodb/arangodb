@@ -23,13 +23,25 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
-#include "ExpressionContextMock.h"
-#include "common.h"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "search/all_filter.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
+#include "search/granular_range_filter.hpp"
+#include "search/phrase_filter.hpp"
+#include "search/prefix_filter.hpp"
+#include "search/range_filter.hpp"
+#include "search/term_filter.hpp"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include <velocypack/Parser.h>
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -60,19 +72,9 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "search/all_filter.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/column_existence_filter.hpp"
-#include "search/granular_range_filter.hpp"
-#include "search/phrase_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/range_filter.hpp"
-#include "search/term_filter.hpp"
-
-#include <velocypack/Parser.h>
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -81,80 +83,23 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchFilterBooleanTest : public ::testing::Test {
+class IResearchFilterBooleanTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
 
-  IResearchFilterBooleanTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
+ private:
+  TRI_vocbase_t* _vocbase;
 
+ protected:
+  IResearchFilterBooleanTest() {
     arangodb::tests::init();
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), false);  // required for IResearchFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
-                          true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto databases = VPackBuilder();
-    databases.openArray();
-    databases.add(systemDatabaseArgs);
-    databases.close();
-
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases.slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
+    auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
@@ -166,7 +111,7 @@ class IResearchFilterBooleanTest : public ::testing::Test {
         }});
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
@@ -178,41 +123,19 @@ class IResearchFilterBooleanTest : public ::testing::Test {
           return params[0];
         }});
 
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(testDBInfo(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
-    analyzers->emplace(
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
+    analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
       arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice()); // cache analyzer
   }
 
-  ~IResearchFilterBooleanTest() {
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
+  TRI_vocbase_t& vocbase() { return *_vocbase; }
 };  // IResearchFilterSetup
 
 // -----------------------------------------------------------------------------
@@ -230,7 +153,9 @@ TEST_F(IResearchFilterBooleanTest, Ternary) {
     expected.add<irs::all>();
 
     assertFilterSuccess(
-        "LET x=3 FOR d IN collection FILTER x > 2 ? true : false RETURN d", expected, &ctx);
+        vocbase(),
+        "LET x=3 FOR d IN collection FILTER x > 2 ? true : false RETURN d",
+        expected, &ctx);
   }
 
   // can evaluate expression, boost
@@ -243,6 +168,7 @@ TEST_F(IResearchFilterBooleanTest, Ternary) {
     expected.add<irs::all>().boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "LET x=3 FOR d IN collection FILTER BOOST(x > 2 ? true : false, 1.5) "
         "RETURN d",
         expected, &ctx);
@@ -258,20 +184,25 @@ TEST_F(IResearchFilterBooleanTest, Ternary) {
     expected.add<irs::empty>();
 
     assertFilterSuccess(
-        "LET x=1 FOR d IN collection FILTER x > 2 ? true : false RETURN d", expected, &ctx);
+        vocbase(),
+        "LET x=1 FOR d IN collection FILTER x > 2 ? true : false RETURN d",
+        expected, &ctx);
   }
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter(
+      vocbase(),
       "LET x=1 FOR d IN collection FILTER x > 2 ? _NONDETERM_(true) : false "
       "RETURN d");
   assertExpressionFilter(
+      vocbase(),
       "LET x=1 FOR d IN collection FILTER BOOST(x > 2 ? _NONDETERM_(true) : "
       "false, 1.5) RETURN d",
       1.5, wrappedExpressionExtractor);
 
   // can't evaluate expression: no referenced variable in context
   assertFilterExecutionFail(
+      vocbase(),
       "LET x=1 FOR d IN collection FILTER x > 2 ? true : false RETURN d",
       &ExpressionContextMock::EMPTY);
 }
@@ -286,12 +217,14 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .field(mangleStringIdentity("a"))
         .term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER not (d.a == '1') RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER not (d.a == '1') RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER not (d['a'] == '1') RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d.a) RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER not (d['a'] == '1') RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER not ('1' == d.a) RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER not ('1' == d['a']) RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER not ('1' == d['a']) RETURN d", expected);
   }
 
   // simple offset, string
@@ -303,8 +236,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .field(mangleStringIdentity("[1]"))
         .term("1");
 
-    assertFilterSuccess("FOR d IN collection FILTER not (d[1] == '1') RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d[1]) RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER not (d[1] == '1') RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER not ('1' == d[1]) RETURN d", expected);
   }
 
   // complex attribute, string
@@ -317,12 +252,14 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("1");
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER not (d.a.b.c == '1') RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER not (d.a.b.c == '1') RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a']['b']['c'] == '1') RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER not ('1' == d.a.b.c) RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER not ('1' == d.a.b.c) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not ('1' == d['a']['b']['c']) RETURN d", expected);
   }
 
@@ -336,12 +273,16 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b[42].c == '1') RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a']['b'][42]['c'] == '1') RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not ('1' == d.a.b[42].c) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not ('1' == d['a']['b'][42]['c']) RETURN d", expected);
   }
 
@@ -356,18 +297,22 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER BOOST(not (d.a.b[42].c == '1'), 2.5) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(not (d['a']['b'][42]['c'] == '1'), "
         "2.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(not ('1' == d.a.b[42].c), 2.5) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(not ('1' == d['a']['b'][42]['c']), "
         "2.5) RETURN d",
         expected);
@@ -380,6 +325,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     root.add<irs::by_term>().field(mangleStringIdentity("a.b[42].c")).term("1").boost(2.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not boost('1' == d['a']['b'][42]['c'], "
         "2.5) RETURN d",
         expected);
@@ -396,18 +342,22 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(BOOST(not (d.a.b[42].c == '1'), "
         "2.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(not (d['a']['b'][42]['c'] "
         "== '1'), 2.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(not ('1' == d.a.b[42].c), "
         "'test_analyzer'), 2.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(not ('1' == "
         "d['a']['b'][42]['c']), 'test_analyzer'), 2.5) RETURN d",
         expected);
@@ -430,26 +380,32 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d.a.b[23].c == "
         "TO_STRING(c+1)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d.a['b'][23].c == "
         "TO_STRING(c+1)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d['a']['b'][23].c == "
         "TO_STRING(c+1)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (TO_STRING(c+1) == "
         "d.a.b[23].c) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (TO_STRING(c+1) == "
         "d.a['b'][23].c) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (TO_STRING(c+1) == "
         "d['a']['b'][23]['c']) RETURN d",
         expected, &ctx);
@@ -472,30 +428,37 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("42");
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER ANALYZER(not (d.a.b[23].c == "
         "TO_STRING(c+1)), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER ANALYZER(not (d.a['b'][23].c == "
         "TO_STRING(c+1)), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER ANALYZER(not (d['a']['b'][23].c "
         "== TO_STRING(c+1)), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER ANALYZER(not (TO_STRING(c+1) == "
         "d.a.b[23].c), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER ANALYZER(not (TO_STRING(c+1) == "
         "d.a['b'][23].c), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER ANALYZER(not (TO_STRING(c+1) == "
         "d['a']['b'][23]['c']), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not ANALYZER(TO_STRING(c+1) == "
         "d['a']['b'][23]['c'], 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -515,9 +478,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       .field(mangleStringIdentity("a.b[23].c"))
       .term("42");
     assertFilterSuccess(
-      "LET c=41 FOR d IN collection FILTER not (ANALYZER(TO_STRING(c+1), "
-      "'test_analyzer') == d['a']['b'][23]['c']) RETURN d",
-      expected, &ctx);
+        vocbase(),
+        "LET c=41 FOR d IN collection FILTER not (ANALYZER(TO_STRING(c+1), "
+        "'test_analyzer') == d['a']['b'][23]['c']) RETURN d",
+        expected, &ctx);
   }
 
   // dynamic complex attribute name
@@ -538,12 +502,14 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term("1");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
         " == '1') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not ('1' == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')])"
@@ -560,6 +526,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -578,6 +545,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -596,6 +564,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -613,22 +582,27 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
-        "FOR d IN collection FILTER not (d.a.b.c == true) RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER not (d.a.b.c == true) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a'].b.c == true) RETURN d", expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER not (true == d.a.b.c) RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER not (true == d.a.b.c) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (true == d.a['b']['c']) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(not (d.a.b.c == true), "
         "'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not analyzer(d['a'].b.c == true, "
         "'identity') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not analyzer(true == d.a.b.c, "
         "'test_analyzer') RETURN d",
         expected);
@@ -644,12 +618,16 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.bool == false) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a'].b.c.bool == false) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (false == d.a.b.c.bool) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (false == d.a['b']['c'].bool) RETURN d", expected);
   }
 
@@ -663,12 +641,16 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a[1].b.c.bool == false) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a'][1].b.c.bool == false) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (false == d.a[1].b.c.bool) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (false == d.a[1]['b']['c'].bool) "
         "RETURN d",
         expected);
@@ -691,30 +673,37 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d.a.b[23].c == "
         "TO_BOOL(c-41)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d.a['b'][23].c == "
         "TO_BOOL(c-41)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d['a']['b'][23].c == "
         "TO_BOOL(c-41)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (TO_BOOL(c-41) == "
         "d.a.b[23].c) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (TO_BOOL(c-41) == "
         "d.a['b'][23].c) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (TO_BOOL(c-41) == "
         "d['a']['b'][23]['c']) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not analyzer((TO_BOOL(c-41) == "
         "d.a['b'][23].c), 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -738,12 +727,14 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
         " == true) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not (true == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')])"
@@ -760,6 +751,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -778,6 +770,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -796,6 +789,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -813,12 +807,16 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.bool == null) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a['b']['c'].bool == null) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (null == d.a.b.c.bool) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (null == d['a']['b']['c'].bool) RETURN "
         "d",
         expected);
@@ -834,14 +832,18 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.bool[42] == null) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a['b']['c'].bool[42] == null) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (null == d.a.b.c.bool[42]) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (null == d['a']['b']['c'].bool[42]) "
         "RETURN d",
         expected);
@@ -864,30 +866,37 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not (d.a.b[23].c == (c && "
         "true)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not (d.a['b'][23].c == (c && "
         "false)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not (d['a']['b'][23].c == (c && "
         "true)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not ((c && false) == "
         "d.a.b[23].c) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not ((c && false) == "
         "d.a['b'][23].c) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not ((c && false) == "
         "d['a']['b'][23]['c']) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=null FOR d IN collection FILTER not analyzer((c && false) == "
         "d['a']['b'][23]['c'], 'test_analyzer') RETURN d",
         expected, &ctx);
@@ -910,12 +919,14 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
         " == null) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not (null == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')])"
@@ -932,6 +943,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -950,6 +962,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -968,6 +981,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -990,22 +1004,29 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.numeric == 3) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a']['b']['c'].numeric == 3) RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.numeric == 3.0) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (3 == d.a.b.c.numeric) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (3.0 == d.a.b.c.numeric) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (3.0 == d.a['b']['c'].numeric) RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not analyzer(3.0 == d.a['b']['c'].numeric, "
         "'test_analyzer') RETURN d",
         expected);
@@ -1015,9 +1036,11 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleBool("a")).term(irs::boolean_token_stream::value_false());
-    assertFilterSuccess("FOR d IN collection FILTER d.a == not '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a == not '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN collection FILTER not '1' == d.a RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER not '1' == d.a RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -1036,18 +1059,24 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.numeric[42] == 3) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d['a']['b']['c'].numeric[42] == 3) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (d.a.b.c.numeric[42] == 3.0) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (3 == d.a.b.c.numeric[42]) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (3.0 == d.a.b.c.numeric[42]) RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER not (3.0 == d.a['b']['c'].numeric[42]) "
         "RETURN d",
         expected);
@@ -1075,29 +1104,34 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d.a.b[23].c == (c + 1.5)) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d.a['b'][23].c == (c + 1.5)) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not (d['a']['b'][23].c == (c + "
         "1.5)) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not ((c + 1.5) == d.a.b[23].c) "
         "RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET c=41 FOR d IN collection FILTER not ((c + 1.5) == d.a['b'][23].c) "
         "RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        "LET c=41 FOR d IN collection FILTER not ((c + 1.5) == "
-        "d['a']['b'][23]['c']) RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET c=41 FOR d IN collection FILTER not ((c + 1.5) == "
+                        "d['a']['b'][23]['c']) RETURN d",
+                        expected, &ctx);
   }
 
   // dynamic complex attribute name
@@ -1123,12 +1157,14 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         .term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
         " == 42.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not (42.5 == "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')])"
@@ -1145,6 +1181,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -1163,6 +1200,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -1181,6 +1219,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')]"
@@ -1193,7 +1232,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN collection FILTER not [] == '1' RETURN d",
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER not [] == '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
   }
 
@@ -1205,7 +1245,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a'"
         ")] == '1') RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1284,7 +1324,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "collection FILTER not ('1' < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')"
         "]) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1360,7 +1400,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& refName = "d";
     std::string const& queryString =
         "FOR d IN collection FILTER not (d.a < _NONDETERM_('1')) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1437,7 +1477,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "FOR d IN collection FILTER BOOST(not (d.a < _NONDETERM_('1')), 2.5) "
         "RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1516,7 +1556,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "LET k={} FOR d IN collection FILTER not (k.a < _NONDETERM_('1')) "
         "RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1593,7 +1633,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "LET k={} FOR d IN collection FILTER not BOOST(k.a < _NONDETERM_('1'), "
         "1.5) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1671,7 +1711,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& refName = "d";
     std::string const& queryString =
         "FOR d IN collection FILTER not (d.a < 1+d.b) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     arangodb::aql::Query query(false, vocbase,
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -1743,14 +1783,18 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   }
 
   // expression is not supported by IResearch -> wrap it
-  assertExpressionFilter("FOR d IN collection FILTER not d == '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER not d[*] == '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER not d == '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER not d[*] == '1' RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER not d.a[*] == '1' RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER not d.a == '1' RETURN d");
+      vocbase(), "FOR d IN collection FILTER not d.a[*] == '1' RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER not d.a == '1' RETURN d");
   assertExpressionFilter(
-      "FOR d IN collection FILTER not '1' == not d.a RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER '1' == not d.a RETURN d");
+      vocbase(), "FOR d IN collection FILTER not '1' == not d.a RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN collection FILTER '1' == not d.a RETURN d");
 }
 
 TEST_F(IResearchFilterBooleanTest, BinaryOr) {
@@ -1762,18 +1806,25 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleStringIdentity("b")).term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a == '1' or d.b == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'] == '1' or d.b == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a == '1' or '2' == d.b RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d.a or d.b == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d.a or '2' == d.b RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d['a'] or '2' == d.b RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d['a'] or '2' == d['b'] RETURN d", expected);
   }
 
@@ -1788,22 +1839,29 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' or d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] < '1' or d.c.b.a == '2' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' or '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a.b.c or d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a.b.c or '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d['a']['b']['c'] or '2' == d.c.b.a "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d['a'].b.c or '2' == d.c.b.a RETURN "
         "d",
         expected);
@@ -1822,25 +1880,30 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a.b.c < '1' or d.c.b.a == '2', "
         "'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d['a']['b']['c'] < '1', "
         "'test_analyzer') or analyzER(d.c.b.a == '2', 'test_analyzer') RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(analyzer(d.a.b.c < '1', "
         "'test_analyzer') or analyzer('2' == d.c.b.a, 'test_analyzer'), "
         "'identity') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(analyzer(analyzer('1' > d.a.b.c, "
         "'test_analyzer'), 'identity') or d.c.b.a == '2', 'test_analyzer') "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(boost(analyzer(d.a.b.c < '1' or "
         "d.c.b.a == '2', 'test_analyzer'), 0.5), 2) RETURN d",
         expected);
@@ -1860,10 +1923,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d.a.b.c < '1' or d.c.b.a == "
         "'2', 'test_analyzer'), 0.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d.a.b.c < '1' or d.c.b.a == "
         "'2', 0.5), 'test_analyzer') RETURN d",
         expected);
@@ -1882,10 +1947,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(boost(d.a.b.c < '1', 2.5), "
         "'test_analyzer') or d.c.b.a == '2', 0.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(boost(analyzer(d.a.b.c < '1', "
         "'test_analyzer'), 2.5) or d.c.b.a == '2', 0.5) RETURN d",
         expected);
@@ -1904,14 +1971,17 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a == '1' or '2' == d.a or d.b != '3' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'] == '1' or '2' == d['a'] or d.b != "
         "'3' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a == '1' or '2' == d.a or '3' != d.b "
         "RETURN d",
         expected);
@@ -1935,11 +2005,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(analyzer(boost(d.a == '1', "
         "0.5), 'test_analyzer') or analyzer('2' == d.a, 'identity') or "
         "boost(d.b != '3', 1.5), 'test_analyzer'), 2.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(boost(d['a'] == '1', 0.5), "
         "'test_analyzer') or '2' == d['a'] or boost(analyzer(d.b != '3', "
         "'test_analyzer'), 1.5), 2.5) RETURN d",
@@ -1959,12 +2031,15 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .term("3");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a in ['1', '2'] or d.b != '3' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'] in ['1', '2'] or d.b != '3' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a in ['1', '2'] or '3' != d.b RETURN d", expected);
   }
 
@@ -1979,22 +2054,29 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.b.c > false or d.a.b.c == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d['b']['c'] > false or d.a.b.c == "
         "null, 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.b.c or d.a.b.c == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.b.c > false or null == d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.b.c or null == d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.b.c or null == d['a']['b']['c'] "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d['b']['c'] or null == "
         "d['a']['b']['c'] RETURN d",
         expected);
@@ -2012,6 +2094,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d['b']['c'] > false or "
         "d.a.b.c == null, 'test_analyzer'), 1.5) RETURN d",
         expected);
@@ -2032,6 +2115,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d['b']['c'] > false, 1.5) or "
         "boost(d.a.b.c == null, 0.5) RETURN d",
         expected);
@@ -2056,36 +2140,48 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 or d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15 or d['a']['b']['c'] "
         "< 40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a']['b']['c'] or d.a.b.c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 or 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c or 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a['b']['c'] or 40 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 or d.a.b.c < 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c > 15.0 or d['a']['b'].c < 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c or d.a.b.c < 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 or 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c or 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d['a']['b']['c'] or 40.0 > d.a.b.c "
         "RETURN d",
         expected);
@@ -2111,10 +2207,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c > 15 or d.a.b.c < 40, 1.5) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d['a']['b']['c'] > 15 or "
         "d['a']['b']['c'] < 40, 1.5), 'test_analyzer') RETURN d",
         expected);
@@ -2141,10 +2239,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c > 15, 1.5) or boost(d.a.b.c "
         "< 40, 0.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d['a']['b']['c'] > 15, 1.5) "
         "or boost(d['a']['b']['c'] < 40, 0.5), 'test_analyzer') RETURN d",
         expected);
@@ -2169,34 +2269,46 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 or d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c or d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d['a']['b']['c'] or d['a']['b']['c'] "
         "< 40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 or 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= 15 or 40 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c or 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 or d.a.b.c < 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= 15.0 or d['a']['b'].c "
         "< 40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c or d.a.b.c < 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 or 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c or 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d['a']['b'].c or 40.0 > d.a.b.c "
         "RETURN d",
         expected);
@@ -2221,38 +2333,49 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 or d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= 15 or d['a']['b']['c'] <= "
         "40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c or d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 or 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c or 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d['a'].b.c or 40 >= d['a'].b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 or d.a.b.c <= 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c or d.a.b.c <= 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a['b']['c'] or d['a']['b']['c'] "
         "<= 40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 or 40.0 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c or 40.0 >= d.a.b.c RETURN "
         "d",
         expected);
@@ -2277,38 +2400,51 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 or d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15 or d.a.b.c <= 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c or d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a'].b.c or d['a'].b.c <= 40 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 or 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15 or 40 >= "
         "d['a']['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c or 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 or d.a.b.c <= 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15.0 or d.a['b']['c'] <= "
         "40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c or d.a.b.c <= 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 or 40.0 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c or 40.0 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d['a'].b.c or 40.0 >= "
         "d['a']['b']['c'] RETURN d",
         expected);
@@ -2326,6 +2462,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
+        vocbase(),
         "LET boolVal=false FOR d IN collection FILTER d.a.b.c.e.f=='1' OR "
         "d.a.b.c.e.f==boolVal RETURN d",
         expected,
@@ -2352,6 +2489,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
 
     assertFilterSuccess(
+        vocbase(),
         "LET strVal='str' LET numVal=2 FOR d IN collection FILTER "
         "d.a.b.c.e.f==strVal OR d.a.b.c.e.f==(numVal+1) RETURN d",
         expected,
@@ -2372,6 +2510,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET boolVal=false LET nullVal=null FOR d IN collection FILTER "
         "d.a.b.c.e.f==boolVal OR d.a.b.c.e.f==nullVal RETURN d",
         expected,
@@ -2381,7 +2520,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
   // noneterministic expression -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -2463,7 +2602,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
   // noneterministic expression -> wrap it, boost
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -2555,16 +2694,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.add<irs::by_term>().field(mangleStringIdentity("b")).term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a == '1' and d.b == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'] == '1' and d.b == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a == '1' and '2' == d.b RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d.a and d.b == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d.a and '2' == d.b RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' == d['a'] and '2' == d['b'] RETURN d", expected);
   }
 
@@ -2579,26 +2724,34 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' and d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] < '1' and d.c.b['a'] == "
         "'2' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c < '1' and d.c.b['a'] == '2' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' and '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a.b.c and d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d['a']['b']['c'] and d.c.b.a == '2' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a.b.c and '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d['a']['b']['c'] and '2' == "
         "d.c.b['a'] RETURN d",
         expected);
@@ -2616,6 +2769,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d.a.b.c < '1' and "
         "analyzer(d.c.b.a == '2', 'identity'), 0.5), 'test_analyzer') RETURN d",
         expected);
@@ -2633,6 +2787,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2").boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d['a']['b']['c'] < '1', "
         "'test_analyzer'), 0.5) and boost(d.c.b['a'] == '2', 0.5) RETURN d",
         expected);
@@ -2653,34 +2808,42 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' and not (d.c.b.a == '2') "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c < '1' and not (d.c.b['a'] == "
         "'2') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' and not ('2' == d.c.b.a) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] < '1' and not ('2' == "
         "d.c.b['a']) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a.b.c and not (d.c.b.a == '2') "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a['b']['c'] and not (d.c.b.a == "
         "'2') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d.a.b.c and not ('2' == d.c.b.a) "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '1' > d['a'].b.c and not ('2' == "
         "d.c.b['a']) RETURN d",
         expected);
@@ -2702,6 +2865,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term("2");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c < '1' and not "
         "analyzer(d.c.b.a == '2', 'test_analyzer'), 0.5) RETURN d",
         expected);
@@ -2723,6 +2887,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c < '1' and not "
         "boost(analyzer(d.c.b.a == '2', 'test_analyzer'), 0.5) RETURN d",
         expected);
@@ -2730,7 +2895,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -2821,26 +2986,34 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.b.c > false and d.a.b.c == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['b']['c'] > false and d['a']['b']['c'] "
         "== null RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['b']['c'] > false and d['a'].b.c == null "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.b.c and d.a.b.c == null RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.b.c > false and null == d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['b']['c'] > false and null == d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.b.c and null == d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false < d.b.c and null == d['a']['b']['c'] "
         "RETURN d",
         expected);
@@ -2858,6 +3031,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.b.c > false and d.a.b.c == null, "
         "1.5) RETURN d",
         expected);
@@ -2878,6 +3052,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.b.c > false, 0.5) and "
         "boost(d.a.b.c == null, 1.5) RETURN d",
         expected);
@@ -2902,44 +3077,59 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c > 15 and d['a']['b']['c'] < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15 and d['a']['b']['c'] < "
         "40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c > 15 and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a'].b.c and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15 and 40 > "
         "d['a']['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c < 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15.0 and d.a['b']['c'] < "
         "40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c < 40.0 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15.0 and 40.0 > "
         "d.a['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(15.0 < d.a.b.c and 40.0 > "
         "d.a.b.c, 'test_analyzer') RETURN d",
         expected);
@@ -2965,6 +3155,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c > 15 and d.a.b.c < 40, 1.5) "
         "RETURN d",
         expected);
@@ -2991,6 +3182,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c > 15, 1.5) and boost(d.a.b.c "
         "< 40, 1.5) RETURN d",
         expected);
@@ -3017,6 +3209,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c > 15, 0.5) and boost(d.a.b.c "
         "< 40, 1.5) RETURN d",
         expected);
@@ -3041,6 +3234,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and analyzer(d.a.b.c < 40, "
         "'test_analyzer') RETURN d",
         expected);
@@ -3048,7 +3242,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3129,7 +3323,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3232,62 +3426,75 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[42].c > 15 and d.a.b[42].c < 40 "
         "RETURN d",
         expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d['a'].b[42].c > 15 and "
+                        "d['a']['b'][42]['c'] < 40 RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER d.a['b'][42]['c'] > 15 and "
+                        "d['a']['b'][42]['c'] < 40 RETURN d",
+                        expected);
     assertFilterSuccess(
-        "FOR d IN collection FILTER d['a'].b[42].c > 15 and "
-        "d['a']['b'][42]['c'] < 40 RETURN d",
-        expected);
-    assertFilterSuccess(
-        "FOR d IN collection FILTER d.a['b'][42]['c'] > 15 and "
-        "d['a']['b'][42]['c'] < 40 RETURN d",
-        expected);
-    assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b[42].c > 15 and d.a.b[42].c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b[42].c and d.a.b[42].c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a'].b[42].c and d.a.b[42].c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[42].c > 15 and 40 > d.a.b[42].c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][42]['c'] > 15 and 40 > "
         "d['a']['b'][42]['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b[42].c and 40 > d.a.b[42].c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[42].c > 15.0 and d.a.b[42].c < 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b'][42]['c'] > 15.0 and "
         "d.a['b'][42]['c'] < 40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b[42].c and d.a.b[42].c < 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b[42].c > 15.0 and 40.0 > d.a.b[42].c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'][42]['c'] > 15.0 and 40.0 > "
         "d.a['b'][42]['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b[42].c and 40.0 > d.a.b[42].c "
         "RETURN d",
         expected);
@@ -3312,38 +3519,49 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= 15 and d['a']['b']['c'] < "
         "40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d['a']['b']['c'] and 40 > d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a['b']['c'] and d.a.b.c < 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d['a']['b']['c'] and 40.0 > "
         "d.a['b']['c'] RETURN d",
         expected);
@@ -3368,50 +3586,64 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= 15 and d.a.b.c <= 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d['a']['b']['c'] and d.a['b']['c'] "
         "<= 40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15 and 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d.a.b.c and 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 <= d['a']['b']['c'] and 40 >= "
         "d.a['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 and d.a.b.c <= 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= 15.0 and d['a']['b'].c <= "
         "40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c and d.a.b.c <= 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.0 and 40.0 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= 15.0 and 40.0 >= d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d.a.b.c and 40.0 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 <= d['a']['b']['c'] and 40.0 >= "
         "d.a.b.c RETURN d",
         expected);
@@ -3419,7 +3651,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3517,48 +3749,62 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c > 15 and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a']['b']['c'] and d.a.b.c <= 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15 and 40 >= "
         "d['a']['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and 40 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a']['b'].c and 40 >= d.a['b']['c'] "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c <= 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c <= 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d['a']['b'].c and d['a']['b']['c'] "
         "<= 40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and 40.0 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d['a']['b'].c and 40.0 >= d.a.b.c "
         "RETURN d",
         expected);
@@ -3566,7 +3812,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3672,6 +3918,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3680,6 +3927,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         " <= 40 RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER 15 < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3698,6 +3946,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3718,6 +3967,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3738,6 +3988,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -3761,26 +4012,34 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c < '40' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > '15' and d.a.b.c < '40' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d.a.b.c and d.a.b.c < '40' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d['a']['b'].c and d['a']['b']['c'] "
         "< '40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > '15' and '40' > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > '15' and '40' > "
         "d['a']['b'].c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d.a.b.c and '40' > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d.a.b.c and '40' > d.a['b']['c'] "
         "RETURN d",
         expected);
@@ -3800,34 +4059,42 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= '15' and d['a']['b']['c'] "
         "< '40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= '15' and d.a.b.c < '40' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and '40' > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= '15' and '40' > d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and '40' > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d['a']['b']['c'] and '40' > "
         "d.a['b']['c'] RETURN d",
         expected);
@@ -3848,10 +4115,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d.a.b.c >= '15' and d.a.b.c "
         "< '40', 0.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d['a']['b'].c >= '15' and "
         "d['a']['b']['c'] < '40', 'test_analyzer'), 0.5) RETURN d",
         expected);
@@ -3871,30 +4140,37 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= '15' and d.a.b.c <= "
         "'40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d['a']['b'].c and d.a['b']['c'] <= "
         "'40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d['a'].b.c and '40' >= "
         "d['a']['b'].c RETURN d",
         expected);
@@ -3916,6 +4192,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c >= '15', 0.5) and "
         "boost(d.a.b.c <= '40', 0.5) RETURN d",
         expected);
@@ -3937,6 +4214,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost(d.a.b.c >= '15', 0.5) and "
         "boost(d.a.b.c <= '40', 0.5), 'test_analyzer') RETURN d",
         expected);
@@ -3957,6 +4235,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d.a.b.c >= '15', "
         "'test_analyzer') and analyzer(d.a.b.c <= '40', 'test_analyzer'), 0.5) "
         "RETURN d",
@@ -3977,34 +4256,42 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d.a.b.c and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d['a'].b.c and d['a'].b.c <= '40' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > '15' and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > '15' and '40' >= "
         "d.a.b.c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d.a.b.c and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' < d['a']['b'].c and '40' >= "
         "d['a']['b']['c'] RETURN d",
         expected);
@@ -4027,6 +4314,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER d.a.b.c.e.f > "
         "TO_STRING(numVal+13) && d.a.b.c.e.f <= TO_STRING(numVal+38) RETURN d",
         expected,
@@ -4034,6 +4322,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER TO_STRING(numVal+13) < "
         "d.a.b.c.e.f  && d.a.b.c.e.f <= TO_STRING(numVal+38) RETURN d",
         expected,
@@ -4059,6 +4348,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER boost(analyzer(d.a.b.c.e.f > "
         "TO_STRING(numVal+13) && d.a.b.c.e.f <= TO_STRING(numVal+38), "
         "'test_analyzer'), numVal) RETURN d",
@@ -4067,6 +4357,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER "
         "analyzer(boost(TO_STRING(numVal+13) < d.a.b.c.e.f  && d.a.b.c.e.f <= "
         "TO_STRING(numVal+38), numVal), 'test_analyzer') RETURN d",
@@ -4097,6 +4388,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4105,6 +4397,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         " <= '40' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '15' < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4136,6 +4429,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e.f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] > '15' && "
@@ -4143,6 +4437,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         " <= '40' RETURN d",
         expected, &ctx);
     assertFilterSuccess(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER '15' < "
         "d[a].b[c].e.f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] && '40' >= "
@@ -4160,6 +4455,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4180,6 +4476,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4200,6 +4497,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
+        vocbase(),
         "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
@@ -4226,50 +4524,64 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= '15' and d['a']['b'].c < "
         "40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= '15' and d.a.b.c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= '15' and 40 > "
         "d['a']['b'].c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= '15' and 40 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= '15' and "
         "d['a']['b']['c'] < 40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= '15' and 40.0 > "
         "d['a']['b'].c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
@@ -4293,10 +4605,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(d.a.b.c >= '15' and d.a.b.c "
         "< 40, 'test_analyzer'), 1.5) RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(boost('15' <= d.a.b.c and 40.0 > "
         "d.a.b.c, 1.5), 'test_analyzer') RETURN d",
         expected);
@@ -4322,6 +4636,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER d.a.b.c.e.f >= "
         "TO_STRING(numVal+13) && d.a.b.c.e.f < (numVal+38) RETURN d",
         expected,
@@ -4329,6 +4644,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER TO_STRING(numVal+13) <= "
         "d.a.b.c.e.f  && d.a.b.c.e.f < (numVal+38) RETURN d",
         expected,
@@ -4355,50 +4671,64 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.5 and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= 15.5 and d['a']['b'].c < "
         "40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= 15.5 and d.a.b.c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.5 <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.5 and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c >= 15.5 and 40 > "
         "d['a']['b'].c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= 15.5 and 40 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.5 <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.5 and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= 15.5 and "
         "d['a']['b']['c'] < 40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.5 <= d.a.b.c and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= 15.5 and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= 15.5 and 40.0 > "
         "d['a']['b'].c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.5 <= d.a.b.c and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
@@ -4423,46 +4753,59 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b'].c > 15 and d['a']['b'].c <= "
         "'40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c > 15 and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and '40' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15 and '40' >= "
         "d['a']['b'].c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > 15.0 and d.a.b.c <= "
         "'40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d['a'].b.c and '40' >= d.a.b.c "
         "RETURN d",
         expected);
@@ -4485,54 +4828,67 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= false and d.a.b.c <= 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a['b']['c'] and d.a['b']['c'] "
         "<= 40 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and 40 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and 40 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d['a']['b']['c'] and 40 >= "
         "d.a.b.c RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a['b']['c'] and d.a.b.c <= 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(d.a.b.c >= false and 40.0 >= "
         "d.a.b.c, 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= false and 40.0 >= d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and 40.0 >= d.a.b.c "
         "RETURN d",
         expected);
@@ -4556,6 +4912,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c >= false and d.a.b.c <= 40, "
         "1.5) RETURN d",
         expected);
@@ -4580,6 +4937,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c >= false, 1.5) and "
         "boost(d.a.b.c <= 40, 0.5) RETURN d",
         expected);
@@ -4602,34 +4960,42 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > null and d.a.b.c <= 40.5 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > null and d.a.b.c <= 40.5 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d.a.b.c and d.a.b.c <= 40.5 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d['a']['b']['c'] and d.a.b.c <= "
         "40.5 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > null and 40.5 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > null and 40.5 >= "
         "d.a['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d.a.b.c and 40.5 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER analyzer(null < d['a']['b']['c'] and 40.5 "
         ">= d['a']['b']['c'], 'test_analyzer') RETURN d",
         expected);
@@ -4653,6 +5019,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(d.a.b.c > null, 1.5) and d.a.b.c <= "
         "40.5 RETURN d",
         expected);
@@ -4675,54 +5042,69 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= '15' and d.a.b.c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a['b']['c'] and d.a.b.c < 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a'].b.c >= '15' and 40 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a['b']['c'] and 40 > "
         "d.a['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= '15' and d.a.b.c < "
         "40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40.0 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d['a'].b.c and d['a']['b']['c'] < "
         "40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= '15' and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER '15' <= d.a['b']['c'] and 40.0 > d.a.b.c "
         "RETURN d",
         expected);
@@ -4748,6 +5130,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(1.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(boost(d.a.b.c >= '15', 0.5) and "
         "boost(d.a.b.c < 40, 1.5), 0.5) RETURN d",
         expected);
@@ -4772,50 +5155,64 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>("40");
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15 and d.a.b.c <= '40' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d['a']['b']['c'] and d.a.b.c <= '40' "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15 and '40' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15 and '40' >= "
         "d['a']['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15 < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15.0 and d['a']['b']['c'] "
         "<= '40' RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c <= '40' RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > 15.0 and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > 15.0 and '40' >= d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d.a.b.c and '40' >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER 15.0 < d['a']['b']['c'] and '40' >= "
         "d.a.b.c RETURN d",
         expected);
@@ -4843,6 +5240,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .boost(0.5);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER boost(analyzer(boost(d.a.b.c > 15, 2.5) "
         "and analyzer(boost(d.a.b.c <= '40', 0.5), 'identity'), "
         "'test_analyzer'), 5) RETURN d",
@@ -4866,50 +5264,62 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a['b']['c'] and d.a.b.c <= 40 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and 40 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and 40 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] >= false and d.a.b.c <= "
         "40.0 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d['a'].b.c and d.a.b.c <= 40.0 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c >= false and 40.0 >= d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] >= false and 40.0 >= "
         "d.a['b']['c'] RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER false <= d.a.b.c and 40.0 >= d.a.b.c "
         "RETURN d",
         expected);
@@ -4932,34 +5342,42 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > null and d.a.b.c <= 40.5 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d['a']['b']['c'] > null and d.a.b.c <= "
         "40.5 RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d.a.b.c and d.a.b.c <= 40.5 RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d['a'].b.c and d.a.b.c <= 40.5 "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a.b.c > null and 40.5 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER d.a['b']['c'] > null and 40.5 >= d.a.b.c "
         "RETURN d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d.a.b.c and 40.5 >= d.a.b.c RETURN "
         "d",
         expected);
     assertFilterSuccess(
+        vocbase(),
         "FOR d IN collection FILTER null < d['a']['b']['c'] and 40.5 >= "
         "d.a['b']['c'] RETURN d",
         expected);
@@ -4982,6 +5400,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER d.a.b.c.e.f >= (numVal < 13) "
         "&& d.a.b.c.e.f <= (numVal > 1) RETURN d",
         expected,
@@ -4989,6 +5408,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER (numVal < 13) <= d.a.b.c.e.f  "
         "&& d.a.b.c.e.f <= (numVal > 1) RETURN d",
         expected,
@@ -5014,6 +5434,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER boost(d.a.b.c.e.f >= (numVal "
         "< 13) && d.a.b.c.e.f <= (numVal > 1), 1.5) RETURN d",
         expected,
@@ -5021,6 +5442,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER boost((numVal < 13) <= "
         "d.a.b.c.e.f  && d.a.b.c.e.f <= (numVal > 1), 1.5) RETURN d",
         expected,
@@ -5048,6 +5470,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER d.a.b.c.e.f >= (numVal < 13) "
         "&& d.a.b.c.e.f <= (numVal + 1) RETURN d",
         expected,
@@ -5055,6 +5478,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER (numVal < 13) <= d.a.b.c.e.f  "
         "&& d.a.b.c.e.f <= (numVal + 1) RETURN d",
         expected,
@@ -5079,6 +5503,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET nullVal=null FOR d IN collection FILTER d.a.b.c.e.f >= (nullVal "
         "&& true) && d.a.b.c.e.f <= (nullVal && false) RETURN d",
         expected,
@@ -5086,6 +5511,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET nullVal=null FOR d IN collection FILTER (nullVal && false) <= "
         "d.a.b.c.e.f  && d.a.b.c.e.f <= (nullVal && true) RETURN d",
         expected,
@@ -5111,6 +5537,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
+        vocbase(),
         "LET nullVal=null FOR d IN collection FILTER boost(d.a.b.c.e.f >= "
         "(nullVal && true) && d.a.b.c.e.f <= (nullVal && false), 1.5) RETURN d",
         expected,
@@ -5118,6 +5545,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET nullVal=null FOR d IN collection FILTER boost((nullVal && false) "
         "<= d.a.b.c.e.f  && d.a.b.c.e.f <= (nullVal && true), 1.5) RETURN d",
         expected,
@@ -5147,6 +5575,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         .insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER d.a['b'].c.e.f >= (numVal + "
         "13.5) && d.a.b.c.e.f < (numVal + 38) RETURN d",
         expected,
@@ -5154,6 +5583,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     );
 
     assertFilterSuccess(
+        vocbase(),
         "LET numVal=2 FOR d IN collection FILTER (numVal + 13.5) <= "
         "d.a.b.c.e.f  && d.a.b.c.e.f < (numVal + 38) RETURN d",
         expected,
@@ -5163,7 +5593,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // noneterministic expression -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
