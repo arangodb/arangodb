@@ -173,7 +173,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       tearDown();
       collection = internal.db._create(cn, { numberOfShards });
       collectionByKey = internal.db._create(
@@ -218,11 +218,9 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       assertEqual(100, sum);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown,
+    tearDownAll() {
+      tearDown();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief no restriction to a shard

@@ -40,6 +40,7 @@ var getQueryResults = helper.getQueryResults;
 
 function ahuacatlQueryOptimizerLimitTestSuite () {
   var collection = null;
+  var idx = null;
   var cn = "UnitTestsAhuacatlOptimizerLimit";
   
   var explain = function (query) {
@@ -69,6 +70,13 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
     tearDownAll : function () {
       internal.db._drop(cn);
+    },
+
+    tearDown: function () {
+      if (idx !== null) {
+        internal.db._dropIndex(idx);
+      }
+      idx = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +455,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionHashIndex1 : function () {
-      collection.ensureHashIndex("value");
+      idx = collection.ensureHashIndex("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value == 23 || c.value == 24 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -464,7 +472,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionHashIndex2 : function () {
-      collection.ensureHashIndex("value");
+      idx = collection.ensureHashIndex("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -487,7 +495,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFilterFilterCollectionHashIndex : function () {
-      collection.ensureHashIndex("value");
+      idx = collection.ensureHashIndex("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -510,7 +518,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSkiplistIndex1 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value == 23 || c.value == 24 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -527,7 +535,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSkiplistIndex2 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -546,7 +554,6 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
     testLimitFilterFilterSkiplistIndex : function () {
       idx = collection.ensureSkiplist("value");
-
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
 
       var actual = getQueryResults(query);
@@ -556,7 +563,6 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(29, actual[9].value);
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
-      idx._drop();
     },
 
 ////////////////////////////////////////////////////////////////////////////////

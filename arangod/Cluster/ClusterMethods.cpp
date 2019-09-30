@@ -926,12 +926,12 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
 
-  auto& network = feature.server().getFeature<NetworkFeature>();
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     network::Headers headers;
     auto future =
-        network::sendRequest(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  "/_api/collection/" +
                                  StringUtils::urlEncode(p.first) + "/revision",
@@ -992,7 +992,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
 
-  auto& network = feature.server().getFeature<NetworkFeature>();
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     VPackBuffer<uint8_t> buffer;
@@ -1000,7 +1000,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
     network::Headers headers;
     auto future =
-        network::sendRequest(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  "/_api/collection/" + StringUtils::urlEncode(p.first) +
                                  "/loadIndexesIntoMemory",
@@ -1047,12 +1047,12 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
 
-  auto& network = feature.server().getFeature<NetworkFeature>();
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     // handler expects valid velocypack body (empty object minimum)
     network::Headers headers;
     auto future =
-        network::sendRequest(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  "/_api/collection/" +
                                  StringUtils::urlEncode(p.first) + "/figures",
@@ -1121,12 +1121,12 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  auto& network = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
     auto future =
-        network::sendRequestRetry(network, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                                   "/_db/" + StringUtils::urlEncode(dbname) +
                                       "/_api/collection/" +
                                       StringUtils::urlEncode(p.first) + "/count",
@@ -1322,7 +1322,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
     
     // Now prepare the requests:
-    auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
     futures.reserve(opCtx.shardMap.size());
     for (auto const& it : opCtx.shardMap) {
@@ -1358,10 +1358,12 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
       std::shared_ptr<ShardMap> shardIds = coll.shardIds();
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
-      auto future = network::sendRequestRetry(feature, "shard:" + it.first, fuerte::RestVerb::Post,
-                                              baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                                              std::move(reqBuffer), network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
-                                              headers, /*retryNotFound*/true);
+      auto future =
+          network::sendRequestRetry(pool, "shard:" + it.first, fuerte::RestVerb::Post,
+                                    baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
+                                    std::move(reqBuffer),
+                                    network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
+                                    headers, /*retryNotFound*/ true);
       futures.emplace_back(std::move(future));
     }
     
@@ -1447,7 +1449,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       }
       
       // Now prepare the requests:
-      auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
       std::vector<Future<network::Response>> futures;
       futures.reserve(opCtx.shardMap.size());
       
@@ -1467,10 +1469,11 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         
         network::Headers headers;
         addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
-        futures.emplace_back(network::sendRequestRetry(feature, "shard:" + it.first, fuerte::RestVerb::Delete,
-                                                       baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                                                       std::move(buffer), network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
-                                                       std::move(headers), /*retryNotFound*/ true));
+        futures.emplace_back(network::sendRequestRetry(
+            pool, "shard:" + it.first, fuerte::RestVerb::Delete,
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
+            std::move(buffer), network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
+            std::move(headers), /*retryNotFound*/ true));
       }
       
       // Now listen to the results:
@@ -1515,8 +1518,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     //      if res != NOT_FOUND => insert this result. skip other results
     //    end
     //    if (!skipped) => insert NOT_FOUND
-    
-    auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
     futures.reserve(shardIds->size());
     
@@ -1528,10 +1531,12 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
-      futures.emplace_back(network::sendRequestRetry(feature, "shard:" + shard, fuerte::RestVerb::Delete,
-                                                     baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, /*cannot move*/ buffer,
-                                                     network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
-                                                     std::move(headers), /*retryNotFound*/ true));
+      futures.emplace_back(
+          network::sendRequestRetry(pool, "shard:" + shard, fuerte::RestVerb::Delete,
+                                    baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
+                                    /*cannot move*/ buffer,
+                                    network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
+                                    std::move(headers), /*retryNotFound*/ true));
     }
     
     return futures::collectAll(std::move(futures))
@@ -1581,7 +1586,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  NetworkFeature& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
     // handler expects valid velocypack body (empty object minimum)
     VPackBuffer<uint8_t> buffer;
@@ -1592,7 +1597,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
     network::Headers headers;
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future =
-        network::sendRequestRetry(feature, "shard:" + p.first, fuerte::RestVerb::Put,
+        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Put,
                                   "/_db/" + StringUtils::urlEncode(dbname) +
                                       "/_api/collection/" + p.first +
                                       "/truncate",
@@ -1687,7 +1692,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       }
       
       // Now prepare the requests:
-      auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
       std::vector<Future<network::Response>> futures;
       futures.reserve(opCtx.shardMap.size());
       
@@ -1722,10 +1727,11 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           }
           builder.close();
         }
-        futures.emplace_back(network::sendRequestRetry(feature, "shard:" + it.first, restVerb,
-                                                       std::move(url), std::move(buffer),
-                                                       network::Timeout(CL_DEFAULT_TIMEOUT),
-                                                       std::move(headers), /*retryNotFound*/ true));
+        futures.emplace_back(
+            network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
+                                      std::move(url), std::move(buffer),
+                                      network::Timeout(CL_DEFAULT_TIMEOUT),
+                                      std::move(headers), /*retryNotFound*/ true));
       }
       
       // Now compute the result
@@ -1762,7 +1768,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  NetworkFeature& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   const size_t expectedLen = useMultiple ? slice.length() : 0;
   if (!useMultiple) {
     VPackStringRef const key(slice.isObject() ? slice.get(StaticStrings::KeyString) : slice);
@@ -1777,11 +1783,12 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         headers.emplace("if-match", slice.get(StaticStrings::RevString).copyString());
       }
 
-      futures.emplace_back(network::sendRequestRetry(feature, "shard:" + shard, restVerb,
-                                                     baseUrl + StringUtils::urlEncode(shard) + "/" +
-                                                     StringUtils::urlEncode(key.data(), key.size()) + optsUrlPart,
-                                                     VPackBuffer<uint8_t>(), network::Timeout(CL_DEFAULT_TIMEOUT),
-                                                     headers, /*retryNotFound*/ true));
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "shard:" + shard, restVerb,
+          baseUrl + StringUtils::urlEncode(shard) + "/" +
+              StringUtils::urlEncode(key.data(), key.size()) + optsUrlPart,
+          VPackBuffer<uint8_t>(), network::Timeout(CL_DEFAULT_TIMEOUT), headers,
+          /*retryNotFound*/ true));
     }
   } else {
     VPackBuffer<uint8_t> buffer;
@@ -1790,10 +1797,11 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
-      futures.emplace_back(network::sendRequestRetry(feature, "shard:" + shard, restVerb,
-                                                     baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                                                     /*cannot move*/ buffer, network::Timeout(CL_DEFAULT_TIMEOUT),
-                                                     headers, /*retryNotFound*/ true));
+      futures.emplace_back(
+          network::sendRequestRetry(pool, "shard:" + shard, restVerb,
+                                    baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
+                                    /*cannot move*/ buffer, network::Timeout(CL_DEFAULT_TIMEOUT),
+                                    headers, /*retryNotFound*/ true));
     }
   }
 
@@ -2339,7 +2347,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
       
       // Now prepare the requests:
-      auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
       std::vector<Future<network::Response>> futures;
       futures.reserve(opCtx.shardMap.size());
       
@@ -2373,10 +2381,11 @@ Future<OperationResult> modifyDocumentOnCoordinator(
         
         network::Headers headers;
         addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
-        futures.emplace_back(network::sendRequestRetry(feature, "shard:" + it.first, restVerb,
-                                                       std::move(url), std::move(buffer),
-                                                       network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
-                                                       headers, /*retryNotFound*/ true));
+        futures.emplace_back(
+            network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
+                                      std::move(url), std::move(buffer),
+                                      network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
+                                      headers, /*retryNotFound*/ true));
       }
       
       // Now listen to the results:
@@ -2407,8 +2416,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     f = ::beginTransactionOnAllLeaders(trx, *shardIds);
   }
 
-  return std::move(f).thenValue([=, &trx] (Result) -> Future<OperationResult> {
-    auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+  return std::move(f).thenValue([=, &trx](Result) -> Future<OperationResult> {
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
     futures.reserve(shardIds->size());
     
@@ -2429,10 +2438,11 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       } else {
         url = baseUrl + StringUtils::urlEncode(shard) + optsUrlPart;
       }
-      futures.emplace_back(network::sendRequestRetry(feature, "shard:" + shard, restVerb,
-                                                     std::move(url), /*cannot move*/ buffer,
-                                                     network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
-                                                     headers, /*retryNotFound*/ true));
+      futures.emplace_back(
+          network::sendRequestRetry(pool, "shard:" + shard, restVerb,
+                                    std::move(url), /*cannot move*/ buffer,
+                                    network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
+                                    headers, /*retryNotFound*/ true));
     }
     
     return futures::collectAll(std::move(futures))
