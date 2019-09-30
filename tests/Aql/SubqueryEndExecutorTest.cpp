@@ -74,12 +74,12 @@ class SubqueryEndExecutorTest : public ::testing::Test {
             << "expected row " << rowIdx << " to be a shadow row";
 
         InputAqlItemRow input{block, rowIdx};
-        for (size_t colIdx = 0; colIdx < block->getNrRegs(); colIdx++) {
+        for (unsigned int colIdx = 0; colIdx < block->getNrRegs(); colIdx++) {
           auto const expected =
               VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx))->slice();
-          auto value = input.getValue(colIdx).slice();
+          auto value = input.getValue(RegisterId{colIdx}).slice();
           EXPECT_TRUE(VelocyPackHelper::equal(value, expected, false))
-              << input.getValue(0).slice().toJson() << " != " << expected.toJson();
+              << value.toJson() << " != " << expected.toJson();
         }
       }
     }
@@ -120,7 +120,7 @@ TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
 TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{1}, {1}}, {{1, 0}});
+      buildBlock<1>(itemBlockManager, {{{1}}, {{1}}}, {{1, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
@@ -140,7 +140,7 @@ TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
 TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {34}, {1}}, {{2, 0}});
+      buildBlock<1>(itemBlockManager, {{{42}}, {{34}}, {{1}}}, {{2, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
@@ -162,7 +162,8 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
   SharedAqlItemBlockPtr outputBlock;
 
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {1}, {34}, {1}}, {{1, 0}, {3, 0}});
+      buildBlock<1>(itemBlockManager, {{{42}}, {{1}}, {{34}}, {{1}}},
+                    {{1, 0}, {3, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
@@ -182,7 +183,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
 TEST_F(SubqueryEndExecutorTest, two_input_one_shadowrow_two_irrelevant) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}, {42}, {42}},
+      buildBlock<1>(itemBlockManager, {{{42}}, {{42}}, {{42}}, {{42}}, {{42}}},
                     {{2, 0}, {3, 1}, {4, 2}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
@@ -198,7 +199,7 @@ TEST_F(SubqueryEndExecutorTest, two_input_one_shadowrow_two_irrelevant) {
   std::tie(state, std::ignore) = testee.produceRows(output);
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  ExpectedValues(output, {{"[42, 42]"}, {""}, {""}}, {{1, 0}, {2, 1}});
+  ExpectedValues(output, {{{"[42, 42]"}}, {{""}}, {{""}}}, {{1, 0}, {2, 1}});
 }
 
 TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
@@ -206,7 +207,7 @@ TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
 
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {42}, {42}, {42}, {42}},
+      buildBlock<1>(itemBlockManager, {{{42}}, {{42}}, {{42}}, {{42}}, {{42}}},
                     {{2, 0}, {3, 1}, {4, 2}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
@@ -247,7 +248,7 @@ TEST_F(SubqueryEndExecutorTest, write_to_register_outside) {
 
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{42}, {23}}, {{1, 0}});
+      buildBlock<1>(itemBlockManager, {{{42}}, {{23}}}, {{1, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
