@@ -1,7 +1,7 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
-* DB server locking / unlocking for hot backup revisited and enhanced
+* DB server locking / unlocking for hot backup revisited and enhanced.
 
 * Rely on reboot ids for declaring end of cluster hot restore on coordinators.
 
