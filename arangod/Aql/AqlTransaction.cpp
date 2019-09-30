@@ -44,9 +44,9 @@ std::shared_ptr<AqlTransaction> AqlTransaction::create(
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(transactionContext, collections,
-                                                                       options, isMainTransaction,
-                                                                       std::move(inaccessibleCollections));
+    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(
+        transactionContext, collections, options, isMainTransaction,
+        std::move(inaccessibleCollections));
   }
 #endif
   return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);

@@ -25,9 +25,12 @@
 
 #include "StorageEngineMock.h"
 
+#include "Mocks/LogLevels.h"
+
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
 
 struct TRI_vocbase_t;
@@ -109,13 +112,21 @@ class MockServer {
   bool _started;
 };
 
-class MockV8Server : public MockServer {
+class MockV8Server : public MockServer,
+                     public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                     public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                     public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                     public IResearchLogSuppressor {
  public:
   MockV8Server(bool startFeatures = true);
-  ~MockV8Server();
 };
 
-class MockAqlServer : public MockServer {
+class MockAqlServer : public MockServer,
+                      public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                      public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
+                      public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                      public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                      public IResearchLogSuppressor {
  public:
   MockAqlServer(bool startFeatures = true);
   ~MockAqlServer();
@@ -124,13 +135,21 @@ class MockAqlServer : public MockServer {
   std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
 };
 
-class MockRestServer : public MockServer {
+class MockRestServer : public MockServer,
+                       public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                       public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                       public IResearchLogSuppressor {
  public:
   MockRestServer(bool startFeatures = true);
-  ~MockRestServer();
 };
 
-class MockClusterServer : public MockServer {
+class MockClusterServer : public MockServer,
+                          public LogSuppressor<Logger::AGENCY, LogLevel::FATAL>,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::ERR>,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::WARN>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
  public:
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;

@@ -459,7 +459,7 @@ class Methods {
   ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) const {
     return false;
   }
-  
+
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
 

@@ -21,18 +21,27 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
+#include <memory>
+
 #include "gtest/gtest.h"
 
+#include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
+
+#include "analysis/analyzers.hpp"
+#include "analysis/token_streams.hpp"
+#include "index/directory_reader.hpp"
+#include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
+
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Cluster/ClusterFeature.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -53,18 +62,9 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
-
-#include "analysis/analyzers.hpp"
-#include "analysis/token_streams.hpp"
-#include "index/directory_reader.hpp"
-#include "index/index_writer.hpp"
-#include "store/memory_directory.hpp"
-
-#include <memory>
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
@@ -150,17 +150,14 @@ REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer:
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchDocumentTest : public ::testing::Test {
+class IResearchDocumentTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
   IResearchDocumentTest() {
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
 
     {
       auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
@@ -192,19 +189,6 @@ class IResearchDocumentTest : public ::testing::Test {
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
         irs::flags{irs::frequency::type()});  // cache analyzer
     EXPECT_TRUE(res.ok());
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-  }
-
-  ~IResearchDocumentTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

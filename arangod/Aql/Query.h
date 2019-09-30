@@ -255,7 +255,7 @@ class Query {
 
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL inline transaction::Methods* trx() const { return _trx.get(); }
-  
+
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
 

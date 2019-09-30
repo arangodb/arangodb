@@ -32,7 +32,6 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/WakeupQueryCallback.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"

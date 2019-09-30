@@ -22,22 +22,25 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/common.h"
-#include "../IResearch/RestHandlerMock.h"
-#include "../Mocks/StorageEngineMock.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+
+#include "IResearch/RestHandlerMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 using namespace arangodb;
 
@@ -47,7 +50,9 @@ static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class PhysicalCollectionTest : public ::testing::Test {
+class PhysicalCollectionTest
+    : public ::testing::Test,
+      arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::WARN> {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
