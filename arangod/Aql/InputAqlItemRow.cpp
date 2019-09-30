@@ -257,6 +257,8 @@ InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {

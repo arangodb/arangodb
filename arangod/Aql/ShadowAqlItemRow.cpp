@@ -31,6 +31,8 @@ ShadowAqlItemRow::ShadowAqlItemRow(CreateInvalidShadowRowHint)
 ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(_block->isShadowRow(_baseIndex));
 }
 
 RegisterCount ShadowAqlItemRow::getNrRegisters() const noexcept {
