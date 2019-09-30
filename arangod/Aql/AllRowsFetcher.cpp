@@ -170,7 +170,7 @@ std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_
   }
 
   if (_aqlItemMatrix->stoppedOnShadowRow()) {
-    if (!_aqlItemMatrix->peekShadowRow().isRelevant() || _dataFetched) {
+    if (_dataFetched || !_aqlItemMatrix->peekShadowRow().isRelevant()) {
       row = _aqlItemMatrix->popShadowRow();
       _dataFetched = false;
     }
