@@ -354,7 +354,6 @@ TEST_F(RemoveFollowerTest,
 
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  std::cout << builder->toJson() << std::endl;
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;

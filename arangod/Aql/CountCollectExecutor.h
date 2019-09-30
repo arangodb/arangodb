@@ -69,9 +69,9 @@ class CountCollectExecutorInfos : public ExecutorInfos {
 class CountCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CountCollectExecutorInfos;

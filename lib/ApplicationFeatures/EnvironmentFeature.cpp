@@ -28,6 +28,7 @@
 
 #include "EnvironmentFeature.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
@@ -49,8 +50,9 @@ namespace arangodb {
 EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Environment") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
-  startsAfter("MaxMapCount");
+  startsAfter<application_features::GreetingsFeaturePhase>();
+
+  startsAfter<MaxMapCountFeature>();
 }
 
 void EnvironmentFeature::prepare() {

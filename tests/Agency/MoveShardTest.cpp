@@ -26,15 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
 #include "fakeit.hpp"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -130,7 +131,8 @@ VPackBuilder createJob(std::string const& collection, std::string const& from,
   return builder;
 }
 
-class MoveShardTest : public ::testing::Test {
+class MoveShardTest : public ::testing::Test,
+                      public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   write_ret_t fakeWriteResult;

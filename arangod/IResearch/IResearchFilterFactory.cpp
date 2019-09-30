@@ -152,10 +152,8 @@ arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
 
-  auto* analyzerFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<IResearchAnalyzerFeature>();
-
-  if (!analyzerFeature) {
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
     LOG_TOPIC("03314", WARN, arangodb::iresearch::TOPIC)
         << "'" << IResearchAnalyzerFeature::name()
         << "' feature is not registered, unable to evaluate '" << functionName
@@ -163,6 +161,7 @@ arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
 
     return invalid;
   }
+  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
   ScopedAqlValue analyzerValue(*analyzerArg);
 
@@ -198,20 +197,20 @@ arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
   auto& shortName = result._shortName;
 
   if (ctx.trx) {
-    auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-      arangodb::SystemDatabaseFeature // featue type
-    >();
-    auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+    auto& server = arangodb::application_features::ApplicationServer::server();
+    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                          : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature->get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
 
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
         analyzerId, ctx.trx->vocbase(), *sysVocbase, false // args
       );
     }
   } else {
-    analyzer = analyzerFeature->get(analyzerId); // verbatim
+    analyzer = analyzerFeature.get(analyzerId);  // verbatim
   }
 
   if (!analyzer) {
@@ -1159,33 +1158,34 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
       return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
     }
 
-    auto* analyzerFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<IResearchAnalyzerFeature>();
-
-    if (!analyzerFeature) {
-          auto message =  "'"s + IResearchAnalyzerFeature::name() +
-           "' feature is not registered, unable to evaluate 'ANALYZER' function";
+    auto& server = arangodb::application_features::ApplicationServer::server();
+    if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+      auto message =
+          "'"s + IResearchAnalyzerFeature::name() +
+          "' feature is not registered, unable to evaluate 'ANALYZER' function";
       LOG_TOPIC("26571", WARN, arangodb::iresearch::TOPIC) << message;
       return arangodb::Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, message};
     }
+    auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
     shortName = analyzerIdValue;
 
     if (ctx.trx) {
-      auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        arangodb::SystemDatabaseFeature // featue type
-      >();
-      auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+      auto& server = arangodb::application_features::ApplicationServer::server();
+      auto sysVocbase =
+          server.hasFeature<arangodb::SystemDatabaseFeature>()
+              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+              : nullptr;
 
       if (sysVocbase) {
-        analyzer = analyzerFeature->get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
+        analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
 
         shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
           analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false // args
         );
       }
     } else {
-      analyzer = analyzerFeature->get(analyzerIdValue); // verbatim
+      analyzer = analyzerFeature.get(analyzerIdValue);  // verbatim
     }
 
     if (!analyzer) {

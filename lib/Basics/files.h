@@ -39,6 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
 ///
@@ -212,7 +216,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length);
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length);
+char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

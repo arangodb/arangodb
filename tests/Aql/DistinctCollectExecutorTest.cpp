@@ -32,6 +32,7 @@
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Query.h"
 #include "Aql/Stats.h"
 #include "Mocks/Servers.h"

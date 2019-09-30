@@ -25,6 +25,8 @@
 
 #include "MaintenanceFeature.h"
 
+#include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
@@ -33,6 +35,8 @@
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
@@ -40,10 +44,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "Agency/AgencyComm.h"
-#include "Agency/TimeString.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -74,7 +74,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   // is determined by `ClusterFeature::validateOptions`, hence the following
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
-  startsAfter("Cluster");
+  startsAfter<ClusterFeature>();
 
   init();
 }  // MaintenanceFeature::MaintenanceFeature
@@ -184,7 +184,8 @@ void MaintenanceFeature::beginShutdown() {
     };
 
     // create common shared memory with jobid
-    auto shared = std::make_shared<callback_data>(ClusterInfo::instance()->uniqid());
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto shared = std::make_shared<callback_data>(ci.uniqid());
 
     AgencyComm am;
 

@@ -49,6 +49,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1355,8 +1356,8 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     }
   }
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1486,8 +1487,8 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1799,8 +1800,8 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     }
   }
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -2110,8 +2111,8 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -2555,8 +2556,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 }
 
 /// @brief count the number of documents in a collection
-OperationResult transaction::Methods::count(std::string const& collectionName,
-                                            transaction::CountType type) {
+futures::Future<OperationResult> transaction::Methods::countAsync(std::string const& collectionName,
+                                                                  transaction::CountType type) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
@@ -2569,24 +2570,25 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
     type = CountType::Normal;
   }
 
-  return countLocal(collectionName, type);
+  return futures::makeFuture(countLocal(collectionName, type));
 }
 
 #ifndef USE_ENTERPRISE
 /// @brief count the number of documents in a collection
-OperationResult transaction::Methods::countCoordinator(std::string const& collectionName,
-                                                       transaction::CountType type) {
-  ClusterInfo* ci = ClusterInfo::instance();
+futures::Future<OperationResult> transaction::Methods::countCoordinator(
+    std::string const& collectionName, transaction::CountType type) {
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return OperationResult(TRI_ERROR_SHUTTING_DOWN);
+    return futures::makeFuture(OperationResult(TRI_ERROR_SHUTTING_DOWN));
   }
+  ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  auto collinfo = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto collinfo = ci.getCollectionNT(vocbase().name(), collectionName);
   if (collinfo == nullptr) {
-    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
   return countCoordinatorHelper(collinfo, collectionName, type);
@@ -2594,7 +2596,7 @@ OperationResult transaction::Methods::countCoordinator(std::string const& collec
 
 #endif
 
-OperationResult transaction::Methods::countCoordinatorHelper(
+futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     std::shared_ptr<LogicalCollection> const& collinfo,
     std::string const& collectionName, transaction::CountType type) {
   TRI_ASSERT(collinfo != nullptr);
@@ -2610,17 +2612,29 @@ OperationResult transaction::Methods::countCoordinatorHelper(
 
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
-    std::vector<std::pair<std::string, uint64_t>> count;
-    auto res = arangodb::countOnCoordinator(*this, collectionName, count);
+    return arangodb::countOnCoordinator(*this, collectionName)
+        .thenValue([&cache, type](OperationResult&& res) -> OperationResult {
+          if (res.fail()) {
+            return std::move(res);
+          }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return OperationResult(res);
-    }
+          // reassemble counts from vpack
+          std::vector<std::pair<std::string, uint64_t>> counts;
+          TRI_ASSERT(res.slice().isArray());
+          for (VPackSlice count : VPackArrayIterator(res.slice())) {
+            TRI_ASSERT(count.isArray());
+            TRI_ASSERT(count[0].isString());
+            TRI_ASSERT(count[1].isNumber());
+            std::string key = count[0].copyString();
+            uint64_t value = count[1].getNumericValue<uint64_t>();
+            counts.emplace_back(std::move(key), value);
+          }
 
-    int64_t total = 0;
-    OperationResult opRes = buildCountResult(count, type, total);
-    cache.store(total);
-    return opRes;
+          int64_t total = 0;
+          OperationResult opRes = buildCountResult(counts, type, total);
+          cache.store(total);
+          return opRes;
+        });
   }
 
   // cache hit!
@@ -3079,8 +3093,8 @@ int transaction::Methods::lockCollections() {
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
   return collection->lookupIndex(iid);
 }
@@ -3088,8 +3102,8 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
 
   // update selectivity estimates if they were expired
   if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
@@ -3269,6 +3283,7 @@ Future<Result> Methods::replicateOperations(
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
   network::Timeout const timeout(chooseTimeout(count, payload->size()));
+  auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
     // TODO we could steal the payload at least once
     VPackBuffer<uint8_t> buffer;
@@ -3276,8 +3291,9 @@ Future<Result> Methods::replicateOperations(
 
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry("server:" + f, requestType,
-                                            path, std::move(buffer), timeout, headers, /*retryNotFound*/true);
+    auto future = network::sendRequestRetry(pool, "server:" + f, requestType,
+                                            path, std::move(buffer), timeout,
+                                            headers, /*retryNotFound*/ true);
     futures.emplace_back(std::move(future));
   }
 

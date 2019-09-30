@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Basics/Common.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Network/ConnectionPool.h"
@@ -92,25 +93,24 @@ auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
 }
 
 /// @brief send a request to a given destination
-FutureRes sendRequest(DestinationId const& destination, RestVerb type,
+FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, RestVerb type,
                       std::string const& path, velocypack::Buffer<uint8_t> payload,
                       Timeout timeout, Headers headers) {
   // FIXME build future.reset(..)
 
-  ConnectionPool* pool = NetworkFeature::pool();
-  if (!pool) {
+  if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
     return futures::makeFuture(
         Response{destination, Error::Canceled, nullptr});
   }
 
-  arangodb::network::EndpointSpec endpoint;
-  int res = resolveDestination(destination, endpoint);
+  arangodb::network::EndpointSpec spec;
+  int res = resolveDestination(*pool->config().clusterInfo, destination, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return futures::makeFuture(
         Response{destination, Error::Canceled, nullptr});
   }
-  TRI_ASSERT(!endpoint.empty());
+  TRI_ASSERT(!spec.endpoint.empty());
 
   auto req = prepareRequest(type, path, std::move(payload), timeout, std::move(headers));
 
@@ -123,7 +123,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
     : destination(dest), ref(std::move(r)), promise() {}
   };
   static_assert(sizeof(std::shared_ptr<Pack>) <= 2*sizeof(void*), "does not fit in sfo");
-  auto p = std::make_shared<Pack>(destination, pool->leaseConnection(endpoint));
+  auto p = std::make_shared<Pack>(destination, pool->leaseConnection(spec.endpoint));
 
   auto conn = p->ref.connection();
   auto f = p->promise.getFuture();
@@ -139,10 +139,11 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(DestinationId destination, RestVerb type,
+  RequestsState(ConnectionPool* pool, DestinationId destination, RestVerb type,
                 std::string path, velocypack::Buffer<uint8_t> payload,
                 Timeout timeout, Headers headers, bool retryNotFound)
-    : _destination(std::move(destination)),
+      : _pool(pool),
+        _destination(std::move(destination)),
         _type(type),
         _path(std::move(path)),
         _payload(std::move(payload)),
@@ -153,10 +154,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         _endTime(_startTime +
                  std::chrono::duration_cast<std::chrono::steady_clock::duration>(timeout)),
         _retryOnCollNotFound(retryNotFound) {}
-  
+
   ~RequestsState() = default;
 
  private:
+  ConnectionPool* _pool;
   DestinationId _destination;
   RestVerb _type;
   std::string _path;
@@ -179,20 +181,19 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   // scheduler requests that are due
   void startRequest() {
     auto now = std::chrono::steady_clock::now();
-    if (now > _endTime || application_features::ApplicationServer::isStopping()) {
+    if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
       callResponse(Error::Timeout, nullptr);
       return;  // we are done
     }
 
-    arangodb::network::EndpointSpec endpoint;
-    int res = resolveDestination(_destination, endpoint);
+    arangodb::network::EndpointSpec spec;
+    int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       callResponse(Error::Canceled, nullptr);
       return;
     }
 
-    ConnectionPool* pool = NetworkFeature::pool();
-    if (!pool) {
+    if (!_pool) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
       callResponse(Error::Canceled, nullptr);
       return;
@@ -201,7 +202,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     auto localTO = std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
     TRI_ASSERT(localTO.count() > 0);
 
-    auto ref = pool->leaseConnection(endpoint);
+    auto ref = _pool->leaseConnection(spec.endpoint);
     auto req = prepareRequest(_type, _path, _payload, localTO, _headers);
     auto self = RequestsState::shared_from_this();
     auto cb = [self, ref](fuerte::Error err,
@@ -306,12 +307,18 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 };
 
 /// @brief send a request to a given destination, retry until timeout is exceeded
-FutureRes sendRequestRetry(DestinationId const& destination,
+FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
                            Headers headers, bool retryNotFound) {
+  if (!pool || !pool->config().clusterInfo) {
+    LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
+        << "connection pool unavailable";
+    return futures::makeFuture(Response{destination, Error::Canceled, nullptr});
+  }
+
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
-  auto rs = std::make_shared<RequestsState>(destination, type, path,
+  auto rs = std::make_shared<RequestsState>(pool, destination, type, path,
                                             std::move(payload), timeout,
                                             std::move(headers), retryNotFound);
   rs->startRequest();  // will auto reference itself

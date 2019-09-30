@@ -54,9 +54,10 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-RestAqlHandler::RestAqlHandler(GeneralRequest* request, GeneralResponse* response,
+RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request, GeneralResponse* response,
                                std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>* registries)
-    : RestVocbaseBaseHandler(request, response),
+    : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
       _qId(0) {
@@ -436,13 +437,19 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
   // the PUT verb
   Query* query = nullptr;
-  if (findQuery(idString, query)) {
+  if (!findQuery(idString, query)) {
     return RestStatus::DONE;
   }
 
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->engine() != nullptr);
+
+  if (query->queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
+    LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
+        << "[query#" << query->id() << "] remote request received: " << operation
+        << " registryId=" << idString;
+  }
 
   try {
     return handleUseQuery(operation, query, querySlice);
@@ -588,12 +595,12 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
         << "Timeout waiting for query " << _qId;
     _qId = 0;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
-    return true;
+    return false;
   }
 
   TRI_ASSERT(_qId > 0);
 
-  return false;
+  return true;
 }
 
 // handle for useQuery

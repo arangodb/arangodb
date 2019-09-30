@@ -30,6 +30,8 @@
 #include "Basics/Thread.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
+#include "Statistics/Descriptions.h"
+#include "Statistics/StatisticsWorker.h"
 #include "Statistics/figures.h"
 
 namespace arangodb {
@@ -58,12 +60,6 @@ extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
 extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
 extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
 }  // namespace basics
-namespace stats {
-class Descriptions;
-}
-
-class StatisticsThread;
-class StatisticsWorker;
 
 class StatisticsFeature final : public application_features::ApplicationFeature {
  public:
@@ -96,7 +92,7 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   bool _statistics;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
-  std::unique_ptr<StatisticsThread> _statisticsThread;
+  std::unique_ptr<Thread> _statisticsThread;
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
 

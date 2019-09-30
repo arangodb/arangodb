@@ -124,9 +124,11 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   VPackStringRef keyPart = docRef.substr(pos + 1);
 
   ShardID responsibleShard;
-  Utils::resolveShard(this, collPart.toString(), StaticStrings::KeyString,
+
+  auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  Utils::resolveShard(ci, this, collPart.toString(), StaticStrings::KeyString,
                       keyPart, responsibleShard);
-  
+
   PregelShard source = this->shardId(responsibleShard);
   return PregelID(source, keyPart.toString());
 }

@@ -25,15 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
+#include "Mocks/LogLevels.h"
+
+#include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
 #include "Endpoint/EndpointUnixDomain.h"
+#include "Logger/LogTopic.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -58,6 +61,8 @@ using namespace std;
   delete e;
 
 TEST(EndpointTest, EndpointInvalid) {
+  tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> suppressor;
+
   Endpoint* e = nullptr;
 
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory(""));

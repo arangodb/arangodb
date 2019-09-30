@@ -135,7 +135,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const INTERNAL_TRAVERSER_PATH;
 
  public:
-  RestVocbaseBaseHandler(GeneralRequest*, GeneralResponse*);
+  RestVocbaseBaseHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
   virtual bool cancel() override {

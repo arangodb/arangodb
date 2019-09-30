@@ -51,6 +51,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr bool IndexExecutor::Properties::preservesOrder;
+constexpr bool IndexExecutor::Properties::allowsBlockPassthrough;
+constexpr bool IndexExecutor::Properties::inputSizeRestrictsOutputSize;
+
 namespace {
 /// resolve constant attribute accesses
 static void resolveFCallConstAttributes(AstNode* fcall) {

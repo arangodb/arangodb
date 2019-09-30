@@ -34,6 +34,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortExecutor.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -78,29 +80,57 @@ template <bool passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
-  TRI_ASSERT(_nrCalled <= _nrItems);
+  TRI_ASSERT(_nrReturned <= _nrItems);
   if (wait()) {
     // if once DONE is returned, always return DONE
-    if (_returnedDone) {
+    if (_returnedDoneOnFetchRow) {
       return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   _nrCalled++;
-  if (_nrCalled > _nrItems) {
-    _returnedDone = true;
+  if (_nrReturned >= _nrItems) {
+    _returnedDoneOnFetchRow = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curRowIndex};
-  nextRow();
-  ExecutionState state;
-  if (_nrCalled < _nrItems) {
-    state = ExecutionState::HASMORE;
-  } else {
-    _returnedDone = true;
-    state = ExecutionState::DONE;
+  auto res = SingleRowFetcher<passBlocksThrough>::fetchRow();
+  if (res.second.isInitialized()) {
+    _nrReturned++;
   }
-  return {state, _lastReturnedRow};
+  nextRow();
+  if (res.first == ExecutionState::DONE) {
+    _returnedDoneOnFetchRow = true;
+  }
+  return res;
+}
+
+template <bool passBlocksThrough>
+// NOLINTNEXTLINE google-default-arguments
+std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchShadowRow(size_t) {
+  // If this assertion fails, the Executor has fetched more rows after DONE.
+  TRI_ASSERT(_nrReturned <= _nrItems);
+  if (wait()) {
+    // if once DONE is returned, always return DONE
+    if (_returnedDoneOnFetchShadowRow) {
+      return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+    }
+    return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  }
+  _nrCalled++;
+  // Allow for a shadow row
+  if (_nrReturned >= _nrItems) {
+     _returnedDoneOnFetchShadowRow = true;
+     return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  }
+  auto res = SingleRowFetcher<passBlocksThrough>::fetchShadowRow();
+  if (res.second.isInitialized()) {
+    _nrReturned++;
+  }
+  nextRow();
+  if (res.first == ExecutionState::DONE) {
+    _returnedDoneOnFetchShadowRow = true;
+  }
+  return res;
 }
 
 template <bool passBlocksThrough>
@@ -147,8 +177,20 @@ SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const
   bool const done = isLastBlock && askingForMore;
 
   ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
-
   return {state, _itemBlock->slice(from, to)};
+}
+
+template <bool passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
+SingleRowFetcherHelper<passBlocksThrough>::fetchBlock(size_t const atMost) {
+  size_t const remainingRows = _blockSize - _curIndexInBlock;
+  size_t const to = _curRowIndex + (std::min)(atMost, remainingRows);
+
+  bool const done = to >= _nrItems;
+
+  ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
+  SingleRowFetcherHelper<passBlocksThrough>::_upstreamState = state;
+  return {state, _itemBlock->slice(_curRowIndex, to)};
 }
 
 // -----------------------------------------

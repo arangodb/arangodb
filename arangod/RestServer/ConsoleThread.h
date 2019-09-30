@@ -48,7 +48,7 @@ class ConsoleThread final : public Thread {
   static arangodb::Mutex serverConsoleMutex;
 
  public:
-  ConsoleThread(application_features::ApplicationServer*, TRI_vocbase_t*);
+  ConsoleThread(application_features::ApplicationServer&, TRI_vocbase_t*);
 
   ~ConsoleThread();
 
@@ -63,7 +63,6 @@ class ConsoleThread final : public Thread {
   void inner(V8ContextGuard const&);
 
  private:
-  application_features::ApplicationServer* _applicationServer;
   TRI_vocbase_t* _vocbase;
   std::atomic<bool> _userAborted;
 };

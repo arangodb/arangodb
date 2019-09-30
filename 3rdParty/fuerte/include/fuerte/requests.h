@@ -56,7 +56,7 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
 
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
                                        StringMap const& parameter,
-                                       velocypack::Slice const& payload);
+                                       velocypack::Slice const payload);
 
 std::unique_ptr<Request> createRequest(
     RestVerb verb, std::string const& path,

@@ -81,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  std::shared_ptr<velocypack::Builder> figures() override;
+  futures::Future<std::shared_ptr<velocypack::Builder>> figures() override;
 
   /// @brief closes an open collection
   int close() override;
