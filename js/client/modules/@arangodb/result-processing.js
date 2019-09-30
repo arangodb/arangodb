@@ -538,7 +538,7 @@ function locateLongRunning(options, results) {
 `;
     },
     testSuite: function(options, state, testSuite, testSuiteName) {
-      if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0) {
+      if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0.0) {
         sortedByDuration.push(
           {
             testName: testSuiteName,
@@ -547,7 +547,9 @@ function locateLongRunning(options, results) {
             count: Object.keys(testSuite).filter(testCase => skipInternalMember(testSuite, testCase)).length
           });
       } else {
-        print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
+        if (!testSuite.hasOwnProperty('skipped') && !testSuite.skipped) {
+          print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
+        }
       }        
     },
     testCase: function(options, state, testCase, testCaseName) {
@@ -594,7 +596,7 @@ function locateLongRunning(options, results) {
           statistics.push(fancyTimeFormat(testCases[j].duration / 1000) + " - " + testCases[j].testName);
         }
         results[key] = {
-          'processStatistics': pu.sumarizeStats(thisTestSuite.test['processStats']),
+          'processStatistics': pu.summarizeStats(thisTestSuite.test['processStats']),
           'stats': statistics
         };
 
@@ -610,9 +612,31 @@ function locateLongSetupTeardown(options, results) {
   let testRunStatistics = "  Setup  | Run  |  tests | setupAll | suite name\n";
   let sortedByDuration = [];
   let failedStates = {};
-  
+  let currentTestrun = "";
+  // these suites don't produce setup duration:
+  let durationBlacklist = [
+    'ssl_server',
+    'http_server',
+    'importing',
+    'gtest',
+    'dump',
+    'authentification',
+    'arangobench',
+    'arangosh',
+    'export',
+    'hot_backup',
+    'dump_multiple',
+    'dfdb',
+    'config'
+  ];
+  let testsToShow = 11;
+  if (options.hasOwnProperty('testsToShow')) {
+    testsToShow = Number(options.testsToShow);
+  }
+
   iterateTestResults(options, results, failedStates, {
     testRun: function(options, state, testRun, testRunName) {
+      currentTestrun = testRunName;
     },
     testSuite: function(options, state, testSuite, testSuiteName) {
       let setupAllDuration = 0;
@@ -633,7 +657,16 @@ function locateLongSetupTeardown(options, results) {
           count: Object.keys(testSuite).filter(testCase => ! skipInternalMember(testSuite, testCase)).length,
         });
       } else {
-        print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
+        if (!durationBlacklist.find(item => { return item === currentTestrun; }) &&
+            testSuiteName.search("-spec") === -1 &&
+            !testSuite.hasOwnProperty('skipped') &&
+            !testSuite.skipped) {
+          let details = "";
+          if (options.extremeVerbosity == true) {
+            details = "\n" + JSON.stringify(testSuite)
+          }
+          print(RED + "This test doesn't have setup a duration: " + currentTestrun + "." + testSuiteName + details + RESET);
+        }
       }        
     },
     testCase: function(options, state, testCase, testCaseName) {
@@ -645,7 +678,7 @@ function locateLongSetupTeardown(options, results) {
         return a.setupTearDown - b.setupTearDown;
       });
       let results = [];
-      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - testsToShow); i --) {
         let key = " " +
             fancyTimeFormat(sortedByDuration[i].setupTearDown / 1000) + " | " +
             fancyTimeFormat(sortedByDuration[i].duration / 1000) + " |     " +
@@ -654,8 +687,16 @@ function locateLongSetupTeardown(options, results) {
             sortedByDuration[i].testName.replace('/\\/g', '/');
         results.push(key);
       }
-      testRunStatistics +=  yaml.safeDump(results);
-      sortedByDuration = [];
+
+      if (results.length === 0) {
+        if (!durationBlacklist.find(item => { return item === currentTestrun; })) {
+          print(RED + "no results for: " + currentTestrun + RESET);
+        }
+      } else {
+        testRunStatistics += currentTestrun + "\n"
+        testRunStatistics +=  yaml.safeDump(results);
+        sortedByDuration = [];
+      }
     }
   });
   print(testRunStatistics);
