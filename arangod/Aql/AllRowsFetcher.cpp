@@ -116,7 +116,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
     std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
-  // TODO FIXME
+  // TODO FIXME, this implementation does not cover shadowRows
   while (_upstreamState != ExecutionState::DONE) {
     auto state = fetchUntilDone();
     if (state == ExecutionState::WAITING) {
@@ -158,17 +158,18 @@ std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_
   TRI_ASSERT(_aqlItemMatrix != nullptr);
 
   ExecutionState state = _upstreamState;
-  ShadowAqlItemRow row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+
   if (!_aqlItemMatrix->stoppedOnShadowRow() || _aqlItemMatrix->size() == 0) {
     // We ended on a ShadowRow, we are required to fetch data.
     state = fetchData();
     if (state == ExecutionState::WAITING) {
-      return {state, row};
+      return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
     }
     // reset to upstream state (might be modified by fetchData())
     state = _upstreamState;
   }
 
+  ShadowAqlItemRow row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   if (_aqlItemMatrix->stoppedOnShadowRow()) {
     if (_dataFetched || !_aqlItemMatrix->peekShadowRow().isRelevant()) {
       row = _aqlItemMatrix->popShadowRow();
