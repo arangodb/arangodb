@@ -106,13 +106,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
 
+  bool isSatellite = false; 
   auto replicationFactorSlice = info.get(StaticStrings::ReplicationFactor);
   if (!replicationFactorSlice.isNone()) {
     bool isError = true;
     if (replicationFactorSlice.isNumber()) {
       _replicationFactor = replicationFactorSlice.getNumber<size_t>();
       // mop: only allow satellite collections to be created explicitly
-      if (_replicationFactor > 0 && _replicationFactor <= 10) {
+      if (_replicationFactor > 0) {
         isError = false;
 #ifdef USE_ENTERPRISE
       } else if (_replicationFactor == 0) {
@@ -129,6 +130,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _distributeShardsLike = "";
       _avoidServers.clear();
       isError = false;
+      isSatellite = true;
     }
 #endif
     if (isError) {
@@ -137,25 +139,27 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
 
-  auto minReplicationFactorSlice = info.get(StaticStrings::MinReplicationFactor);
-  if (!minReplicationFactorSlice.isNone()) {
-    if (minReplicationFactorSlice.isNumber()) {
-      _minReplicationFactor = minReplicationFactorSlice.getNumber<size_t>();
-      if (_minReplicationFactor > _replicationFactor) {
+  if (!isSatellite) {
+    auto minReplicationFactorSlice = info.get(StaticStrings::MinReplicationFactor);
+    if (!minReplicationFactorSlice.isNone()) {
+      if (minReplicationFactorSlice.isNumber()) {
+        _minReplicationFactor = minReplicationFactorSlice.getNumber<size_t>();
+        if (_minReplicationFactor > _replicationFactor) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "minReplicationFactor cannot be larger than replicationFactor (" +
+                  basics::StringUtils::itoa(_minReplicationFactor) + " > " +
+                  basics::StringUtils::itoa(_replicationFactor) + ")");
+        }
+        if (_minReplicationFactor == 0 && _replicationFactor != 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "minReplicationFactor cannot be 0");
+        }
+      } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "minReplicationFactor cannot be larger than replicationFactor (" +
-                basics::StringUtils::itoa(_minReplicationFactor) + " > " +
-                basics::StringUtils::itoa(_replicationFactor) + ")");
+            "minReplicationFactor needs to be an integer number");
       }
-      if (_minReplicationFactor == 0 && _replicationFactor != 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "minReplicationFactor cannot be 0");
-      }
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "minReplicationFactor needs to be an integer number");
     }
   }
 
