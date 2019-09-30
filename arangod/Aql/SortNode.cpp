@@ -62,13 +62,7 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _reinsertInCluster(true),
       _elements(elements),
       _stable(stable),
-      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)),
-      _inNonMaterializedDocId(
-          aql::Variable::varFromVPack(plan->getAst(), base, "inNmDocId", true)),
-      _inNonMaterializedColPtr(
-          aql::Variable::varFromVPack(plan->getAst(), base, "inNmColPtr", true)),
-      _outMaterializedDocument(
-          aql::Variable::varFromVPack(plan->getAst(), base, "outDocument", true)) {}
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -96,18 +90,7 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add("stable", VPackValue(_stable));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
-  if (_inNonMaterializedColPtr != nullptr) {
-    nodes.add(VPackValue("inNmColPtr"));
-      _inNonMaterializedColPtr->toVelocyPack(nodes);
-  }
-  if (_inNonMaterializedDocId != nullptr) {
-    nodes.add(VPackValue("inNmDocId"));
-    _inNonMaterializedDocId->toVelocyPack(nodes);
-  }
-  if (_outMaterializedDocument != nullptr) {
-    nodes.add(VPackValue("outDocument"));
-    _outMaterializedDocument->toVelocyPack(nodes);
-  }
+
   // And close it:
   nodes.close();
 }
@@ -264,32 +247,6 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   }
 }
 
-/// @brief clone ExecutionNode recursively
-
-inline ExecutionNode * arangodb::aql::SortNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {
-  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-  auto* inNonMaterializedColPtr = _inNonMaterializedColPtr;
-  auto* outMaterializedDocument = _outMaterializedDocument;
-  if (withProperties) {
-    if (_inNonMaterializedDocId != nullptr) {
-      inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-    }
-    if (_inNonMaterializedColPtr != nullptr) {
-      inNonMaterializedColPtr = plan->getAst()->variables()->createVariable(inNonMaterializedColPtr);
-    }
-    if (_outMaterializedDocument != nullptr) {
-      outMaterializedDocument = plan->getAst()->variables()->createVariable(outMaterializedDocument);
-    }
-  }
-  auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
-  if (outMaterializedDocument != nullptr) {
-    c->setMaterialization(inNonMaterializedColPtr, inNonMaterializedDocId,
-      outMaterializedDocument);
-  }
-  return cloneHelper(std::move(c),
-    withDependencies, withProperties);
-}
-
 /// @brief estimateCost
 CostEstimate SortNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
@@ -300,25 +257,6 @@ CostEstimate SortNode::estimateCost() const {
                               std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
-}
-
-/// @brief getVariablesUsedHere, modifying the set in-place
-void SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
-  for (auto& p : _elements) {
-    vars.emplace(p.var);
-  }
-  if (_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
-    vars.insert(_inNonMaterializedColPtr);
-    vars.insert(_inNonMaterializedDocId);
-  }
-}
-
-std::vector<arangodb::aql::Variable const*> SortNode::getVariablesSetHere() const {
-  if (_outMaterializedDocument != nullptr) {
-    return std::vector<arangodb::aql::Variable const*>{_outMaterializedDocument};
-  } else {
-    return std::vector<arangodb::aql::Variable const*>{};
-  }
 }
 
 SortNode::SorterType SortNode::sorterType() const {

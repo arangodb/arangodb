@@ -22,16 +22,12 @@
 
 #include "SortExecutor.h"
 
-#include "Basics/Common.h"
-#include "VocBase/LogicalCollection.h"
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 
 #include <algorithm>
 
@@ -78,23 +74,6 @@ class OurLessThan {
 
 }  // namespace
 
-void CopyRowProducer::outputRow(const InputAqlItemRow & input, OutputAqlItemRow & output) {
-  output.copyRow(input);
-}
-
-void MaterializerProducer::outputRow(const InputAqlItemRow & input, OutputAqlItemRow & output) {
-  auto collection =
-    reinterpret_cast<arangodb::LogicalCollection const*>(
-      input.getValue(
-        _readDocumentContext._infos->inputNonMaterializedColRegId()).toInt64());
-  TRI_ASSERT(collection != nullptr);
-  _readDocumentContext._inputRow = &input;
-  _readDocumentContext._outputRow = &output;
-  collection->readDocumentWithCallback(_readDocumentContext._infos->trx(),
-    LocalDocumentId(input.getValue(_readDocumentContext._infos->inputNonMaterializedDocRegId()).toInt64()),
-    _readDocumentContext._callback);
-}
-
 static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
     std::vector<SortRegister> const& sortRegisters) {
   auto set = make_shared_unordered_set();
@@ -111,9 +90,8 @@ SortExecutorInfos::SortExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx, bool stable,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), outputRegisters,
+    std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx, bool stable)
+    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _limit(limit),
@@ -133,34 +111,29 @@ std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
 
 bool SortExecutorInfos::stable() const { return _stable; }
 
-SortMaterializingExecutorInfos::SortMaterializingExecutorInfos(
-    std::vector<SortRegister> sortRegisters, std::size_t limit, AqlItemBlockManager & manager,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    const std::unordered_set<RegisterId>& registersToClear,
-    const std::unordered_set<RegisterId>& registersToKeep, transaction::Methods * trx,
-    bool stable, RegisterId inNonMaterializedColRegId, RegisterId inNonMaterializedDocRegId,
-    RegisterId outMaterializedDocumentRegId)
-  : SortExecutorInfos(std::move(sortRegisters), limit, manager, nrInputRegisters, nrOutputRegisters,
-    registersToClear, registersToKeep, trx, stable,
-    std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>({outMaterializedDocumentRegId}))),
-  _inNonMaterializedColRegId(inNonMaterializedColRegId),
-  _inNonMaterializedDocRegId(inNonMaterializedDocRegId),
-  _outMaterializedDocumentRegId(outMaterializedDocumentRegId) {}
+SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
+    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0) {}
+SortExecutor::~SortExecutor() = default;
 
-template<typename OutputRowImpl>
-SortExecutor<OutputRowImpl>::SortExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0), _outputImpl(_infos) {}
-
-template<typename OutputRowImpl>
-SortExecutor<OutputRowImpl>::~SortExecutor() = default;
-
-template<typename OutputRowImpl>
-std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
+  ExecutionState state;
   if (_input == nullptr) {
-    auto fetchRes = consumeInput();
-    if (fetchRes.first == ExecutionState::WAITING) {
-      return fetchRes;
+    // We need to get data
+    std::tie(state, _input) = _fetcher.fetchAllRows();
+    if (state == ExecutionState::WAITING) {
+      return {state, NoStats{}};
     }
+    // If the execution state was not waiting it is guaranteed that we get a
+    // matrix. Maybe empty still
+    TRI_ASSERT(_input != nullptr);
+    if (_input == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    // After allRows the dependency has to be done
+    TRI_ASSERT(state == ExecutionState::DONE);
+
+    // Execute the sort
+    doSorting();
   }
   // If we get here we have an input matrix
   // And we have a list of sorted indexes.
@@ -172,7 +145,7 @@ std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(Outp
     return {ExecutionState::DONE, NoStats{}};
   }
   InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
-  _outputImpl.outputRow(inRow, output);
+  output.copyRow(inRow);
   _returnNext++;
   if (_returnNext >= _sortedIndexes.size()) {
     return {ExecutionState::DONE, NoStats{}};
@@ -180,30 +153,7 @@ std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(Outp
   return {ExecutionState::HASMORE, NoStats{}};
 }
 
-template<typename OutputRowImpl>
-std::pair<ExecutionState, NoStats> arangodb::aql::SortExecutor<OutputRowImpl>::consumeInput() {
-  ExecutionState state;
-  // We need to get data
-  std::tie(state, _input) = _fetcher.fetchAllRows();
-  if (state == ExecutionState::WAITING) {
-    return { state, NoStats{} };
-  }
-  // If the execution state was not waiting it is guaranteed that we get a
-  // matrix. Maybe empty still
-  TRI_ASSERT(_input != nullptr);
-  if (_input == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  // After allRows the dependency has to be done
-  TRI_ASSERT(state == ExecutionState::DONE);
-
-  // Execute the sort
-  doSorting();
-  return { state, NoStats{} };
-}
-
-template<typename OutputRowImpl>
-void SortExecutor<OutputRowImpl>::doSorting() {
+void SortExecutor::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -218,8 +168,7 @@ void SortExecutor<OutputRowImpl>::doSorting() {
   }
 }
 
-template<typename OutputRowImpl>
-std::pair<ExecutionState, size_t> SortExecutor<OutputRowImpl>::expectedNumberOfRows(size_t atMost) const {
+std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {
   if (_input == nullptr) {
     // This executor does not know anything yet.
     // Just take whatever is presented from upstream.
@@ -233,59 +182,3 @@ std::pair<ExecutionState, size_t> SortExecutor<OutputRowImpl>::expectedNumberOfR
   }
   return {ExecutionState::DONE, rowsLeft};
 }
-
-template<typename OutputRowImpl>
-std::tuple<ExecutionState, NoStats, size_t> SortExecutor<OutputRowImpl>::skipRows(size_t toSkip) {
-  if (_input == nullptr) {
-    auto fetchRes = consumeInput();
-    if (fetchRes.first == ExecutionState::WAITING) {
-      return std::make_tuple(fetchRes.first, fetchRes.second, 0);
-    }
-  }
-  const size_t skipped = std::min(toSkip, _sortedIndexes.size() - _returnNext);
-  _returnNext += skipped;
-  return std::make_tuple(
-    _returnNext >= _sortedIndexes.size() ? ExecutionState::DONE : ExecutionState::HASMORE,
-    NoStats(), skipped);
-}
-
-
-arangodb::IndexIterator::DocumentCallback MaterializerProducer::ReadContext::copyDocumentCallback(ReadContext & ctx) {
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
-  typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
-  static CallbackFactory const callbackFactories[]{
-    [](ReadContext& ctx) {
-    // capture only one reference to potentially avoid heap allocation
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(ctx._outputRow);
-      TRI_ASSERT(ctx._inputRow);
-      TRI_ASSERT(ctx._inputRow->isInitialized());
-      TRI_ASSERT(ctx._infos);
-      arangodb::aql::AqlValue a{ arangodb::aql::AqlValueHintCopy(doc.begin()) };
-      bool mustDestroy = true;
-      arangodb::aql::AqlValueGuard guard{ a, mustDestroy };
-      ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
-    };
-  },
-
-    [](ReadContext& ctx) {
-    // capture only one reference to potentially avoid heap allocation
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(ctx._outputRow);
-      TRI_ASSERT(ctx._inputRow);
-      TRI_ASSERT(ctx._inputRow->isInitialized());
-      TRI_ASSERT(ctx._infos);
-      arangodb::aql::AqlValue a{ arangodb::aql::AqlValueHintDocumentNoCopy(doc.begin()) };
-      bool mustDestroy = true;
-      arangodb::aql::AqlValueGuard guard{ a, mustDestroy };
-      ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
-    };
-  } };
-  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
-}
-
-template class arangodb::aql::SortExecutor<arangodb::aql::CopyRowProducer>;
-template class arangodb::aql::SortExecutor<arangodb::aql::MaterializerProducer>;
-
-

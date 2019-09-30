@@ -51,12 +51,10 @@ class NoStats;
 class OutputAqlItemRow;
 class SortExecutorInfos;
 struct SortRegister;
-class CopyRowProducer;
-class MaterializerProducer;
+
 /**
  * @brief Implementation of Sort Node
  */
-template<typename OutputRowImpl>
 class ConstrainedSortExecutor {
  public:
   struct Properties {
@@ -65,10 +63,10 @@ class ConstrainedSortExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = typename OutputRowImpl::Infos;
+  using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  ConstrainedSortExecutor(Fetcher& fetcher, Infos& infos);
+  ConstrainedSortExecutor(Fetcher& fetcher, Infos&);
   ~ConstrainedSortExecutor();
 
   /**
@@ -113,9 +111,7 @@ class ConstrainedSortExecutor {
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;
-  OutputRowImpl _outputImpl;
 };
-
 }  // namespace aql
 }  // namespace arangodb
 
