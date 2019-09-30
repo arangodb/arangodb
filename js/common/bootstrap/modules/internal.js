@@ -561,6 +561,14 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief statisticsExternal
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS_EXTERNAL) {
+    exports.statisticsExternal = global.SYS_PROCESS_STATISTICS_EXTERNAL;
+    delete global.SYS_PROCESS_STATISTICS_EXTERNAL;
+  }
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief executeExternal
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -756,7 +764,18 @@ global.DEFINE_MODULE('internal', (function () {
       } else if (!isNaN(argv[i + 1])) {
         ret[option] = parseInt(argv[i + 1]);
       } else {
-        ret[option] = argv[i + 1];
+        if (ret.hasOwnProperty(option)) {
+          if (Array.isArray(ret[option])) {
+            ret[option].push(argv[i + 1]);
+          } else {
+            ret[option] = [
+              ret[option],
+              argv[i + 1]
+            ];
+          }
+        } else {
+          ret[option] = argv[i + 1];
+        }
       }
     }
 
@@ -1650,6 +1669,29 @@ global.DEFINE_MODULE('internal', (function () {
     }
 
     useColor = false;
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in arangod or arangosh
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isArangod = function() {
+    return (typeof ArangoClusterComm === "object");
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in a cluster setup or not
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isCluster = function() {
+    if(exports.isArangod()) {
+      return require("@arangodb/cluster").isCluster();
+    } else {
+      // ask remote it is a coordinator
+      const response = exports.arango.GET('/_admin/server/role');
+      if(response.error === true) {
+        throw new exports.ArangoError(response);
+      }
+      return (response.role === "COORDINATOR");
+    }
   };
 
   // //////////////////////////////////////////////////////////////////////////////

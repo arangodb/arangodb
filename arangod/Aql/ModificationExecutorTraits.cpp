@@ -21,20 +21,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationExecutorTraits.h"
+
+#include "Aql/AqlItemBlockUtils.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <algorithm>
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+#include <algorithm>
 
-#include "AqlItemBlockUtils.h"
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -193,7 +195,10 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block != nullptr);
-  itemBlock::forRowInBlock(_block, [this, inReg, &info](InputAqlItemRow&& row) {
+  
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
+    
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -205,7 +210,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
@@ -320,8 +325,8 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block != nullptr);
-  itemBlock::forRowInBlock(_block, [this, &stats, &errorCode, &key, &rev, trx,
-                                    inReg, &info](InputAqlItemRow&& row) {
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
     auto const& inVal = row.getValue(inReg);
 
     if (!info._consultAqlWriteFilter ||
@@ -361,7 +366,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
       _operations.push_back(ModOperationType::IGNORE_RETURN);
       this->_last_not_skip = _operations.size();
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
@@ -460,9 +465,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
   RegisterId const insertReg = info._input2RegisterId;
   RegisterId const updateReg = info._input3RegisterId;
 
-  itemBlock::forRowInBlock(_block, [this, &stats, &errorCode, &errorMessage,
-                                    &key, trx, inDocReg, insertReg, updateReg,
-                                    &info](InputAqlItemRow&& row) {
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
+    
     errorMessage.clear();
     errorCode = TRI_ERROR_NO_ERROR;
     auto const& inVal = row.getValue(inDocReg);
@@ -522,7 +527,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
       _operations.push_back(ModOperationType::IGNORE_SKIP);
       handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
@@ -655,11 +660,11 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   std::string rev;
   RegisterId const inDocReg = info._input1RegisterId;
   RegisterId const keyReg = info._input2RegisterId;
-  bool const hasKeyVariable = keyReg != ExecutionNode::MaxRegisterId;
+  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
-  itemBlock::forRowInBlock(_block, [this, &options, &stats, &errorCode,
-                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
-                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
+  for (std::size_t index = 0; index < _block->size(); ++index) {
+    InputAqlItemRow row{_block, index};
+  
     auto const& inVal = row.getValue(inDocReg);
     errorCode = TRI_ERROR_NO_ERROR;
     errorMessage.clear();
@@ -716,13 +721,21 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
       _operations.push_back(ModOperationType::IGNORE_SKIP);
       handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
-  });
+  }
 
   TRI_ASSERT(_operations.size() == _block->size());
 
   _updateOrReplaceBuilder.close();
   auto toUpdateOrReplace = _updateOrReplaceBuilder.slice();
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t numReturns = 0;
+  for (auto const& op : _operations) {
+    if (op == ModOperationType::APPLY_RETURN) {
+      numReturns++;
+    }
+  }
+  TRI_ASSERT(_justCopy || numReturns <= toUpdateOrReplace.length());
+#endif
   if (toUpdateOrReplace.length() == 0) {
     _justCopy = true;
     return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
@@ -733,11 +746,11 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   if (toUpdateOrReplace.isArray() && toUpdateOrReplace.length() > 0) {
     OperationResult opRes =
         (info._trx->*_method)(info._aqlCollection->name(), toUpdateOrReplace, options);
-    setOperationResult(std::move(opRes));
-
-    if (_operationResult.fail()) {
-      THROW_ARANGO_EXCEPTION(_operationResult.result);
+    if (opRes.fail()) {
+      THROW_ARANGO_EXCEPTION(opRes.result);
     }
+
+    setOperationResult(std::move(opRes));
 
     handleBabyStats(stats, info, _operationResult, toUpdateOrReplace.length(),
                     info._ignoreErrors, info._ignoreDocumentNotFound);
@@ -745,8 +758,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 
   _tmpBuilder.clear();
   _updateOrReplaceBuilder.clear();
-
-  if (_operationResultArraySlice.length() == 0) {
+  if (_operationResultArraySlice.length() == 0 || options.silent) {
     // there is nothing to update we just need to copy
     // if there is anything other than IGNORE_SKIP the
     // block is prepared.
@@ -766,7 +778,16 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
   TRI_ASSERT(_last_not_skip <= blockSize);
   TRI_ASSERT(_blockIndex < blockSize);
   TRI_ASSERT(_operationResultArraySlice.isArray());
-
+  // For every APPLY_RETURN we have one element in the operationResultArray, we might have more in the Array.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t numReturns = 0;
+  for (auto const& op : _operations) {
+    if (op == ModOperationType::APPLY_RETURN) {
+      numReturns++;
+    }
+  }
+  TRI_ASSERT(_justCopy || numReturns <= _operationResultArraySlice.length());
+#endif
   while (_blockIndex < _operations.size() &&
          _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     _blockIndex++;

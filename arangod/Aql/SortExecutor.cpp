@@ -24,6 +24,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/LogicalCollection.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -36,6 +37,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool SortExecutor::Properties::preservesOrder;
+constexpr bool SortExecutor::Properties::allowsBlockPassthrough;
+constexpr bool SortExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {
 

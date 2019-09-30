@@ -82,14 +82,7 @@ TEST(CNormalizeStringTest, tst_1) {
   
   size_t len = 0;
   char* result = TRI_normalize_utf8_to_NFC((const char*) decomposed, strlen((const char*) decomposed),&len);
-/*
-  size_t outLength;
-  char* uni = TRI_EscapeUtf8StringZ ((const char*) decomposed, strlen((const char*) decomposed), true, &outLength);
-  printf("\nOriginal: %s\nEscaped: %s\n", decomposed, uni);
-
-  char* uni2 = TRI_EscapeUtf8StringZ ((const char*) composed, strlen((const char*) composed), true, &outLength);
-  printf("\nOriginal: %s\nEscaped: %s\n", composed, uni2);
-*/  
+  
   size_t l1 = sizeof(composed) - 1;
   size_t l2 = strlen(result);
   EXPECT_TRUE((l1) == l2);

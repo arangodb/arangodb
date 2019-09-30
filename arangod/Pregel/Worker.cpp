@@ -786,9 +786,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     auto self = shared_from_this();
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, path, message] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self, path, message] {
       VPackBuilder response;
-      PregelFeature::handleConductorRequest(path, message.slice(), response);
+      PregelFeature::handleConductorRequest(*_config.vocbase(), path,
+                                            message.slice(), response);
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
@@ -815,7 +816,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
   LOG_TOPIC("6d349", TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
-    PregelFeature::handleConductorRequest(path, message.slice(), response);
+    PregelFeature::handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
     handle(response.slice());
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();

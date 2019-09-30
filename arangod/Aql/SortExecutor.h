@@ -33,6 +33,7 @@
 #include "Indexes/IndexIterator.h"
 
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {
@@ -161,9 +162,9 @@ template<typename OutputRowImpl>
 class SortExecutor  {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
   using Infos = typename OutputRowImpl::Infos;

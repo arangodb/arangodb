@@ -28,6 +28,9 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 namespace import {
 
@@ -39,7 +42,8 @@ class AutoTuneThread final : public arangodb::Thread {
   AutoTuneThread& operator=(AutoTuneThread const&) = delete;
 
  public:
-  explicit AutoTuneThread(ImportHelper& importHelper);
+  explicit AutoTuneThread(application_features::ApplicationServer& server,
+                          ImportHelper& importHelper);
 
   ~AutoTuneThread();
 

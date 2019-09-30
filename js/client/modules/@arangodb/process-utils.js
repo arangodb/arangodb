@@ -28,6 +28,7 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
+const rp = require('@arangodb/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/crash-utils');
@@ -39,6 +40,7 @@ const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
+const statisticsExternal = internal.statisticsExternal;
 const base64Encode = internal.base64Encode;
 const testPort = internal.testPort;
 const download = internal.download;
@@ -234,14 +236,22 @@ function setupBinaries (builddir, buildType, configDir) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
 
+  if (!fs.exists(BIN_DIR)) {
+    BIN_DIR = fs.join(TOP_DIR, 'bin');
+  }
+
   UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
   if (!fs.exists(UNITTESTS_DIR)) {
     UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
   }
 
   if (buildType !== '') {
-    BIN_DIR = fs.join(BIN_DIR, buildType);
-    UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
+    if (fs.exists(fs.join(BIN_DIR, buildType))) {
+      BIN_DIR = fs.join(BIN_DIR, buildType);
+    }
+    if (fs.exists(fs.join(UNITTESTS_DIR, buildType))) {
+      UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
+    }
   }
 
   ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
@@ -585,6 +595,88 @@ function killWithCoreDump (options, instanceInfo) {
     runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
   }
   instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief aggregates information from /proc about the SUT
+// //////////////////////////////////////////////////////////////////////////////
+function getProcessStats(pid) {
+  let processStats = statisticsExternal(pid);
+  if (platform === 'linux') {
+    let pidStr = "" + pid;
+    let ioraw;
+    try {
+      ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+    } catch (x) {
+      print(x.stack);
+      throw x;
+    }
+    let lineStart = 0;
+    let maxBuffer = ioraw.length;
+    for (let j = 0; j < maxBuffer; j++) {
+      if (ioraw[j] === 10) { // \n
+        const line = ioraw.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+        let x = line.split(":");
+        processStats[x[0]] = parseInt(x[1]);
+      }
+    }
+  }
+  return processStats;
+}
+
+function initProcessStats(instanceInfo) {
+  instanceInfo.arangods.forEach((arangod) => {
+    arangod.stats = getProcessStats(arangod.pid);
+  });
+}
+
+function getDeltaProcessStats(instanceInfo) {
+  let deltaStats = {};
+  instanceInfo.arangods.forEach((arangod) => {
+    let newStats = getProcessStats(arangod.pid);
+    let myDeltaStats = {};
+    for (let key in arangod.stats) {
+      myDeltaStats[key] = newStats[key] - arangod.stats[key];
+    }
+    deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+    arangod.stats = newStats;
+  });
+  return deltaStats;
+}
+
+function summarizeStats(deltaStats) {
+  let sumStats = {};
+  for (let instance in deltaStats) {
+    for (let key in deltaStats[instance]) {
+      if (!sumStats.hasOwnProperty(key)) {
+        sumStats[key] = 0;
+      }
+      sumStats[key] += deltaStats[instance][key];
+    }
+  }
+  return sumStats;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief if we forgot about processes, this safe guard will clean up and mark failed
+// //////////////////////////////////////////////////////////////////////////////
+
+function killRemainingProcesses(results) {
+  let running = internal.getExternalSpawned();
+  results.status = results.status && (running.length === 0);
+  let i = 0;
+  for (i = 0; i < running.length; i++) {
+    let status = require("internal").statusExternal(running[i].pid, false);
+    if (status.status === "TERMINATED") {
+      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+    }
+    else {
+      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(killExternal(running[i].pid, abortSignal));
+    }
+    results.crashed = true;
+  };
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1039,7 +1131,12 @@ function abortSurvivors(arangod, options) {
 }
 
 function checkInstanceAlive (instanceInfo, options) {
-  if (options.activefailover && instanceInfo.hasOwnProperty('authOpts')) {
+  if (options.activefailover &&
+      instanceInfo.hasOwnProperty('authOpts') &&
+      (instanceInfo.url !== instanceInfo.agencyUrl)
+     ) {
+    // only detect a leader after we actually know one has been started.
+    // the agency won't tell us anything about leaders.
     let d = detectCurrentLeader(instanceInfo);
     if (instanceInfo.endpoint !== d.endpoint) {
       print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
@@ -1270,6 +1367,16 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     }
   }
 
+  if (options.cluster && instanceInfo.hasOwnProperty('clusterHealthMonitor')) {
+    try {
+      instanceInfo.clusterHealthMonitor['kill'] = killExternal(instanceInfo.clusterHealthMonitor.pid);
+      instanceInfo.clusterHealthMonitor['statusExternal'] = statusExternal(instanceInfo.clusterHealthMonitor.pid, true);
+    }
+    catch (x) {
+      print(x);
+    }
+  }
+  
   // Shut down all non-agency servers:
   const n = instanceInfo.arangods.length;
 
@@ -1431,7 +1538,6 @@ function detectCurrentLeader(instanceInfo) {
       throw "Leader is not selected";
     }
   }
-
   opts['method'] = 'GET';
   reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
   let res;
@@ -1452,9 +1558,6 @@ function detectCurrentLeader(instanceInfo) {
 }
 
 function checkClusterAlive(options, instanceInfo, addArgs) {
-  // disabled because not in use (jslint)
-  // let coordinatorUrl = instanceInfo.url
-  // let response
   let httpOptions = makeAuthorizationHeaders(options);
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
@@ -1512,6 +1615,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       throw new Error('cluster startup timed out after 10 minutes!');
     }
   }
+
   print("Determining server IDs");
   instanceInfo.arangods.forEach(arangod => {
     // agents don't support the ID call...
@@ -1524,6 +1628,19 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       arangod.id = res['id'];
     }
   });
+
+  if ((options.cluster || options.agency) &&
+      !instanceInfo.hasOwnProperty('clusterHealthMonitor') &&
+      !options.disableClusterMonitor) {
+    print("spawning cluster health inspector");
+    internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
+    internal.env.OPTIONS = JSON.stringify(options);
+    let args = makeArgsArangosh(options);
+    args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'clusterstats.js');
+    const argv = toArgv(args);
+    instanceInfo.clusterHealthMonitor = executeExternal(ARANGOSH_BIN, argv);
+    instanceInfo.clusterHealthMonitorFile = fs.join(instanceInfo.rootDir, 'stats.jsonl');
+  }
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
@@ -1710,6 +1827,7 @@ function launchFinalize(options, instanceInfo, startTime) {
   }
   print(processInfo.join('\n') + '\n');
   internal.sleep(options.sleepBeforeStart);
+  initProcessStats(instanceInfo);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1848,6 +1966,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceInfo.role = 'agent';
     print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
   }
+
+  checkClusterAlive(options, instanceInfo, addArgs);
+
   return instanceInfo;
 }
 
@@ -1988,6 +2109,12 @@ function reStartInstance(options, instanceInfo, moreArgs) {
   launchFinalize(options, instanceInfo, startTime);
 }
 
+function aggregateFatalErrors(currentTest) {
+  if (serverCrashedLocal) {
+    rp.addFailRunsMessage(currentTest, serverFailMessagesLocal);
+    serverFailMessagesLocal = "";
+  }
+}
 // exports.analyzeServerCrash = analyzeServerCrash;
 exports.makeArgs = {
   arangod: makeArgsArangod,
@@ -2008,6 +2135,7 @@ exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
+exports.killRemainingProcesses = killRemainingProcesses;
 exports.stopProcdump = stopProcdump;
 
 exports.createBaseConfig = createBaseConfigBuilder;
@@ -2021,14 +2149,17 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
+exports.getProcessStats = getProcessStats;
+exports.getDeltaProcessStats = getDeltaProcessStats;
+exports.summarizeStats = summarizeStats;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
-exports.serverFailMessages = serverFailMessagesLocal;
 
+exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
 exports.cleanupLastDirectory = cleanupLastDirectory;

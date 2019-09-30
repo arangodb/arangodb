@@ -96,7 +96,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
         return true; // continue
       });
 
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
       if (res.fail()) { // something is wrong
         return res;
       }

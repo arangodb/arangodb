@@ -96,20 +96,19 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
   }
 }
 
-int Utils::resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                        std::string const& shardKey, VPackStringRef vertexKey,
-                        std::string& responsibleShard) {
+int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                        std::string const& collectionName, std::string const& shardKey,
+                        VPackStringRef vertexKey, std::string& responsibleShard) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }
 
   auto const& planIDMap = config->collectionPlanIdMap();
-  ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci->getCollectionNT(config->database(), it->second);  // might throw
+    info = ci.getCollectionNT(config->database(), it->second);  // might throw
     if (info == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }

@@ -20,8 +20,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Aql/RowFetcherHelper.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
@@ -37,13 +45,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
-
-#include "Mocks/Servers.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -55,9 +57,10 @@ namespace aql {
 
 class TokenTranslator : public TraverserCache {
  public:
-  TokenTranslator(Query* query) 
-      : TraverserCache(query),
-         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(), arangodb::basics::VelocyPackHelper::VPackEqual()) {}
+  TokenTranslator(Query* query, BaseOptions* opts)
+      : TraverserCache(query, opts),
+        _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
+               arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() {}
 
   arangodb::velocypack::StringRef makeVertex(std::string const& id) {
@@ -167,12 +170,14 @@ class FakePathFinder : public ShortestPathFinder {
 
 struct TestShortestPathOptions : public ShortestPathOptions {
   TestShortestPathOptions(Query* query) : ShortestPathOptions(query) {
-    std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query);
+    std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
 };
 
-class ShortestPathExecutorTest : public ::testing::Test {
+class ShortestPathExecutorTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::ERR> {
  protected:
   RegisterId sourceIn;
   RegisterId targetIn;
@@ -248,7 +253,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
                            std::shared_ptr<VPackBuilder> const& input,
                            std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor};
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
     NoStats stats{};
@@ -296,7 +301,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
                               std::shared_ptr<VPackBuilder> const& input,
                               std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor};
+    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
     NoStats stats{};
@@ -331,7 +336,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   }
 
   void RunSimpleTest(bool waiting, ShortestPathExecutorInfos::InputVertex&& source,
-                            ShortestPathExecutorInfos::InputVertex&& target) {
+                     ShortestPathExecutorInfos::InputVertex&& target) {
     RegisterId vOutReg = 2;
     mocks::MockAqlServer server{};
     std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();

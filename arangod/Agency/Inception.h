@@ -44,11 +44,8 @@ class Agent;
 ///        where the RAFT implementation can commence function
 class Inception : public Thread {
  public:
-  /// @brief Default ctor
-  Inception();
-
   /// @brief Construct with agent
-  explicit Inception(Agent*);
+  explicit Inception(Agent&);
 
   /// @brief Defualt dtor
   virtual ~Inception();
@@ -76,7 +73,7 @@ class Inception : public Thread {
   /// No persistence: gossip an agency together.
   void gossip();
 
-  Agent* _agent;                            //< @brief The agent
+  Agent& _agent;                            //< @brief The agent
   arangodb::basics::ConditionVariable _cv;  //< @brief For proper shutdown
   std::unordered_map<std::string, size_t> _acked;  //< @brief acknowledged config version
   mutable arangodb::Mutex _vLock;                  //< @brieg Guard _acked

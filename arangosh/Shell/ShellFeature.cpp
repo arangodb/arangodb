@@ -23,6 +23,7 @@
 #include "ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -42,7 +43,7 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server, int*
       _runMode(RunMode::INTERACTIVE) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("V8ShellPhase");
+  startsAfter<application_features::V8ShellFeaturePhase>();
 }
 
 void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -73,18 +74,15 @@ void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   _positionals = options->processingResult()._positionals;
 
-  ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("Client"));
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
-  ConsoleFeature* console =
-      dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
-
-  if (client->endpoint() == "none") {
-    client->disable();
+  if (client.endpoint() == "none") {
+    client.disable();
   }
 
   if (!_jslint.empty()) {
-    client->disable();
+    client.disable();
   }
 
   size_t n = 0;
@@ -92,31 +90,31 @@ void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
   _runMode = RunMode::INTERACTIVE;
 
   if (!_executeScripts.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::EXECUTE_SCRIPT;
     ++n;
   }
 
   if (!_executeStrings.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::EXECUTE_STRING;
     ++n;
   }
 
   if (!_checkSyntaxFiles.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::CHECK_SYNTAX;
     ++n;
   }
 
   if (!_unitTests.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::UNIT_TESTS;
     ++n;
   }
 
   if (!_jslint.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::JSLINT;
     ++n;
   }
@@ -131,36 +129,34 @@ void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
 void ShellFeature::start() {
   *_result = EXIT_SUCCESS;
 
-  V8ShellFeature* shell =
-      application_features::ApplicationServer::getFeature<V8ShellFeature>(
-          "V8Shell");
+  V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
 
   bool ok = false;
 
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
-        ok = (shell->runShell(_positionals) == TRI_ERROR_NO_ERROR);
+        ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
-        ok = shell->runScript(_executeScripts, _positionals, true);
+        ok = shell.runScript(_executeScripts, _positionals, true);
         break;
 
       case RunMode::EXECUTE_STRING:
-        ok = shell->runString(_executeStrings, _positionals);
+        ok = shell.runString(_executeStrings, _positionals);
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell->runScript(_checkSyntaxFiles, _positionals, false);
+        ok = shell.runScript(_checkSyntaxFiles, _positionals, false);
         break;
 
       case RunMode::UNIT_TESTS:
-        ok = shell->runUnitTests(_unitTests, _positionals, _unitTestFilter);
+        ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
 
       case RunMode::JSLINT:
-        ok = shell->jslint(_jslint);
+        ok = shell.jslint(_jslint);
         break;
     }
   } catch (std::exception const& ex) {

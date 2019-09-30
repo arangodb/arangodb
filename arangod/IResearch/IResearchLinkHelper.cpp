@@ -60,10 +60,10 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& server = defaultVocbase.server();
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
   for (auto& entry: meta._analyzers) {
     if (!entry._pool) {

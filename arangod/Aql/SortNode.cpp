@@ -21,19 +21,21 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Ast.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/SortRegister.h"
-#include "Aql/SortExecutor.h"
+#include "SortNode.h"
+
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
-#include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortExecutor.h"
+#include "Aql/SortRegister.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "IResearch/IResearchOrderFactory.h"
-#include "SortNode.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -69,9 +71,10 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
           aql::Variable::varFromVPack(plan->getAst(), base, "outDocument", true)) {}
 
 /// @brief toVelocyPack, for SortNode
-void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           flags);  // call base class method
+void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                  std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   nodes.add(VPackValue("elements"));
   {
@@ -237,9 +240,7 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -250,61 +251,16 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     RegisterId id = it->second.registerId;
     sortRegs.push_back(SortRegister{id, element});
   }
-  if (_outMaterializedDocument) {
-    RegisterId inColRegId = 0;
-    RegisterId inDocRegId = 0;
-    RegisterId outDocRegId = 0;
-    //auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
-    //auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
-    {
-      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      inColRegId = it->second.registerId;
-      //inputRegisters->insert(inColRegId);
-    }
-    {
-      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      inDocRegId = it->second.registerId;
-      //inputRegisters->insert(inDocRegId);
-    }
-    {
-      auto it = getRegisterPlan()->varInfo.find(_outMaterializedDocument->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      outDocRegId = it->second.registerId;
-      //outputRegisters->insert(outDocRegId);
-    }
-    SortMaterializingExecutorInfos infos(
-        std::move(sortRegs), _limit, engine.itemBlockManager(),
-        getRegisterPlan()->nrRegs[previousNode->getDepth()],
-        getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-        calcRegsToKeep(), engine.getQuery()->trx(), _stable,
-        inColRegId, inDocRegId, outDocRegId);
-    // Currently ViewNode could emit document which is already missing from the collection (eventual consistency)
-    // this will  give following issues with constrained sort:
-    // 1. Invalid fullCount. Executor may be enable to materialize requested N documents and LIMIT node 
-    //    will be unable to switch to skip (as it didn`t got expected N it will continue to call getSome, not skipSome)
-    // 2. In cluster sorting issues may occur: Shard1 has keys 1..100. Shard2 has keys 101..200. SORT key LIMIT 5 requested
-    //    and key 1 is missing from collection. So shard1 returns only 4 keys 2,3,4,5 and GatherNode will combine
-    //    invalid results 2,3,4,5,101 instead of 2,3,4,5,6
-    // 3. In general LIMIT may return less than expected even if collection has enough documents
-    // Once this problem in ViewNode is solved  - this change could be reverted.
-    return  std::make_unique<ExecutionBlockImpl<SortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
-    //if (sorterType() == SorterType::Standard) {
-    //  return  std::make_unique<ExecutionBlockImpl<SortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
-    //} else {
-    //  return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
-    //}
+  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
+                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                          calcRegsToKeep(), engine.getQuery()->trx(), _stable);
+  if (sorterType() == SorterType::Standard) {
+    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
+                                                              std::move(infos));
   } else {
-    SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
-      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-      calcRegsToKeep(), engine.getQuery()->trx(), _stable);
-    if (sorterType() == SorterType::Standard) {
-        return std::make_unique<ExecutionBlockImpl<SortExecutor<CopyRowProducer>>>(&engine, this, std::move(infos));
-    } else {
-       return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor<CopyRowProducer>>>(&engine, this, std::move(infos));
-    }
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this,
+                                                                         std::move(infos));
   }
 }
 

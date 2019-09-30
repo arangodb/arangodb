@@ -116,7 +116,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
 #ifdef USE_ENTERPRISE
     else if (replicationFactorSlice.isString() &&
-             replicationFactorSlice.copyString() == "satellite") {
+             replicationFactorSlice.copyString() == StaticStrings::Satellite) {
       _replicationFactor = 0;
       _minReplicationFactor = 0;
       _numberOfShards = 1;
@@ -135,14 +135,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   if (!minReplicationFactorSlice.isNone()) {
     if (minReplicationFactorSlice.isNumber()) {
       _minReplicationFactor = minReplicationFactorSlice.getNumber<size_t>();
-      if (_minReplicationFactor > _replicationFactor) {
+      if (!isSatellite() && _minReplicationFactor > _replicationFactor) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
             "minReplicationFactor cannot be larger then replicationFactor (" +
                 basics::StringUtils::itoa(_minReplicationFactor) + " > " +
                 basics::StringUtils::itoa(_replicationFactor) + ")");
       }
-      if (_minReplicationFactor == 0 && _replicationFactor != 0) {
+      if (!isSatellite() && _minReplicationFactor == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "minReplicationFactor cannot be 0");
       }
@@ -218,9 +218,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     // testing
     _shardingStrategy = std::make_unique<ShardingStrategyNone>();
   } else {
-    _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>(
-                            "Sharding")
-                            ->fromVelocyPack(info, this);
+    auto& server = _collection->vocbase().server();
+    _shardingStrategy = server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
   }
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
@@ -237,9 +236,9 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
   TRI_ASSERT(_collection != nullptr);
 
   // set the sharding strategy
-  _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>(
-                          "Sharding")
-                          ->create(other._shardingStrategy->name(), this);
+  auto& server = _collection->vocbase().server();
+  _shardingStrategy =
+      server.getFeature<ShardingFeature>().create(other._shardingStrategy->name(), this);
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
@@ -279,7 +278,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
   result.close();  // shards
 
   if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor, VPackValue("satellite"));
+    result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   } else {
     result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }
@@ -334,9 +333,9 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   if (!usesSameShardingStrategy(other)) {
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other collection
-    auto shr = application_features::ApplicationServer::getFeature<ShardingFeature>(
-        "Sharding");
-    _shardingStrategy = shr->create(other->shardingStrategyName(), this);
+    auto& server = _collection->vocbase().server();
+    auto& shr = server.getFeature<ShardingFeature>();
+    _shardingStrategy = shr.create(other->shardingStrategyName(), this);
   }
 
   _distributeShardsLike = cid;
@@ -358,12 +357,12 @@ void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
 }
 
 size_t ShardingInfo::replicationFactor() const {
-  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || _minReplicationFactor <= _replicationFactor);
   return _replicationFactor;
 }
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
-  if (replicationFactor < _minReplicationFactor) {
+  if (!isSatellite() && replicationFactor < _minReplicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "replicationFactor cannot be smaller then minReplicationFactor (" +
@@ -374,12 +373,12 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
 }
 
 size_t ShardingInfo::minReplicationFactor() const {
-  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || _minReplicationFactor <= _replicationFactor);
   return _minReplicationFactor;
 }
 
 void ShardingInfo::minReplicationFactor(size_t minReplicationFactor) {
-  if (minReplicationFactor > _replicationFactor) {
+  if (!isSatellite() && minReplicationFactor > _replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "minReplicationFactor cannot be larger then replicationFactor (" +

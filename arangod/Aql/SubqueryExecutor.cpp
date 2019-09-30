@@ -20,14 +20,22 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ExecutionBlock.h"
 #include "SubqueryExecutor.h"
 
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+template <bool isModificationSubquery>
+constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::preservesOrder;
+template <bool isModificationSubquery>
+constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::allowsBlockPassthrough;
+template <bool isModificationSubquery>
+constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryExecutorInfos::SubqueryExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,

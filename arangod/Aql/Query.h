@@ -74,6 +74,7 @@ class Query;
 struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
+enum class SerializationFormat;
 
 /// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
@@ -165,7 +166,8 @@ class Query {
     return _collections.add(name, accessType);
   }
 
-  inline Collection* addCollection(arangodb::velocypack::StringRef name, AccessMode::Type accessType) {
+  inline Collection* addCollection(arangodb::velocypack::StringRef name,
+                                   AccessMode::Type accessType) {
     return _collections.add(name.toString(), accessType);
   }
 
@@ -218,7 +220,7 @@ class Query {
   /// @brief register a warning (convenience overload)
   TEST_VIRTUAL void registerWarning(int code, std::string const& details);
 
-  void prepare(QueryRegistry*);
+  void prepare(QueryRegistry*, SerializationFormat format);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
@@ -252,7 +254,7 @@ class Query {
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx.get(); }
+  TEST_VIRTUAL inline transaction::Methods* trx() const { return _trx.get(); }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -306,6 +308,10 @@ class Query {
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  ExecutionPlan* stealPlan() { return std::move(preparePlan()); }
+#endif
+
  private:
   /// @brief initializes the query
   void init();
@@ -333,10 +339,10 @@ class Query {
 
   /// @brief cleanup plan and engine for current query. synchronous variant,
   /// will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
+  void cleanupPlanAndEngineSync(int errorCode, velocypack::Builder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode, velocypack::Builder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();

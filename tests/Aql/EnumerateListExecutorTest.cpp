@@ -31,10 +31,9 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -52,9 +51,10 @@ class EnumerateListExecutorTest : public ::testing::Test {
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
-  EnumerateListExecutorTest() : itemBlockManager(&monitor) {}
+  EnumerateListExecutorTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
@@ -338,6 +338,6 @@ TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_wa
   ASSERT_TRUE(v.toBoolean() == true);
 }
 
+}  // namespace aql
 }  // namespace tests
-}  // namespace arangodb
 }  // namespace arangodb

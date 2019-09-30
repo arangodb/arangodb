@@ -39,8 +39,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestHandler(request, response) {}
+RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body as VelocyPack

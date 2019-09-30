@@ -25,6 +25,8 @@
 
 #include "gtest/gtest.h"
 
+#include "IResearch/common.h"
+#include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
 #include "fakeit.hpp"
 
@@ -33,12 +35,11 @@
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
+#include "Aql/Variable.h"
 #include "Mocks/StorageEngineMock.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -55,13 +56,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-bool initStorageEngine(arangodb::StorageEngine& engine) {
-  arangodb::EngineSelectorFeature::ENGINE = &engine;
-  return true;
-}
-}  // namespace
-
 namespace arangodb {
 namespace tests {
 namespace aql {
@@ -73,13 +67,8 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
-  std::shared_ptr<options::ProgramOptions> options;
-  arangodb::application_features::ApplicationServer server;
-  StorageEngineMock storageEngine;
-  bool storageEngineInitialized;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  fakeit::Mock<TRI_vocbase_t> vocbaseMock;
-  TRI_vocbase_t& vocbase;  // required to create collection
+  arangodb::tests::mocks::MockAqlServer server;
+  TRI_vocbase_t vocbase;  // required to create collection
   std::shared_ptr<VPackBuilder> json;
   arangodb::LogicalCollection collection;
   fakeit::Mock<ExecutionEngine> mockEngine;
@@ -90,7 +79,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   std::unordered_set<RegisterId> const regToClear;
   std::unordered_set<RegisterId> const regToKeep;
   ExecutionEngine& engine;
-  Collection const abc;
+  Collection abc;
   std::vector<std::string> const projections;
   transaction::Methods& trx;
   std::vector<size_t> const coveringIndexAttributePositions;
@@ -103,13 +92,9 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   VPackBuilder input;
 
   EnumerateCollectionExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor),
-        options(std::make_shared<options::ProgramOptions>("arangod", "something",
-                                                          "", "path")),
-        server(options, "path"),
-        storageEngine(server),
-        storageEngineInitialized(::initStorageEngine(storageEngine)),
-        vocbase(vocbaseMock.get()),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        server(),
+        vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server())),
         json(arangodb::velocypack::Parser::fromJson(
             "{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }")),
         collection(vocbase, json->slice(), true),
@@ -124,11 +109,6 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
               &engine, &abc, &outVariable, varUsedLater, projections, &trx,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
-    // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required by TRI_vocbase_t(...)
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-
     // fake indexScan
     fakeit::When(Method(mockTrx, indexScan))
         .AlwaysDo(std::function<std::unique_ptr<IndexIterator>(std::string const&, CursorType&)>(

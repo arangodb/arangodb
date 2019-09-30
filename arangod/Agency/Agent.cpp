@@ -56,13 +56,15 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(config_t const& config)
-    : Thread("Agent"),
+Agent::Agent(ApplicationServer& server, config_t const& config)
+    : Thread(server, "Agent"),
+      _constituent(server),
+      _supervision(server),
       _config(config),
       _commitIndex(0),
-      _spearhead(this),
-      _readDB(this),
-      _transient(this),
+      _spearhead(server, this),
+      _readDB(server, this),
+      _transient(server, this),
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
@@ -70,7 +72,7 @@ Agent::Agent(config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
-    _inception = std::make_unique<Inception>(this);
+    _inception = std::make_unique<Inception>(*this);
   } else {
     _leaderSince = 0;
   }
@@ -531,7 +533,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(this, "snapshot");
+      Store snapshot(_server, this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -788,10 +790,10 @@ void Agent::activateAgency() {
 
 /// Load persistent state called once
 void Agent::load() {
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
+      _server.hasFeature<SystemDatabaseFeature>()
+          ? _server.getFeature<SystemDatabaseFeature>().use()
+          : nullptr;
   auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {
@@ -1977,9 +1979,9 @@ void Agent::emptyCbTrashBin() {
   // queue + write.
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {
-    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [envelope = std::move(envelope)] {
-        auto* agent = AgencyFeature::AGENT;
-        if (!application_features::ApplicationServer::isStopping() && agent) {
+    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+        auto* agent = server.getFeature<AgencyFeature>().agent();
+        if (!server.isStopping() && agent) {
           agent->write(envelope);
         }
       });
@@ -1990,7 +1992,7 @@ void Agent::emptyCbTrashBin() {
 
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(this);
+  Store store(_server, this);
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {

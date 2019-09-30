@@ -24,9 +24,6 @@
 #ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
-#include "Aql/types.h"
-#include "Basics/Common.h"
-
 #include <unicode/regex.h>
 
 struct TRI_vocbase_t;
@@ -43,9 +40,9 @@ struct Variable;
 
 class ExpressionContext {
  public:
-  ExpressionContext() {}
+  ExpressionContext() = default;
 
-  virtual ~ExpressionContext() {}
+  virtual ~ExpressionContext() = default;
 
   virtual size_t numRegisters() const = 0;
 
@@ -67,7 +64,6 @@ class ExpressionContext {
                                                transaction::Methods*,
                                                bool& isEmptyExpression) = 0;
 
-  virtual bool killed() const = 0;
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual Query* query() const = 0;
 };

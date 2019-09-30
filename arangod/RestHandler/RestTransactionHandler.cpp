@@ -46,8 +46,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
+RestTransactionHandler::RestTransactionHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr), _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
     

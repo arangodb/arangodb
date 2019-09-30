@@ -72,14 +72,16 @@ class ConstFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = 1);
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t);
   void injectBlock(SharedAqlItemBlockPtr block);
 
   // Argument will be ignored!
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
+  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
+
+  void setDistributeId(std::string const&) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

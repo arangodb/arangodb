@@ -25,29 +25,33 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Basics/Common.h"
-
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
-
 #include "Aql/CalculationExecutor.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/IndexNode.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
@@ -56,6 +60,7 @@
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/SubqueryExecutor.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
 
 #include <type_traits>
@@ -72,19 +77,18 @@ using namespace arangodb::aql;
  * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
  */
 
-#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
-  template <typename T>                                 \
-  class checkName {                                     \
-    typedef char yes[1];                                \
-    typedef char no[2];                                 \
-                                                        \
-    template <typename C>                               \
-    static yes& test(decltype(&C::methodName));         \
-    template <typename>                                 \
-    static no& test(...);                               \
-                                                        \
-   public:                                              \
-    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)     \
+  template <typename T>                                    \
+  class checkName {                                        \
+    template <typename C>                                  \
+    static std::true_type test(decltype(&C::methodName));  \
+    template <typename C>                                  \
+    static std::true_type test(decltype(&C::template methodName<>)); \
+    template <typename>                                    \
+    static std::false_type test(...);                      \
+                                                           \
+   public:                                                 \
+    static constexpr bool value = decltype(test<T>(0))::value;    \
   }
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
@@ -222,6 +226,21 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   }
 }
 
+template <class Executor>
+Executor& ExecutionBlockImpl<Executor>::executor() {
+  return _executor;
+}
+
+template <class Executor>
+Query const& ExecutionBlockImpl<Executor>::getQuery() const {
+  return _query;
+}
+
+template <class Executor>
+typename ExecutionBlockImpl<Executor>::Infos const& ExecutionBlockImpl<Executor>::infos() const {
+  return _infos;
+}
+
 namespace arangodb {
 namespace aql {
 
@@ -292,10 +311,9 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
                      std::is_same<Executor, LimitExecutor>::value ||
-                     std::is_same<Executor, SortExecutor<CopyRowProducer>>::value ||
-                     std::is_same<Executor, SortExecutor<MaterializerProducer>>::value ||
-                     std::is_same<Executor, ConstrainedSortExecutor<CopyRowProducer>>::value ||
-                     std::is_same<Executor, ConstrainedSortExecutor<MaterializerProducer>>::value),
+                     std::is_same<Executor, IdExecutor<false, SingleRowFetcher<false>>>::value ||
+                     std::is_same<Executor, ConstrainedSortExecutor>::value ||
+                     std::is_same<Executor, SortingGatherExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -415,7 +433,7 @@ namespace arangodb {
 namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<true, ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
@@ -519,6 +537,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
   return {state, subqueryResult};
 }
 
+template <>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>::shutdown(int errorCode) {
+  if (this->infos().isResponsibleForInitializeCursor()) {
+    return ExecutionBlock::shutdown(errorCode);
+  }
+  return {ExecutionState::DONE, {errorCode}};
+}
 }  // namespace aql
 }  // namespace arangodb
 
@@ -710,8 +736,9 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, 
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<true, ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<false, SingleRowFetcher<false>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
@@ -739,5 +766,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor<CopyRowProducer>
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor<MaterializerProducer>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
