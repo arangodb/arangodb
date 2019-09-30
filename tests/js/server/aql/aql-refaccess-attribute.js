@@ -54,7 +54,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
       collection = internal.db._create("UnitTestsAhuacatlRefAccess");
 
@@ -69,7 +69,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
     },
 
