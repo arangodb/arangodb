@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Sharding/ShardingFeature.h"
@@ -61,10 +62,18 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   VPackSlice shardKeysSlice = info.get(StaticStrings::ShardKeys);
   if (ServerState::instance()->isCoordinator()) {
-    if ((_numberOfShards == 0 && !isSmart) || _numberOfShards > 1000) {
+    if (_numberOfShards == 0 && !isSmart) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
     }
+    // intentionally no call to validateNumberOfShards here,
+    // because this constructor is called from the constructor of
+    // LogicalCollection, and we want LogicalCollection to be created
+    // with any configured number of shards in case the maximum allowed
+    // number of shards is set or decreased in a cluster with already
+    // existing collections that would violate the setting.
+    // so we validate the number of shards against the maximum only
+    // when a collection is created by a user, and on a restore
   }
 
   VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
@@ -88,7 +97,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
           _avoidServers.push_back(i.copyString());
         } else {
           LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
-              << "avoidServers must be a vector of strings we got "
+              << "avoidServers must be a vector of strings, we got "
               << avoidServersSlice.toJson() << ". discarding!";
           _avoidServers.clear();
           break;
@@ -135,7 +144,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       if (_minReplicationFactor > _replicationFactor) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "minReplicationFactor cannot be larger then replicationFactor (" +
+            "minReplicationFactor cannot be larger than replicationFactor (" +
                 basics::StringUtils::itoa(_minReplicationFactor) + " > " +
                 basics::StringUtils::itoa(_replicationFactor) + ")");
       }
@@ -363,7 +372,7 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
   if (replicationFactor < _minReplicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "replicationFactor cannot be smaller then minReplicationFactor (" +
+        "replicationFactor cannot be smaller than minReplicationFactor (" +
             basics::StringUtils::itoa(_replicationFactor) + " < " +
             basics::StringUtils::itoa(_minReplicationFactor) + ")");
   }
@@ -379,7 +388,7 @@ void ShardingInfo::minReplicationFactor(size_t minReplicationFactor) {
   if (minReplicationFactor > _replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "minReplicationFactor cannot be larger then replicationFactor (" +
+        "minReplicationFactor cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(_minReplicationFactor) + " > " +
             basics::StringUtils::itoa(_replicationFactor) + ")");
   }
@@ -390,7 +399,7 @@ void ShardingInfo::setMinAndMaxReplicationFactor(size_t minimal, size_t maximal)
   if (minimal > maximal) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "minReplicationFactor cannot be larger then replicationFactor (" +
+        "minReplicationFactor cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(minimal) + " > " +
             basics::StringUtils::itoa(maximal) + ")");
   }
@@ -458,4 +467,40 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
                                       std::string const& key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
+}
+
+Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice) {
+  Result res;
+    
+  auto const* cl = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+
+  auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
+  if (numberOfShardsSlice.isNumber()) {
+    uint32_t const maxNumberOfShards = cl->maxNumberOfShards();
+    uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
+    if (maxNumberOfShards > 0 &&
+        numberOfShards > maxNumberOfShards) {
+      res.reset(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
+                std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
+    }
+  }
+
+  auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+  if (replicationFactorSlice.isNumber()) {
+    uint32_t const minReplicationFactor = cl->minReplicationFactor();
+    uint32_t const maxReplicationFactor = cl->maxReplicationFactor();
+    uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+
+    if (replicationFactor > maxReplicationFactor &&
+        maxReplicationFactor > 0) {
+      res.reset(TRI_ERROR_BAD_PARAMETER,
+                std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+    } else if (replicationFactor < minReplicationFactor &&
+               minReplicationFactor > 0) {
+      res.reset(TRI_ERROR_BAD_PARAMETER,
+                std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+    }
+  }
+
+  return res;
 }
