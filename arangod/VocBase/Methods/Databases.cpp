@@ -143,7 +143,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
     // If the current user is empty (which happens if a Maintenance job
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
-    if (!exec.isSuperuser()) {
+    if (!exec.isAdminUser()) {
       auto const endTime = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
       while (true) {
         res = um->updateUser(exec.user(), [&](auth::User& entry) {

@@ -22,11 +22,13 @@
 
 #include "gtest/gtest.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 // test setup
 #include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
@@ -52,9 +54,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
-
 extern const char* ARGV0;  // defined in main.cpp
 
 // -----------------------------------------------------------------------------
@@ -65,7 +64,9 @@ extern const char* ARGV0;  // defined in main.cpp
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-class SortLimitTest : public ::testing::Test {
+class SortLimitTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
@@ -78,9 +79,6 @@ class SortLimitTest : public ::testing::Test {
     arangodb::ClusterEngine::Mocking = true;
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-
     vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
     CreateCollection();
@@ -88,8 +86,6 @@ class SortLimitTest : public ::testing::Test {
 
   ~SortLimitTest() {
     vocbase.reset();
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   std::string sorterType(TRI_vocbase_t& vocbase, std::string const& queryString,

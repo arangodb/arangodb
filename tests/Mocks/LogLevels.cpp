@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,27 +17,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WakeupQueryCallback.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/Query.h"
+#include "LogLevels.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+#include "utils/log.hpp"
 
-WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator, Query* query)
-    : _initiator(initiator), _query(query), _sharedState(query->sharedState()) {}
+namespace arangodb {
+namespace tests {
 
-WakeupQueryCallback::~WakeupQueryCallback() {}
-
-bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
-  return _sharedState->execute([result, this]() {
-    TRI_ASSERT(_initiator != nullptr);
-    TRI_ASSERT(_query != nullptr);
-    // TODO Validate that _initiator and _query have not been deleted (ttl)
-    // TODO Handle exceptions
-    return _initiator->handleAsyncResult(result);
-  });
+IResearchLogSuppressor::IResearchLogSuppressor() {
+  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 }
+
+}  // namespace tests
+}  // namespace arangodb

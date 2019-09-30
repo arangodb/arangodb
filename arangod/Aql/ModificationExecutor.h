@@ -185,9 +185,9 @@ struct ModificationExecutorInfos : public ExecutorInfos {
 template <typename FetcherType>
 struct ModificationExecutorBase {
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize =
+    static constexpr bool preservesOrder = true;
+    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr bool inputSizeRestrictsOutputSize =
         false;  // Disabled because prefetch does not work in the Cluster
                 // Maybe This should ask for a 1:1 relation.
   };

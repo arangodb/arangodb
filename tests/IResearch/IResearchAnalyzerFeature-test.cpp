@@ -23,16 +23,16 @@
 
 #include "gtest/gtest.h"
 
-#include "IResearch/ClusterCommMock.h"
-#include "IResearch/RestHandlerMock.h"
-#include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
-
-#include "common.h"
-
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/utf8_path.hpp"
+
+#include "IResearch/ClusterCommMock.h"
+#include "IResearch/RestHandlerMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -373,7 +373,10 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchAnalyzerFeatureTest : public ::testing::Test {
+class IResearchAnalyzerFeatureTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -384,11 +387,6 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
 
   IResearchAnalyzerFeatureTest() : server(false) {
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
 
     server.addFeature<arangodb::QueryRegistryFeature>(false);
     server.addFeature<arangodb::TraverserEngineRegistryFeature>(false);
@@ -408,10 +406,6 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     if (userManager != nullptr) {
       userManager->removeAllUsers();
     }
-
-    // reset to warn
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::WARN);
   }
 
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
@@ -1076,7 +1070,11 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
 // --SECTION--                                            coordinator test suite
 // -----------------------------------------------------------------------------
 
-class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
+class IResearchAnalyzerFeatureCoordinatorTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
  public:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -1096,40 +1094,9 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
         _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
     arangodb::tests::init();
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::WARN);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL);  // suppress ERROR {engines} failed to instantiate index, error: ...
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-  }
-
-  ~IResearchAnalyzerFeatureCoordinatorTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   void SetUp() override {
@@ -3199,8 +3166,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_no_anal
 
   // ensure no legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
   }
 
@@ -3225,8 +3192,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_with_an
 
   // ensure no legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
   }
 
@@ -3275,18 +3242,18 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_with_legacy_no_an
 
   // ensure legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
-    ASSERT_TRUE((false == !system.createCollection(createLegacyCollectionJson->slice())));
+    ASSERT_TRUE((false == !system->createCollection(createLegacyCollectionJson->slice())));
   }
 
   // add document to legacy collection after feature start
   {
     arangodb::OperationOptions options;
-    auto& system = *sysDatabase.use();
+    auto system = sysDatabase.use();
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(system),
+        arangodb::transaction::StandaloneContext::Create(*system),
         LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((true == trx.begin().ok()));
     EXPECT_TRUE(
@@ -3317,8 +3284,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_with_an
 
   // ensure no legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
   }
 
@@ -3439,8 +3406,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases.slice())));
     sysDatabase.start();  // get system database from DatabaseFeature
-    arangodb::methods::Collections::createSystem(*sysDatabase.use(),
-                                                 arangodb::tests::AnalyzerCollectionName, false);
+    auto system = sysDatabase.use();
+    arangodb::methods::Collections::createSystem(*system, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
   }
 
   auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });

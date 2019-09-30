@@ -20,7 +20,16 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+#include <typeinfo>
+
 #include "gtest/gtest.h"
+
+#include <boost/core/demangle.hpp>
+#include <boost/date_time.hpp>
+#include <boost/range/combine.hpp>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
@@ -30,13 +39,6 @@
 #include "Cluster/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
-
-#include <boost/core/demangle.hpp>
-#include <boost/date_time.hpp>
-#include <boost/range/combine.hpp>
-
-#include <iostream>
-#include <typeinfo>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -226,18 +228,16 @@ class ClusterRepairsTest : public ::testing::Test {
   }
 };
 
-class ClusterRepairsTestBrokenDistribution : public ClusterRepairsTest {
-protected:
+class ClusterRepairsTestBrokenDistribution
+    : public ClusterRepairsTest,
+      public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
+      public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
+ protected:
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager;
 
   ClusterRepairsTestBrokenDistribution()
       : oldManager(std::move(AgencyCommManager::MANAGER)) {
-    // Disable cluster logging
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
-
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
   }
@@ -245,11 +245,6 @@ protected:
   ~ClusterRepairsTestBrokenDistribution() {
     // restore old manager
     AgencyCommManager::MANAGER = std::move(oldManager);
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 
@@ -414,9 +409,7 @@ TEST_F(ClusterRepairsTestBrokenDistribution, collections_with_triggered_failures
 
 TEST(ClusterRepairsTestVersionSort, different_version_strings) {
   // Disable cluster logging
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
-  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                            arangodb::LogLevel::DEFAULT));
+  arangodb::tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> suppressor;
 
   // General functionality check
   EXPECT_TRUE(VersionSort()("s2", "s10"));
@@ -445,8 +438,10 @@ TEST(ClusterRepairsTestVersionSort, different_version_strings) {
   EXPECT_TRUE(!VersionSort()("s1000064", "s1000050"));
 }
 
-class ClusterRepairsTestOperations : public ClusterRepairsTest {
-protected:
+class ClusterRepairsTestOperations
+    : public ClusterRepairsTest,
+      public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
+ protected:
   std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
@@ -465,12 +460,6 @@ protected:
       : oldManager(std::move(AgencyCommManager::MANAGER)),
         oldServerId(ServerState::instance()->getId()),
         conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
-    // Disable cluster logging
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                              arangodb::LogLevel::DEFAULT));
-
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
   }

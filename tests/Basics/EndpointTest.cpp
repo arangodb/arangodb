@@ -25,10 +25,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
+#include "Mocks/LogLevels.h"
+
+#include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
@@ -60,7 +61,7 @@ using namespace std;
   delete e;
 
 TEST(EndpointTest, EndpointInvalid) {
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
+  tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> suppressor;
 
   Endpoint* e = nullptr;
 
@@ -91,8 +92,6 @@ TEST(EndpointTest, EndpointInvalid) {
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
-
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

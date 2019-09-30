@@ -73,6 +73,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _connectionTtlMilli(config.connectionTtlMilli),
       _verifyHosts(config.verifyHosts) {
   setOptional(true);
+  startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
 }
@@ -129,6 +130,9 @@ void NetworkFeature::prepare() {
   config.maxOpenConnections = _maxOpenConnections;
   config.connectionTtlMilli = _connectionTtlMilli;
   config.verifyHosts = _verifyHosts;
+  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+    config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
+  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
@@ -148,16 +152,18 @@ void NetworkFeature::beginShutdown() {
     _workItem.reset();
   }
   _poolPtr.store(nullptr, std::memory_order_release);
-  if (_pool) {
-    _pool->shutdown();
-    _pool.reset();
+  if (_pool) {  // first cancel all connections
+    _pool->drainConnections();
   }
 }
 
 void NetworkFeature::stop() {
-  // we might have posted another workItem during shutdown.
-  std::lock_guard<std::mutex> guard(_workItemMutex);
-  _workItem.reset();
+  {
+    // we might have posted another workItem during shutdown.
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
+  }
+  _pool->drainConnections();
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {

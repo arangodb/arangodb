@@ -53,6 +53,23 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher
   return res;
 }
 
+std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipSomeForDependency(
+    size_t const dependency, size_t const atMost) {
+  TRI_ASSERT(!_dependencyInfos.empty());
+  TRI_ASSERT(dependency < _dependencyInfos.size());
+  auto& depInfo = _dependencyInfos[dependency];
+  TRI_ASSERT(depInfo._upstreamState != ExecutionState::DONE);
+
+  // There are still some blocks left that ask their parent even after they got
+  // DONE the last time, and I don't currently have time to track them down.
+  // Thus the following assert is commented out.
+  // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+  auto res = _dependencyProxy->skipSomeForDependency(dependency, atMost);
+  depInfo._upstreamState = res.first;
+
+  return res;
+}
+
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
     : _dependencyProxy(nullptr) {}
 

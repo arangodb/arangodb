@@ -482,8 +482,8 @@ ExecutionPlan* Query::preparePlan() {
 #endif
 
   auto trx = AqlTransaction::create(std::move(ctx), _collections.collections(),
-                                    _queryOptions.transactionOptions,
-                                    _part == PART_MAIN, inaccessibleCollections);
+                                    _queryOptions.transactionOptions, _part == PART_MAIN,
+                                    std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
   _trx = trx;
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

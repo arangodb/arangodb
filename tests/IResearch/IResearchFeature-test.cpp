@@ -23,17 +23,17 @@
 
 #include "gtest/gtest.h"
 
-#include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
-
-#include "AgencyMock.h"
-#include "common.h"
-
 #include "utils/misc.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/version_defines.hpp"
+
+#include "IResearch/AgencyMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -74,7 +74,11 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchFeatureTest : public ::testing::Test {
+class IResearchFeatureTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -85,19 +89,6 @@ class IResearchFeatureTest : public ::testing::Test {
   IResearchFeatureTest() : server(false) {
     arangodb::tests::init();
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
     server.addFeature<arangodb::FlushFeature>(false);
     server.addFeature<arangodb::QueryRegistryFeature>(false);
@@ -107,14 +98,6 @@ class IResearchFeatureTest : public ::testing::Test {
 
   ~IResearchFeatureTest() {
     ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   // version 0 data-source path
@@ -727,7 +710,11 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
 }
 #endif
 
-class IResearchFeatureTestCoordinator : public ::testing::Test {
+class IResearchFeatureTestCoordinator
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -753,19 +740,6 @@ class IResearchFeatureTestCoordinator : public ::testing::Test {
 
     arangodb::tests::init();
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
     arangodb::ServerState::instance()->setRebootId(1);  // Hack.
 
@@ -782,14 +756,6 @@ class IResearchFeatureTestCoordinator : public ::testing::Test {
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
 
     ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 
@@ -915,7 +881,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 after upgrade
 }
 
-class IResearchFeatureTestDBServer : public ::testing::Test {
+class IResearchFeatureTestDBServer
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -941,19 +911,6 @@ class IResearchFeatureTestDBServer : public ::testing::Test {
 
     arangodb::tests::init();
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
     arangodb::ServerState::instance()->setRebootId(1);  // Hack.
 
@@ -970,14 +927,6 @@ class IResearchFeatureTestDBServer : public ::testing::Test {
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
 
     ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 
   // version 0 data-source path
