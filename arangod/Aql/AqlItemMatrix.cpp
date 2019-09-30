@@ -68,7 +68,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
             // NOTE: This could already be the next shadowRow. in this case we return an empty list
             startRow = *before + 1;
           }
-          // Else start from the begining
+          // Else start from the beginning
           endRow = _lastShadowRow;
         } else {
           // Start at the Row after the ShadowRow.
