@@ -117,7 +117,6 @@ function withinRectangleSuite () {
       } catch (e) {
         assertTrue(e.errorNum === errors.ERROR_QUERY_GEO_INDEX_MISSING.code);
       }
-
     },
 
     testWithinRectangleAsResultWithPositionBasedGeoIndex : function () {

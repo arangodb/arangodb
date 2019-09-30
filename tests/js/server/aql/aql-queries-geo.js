@@ -104,7 +104,7 @@ function ahuacatlLegacyGeoTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
     },
@@ -320,7 +320,7 @@ function legacyGeoTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
@@ -347,7 +347,7 @@ function legacyGeoTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
     },
@@ -553,7 +553,7 @@ function pointsTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       var lat, lon;
       db._drop("UnitTestsPointsTestSuite");
 
@@ -571,7 +571,7 @@ function pointsTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsPointsTestSuite");
     },
 
@@ -993,7 +993,7 @@ function geoJsonTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       var lat, lon;
       db._drop("UnitTestsGeoJsonTestSuite");
 
@@ -1008,7 +1008,7 @@ function geoJsonTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsGeoJsonTestSuite");
     },
 

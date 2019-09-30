@@ -45,7 +45,7 @@ function ahuacatlRegexTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsAhuacatlRegex");
       c = db._create("UnitTestsAhuacatlRegex");
       
@@ -60,7 +60,7 @@ function ahuacatlRegexTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsAhuacatlRegex");
       c = null;
     },

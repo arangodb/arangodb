@@ -56,7 +56,7 @@ function ahuacatlShardIdsTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, { numberOfShards: 4 });
 
@@ -80,7 +80,7 @@ function ahuacatlShardIdsTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

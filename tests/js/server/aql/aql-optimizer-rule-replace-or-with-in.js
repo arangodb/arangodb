@@ -112,7 +112,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOom : function () {
-      if (! internal.debugCanUseFailAt()) {
+      if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugSetFailAt("OptimizerRules::replaceOrWithInRuleOom");
