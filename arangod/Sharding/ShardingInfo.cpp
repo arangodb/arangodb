@@ -493,16 +493,22 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
   if (replicationFactorSlice.isNumber()) {
     uint32_t const minReplicationFactor = cl->minReplicationFactor();
     uint32_t const maxReplicationFactor = cl->maxReplicationFactor();
-    uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+    
+    int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
+    if (replicationFactorProbe <= 0) {
+      res.reset(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+    } else {
+      uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
 
-    if (replicationFactor > maxReplicationFactor &&
-        maxReplicationFactor > 0) {
-      res.reset(TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
-    } else if (replicationFactor < minReplicationFactor &&
-               minReplicationFactor > 0) {
-      res.reset(TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+      if (replicationFactor > maxReplicationFactor &&
+          maxReplicationFactor > 0) {
+        res.reset(TRI_ERROR_BAD_PARAMETER,
+                  std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+      } else if (replicationFactor < minReplicationFactor &&
+                 minReplicationFactor > 0) {
+        res.reset(TRI_ERROR_BAD_PARAMETER,
+                  std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+      }
     }
   }
 
