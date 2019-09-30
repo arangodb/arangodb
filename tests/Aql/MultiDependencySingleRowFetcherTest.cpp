@@ -944,23 +944,78 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 15);
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest, simple_fetch_shadow_row_test) {
-  size_t numDeps = 1;
+class MultiDependencySingleRowFetcherShadowRowTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor{};
+  AqlItemBlockManager itemBlockManager;
+
+  MultiDependencySingleRowFetcherShadowRowTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+
+  std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> alternatingDataAndShadowRows(
+      std::vector<int> const& values) {
+    MatrixBuilder<1> matrixBuilder;
+    for (auto const& val : values) {
+      matrixBuilder.emplace_back(RowBuilder<1>{{val}});
+    }
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(itemBlockManager, std::move(matrixBuilder));
+
+    for (size_t row = 0; row < block->size(); ++row) {
+        if (row % 2 == 1) {
+          block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+        }
+    }
+
+    // TODO cut block into pieces
+    return {{ExecutionState::DONE, std::move(block)}};
+  }
+
+  std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> onlyShadowRows(
+      std::vector<int> const& values) {
+    MatrixBuilder<1> matrixBuilder;
+    for (auto const& val : values) {
+      matrixBuilder.emplace_back(RowBuilder<1>{{val}});
+    }
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(itemBlockManager, std::move(matrixBuilder));
+
+    for (size_t row = 0; row < block->size(); ++row) {
+       block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+    }
+
+    // TODO cut block into pieces
+    return {{ExecutionState::DONE, std::move(block)}};
+  }
+
+  // Get a row pointing to a row with the specified value in the only register
+  // in an anonymous block.
+  InputAqlItemRow inputRow(int value) {
+    SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{{value}}});
+    return InputAqlItemRow{block, 0};
+  }
+  // Get a shadow row pointing to a row with the specified value, and specified
+  // shadow row depth, in the only register in an anonymous block.
+  ShadowAqlItemRow shadowRow(int value, uint64_t depth = 0) {
+    SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{{value}}});
+    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{depth}});
+    return ShadowAqlItemRow{block, 0};
+  }
+  
+  InputAqlItemRow invalidInputRow() const {
+    return InputAqlItemRow{CreateInvalidInputRowHint{}};
+  }
+
+  ShadowAqlItemRow invalidShadowRow() const {
+    return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  }
+};
+
+TEST_F(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_test) {
+  constexpr size_t numDeps = 1;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
 
-  SharedAqlItemBlockPtr block1Dep1 =
-      buildBlock<1>(itemBlockManager, {{{0}}, {{1}}, {{2}}, {{3}}});
-  block1Dep1->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-  block1Dep1->setShadowRowDepth(3, AqlValue{AqlValueHintUInt{0}});
-
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE, block1Dep1);
-
-  auto const invalidRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  auto const invalidShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  auto const row0 = InputAqlItemRow{block1Dep1, 0};
-  auto const shadowRow1 = ShadowAqlItemRow{block1Dep1, 1};
-  auto const row2 = InputAqlItemRow{block1Dep1, 2};
-  auto const shadowRow3 = ShadowAqlItemRow{block1Dep1, 3};
+  dependencyProxyMock.getDependencyMock(0).shouldReturn(alternatingDataAndShadowRows({0, 1, 2, 3}));
 
   MultiDependencySingleRowFetcher testee{dependencyProxyMock};
   testee.initDependencies();
@@ -969,49 +1024,30 @@ TEST_F(MultiDependencySingleRowFetcherTest, simple_fetch_shadow_row_test) {
       testee,
       {
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, row0}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(0)}),
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow1}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(1)}),
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, row2}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(2)}),
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow3}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(3)}),
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow()}),
       });
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest, shadow_rows_2_deps) {
-  size_t numDeps = 1;
+TEST_F(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps) {
+  constexpr size_t numDeps = 2;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
 
-  SharedAqlItemBlockPtr block1Dep1 =
-      buildBlock<1>(itemBlockManager, {{{0}}, {{1}}, {{2}}, {{3}}});
-  SharedAqlItemBlockPtr block1Dep2 =
-      buildBlock<1>(itemBlockManager, {{{4}}, {{1}}, {{6}}, {{3}}});
-  block1Dep1->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-  block1Dep1->setShadowRowDepth(3, AqlValue{AqlValueHintUInt{0}});
-  block1Dep2->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-  block1Dep2->setShadowRowDepth(3, AqlValue{AqlValueHintUInt{0}});
-
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE, block1Dep1);
-
-  auto const invalidRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  auto const invalidShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  auto const dep1row0 = InputAqlItemRow{block1Dep1, 0};
-  auto const dep1row2 = InputAqlItemRow{block1Dep1, 2};
-  auto const dep2row4 = InputAqlItemRow{block1Dep2, 0};
-  auto const dep2row6 = InputAqlItemRow{block1Dep2, 2};
-  auto const shadowRow1 = ShadowAqlItemRow{block1Dep1, 1};
-  ASSERT_TRUE(shadowRow1.equates(ShadowAqlItemRow{block1Dep2, 1}));
-  auto const shadowRow3 = ShadowAqlItemRow{block1Dep1, 3};
-  ASSERT_TRUE(shadowRow3.equates(ShadowAqlItemRow{block1Dep2, 3}));
+  dependencyProxyMock.getDependencyMock(0).shouldReturn(alternatingDataAndShadowRows({0, 1, 2, 3}));
+  dependencyProxyMock.getDependencyMock(1).shouldReturn(alternatingDataAndShadowRows({4, 1, 6, 3}));
 
   MultiDependencySingleRowFetcher testee{dependencyProxyMock};
   testee.initDependencies();
@@ -1021,83 +1057,64 @@ TEST_F(MultiDependencySingleRowFetcherTest, shadow_rows_2_deps) {
       {
           // fetch dep 1
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep1row0}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(0)}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetching the shadow row should not yet be possible
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow()}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetch dep 2
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep2row4}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(4)}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // Fetch the first shadow row.
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow1}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(1)}),
           // fetch dep 1 again
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep1row2}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(2)}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetching the shadow row should not yet be possible
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow()}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetch dep 2 again
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep2row6}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(6)}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // Fetch the second shadow row.
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow3}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(3)}),
           // We're now done.
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow()}),
       });
 }
 
-TEST_F(MultiDependencySingleRowFetcherTest, shadow_rows_2_deps_reverse_pull) {
-  size_t numDeps = 1;
+TEST_F(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps_reverse_pull) {
+  constexpr size_t numDeps = 2;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
 
-  SharedAqlItemBlockPtr block1Dep1 =
-      buildBlock<1>(itemBlockManager, {{{0}}, {{1}}, {{2}}, {{3}}});
-  SharedAqlItemBlockPtr block1Dep2 =
-      buildBlock<1>(itemBlockManager, {{{4}}, {{1}}, {{6}}, {{3}}});
-  block1Dep1->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-  block1Dep1->setShadowRowDepth(3, AqlValue{AqlValueHintUInt{0}});
-  block1Dep2->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-  block1Dep2->setShadowRowDepth(3, AqlValue{AqlValueHintUInt{0}});
-
-  dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE, block1Dep1);
-
-  auto const invalidRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  auto const invalidShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  auto const dep1row0 = InputAqlItemRow{block1Dep1, 0};
-  auto const dep1row2 = InputAqlItemRow{block1Dep1, 2};
-  auto const dep2row4 = InputAqlItemRow{block1Dep2, 0};
-  auto const dep2row6 = InputAqlItemRow{block1Dep2, 2};
-  auto const shadowRow1 = ShadowAqlItemRow{block1Dep1, 1};
-  ASSERT_TRUE(shadowRow1.equates(ShadowAqlItemRow{block1Dep2, 1}));
-  auto const shadowRow3 = ShadowAqlItemRow{block1Dep1, 3};
-  ASSERT_TRUE(shadowRow3.equates(ShadowAqlItemRow{block1Dep2, 3}));
+  dependencyProxyMock.getDependencyMock(0).shouldReturn(alternatingDataAndShadowRows({0, 1, 2, 3}));
+  dependencyProxyMock.getDependencyMock(1).shouldReturn(alternatingDataAndShadowRows({4, 1, 6, 3}));
 
   MultiDependencySingleRowFetcher testee{dependencyProxyMock};
   testee.initDependencies();
@@ -1107,55 +1124,55 @@ TEST_F(MultiDependencySingleRowFetcherTest, shadow_rows_2_deps_reverse_pull) {
       {
           // fetch dep 2
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep2row4}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(4)}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetching the shadow row should not yet be possible
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow()}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetch dep 1
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep1row0}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(0)}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // Fetch the first shadow row.
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow1}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(1)}),
           // fetch dep 2 again
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep2row6}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(6)}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetching the shadow row should not yet be possible
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow()}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // fetch dep 1 again
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, dep1row2}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, inputRow(2)}),
           // dep 2 should stay done
           std::make_pair(FetchRowForDependency{1, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // dep 1 should stay done
           std::make_pair(FetchRowForDependency{0, 1000},
-                         FetchRowForDependency::Result{ExecutionState::DONE, invalidRow}),
+                         FetchRowForDependency::Result{ExecutionState::DONE, invalidInputRow()}),
           // Fetch the second shadow row.
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow3}),
+                         FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(3)}),
           // We're now done.
           std::make_pair(FetchShadowRow{1000},
-                         FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow}),
+                         FetchShadowRow::Result{ExecutionState::DONE, invalidShadowRow()}),
       });
 }
 
