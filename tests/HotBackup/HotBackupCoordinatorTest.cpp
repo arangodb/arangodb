@@ -379,27 +379,69 @@ TEST_F(HotBackupTest, test_repository_normalization) {
   Result result;
   std::string repo;
 
+  repo = "";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+  
+
   repo = ":";
   result = RClone::normalizeRepositoryString(config, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
 
+  repo = "noob:";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+  ASSERT_EQ(repo, "noob:");
+
   repo = "local:a";
   result = RClone::normalizeRepositoryString(config, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+  ASSERT_EQ(repo, "local:a");
 
   repo = "local:/a";
   result = RClone::normalizeRepositoryString(config, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/a");
 
   repo = "local:/a/";
   result = RClone::normalizeRepositoryString(config, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
-  ASSERT_EQ(repo.back(), 'a');
+  ASSERT_EQ(repo, "local:/a");
 
   repo = "local:/a//";
   result = RClone::normalizeRepositoryString(config, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
-  ASSERT_EQ(repo.back(), 'a');
+  ASSERT_EQ(repo, "local:/a");
+
+  repo = "S3:////////////";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:");
+
+  repo = "S3:////////////a";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a");
+
+  repo = "S3:////////////a////////////////";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a");
+
+  repo = "S3:////////////a////////////////a";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a/a");
+
+  repo = "S3:////////////a/.///////////////";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a");
+
+  repo = "S3:/.";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:");
 
 }
 
