@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed Unintended multiple unlock commands from coordinator to
+  transaction locked db servers
+
 * DB server locking / unlocking for hot backup revisited and enhanced.
 
 * Rely on reboot ids for declaring end of cluster hot restore on coordinators.
