@@ -1,10 +1,27 @@
-v3.5.2 (XXXX-XX-XX)
+v3.5.1 (XXXX-XX-XX)
 -------------------
 
 * Rely on reboot ids for declaring end of cluster hot restore on coordinators 
 
-v3.5.1 (2019-09-24)
--------------------
+* Obtain new unique IDs via a background thread.
+
+* Fixed issue #10078: FULLTEXT with sort on same field not working.
+
+* Fixed issue #10062: AQL: could not extract custom attribute.
+
+* Fix compilation issue with clang 10.
+
+* Fixed error message for error 1928 ("not in orphan") to "collection is
+  not in list of orphan collections".
+
+* Fix strange shutdown hanger which came from the fact that currently
+  libgcc/libmusl wrongly detect multi-threadedness in statically linked
+  executables.
+
+* Fixed a shutdown bug coming from a read/write lock race.
+
+* Fixed a bug in the edge cache's internal memory accounting, which led
+  to the edge cache underreporting its current memory usage.
 
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
   This affected at least /_admin/cluster/health.
