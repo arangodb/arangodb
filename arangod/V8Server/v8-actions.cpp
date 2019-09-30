@@ -34,8 +34,6 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/GeneralServer.h"
