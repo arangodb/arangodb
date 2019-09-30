@@ -58,7 +58,6 @@ std::string const NO_LEADER("");
 /// Agent configuration
 Agent::Agent(ApplicationServer& server, config_t const& config)
     : Thread(server, "Agent"),
-      _server(server),
       _constituent(server),
       _supervision(server),
       _config(config),
@@ -78,9 +77,6 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
     _leaderSince = 0;
   }
 }
-
-/// @brief the underlying application server
-application_features::ApplicationServer& Agent::server() { return _server; }
 
 /// This agent's id
 std::string Agent::id() const { return _config.id(); }

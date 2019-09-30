@@ -81,7 +81,7 @@ class ReplicationApplierConfiguration {
   std::string _clientInfoString;
 
  public:
-  ReplicationApplierConfiguration(application_features::ApplicationServer&);
+  explicit ReplicationApplierConfiguration(application_features::ApplicationServer&);
   ~ReplicationApplierConfiguration() = default;
 
   ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) = default;

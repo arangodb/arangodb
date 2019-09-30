@@ -4569,6 +4569,10 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
+application_features::ApplicationServer& ClusterInfo::server() const {
+  return _server;
+}
+
 ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
                                         std::unordered_set<ServerID> const& serverIds)
     : _serversKnown() {

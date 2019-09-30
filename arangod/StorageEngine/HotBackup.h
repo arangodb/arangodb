@@ -44,7 +44,7 @@ enum BACKUP_ENGINE {ROCKSDB, MMFILES, CLUSTER};
 
 class HotBackup {
 public:
- HotBackup(application_features::ApplicationServer& server);
+ explicit HotBackup(application_features::ApplicationServer& server);
  virtual ~HotBackup() = default;
 
  /**
