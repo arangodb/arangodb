@@ -466,7 +466,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   ClusterComm(application_features::ApplicationServer&);
-  ClusterComm(ClusterComm const&);     // not implemented
+  explicit ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 
   //////////////////////////////////////////////////////////////////////////////
@@ -717,7 +717,7 @@ class ClusterCommThread : public Thread {
   ClusterCommThread& operator=(ClusterCommThread const&);
 
  public:
-  ClusterCommThread(application_features::ApplicationServer&);
+  explicit ClusterCommThread(application_features::ApplicationServer&);
   ~ClusterCommThread();
  public:
   void beginShutdown() override;

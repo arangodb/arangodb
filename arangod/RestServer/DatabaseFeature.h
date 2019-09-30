@@ -57,7 +57,7 @@ class DatabaseManagerThread final : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread(application_features::ApplicationServer&);
+  explicit DatabaseManagerThread(application_features::ApplicationServer&);
   ~DatabaseManagerThread();
 
   void run() override;

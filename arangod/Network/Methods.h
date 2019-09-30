@@ -36,6 +36,7 @@ namespace arangodb {
 class ClusterInfo;
 
 namespace network {
+class ConnectionPool;
 
 /// Response data structure
 struct Response {

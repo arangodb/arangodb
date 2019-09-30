@@ -3166,8 +3166,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_no_anal
 
   // ensure no legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
   }
 
@@ -3192,8 +3192,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_with_an
 
   // ensure no legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
   }
 
@@ -3242,18 +3242,18 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_with_legacy_no_an
 
   // ensure legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
-    ASSERT_TRUE((false == !system.createCollection(createLegacyCollectionJson->slice())));
+    ASSERT_TRUE((false == !system->createCollection(createLegacyCollectionJson->slice())));
   }
 
   // add document to legacy collection after feature start
   {
     arangodb::OperationOptions options;
-    auto& system = *sysDatabase.use();
+    auto system = sysDatabase.use();
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(system),
+        arangodb::transaction::StandaloneContext::Create(*system),
         LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((true == trx.begin().ok()));
     EXPECT_TRUE(
@@ -3284,8 +3284,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_with_an
 
   // ensure no legacy collection after feature start
   {
-    auto& system = *sysDatabase.use();
-    auto collection = system.lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
+    auto system = sysDatabase.use();
+    auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_TRUE((true == !collection));
   }
 
@@ -3406,8 +3406,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases.slice())));
     sysDatabase.start();  // get system database from DatabaseFeature
-    arangodb::methods::Collections::createSystem(*sysDatabase.use(),
-                                                 arangodb::tests::AnalyzerCollectionName, false);
+    auto system = sysDatabase.use();
+    arangodb::methods::Collections::createSystem(*system, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
   }
 
   auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });

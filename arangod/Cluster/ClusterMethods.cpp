@@ -3536,8 +3536,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   return arangodb::Result();
 }
 
-std::vector<std::string> lockPath =
-    std::vector<std::string>{"result", "lockId"};
+std::vector<std::string> lockPath = std::vector<std::string>{"result", "lockId"};
 
 arangodb::Result lockDBServerTransactions(std::string const& backupId,
                                           std::vector<ServerID> const& dbServers,
@@ -3559,6 +3558,7 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
     VPackObjectBuilder o(&lock);
     lock.add("id", VPackValue(backupId));
     lock.add("timeout", VPackValue(lockWait));
+    lock.add("unlockTimeout", VPackValue(5.0 + lockWait));
   }
 
   LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
@@ -3926,10 +3926,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait = 2.0;
+    double lockWait(0.1);
     while (cc != nullptr && steady_clock::now() < end) {
-      auto iterEnd = steady_clock::now() + duration<double>(lockWait);
-
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
@@ -3941,12 +3939,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         break;
       }
       if (lockWait < 30.0) {
-        lockWait *= 1.1;
+        lockWait *= 1.25;
       }
-      double tmp = duration<double>(iterEnd - steady_clock::now()).count();
-      if (tmp > 0) {
-        std::this_thread::sleep_for(duration<double>(tmp));
-      }
+      std::this_thread::sleep_for(seconds(1));
     }
 
     bool gotLocks = result.ok();
