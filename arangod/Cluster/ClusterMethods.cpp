@@ -3759,9 +3759,9 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
   }
 
   if (sizeValid) {
-    meta = BackupMeta(backupId, timeStamp, version, totalSize, totalFiles, dbServers.size(), "", force);
+    meta = BackupMeta(backupId, timeStamp, version, totalSize, totalFiles, static_cast<unsigned int>(dbServers.size()), "", force);
   } else {
-    meta = BackupMeta(backupId, timeStamp, version, 0, 0, dbServers.size(), "", force);
+    meta = BackupMeta(backupId, timeStamp, version, 0, 0, static_cast<unsigned int>(dbServers.size()), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
       << "Could not determine total size of backup with id '" << backupId
       << "'!";

@@ -97,7 +97,7 @@ struct BackupMeta {
     }
   }
 
-  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles, size_t nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
+  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles, unsigned int nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
     _id(id), _version(version), _datetime(datetime),
     _sizeInBytes(sizeInBytes), _nrFiles(nrFiles), _nrDBServers(nrDBServers),
     _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent) {}
