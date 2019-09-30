@@ -41,8 +41,8 @@ class ConnectionPool;
 struct Response {
   DestinationId destination;
   fuerte::Error error;  /// connectivity error
-  std::unique_ptr<arangodb::fuerte::Response> response;
-  
+  std::shared_ptr<arangodb::fuerte::Response> response;
+
  public:
   std::string destinationShard() const; /// @brief shardId or empty
   std::string serverId() const;         /// @brief server ID
@@ -62,6 +62,10 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destinatio
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
                            Headers headers = {}, bool retryNotFound = false);
+
+using Sender =
+    std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
+                            velocypack::Buffer<uint8_t>, Timeout, Headers)>;
 
 }  // namespace network
 }  // namespace arangodb

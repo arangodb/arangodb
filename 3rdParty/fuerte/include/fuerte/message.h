@@ -208,7 +208,7 @@ class Request final : public Message {
 };
 
 // Response contains the message resulting from a request to a server.
-class Response final : public Message {
+class Response : public Message {
  public:
   Response(ResponseHeader&& reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
