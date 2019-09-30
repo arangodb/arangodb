@@ -31,7 +31,6 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
@@ -39,6 +38,8 @@
 #include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalInitialSyncer.h"
@@ -46,6 +47,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -662,8 +664,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   std::string const& dbname = _request->databaseName();
 
-  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>(
-      arangodb::getForwardableRequestHeaders(_request.get()));
+  auto headers = arangodb::getForwardableRequestHeaders(_request.get());
   std::unordered_map<std::string, std::string> values = _request->values();
   std::string params;
 
@@ -681,60 +682,33 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   // Set a few variables needed for our work:
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                   TRI_ERROR_SHUTTING_DOWN, "shutting down server");
     return;
   }
 
-  std::unique_ptr<ClusterCommResult> res;
-  if (!useVst) {
-    TRI_ASSERT(_request->transportType() == Endpoint::TransportType::HTTP);
+  auto requestType =
+      fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
+  auto payload = _request->toVelocyPackBuilderPtr()->steal();
+  network::Response res =
+      network::sendRequest(pool, "server:" + DBserver, requestType,
+                           "/_db/" + StringUtils::urlEncode(dbname) +
+                               _request->requestPath() + params,
+                           std::move(*payload), network::Timeout(300.0), headers)
+          .get();
 
-    VPackStringRef body = _request->rawPayload();
-    // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
-                          _request->requestType(),
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              _request->requestPath() + params,
-                          body.toString(), *headers, 300.0);
-  } else {
-    // do we need to handle multiple payloads here - TODO
-    // here we switch from vst to http?!
-    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
-                          _request->requestType(),
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              _request->requestPath() + params,
-                          _request->payload().toJson(), *headers, 300.0);
-  }
-
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
-                  "timeout within cluster");
+  int code = network::fuerteToArangoErrorCode(res);
+  if (code != TRI_ERROR_NO_ERROR) {
+    generateError(code);
     return;
   }
-  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    // there is no result
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                  "lost connection within cluster");
-    return;
-  }
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    TRI_ASSERT(nullptr != res->result && res->result->isComplete());
-    // In this case a proper HTTP error was reported by the DBserver,
-    // we simply forward the result.
-    // We intentionally fall through here.
-  }
 
-  bool dummy;
-  resetResponse(static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
-
-  _response->setContentType(
-      res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
+  resetResponse(static_cast<rest::ResponseCode>(res.response->statusCode()));
+  _response->setContentType(fuerte::v1::to_string(res.response->contentType()));
 
   if (!useVst) {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -742,15 +716,12 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid response type");
     }
-    httpResponse->body().swap(&(res->result->getBody()));
+    httpResponse->body() = res.response->payloadAsString();
   } else {
-    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
-    std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
-    _response->setPayload(std::move(*buf),
-                          true);  // do we need to generate the body?!
+    _response->setPayload(std::move(*res.response->stealPayload()), true);
   }
 
-  auto const& resultHeaders = res->result->getHeaderFields();
+  auto const& resultHeaders = res.response->messageHeader().meta();
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
