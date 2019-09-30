@@ -158,13 +158,13 @@ std::string Thread::stringify(ThreadState state) {
 Thread::Thread(application_features::ApplicationServer& server, std::string const& name,
                bool deleteOnExit, std::uint32_t terminationTimeout)
     : _server(server),
-      _deleteOnExit(deleteOnExit),
       _threadStructInitialized(false),
       _refs(0),
       _name(name),
       _thread(),
       _threadNumber(0),
       _terminationTimeout(terminationTimeout),
+      _deleteOnExit(deleteOnExit),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED) {
   TRI_InitThread(&_thread);

@@ -64,7 +64,6 @@ class ExpressionContext {
                                                transaction::Methods*,
                                                bool& isEmptyExpression) = 0;
 
-  virtual bool killed() const = 0;
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual Query* query() const = 0;
 };
