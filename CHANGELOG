@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Rely on reboot ids for declaring end of cluster hot restore on coordinators.
+
 * Obtain new unique IDs via a background thread.
 
 * Fixed issue #10078: FULLTEXT with sort on same field not working.
