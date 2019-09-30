@@ -349,7 +349,7 @@
           var collName = $('#new-collection-name').val();
           var collSize = $('#new-collection-size').val();
           var replicationFactor = Number($('#new-replication-factor').val());
-          var minReplicationFactor = Number($('#new-min-replication-factor').val());
+          var writeConcern = Number($('#new-write-concern').val());
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
@@ -360,8 +360,8 @@
           if (replicationFactor === '') {
             replicationFactor = 1;
           }
-          if (minReplicationFactor === '') {
-            minReplicationFactor = 1;
+          if (writeConcern === '') {
+            writeConcern = 1;
           }
           if ($('#is-satellite-collection').val() === 'true') {
             replicationFactor = 'satellite';
@@ -430,9 +430,9 @@
 
           var abort = false;
           try {
-            if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
+            if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
               // validation here, as our Joi integration misses some core features
-              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater than replication factor");
+              arangoHelper.arangoError("New Collection", "Write concern is not allowed to be greater than replication factor");
               abort = true;
             }
           } catch (ignore) {
@@ -459,7 +459,7 @@
             // if we are in the cluster and are not using distribute shards like
             // then we want to make use of the replication factor
             tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
-            tmpObj.minReplicationFactor = Number(minReplicationFactor);
+            tmpObj.minReplicationFactor = Number(writeConcern);
           }
 
           if (!abort) {
@@ -625,8 +625,8 @@
 
             advancedTableContent.push(
               window.modalView.createTextEntry(
-                'new-min-replication-factor',
-                'Mininum replication factor',
+                'new-write-concern',
+                'Write concern',
                 ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.minReplicationFactor : '',
                 'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
@@ -636,8 +636,6 @@
                     rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                   }
-                  // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
-                  // So we cannot easily verify if minReplication > replicationFactor...
                 ]
               )
             );
@@ -694,13 +692,13 @@
             $('#is-satellite-collection').on('change', function (element) {
               if ($('#is-satellite-collection').val() === 'true') {
                 $('#new-replication-factor').prop('disabled', true);
-                $('#new-min-replication-factor').prop('disabled', true);
+                $('#new-write-concern').prop('disabled', true);
               } else {
                 $('#new-replication-factor').prop('disabled', false);
-                $('#new-min-replication-factor').prop('disabled', false);
+                $('#new-write-concern').prop('disabled', false);
               }
               $('#new-replication-factor').val('').focus().focusout();
-              $('#new-min-replication-factor').val('').focus().focusout();
+              $('#new-write-concern').val('').focus().focusout();
             });
           }
         }

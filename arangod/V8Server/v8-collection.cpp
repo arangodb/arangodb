@@ -1167,10 +1167,10 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
       // min replication checks
       if (builder.slice().get(StaticStrings::MinReplicationFactor).isNumber() &&
           builder.slice().get(StaticStrings::MinReplicationFactor).getInt() > 0) {
-        uint64_t minReplicationFactor =
+        uint64_t writeConcern =
             builder.slice().get(StaticStrings::MinReplicationFactor).getUInt();
         if (ServerState::instance()->isRunningInCluster() &&
-            minReplicationFactor > ci.getCurrentDBServers().size()) {
+            writeConcern > ci.getCurrentDBServers().size()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
         }
       }

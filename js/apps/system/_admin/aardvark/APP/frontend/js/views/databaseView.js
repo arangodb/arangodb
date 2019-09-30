@@ -189,14 +189,14 @@
 
       var sharding = $('#newSharding').val();
       var replicationFactor = $('#new-replication-factor').val();
-      var minReplicationFactor = $('#new-min-replication-factor').val();
+      var writeConcern = $('#new-write-concern').val();
 
       var options = {
         name: dbname,
         "options" : {
           "sharding" : sharding,
           "replicationFactor" : Number(replicationFactor),
-          "minReplicationFactor" : Number(minReplicationFactor),
+          "minReplicationFactor" : Number(writeConcern),
         },
         users: [{
           username: userName
@@ -407,19 +407,17 @@
 
         tableContent.push(
           window.modalView.createTextEntry(
-            'new-min-replication-factor',
-            'Mininum replication factor',
+            'new-write-concern',
+            'Write concern',
             dbDefaultProperties.minReplicationFactor,
             'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
-            'Default minimum replication factor',
+            'Default write concern',
             false,
             [
               {
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                 msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
-              // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
-              // So we cannot easily verify if minReplication > replicationFactor...
             ]
           )
         );
