@@ -430,7 +430,7 @@ int main(int argc, char* argv[]) {
     std::cerr << "WARNING: could not change into directory '" << workdir << "'" << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
-    std::cerr << "WARNING: could not execp ourselves, restore will not work!" << std::endl;
+    std::cerr << "WARNING: could not execvp ourselves, restore will not work!" << std::endl;
   }
 #endif
 }
