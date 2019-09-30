@@ -85,6 +85,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
       default:
         LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.response->statusCode()
         << " from gossip endpoint";
+        std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
     }
   }
@@ -161,7 +162,7 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                             std::move(buffer), network::Timeout(1)).thenValue([=](network::Response r) {
+                             buffer, network::Timeout(1)).thenValue([=](network::Response r) {
           ::handleGossipResponse(r, &_agent, version);
         });
       }
@@ -191,7 +192,7 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             std::move(buffer), network::Timeout(1)).thenValue([=](network::Response r) {
+                             buffer, network::Timeout(1)).thenValue([=](network::Response r) {
           ::handleGossipResponse(r, &_agent, version);
         });
       }
