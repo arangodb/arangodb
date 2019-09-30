@@ -311,6 +311,75 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
 }
 
+TEST_F(AqlItemRowsTest, input_row_eq_operators) {
+  SharedAqlItemBlockPtr block =
+      buildBlock<1>(itemBlockManager, {{{0}}, {{0}}});
+  SharedAqlItemBlockPtr otherBlock =
+      buildBlock<1>(itemBlockManager, {{{0}}});
+
+  // same rows must be equal
+  EXPECT_TRUE((InputAqlItemRow{block, 0}.operator==(InputAqlItemRow{block, 0})));
+  EXPECT_TRUE((InputAqlItemRow{block, 0} == InputAqlItemRow{block, 0}));
+  EXPECT_TRUE((InputAqlItemRow{block, 1}.operator==(InputAqlItemRow{block, 1})));
+  EXPECT_TRUE((InputAqlItemRow{block, 1} == InputAqlItemRow{block, 1}));
+  EXPECT_FALSE((InputAqlItemRow{block, 0}.operator!=(InputAqlItemRow{block, 0})));
+  EXPECT_FALSE((InputAqlItemRow{block, 0} != InputAqlItemRow{block, 0}));
+  EXPECT_FALSE((InputAqlItemRow{block, 1}.operator!=(InputAqlItemRow{block, 1})));
+  EXPECT_FALSE((InputAqlItemRow{block, 1} != InputAqlItemRow{block, 1}));
+
+  // different rows in the same block must be non-equal
+  EXPECT_FALSE((InputAqlItemRow{block, 0}.operator==(InputAqlItemRow{block, 1})));
+  EXPECT_FALSE((InputAqlItemRow{block, 0} == InputAqlItemRow{block, 1}));
+  EXPECT_FALSE((InputAqlItemRow{block, 1}.operator==(InputAqlItemRow{block, 0})));
+  EXPECT_FALSE((InputAqlItemRow{block, 1} == InputAqlItemRow{block, 0}));
+  EXPECT_TRUE((InputAqlItemRow{block, 0}.operator!=(InputAqlItemRow{block, 1})));
+  EXPECT_TRUE((InputAqlItemRow{block, 0} != InputAqlItemRow{block, 1}));
+  EXPECT_TRUE((InputAqlItemRow{block, 1}.operator!=(InputAqlItemRow{block, 0})));
+  EXPECT_TRUE((InputAqlItemRow{block, 1} != InputAqlItemRow{block, 0}));
+
+  // rows in different blocks must be non-equal
+  EXPECT_FALSE((InputAqlItemRow{block, 0}.operator==(InputAqlItemRow{otherBlock, 0})));
+  EXPECT_FALSE((InputAqlItemRow{block, 0} == InputAqlItemRow{otherBlock, 0}));
+  EXPECT_FALSE((InputAqlItemRow{block, 1}.operator==(InputAqlItemRow{otherBlock, 0})));
+  EXPECT_FALSE((InputAqlItemRow{block, 1} == InputAqlItemRow{otherBlock, 0}));
+  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0}.operator==(InputAqlItemRow{block, 0})));
+  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0} == InputAqlItemRow{block, 0}));
+  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0}.operator==(InputAqlItemRow{block, 1})));
+  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0} == InputAqlItemRow{block, 1}));
+  EXPECT_TRUE((InputAqlItemRow{block, 0}.operator!=(InputAqlItemRow{otherBlock, 0})));
+  EXPECT_TRUE((InputAqlItemRow{block, 0} != InputAqlItemRow{otherBlock, 0}));
+  EXPECT_TRUE((InputAqlItemRow{block, 1}.operator!=(InputAqlItemRow{otherBlock, 0})));
+  EXPECT_TRUE((InputAqlItemRow{block, 1} != InputAqlItemRow{otherBlock, 0}));
+  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0}.operator!=(InputAqlItemRow{block, 0})));
+  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0} != InputAqlItemRow{block, 0}));
+  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0}.operator!=(InputAqlItemRow{block, 1})));
+  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0} != InputAqlItemRow{block, 1}));
+}
+
+TEST_F(AqlItemRowsTest, input_row_equivalence) {
+  SharedAqlItemBlockPtr block =
+      buildBlock<1>(itemBlockManager, {{{0}}, {{1}}});
+  SharedAqlItemBlockPtr otherBlock =
+      buildBlock<1>(itemBlockManager, {{{1}}});
+
+  // same rows must be considered equivalent
+  EXPECT_TRUE((InputAqlItemRow{block, 0}.equates(InputAqlItemRow{block, 0})));
+  EXPECT_TRUE((InputAqlItemRow{block, 1}.equates(InputAqlItemRow{block, 1})));
+
+  // different rows must be non-equivalent
+  EXPECT_FALSE((InputAqlItemRow{block, 0}.equates(InputAqlItemRow{block, 1})));
+  EXPECT_FALSE((InputAqlItemRow{block, 1}.equates(InputAqlItemRow{block, 0})));
+
+  // different row in different block must be non-equivalent, even with the same index
+  EXPECT_FALSE((InputAqlItemRow{block, 0}.equates(InputAqlItemRow{otherBlock, 0})));
+  EXPECT_FALSE((InputAqlItemRow{otherBlock, 0}.equates(InputAqlItemRow{block, 0})));
+
+  // an equivalent row in a different block must be considered equivalent, even with a different index
+  EXPECT_TRUE((InputAqlItemRow{block, 1}.equates(InputAqlItemRow{otherBlock, 0})));
+  EXPECT_TRUE((InputAqlItemRow{otherBlock, 0}.equates(InputAqlItemRow{block, 1})));
+}
+
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

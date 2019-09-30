@@ -27,10 +27,12 @@
 #include "Aql/ExecutorInfos.h"
 
 #include <velocypack/Slice.h>
+#include <type_traits>
 
 namespace arangodb {
 namespace aql {
-std::ostream& operator<<(std::ostream& stream, arangodb::aql::InputAqlItemRow const& row);
+template <class RowType, class = std::enable_if_t<std::is_same<RowType, InputAqlItemRow>::value || std::is_same<RowType, ShadowAqlItemRow>::value>>
+std::ostream& operator<<(std::ostream& stream, RowType const& row);
 }
 }
 
@@ -39,26 +41,40 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-std::ostream& arangodb::aql::operator<<(std::ostream& stream, InputAqlItemRow const& row) {
-  if (!row) {
-    return stream << "InvalidRow{}";
+template <class RowType, class>
+std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row) {
+  constexpr bool isInputRow = std::is_same<RowType, InputAqlItemRow>::value;
+  static_assert(isInputRow || std::is_same<RowType, ShadowAqlItemRow>::value,
+                "RowType must be one of InputAqlItemRow or ShadowAqlItemRow");
+
+  if (!row.isInitialized()) {
+    if (isInputRow) {
+      return stream << "InvalidInputRow{}";
+    } else {
+      return stream << "InvalidShadowRow{}";
+    }
   }
 
   auto monitor = ResourceMonitor{};
   auto manager = AqlItemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  auto regs = arangodb::aql::make_shared_unordered_set(row.getNrRegisters());
-  // copy the row into a block, just so we can read its registers.
-  auto block = row.cloneToBlock(manager, *regs, row.getNrRegisters());
-  EXPECT_EQ(1, block->size());
-  EXPECT_EQ(row.getNrRegisters(), block->getNrRegs());
 
-  stream << "Row{";
-  if (block->getNrRegs() > 0) {
-    stream << block->getValue(0, 0).slice().toJson();
+  struct {
+    void operator()(std::ostream& stream, InputAqlItemRow const&) {
+      stream << "InputRow";
+    };
+    void operator()(std::ostream& stream, ShadowAqlItemRow const& row) {
+      stream << "ShadowRow(" << row.getDepth() << ")";
+    };
+  } printHead;
+  printHead(stream, row);
+
+  stream << "{";
+  if (row.getNrRegisters() > 0) {
+    stream << row.getValue(0).slice().toJson();
   }
-  for (size_t i = 1; i < block->getNrRegs(); ++i) {
+  for (size_t i = 1; i < row.getNrRegisters(); ++i) {
     stream << ", ";
-    stream << block->getValue(0, i).slice().toJson();
+    stream << row.getValue(i).slice().toJson();
   }
   stream << "}";
   return stream;
@@ -80,8 +96,13 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
       void operator()(ConcreteFetcherIOPair<FetchRowForDependency> const& iop) {
         auto const& args = iop.first;
         auto const& expected = iop.second;
+        auto const& expectedState = expected.first;
+        auto const& expectedRow = expected.second;
         auto actual = testee.fetchRowForDependency(args.dependency, args.atMost);
-        EXPECT_EQ(expected, actual) << "during step " << i;
+        auto const& actualState = actual.first;
+        auto const& actualRow = actual.second;
+        EXPECT_EQ(expectedState, actualState) << "during step " << i;
+        EXPECT_TRUE(expectedRow.equates(actualRow)) << "  expected: " << expectedRow << "\n  actual: " << actualRow << "\n  during step " << i;
       }
       void operator()(ConcreteFetcherIOPair<SkipRowsForDependency> const& iop) {
         auto const& args = iop.first;
@@ -92,8 +113,13 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
       void operator()(ConcreteFetcherIOPair<FetchShadowRow> const& iop) {
         auto const& args = iop.first;
         auto const& expected = iop.second;
+        auto const& expectedState = expected.first;
+        auto const& expectedRow = expected.second;
         auto actual = testee.fetchShadowRow(args.atMost);
-        EXPECT_EQ(expected, actual) << "during step " << i;
+        auto const& actualState = actual.first;
+        auto const& actualRow = actual.second;
+        EXPECT_EQ(expectedState, actualState) << "during step " << i;
+        EXPECT_TRUE(expectedRow.equates(actualRow)) << "  expected: " << expectedRow << "\n  actual: " << actualRow << "\n  during step " << i;
       }
 
      private:

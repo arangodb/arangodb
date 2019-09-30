@@ -33,7 +33,7 @@ ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex
   TRI_ASSERT(isInitialized());
 }
 
-std::size_t ShadowAqlItemRow::getNrRegisters() const noexcept {
+RegisterCount ShadowAqlItemRow::getNrRegisters() const noexcept {
   return block().getNrRegs();
 }
 
@@ -92,3 +92,29 @@ bool ShadowAqlItemRow::operator==(ShadowAqlItemRow const& other) const noexcept 
 bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept {
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other) const noexcept {
+  if (!isInitialized() || !other.isInitialized()) {
+    return isInitialized() && other.isInitialized();
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
+#endif
+  if (getNrRegisters() != other.getNrRegisters()) {
+    return false;
+  }
+  if (getDepth() != other.getDepth()) {
+    return false;
+  }
+  // NOLINTNEXTLINE(modernize-use-transparent-functors)
+  auto const eq = std::equal_to<AqlValue>{};
+  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+    if (!eq(getValue(i), other.getValue(i))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+#endif // ARANGODB_USE_GOOGLE_TESTS

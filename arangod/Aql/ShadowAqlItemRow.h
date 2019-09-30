@@ -62,7 +62,7 @@ class ShadowAqlItemRow {
   /// @brief get the number of data registers in the underlying block.
   ///        Not all of these registers are necessarily filled by this
   ///        ShadowRow. There might be empty registers on deeper levels.
-  std::size_t getNrRegisters() const noexcept;
+  RegisterCount getNrRegisters() const noexcept;
 
   /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
   ///        we are in right now. This will only be of importance on nested subqueries.
@@ -98,9 +98,23 @@ class ShadowAqlItemRow {
   ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
   uint64_t getDepth() const;
 
+  // Note that == and != here check whether the rows are *identical*, that is,
+  // the same row in the same block.
+  // TODO Make this a named method
   bool operator==(ShadowAqlItemRow const& other) const noexcept;
 
   bool operator!=(ShadowAqlItemRow const& other) const noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // This checks whether the rows are equivalent, in the sense that they hold
+  // the same number of registers and their entry-AqlValues compare equal,
+  // plus their shadow-depth is the same.
+  // In maintainer mode, it also asserts that the number of registers of the
+  // blocks are equal, because comparing rows of blocks with different layouts
+  // does not make sense.
+  // Invalid rows are considered equivalent.
+  bool equates(ShadowAqlItemRow const& other) const noexcept;
+#endif // ARANGODB_USE_GOOGLE_TESTS
 
  private:
   AqlItemBlock& block() noexcept;
