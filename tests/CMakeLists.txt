@@ -23,11 +23,12 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockTest.cpp
+  Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
-  Aql/AllRowsFetcherTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp

@@ -22,63 +22,18 @@
 
 #include "MultiDepFetcherHelper.h"
 #include "gtest/gtest.h"
+#include "Aql/AqlItemRowPrinter.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutorInfos.h"
 
 #include <velocypack/Slice.h>
-#include <type_traits>
 
-namespace arangodb {
-namespace aql {
-template <class RowType, class = std::enable_if_t<std::is_same<RowType, InputAqlItemRow>::value || std::is_same<RowType, ShadowAqlItemRow>::value>>
-std::ostream& operator<<(std::ostream& stream, RowType const& row);
-}
-}
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-template <class RowType, class>
-std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row) {
-  constexpr bool isInputRow = std::is_same<RowType, InputAqlItemRow>::value;
-  static_assert(isInputRow || std::is_same<RowType, ShadowAqlItemRow>::value,
-                "RowType must be one of InputAqlItemRow or ShadowAqlItemRow");
-
-  if (!row.isInitialized()) {
-    if (isInputRow) {
-      return stream << "InvalidInputRow{}";
-    } else {
-      return stream << "InvalidShadowRow{}";
-    }
-  }
-
-  auto monitor = ResourceMonitor{};
-  auto manager = AqlItemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-
-  struct {
-    void operator()(std::ostream& stream, InputAqlItemRow const&) {
-      stream << "InputRow";
-    };
-    void operator()(std::ostream& stream, ShadowAqlItemRow const& row) {
-      stream << "ShadowRow(" << row.getDepth() << ")";
-    };
-  } printHead;
-  printHead(stream, row);
-
-  stream << "{";
-  if (row.getNrRegisters() > 0) {
-    stream << row.getValue(0).slice().toJson();
-  }
-  for (size_t i = 1; i < row.getNrRegisters(); ++i) {
-    stream << ", ";
-    stream << row.getValue(i).slice().toJson();
-  }
-  stream << "}";
-  return stream;
-}
 
 void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFetcher& testee,
                                       std::vector<FetcherIOPair> const& inputOutputPairs) {
