@@ -45,7 +45,7 @@ function optimizerIndexesTestSuite () {
     // c.dropIndex(c.getIndexes()[1])
     db._dropIndex(idx);
     idx = null;
-  }
+  };
 
   return {
     setUpAll: function() {
