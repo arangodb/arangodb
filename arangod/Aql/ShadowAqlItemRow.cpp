@@ -92,7 +92,7 @@ bool ShadowAqlItemRow::operator==(ShadowAqlItemRow const& other) const noexcept 
 }
 
 bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept {
-  return this->_block == other._block && this->_baseIndex == other._baseIndex;
+  return !(*this == other);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
