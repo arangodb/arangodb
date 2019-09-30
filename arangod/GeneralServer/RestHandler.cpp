@@ -27,7 +27,6 @@
 
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
