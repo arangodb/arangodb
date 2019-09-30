@@ -44,8 +44,6 @@ var TEARDOWNS = 0;
 var TOTALSETUPS = 0;
 var TOTALTEARDOWNS = 0;
 
-
-
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
 var ENDTEST = 0.0;
@@ -345,6 +343,28 @@ function WriteDone (suiteName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function RunTest (path, outputReply, filter) {
+  // re-reset our globlas, on module loading may be cached.
+  TOTAL = 0;
+  PASSED = 0;
+  FAILED = 0;
+  DURATION = 0;
+  RESULTS = {};
+  COMPLETE = {};
+  
+  SETUPS = 0;
+  TEARDOWNS = 0;
+  
+  TOTALSETUPS = 0;
+  TOTALTEARDOWNS = 0;
+  STARTTEST = 0.0;
+  ENDTEST = 0.0;
+  STARTSUITE = 0.0;
+  ENDTEARDOWN = 0.0;
+  STARTTEST = 0.0;
+  ENDTEST = 0.0;
+  STARTSUITE = 0.0;
+  ENDTEARDOWN = 0.0;
+
   var content;
   var f;
 
