@@ -43,7 +43,8 @@ ShortestPathFinder::ShortestPathFinder(ShortestPathOptions& options)
 
 void ShortestPathFinder::destroyEngines() {
   if (ServerState::instance()->isCoordinator()) {
-    NetworkFeature const& nf = _options.query()->vocbase().server().getFeature<NetworkFeature>();
+    NetworkFeature const& nf =
+        _options.query()->vocbase().server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     // We have to clean up the engines in Coordinator Case.
     if (pool != nullptr) {
@@ -57,16 +58,18 @@ void ShortestPathFinder::destroyEngines() {
       for (auto const& it : *ch->engines()) {
         incHttpRequests(1);
         network::Headers headers;
-        auto res = network::sendRequest(pool, "server:" + it.first,
-                                   fuerte::RestVerb::Delete,
-                                   url + arangodb::basics::StringUtils::itoa(it.second),
-                                   VPackBuffer<uint8_t>(), network::Timeout(30.0), headers).get();
+        auto res =
+            network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                                 url + arangodb::basics::StringUtils::itoa(it.second),
+                                 VPackBuffer<uint8_t>(), network::Timeout(30.0), headers)
+                .get();
 
         if (res.error != fuerte::Error::NoError) {
           // Note If there was an error on server side we do not have
           // CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
-          message += std::string(": ") + TRI_errno_string(network::fuerteToArangoErrorCode(res));
+          message += std::string(": ") +
+                     TRI_errno_string(network::fuerteToArangoErrorCode(res));
           LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
         }
       }
