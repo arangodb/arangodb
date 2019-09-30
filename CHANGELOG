@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed Unintended multiple unlock commands from coordinator to
+  transaction locked db servers
+
 * DB server locking / unlocking for hot backup revisited and enhanced
 
 * Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
