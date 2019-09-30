@@ -89,12 +89,20 @@ class AqlItemMatrix {
 
   SharedAqlItemBlockPtr getBlock(size_t index) const noexcept;
 
+  bool stoppedOnShadowRow() const noexcept;
+
+  ShadowAqlItemRow popShadowRow();
+
+  ShadowAqlItemRow peekShadowRow() const;
+
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
   uint64_t _size;
 
   size_t _nrRegs;
+
+  uint32_t _lastShadowRow;
 };
 
 }  // namespace aql

@@ -33,15 +33,24 @@ using namespace arangodb::aql;
 
 std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   // Avoid unnecessary upstream calls
+  _dataFetched = true;
+  auto state = fetchData();
+  if (state == ExecutionState::WAITING) {
+    return {state, nullptr};
+  }
+  return {state, _aqlItemMatrix.get()};
+}
+
+ExecutionState AllRowsFetcher::fetchData() {
   if (_upstreamState == ExecutionState::DONE) {
     TRI_ASSERT(_aqlItemMatrix != nullptr);
-    return {ExecutionState::DONE, _aqlItemMatrix.get()};
+    return ExecutionState::DONE;
   }
   if (fetchUntilDone() == ExecutionState::WAITING) {
-    return {ExecutionState::WAITING, nullptr};
+    return ExecutionState::WAITING;
   }
   TRI_ASSERT(_aqlItemMatrix != nullptr);
-  return {ExecutionState::DONE, _aqlItemMatrix.get()};
+  return ExecutionState::DONE;
 }
 
 ExecutionState AllRowsFetcher::fetchUntilDone() {
@@ -52,7 +61,7 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
   ExecutionState state = ExecutionState::HASMORE;
   SharedAqlItemBlockPtr block;
 
-  while (state == ExecutionState::HASMORE) {
+  while (state == ExecutionState::HASMORE && !_aqlItemMatrix->stoppedOnShadowRow()) {
     std::tie(state, block) = fetchBlock();
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -66,11 +75,11 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
   }
 
   TRI_ASSERT(_aqlItemMatrix != nullptr);
-  TRI_ASSERT(state == ExecutionState::DONE);
   return state;
 }
 
 std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
+  // TODO: Fix this as soon as we have counters for ShadowRows within here.
   if (_upstreamState == ExecutionState::DONE) {
     TRI_ASSERT(_aqlItemMatrix != nullptr);
     return {ExecutionState::DONE, _aqlItemMatrix->size()};
@@ -86,7 +95,8 @@ AllRowsFetcher::AllRowsFetcher(DependencyProxy<false>& executionBlock)
     : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),
-      _blockToReturnNext(0) {}
+      _blockToReturnNext(0),
+      _dataFetched(false) {}
 
 RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
@@ -102,6 +112,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
     std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
+  // TODO FIXME
   while (_upstreamState != ExecutionState::DONE) {
     auto state = fetchUntilDone();
     if (state == ExecutionState::WAITING) {
@@ -139,5 +150,29 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPa
 }
 
 std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_t atMost) {
-  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  // We are required to fetch data rows first!
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+
+  ExecutionState state = _upstreamState;
+  ShadowAqlItemRow row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  if (!_aqlItemMatrix->stoppedOnShadowRow() || _aqlItemMatrix->size() == 0) {
+    // We ended on a ShadowRow, we are required to fetch data.
+    state = fetchData();
+    if (state == ExecutionState::WAITING) {
+      return {state, row};
+    }
+    // reset to upstream state (might be modified by fetchData())
+    state = _upstreamState;
+  }
+
+  if (_aqlItemMatrix->stoppedOnShadowRow()) {
+    if (!_aqlItemMatrix->peekShadowRow().isRelevant() || _dataFetched) {
+      row = _aqlItemMatrix->popShadowRow();
+      _dataFetched = false;
+    }
+  }
+  if (_aqlItemMatrix->size() > 0 || _aqlItemMatrix->stoppedOnShadowRow()) {
+    state = ExecutionState::HASMORE;
+  }
+  return {state, row};
 }

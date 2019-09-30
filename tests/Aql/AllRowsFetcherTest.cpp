@@ -397,10 +397,11 @@ void PullAndAssertDataRows<AllRowsFetcher>(AllRowsFetcher& testee,
     EXPECT_TRUE(row.getValue(0).slice().isEqualString(dataResults[i]));
   }
 
+  AqlItemMatrix const* nextMatrix;
   // Now assert that we will forever stay in the DONE state and do not move on.
-  std::tie(state, matrix) = testee.fetchAllRows();
+  std::tie(state, nextMatrix) = testee.fetchAllRows();
   EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(matrix, nullptr);
+  EXPECT_EQ(nextMatrix, matrix);
 }
 }  // namespace fetcherHelper
 

@@ -94,7 +94,6 @@ static void PullAndAssertShadowRows(Fetcher& testee,
     EXPECT_TRUE(shadow.getValue(0).slice().isEqualString(it.second));
     EXPECT_EQ(shadow.getDepth(), it.first);
   }
-
   // Will stay on FinalState
   std::tie(state, shadow) = testee.fetchShadowRow();
   EXPECT_EQ(state, finalState);

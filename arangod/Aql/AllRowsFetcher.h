@@ -118,6 +118,8 @@ class AllRowsFetcher {
   ExecutionState _upstreamState;
   std::size_t _blockToReturnNext;
 
+  bool _dataFetched;
+
  private:
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -128,6 +130,12 @@ class AllRowsFetcher {
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock();
+
+  /**
+   * @brief intermediate function to fetch data from
+   *        upstream and does upstream state checking
+   */
+  ExecutionState fetchData();
 
   /**
    * @brief Fetch blocks from upstream until done
