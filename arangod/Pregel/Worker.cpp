@@ -804,7 +804,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     
     network::sendRequest(pool, "server:" + _config.coordinatorId(),
                          fuerte::RestVerb::Post, baseUrl + path, std::move(buffer),
-                         network::Timeout(120)).get();
+                         network::Timeout(120));
     
   }
 }

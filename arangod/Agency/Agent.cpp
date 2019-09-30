@@ -640,13 +640,6 @@ void Agent::sendAppendEntriesRPC() {
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       // Send request
-//      std::unordered_map<std::string, std::string> headerFields;
-//      cc->asyncRequest(1, _config.poolAt(followerId),
-//                       arangodb::rest::RequestType::POST, path.str(),
-//                       std::make_shared<std::string>(builder.toJson()), headerFields,
-//                       std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-//                       150.0, true);
-//
       auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
       network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
                            std::move(buffer), network::Timeout(150)).thenValue([=](network::Response r) {
@@ -718,12 +711,6 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   network::ConnectionPool* cp = nf.pool();
 
   // Send request
-//  std::unordered_map<std::string, std::string> headerFields;
-//  cc->asyncRequest(1, _config.poolAt(followerId), arangodb::rest::RequestType::POST,
-//                   path.str(), std::make_shared<std::string>("[]"), headerFields,
-//                   std::make_shared<AgentCallback>(this, followerId, 0, 0),
-//                   3 * _config.minPing() * _config.timeoutMult(), true);
-  
   VPackBufferUInt8 buffer;
   buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
   auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);

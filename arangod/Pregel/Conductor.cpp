@@ -651,14 +651,14 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   size_t nrGood = 0;
   futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
     for (auto const& tryRes : results) {
-       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      if (res.error != fuerte::Error::NoError &&
-          res.response->statusCode() <= 400) {
+      network::Response const& r = tryRes.get();  // throws exceptions upwards
+      if (r.ok() &&
+          r.response->statusCode() < 400) {
         nrGood++;
       }
     }
   }).wait();
-
+  
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
@@ -849,8 +849,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   futures::collectAll(responses).thenValue([&](auto results) {
     for (auto const& tryRes : results) {
        network::Response const& res = tryRes.get();  // throws exceptions upwards
-      if (res.error != fuerte::Error::NoError &&
-          res.response->statusCode() <= 400) {
+      if (res.ok() && res.response->statusCode() < 400) {
         nrGood++;
         if (handle) {
           handle(res.response->slice());
@@ -858,7 +857,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
       }
     }
   }).wait();
-
+  
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
