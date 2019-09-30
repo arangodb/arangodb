@@ -51,7 +51,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlUsers");
       internal.db._drop("UnitTestsAhuacatlUserRelations");
 
@@ -80,7 +80,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlUsers");
       internal.db._drop("UnitTestsAhuacatlUserRelations");
     },
@@ -519,8 +519,6 @@ function ahuacatlQueryEdgesTestSuite () {
         "Multi->Multi2"
       ], AQL_EXECUTE(query, bindParams).json);
     }
-
-
 
   };
 }

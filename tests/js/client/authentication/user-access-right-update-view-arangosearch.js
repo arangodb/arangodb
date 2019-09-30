@@ -118,13 +118,15 @@ function rootCreateCollection (colName) {
 function rootPrepareCollection (colName, numDocs = 1, defKey = true) {
   if (rootTestCollection(colName, false)) {
     db._collection(colName).truncate({ compact: false });
+    let docs = [];
     for(var i = 0; i < numDocs; ++i) {
       var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
       if (!defKey) {
         doc._key = colName + i;
       }
-      db._collection(colName).save(doc, {waitForSync: true});
+      docs.push(doc);
     }
+    db._collection(colName).insert(docs, {waitForSync: true});
   }
   helper.switchUser(name, dbName);
 };

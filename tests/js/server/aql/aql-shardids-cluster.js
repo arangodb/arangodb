@@ -56,13 +56,15 @@ function ahuacatlShardIdsTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, { numberOfShards: 4 });
 
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        collection.save({ "value" : i });
+        docs.push({ "value" : i });
       }
+      collection.insert(docs);
 
       var result = collection.count(true);
       var sum = 0;
@@ -78,7 +80,7 @@ function ahuacatlShardIdsTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

@@ -52,20 +52,22 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        collection.save({ "value" : i });
+        docs.push({ "value" : i });
       }
+      collection.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 
@@ -543,7 +545,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFilterFilterSkiplistIndex : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -554,6 +556,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(29, actual[9].value);
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+      idx._drop();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
