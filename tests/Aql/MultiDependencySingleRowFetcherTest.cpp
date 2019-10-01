@@ -944,13 +944,17 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 15);
 }
 
-class MultiDependencySingleRowFetcherShadowRowTest : public ::testing::Test {
+using CutAt = uint64_t;
+
+ class MultiDependencySingleRowFetcherShadowRowTest : public testing::TestWithParam<CutAt> {
  protected:
   ResourceMonitor monitor{};
   AqlItemBlockManager itemBlockManager;
 
   MultiDependencySingleRowFetcherShadowRowTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+
+  uint64_t cutAt() const { return GetParam(); }
 
   std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> alternatingDataAndShadowRows(
       std::vector<int> const& values) {
@@ -967,8 +971,18 @@ class MultiDependencySingleRowFetcherShadowRowTest : public ::testing::Test {
         }
     }
 
-    // TODO cut block into pieces
-    return {{ExecutionState::DONE, std::move(block)}};
+    std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> result;
+
+    if (cutAt() != 0 && cutAt() < block->size()) {
+      SharedAqlItemBlockPtr block1 = block->slice(0, cutAt());
+      SharedAqlItemBlockPtr block2 = block->slice(cutAt(), block->size());
+      result.emplace_back(ExecutionState::HASMORE, block1);
+      result.emplace_back(ExecutionState::DONE, block2);
+    } else {
+      result.emplace_back(ExecutionState::DONE, block);
+    }
+
+    return result;
   }
 
   std::vector<std::pair<ExecutionState, SharedAqlItemBlockPtr>> onlyShadowRows(
@@ -1011,7 +1025,12 @@ class MultiDependencySingleRowFetcherShadowRowTest : public ::testing::Test {
   }
 };
 
-TEST_F(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_test) {
+INSTANTIATE_TEST_CASE_P(MultiDependencySingleRowFetcherShadowRowTestInstance,
+                        MultiDependencySingleRowFetcherShadowRowTest,
+                        testing::Range(static_cast<uint64_t>(0),
+                                       static_cast<uint64_t>(4)));
+
+TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_test) {
   constexpr size_t numDeps = 1;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
 
@@ -1042,7 +1061,7 @@ TEST_F(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_tes
       });
 }
 
-TEST_F(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps) {
+TEST_P(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps) {
   constexpr size_t numDeps = 2;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
 
@@ -1109,7 +1128,7 @@ TEST_F(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps) {
       });
 }
 
-TEST_F(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps_reverse_pull) {
+TEST_P(MultiDependencySingleRowFetcherShadowRowTest, shadow_rows_2_deps_reverse_pull) {
   constexpr size_t numDeps = 2;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
 
