@@ -37,7 +37,7 @@ namespace {
 static uint32_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
   auto const& shadowIndexes = block->getShadowRowIndexes();
   TRI_ASSERT(!shadowIndexes.empty());
-  return (*shadowIndexes.rbegin()) + 1;
+  return static_cast<uint32_t>(*shadowIndexes.rbegin()) + 1;
 }
 }  // namespace
 
@@ -82,7 +82,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
             // Pick the shadowRow before the lastShadowRow
             // And start from the line AFTER.
             // NOTE: This could already be the next shadowRow. in this case we return an empty list
-            startRow = *before + 1;
+            startRow = static_cast<uint32_t>(*before) + 1;
           }
         } else {
           // We need to start after the last shadowRow
