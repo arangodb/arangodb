@@ -160,11 +160,8 @@ class Request final : public Message {
   static constexpr std::chrono::milliseconds defaultTimeout =
       std::chrono::milliseconds(300 * 1000);
 
-  Request(RequestHeader&& messageHeader = RequestHeader())
+  Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
-
-  Request(RequestHeader const& messageHeader)
-      : header(messageHeader), _timeout(defaultTimeout) {}
 
   /// @brief request header
   RequestHeader header;
@@ -210,8 +207,11 @@ class Request final : public Message {
 // Response contains the message resulting from a request to a server.
 class Response final : public Message {
  public:
-  Response(ResponseHeader&& reqHeader = ResponseHeader())
+  Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
+
+  Response(Response const&) = delete;
+  Response& operator=(Response const&) = delete;
 
   /// @brief request header
   ResponseHeader header;
