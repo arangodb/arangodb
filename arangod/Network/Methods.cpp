@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
