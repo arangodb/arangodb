@@ -8,6 +8,10 @@
     el: '#content',
     el2: '#collectionsThumbnailsIn',
     readOnly: false,
+    defaultReplicationFactor: 0,
+    minReplicationFactor: 0,
+    maxReplicationFactor: 0,
+    maxNumberOfShards: 0,
 
     searchTimeout: null,
     refreshRate: 10000,
@@ -88,6 +92,11 @@
 
     initialize: function () {
       var self = this;
+
+      this.defaultReplicationFactor = frontendConfig.defaultReplicationFactor;
+      this.minReplicationFactor = frontendConfig.minReplicationFactor;
+      this.maxReplicationFactor = frontendConfig.maxReplicationFactor;
+      this.maxNumberOfShards = frontendConfig.maxNumberOfShards;
 
       window.setInterval(function () {
         if (window.location.hash === '#collections' && window.VISIBLE) {
@@ -358,7 +367,11 @@
           var distributeShardsLike = '';
 
           if (replicationFactor === '') {
-            replicationFactor = 1;
+            if (self.defaultReplicationFactor) {
+              replicationFactor = self.defaultReplicationFactor;
+            } else {
+              replicationFactor = 1;
+            }
           }
           if (writeConcern === '') {
             writeConcern = 1;
@@ -542,8 +555,8 @@
               window.modalView.createTextEntry(
                 'new-collection-shards',
                 'Number of shards',
-                '',
-                'The number of shards to create. You cannot change this afterwards. ',
+                this.maxNumberOfShards === 1 ? String(this.maxNumberOfShards) : 0,
+                'The number of shards to create. The maximum value is ' + this.maxNumberOfShards + '. You cannot change this afterwards.',
                 '',
                 true
               )
@@ -566,13 +579,20 @@
                   'new-replication-factor',
                   'Replication factor',
                   ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.replicationFactor : '',
-                  'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+                  'Numeric value. Must be between ' + 
+                  (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
+                  ' and ' + 
+                  (this.maxReplicationFactor ? this.maxReplicationFactor : 10) +
+                  '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
-                      rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
-                      msg: 'Must be a number between 1 and 10.'
+                      rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
+                      msg: 'Must be a number between ' + 
+                           (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
+                           ' and ' + 
+                           (this.maxReplicationFactor ? this.maxReplicationFactor : 10) + '.'
                     }
                   ]
                 )
