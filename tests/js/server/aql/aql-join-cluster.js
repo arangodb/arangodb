@@ -60,7 +60,7 @@ function ahuacatlClusterJoinKeySuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, { numberOfShards: 5 });
@@ -76,7 +76,7 @@ function ahuacatlClusterJoinKeySuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;
@@ -215,7 +215,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, { numberOfShards: 5, shardKeys: [ "value" ] });
@@ -231,7 +231,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;

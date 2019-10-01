@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "Indexes/IndexIterator.h"
@@ -357,7 +358,7 @@ class IResearchViewMergeExecutor
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
             irs::columnstore_reader::values_reader_f&& sortReader,
-            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
+           irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;

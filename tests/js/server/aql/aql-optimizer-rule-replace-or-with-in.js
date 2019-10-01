@@ -76,9 +76,7 @@ function NewAqlReplaceORWithINTestSuite () {
         replace.save({ "value" : i, x: [i]});
         replace.save({"a" : {"b" : i}});
         replace.save({"value": i + 10, "bb": i, "cc": 10 - i });
-
       }
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +94,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOom : function () {
-      if (! internal.debugCanUseFailAt()) {
+      if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugSetFailAt("OptimizerRules::replaceOrWithInRuleOom");
