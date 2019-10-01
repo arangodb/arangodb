@@ -3951,9 +3951,9 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
   }
 
   if (sizeValid) {
-    meta = BackupMeta(backupId, timeStamp, version, totalSize, totalFiles, static_cast<unsigned int>(dbServers.size()), "", force);
+    meta = BackupMeta(backupId, version, timeStamp, totalSize, totalFiles, static_cast<unsigned int>(dbServers.size()), "", force);
   } else {
-    meta = BackupMeta(backupId, timeStamp, version, 0, 0, static_cast<unsigned int>(dbServers.size()), "", force);
+    meta = BackupMeta(backupId, version, timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
       << "Could not determine total size of backup with id '" << backupId
       << "'!";
@@ -4233,6 +4233,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       report.add("sizeInBytes", VPackValue(meta._sizeInBytes));
       report.add("nrFiles", VPackValue(meta._nrFiles));
       report.add("nrDBServers", VPackValue(meta._nrDBServers));
+      report.add("datetime", VPackValue(meta._datetime));
       if (!gotLocks) {
         report.add("potentiallyInconsistent", VPackValue(true));
       }
