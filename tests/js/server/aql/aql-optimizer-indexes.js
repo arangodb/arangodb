@@ -42,7 +42,6 @@ function optimizerIndexesTestSuite () {
   var idx = null;
   var idx1 = null;
   let deleteDefaultIdx = function() {
-    // c.dropIndex(c.getIndexes()[1])
     db._dropIndex(idx);
     idx = null;
   };
@@ -74,6 +73,7 @@ function optimizerIndexesTestSuite () {
     tearDown: function() {
       if (idx1 !== null) {
         db._dropIndex(idx1);
+        idx1 = null;
       }
     },
 
@@ -1913,6 +1913,7 @@ function optimizerIndexesModifyTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
+      idx = null;
 
       results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ ], results.json, query);
@@ -1947,6 +1948,7 @@ function optimizerIndexesModifyTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
+      idx = null;
 
       results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ 'one', 'one' ], results.json, query);
@@ -1982,6 +1984,7 @@ function optimizerIndexesModifyTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
+      idx = null;
 
       results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ 'one', 'one' ], results.json, query);
@@ -2017,6 +2020,7 @@ function optimizerIndexesModifyTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
+      idx = null;
 
       results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ ], results.json, query);
@@ -2054,6 +2058,7 @@ function optimizerIndexesModifyTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
+      idx = null;
 
       results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ ], results.json, query);

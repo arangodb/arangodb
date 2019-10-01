@@ -90,9 +90,11 @@ function optimizerIndexesMultiTestSuite () {
     tearDown: function() {
       if (idx0 !== null) {
         db._dropIndex(idx0);
+        idx0 = null;
       }
       if (idx1 !== null) {
         db._dropIndex(idx1);
+        idx1 = null;
       }
     },
 
