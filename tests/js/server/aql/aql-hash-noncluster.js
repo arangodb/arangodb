@@ -51,7 +51,7 @@ function ahuacatlHashTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlHash");
 
       hash = internal.db._create("UnitTestsAhuacatlHash");
@@ -70,7 +70,7 @@ function ahuacatlHashTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlHash");
       hash = null;
     },

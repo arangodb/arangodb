@@ -45,7 +45,7 @@ function withinRectangleSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop("geo");
       db._drop("geo2");
 
@@ -74,7 +74,7 @@ function withinRectangleSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("geo");
       db._drop("geo2");
     },
@@ -114,7 +114,6 @@ function withinRectangleSuite () {
       } catch (e) {
         assertTrue(e.errorNum === errors.ERROR_QUERY_GEO_INDEX_MISSING.code);
       }
-
     },
 
     testWithinRectangleAsResultWithPositionBasedGeoIndex : function () {

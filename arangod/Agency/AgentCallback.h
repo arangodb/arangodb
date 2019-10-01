@@ -25,20 +25,23 @@
 #define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
 
 #include "Agency/AgencyCommon.h"
-#include "Cluster/ClusterComm.h"
 
 namespace arangodb {
+namespace network {
+struct Response;
+}
+
 namespace consensus {
 
 class Agent;
 
-class AgentCallback : public arangodb::ClusterCommCallback {
+class AgentCallback final {
  public:
   AgentCallback();
 
   AgentCallback(Agent*, std::string const&, index_t, size_t);
 
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
+  bool operator()(network::Response const& r);
 
   void shutdown();
 

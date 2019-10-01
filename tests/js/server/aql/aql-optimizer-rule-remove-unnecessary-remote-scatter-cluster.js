@@ -60,7 +60,7 @@ function optimizerRuleTestSuite () {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
@@ -76,7 +76,7 @@ function optimizerRuleTestSuite () {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
     },

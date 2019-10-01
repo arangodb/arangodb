@@ -26,7 +26,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -146,11 +145,11 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
                          .append(StringUtils::urlEncode(state.vocbase().name()))
                          .append("/_api/transaction/begin");
 
-  auto& feature = state.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
   headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
-  return network::sendRequest(feature, "server:" + server, fuerte::RestVerb::Post,
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                               std::move(path), std::move(buffer),
                               network::Timeout(::CL_DEFAULT_TIMEOUT), std::move(headers));
 }
@@ -229,12 +228,12 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
     TRI_ASSERT(false);
   }
 
-  auto& feature = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
   for (std::string const& server : state->knownServers()) {
-    requests.emplace_back(
-        network::sendRequest(feature, "server:" + server, verb, path, VPackBuffer<uint8_t>(),
-                             network::Timeout(::CL_DEFAULT_TIMEOUT)));
+    requests.emplace_back(network::sendRequest(pool, "server:" + server, verb,
+                                               path, VPackBuffer<uint8_t>(),
+                                               network::Timeout(::CL_DEFAULT_TIMEOUT)));
   }
 
   return futures::collectAll(requests).thenValue(
