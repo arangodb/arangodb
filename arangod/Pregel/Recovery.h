@@ -52,7 +52,7 @@ class RecoveryManager {
   void _renewPrimaryServer(ShardID const& shard);
 
  public:
-  RecoveryManager(ClusterInfo&);
+  explicit RecoveryManager(ClusterInfo&);
   ~RecoveryManager();
 
   void monitorCollections(DatabaseID const& database,

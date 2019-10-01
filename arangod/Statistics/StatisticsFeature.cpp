@@ -84,7 +84,8 @@ StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistri
 
 class StatisticsThread final : public Thread {
  public:
-  StatisticsThread(ApplicationServer& server) : Thread(server, "Statistics") {}
+  explicit StatisticsThread(ApplicationServer& server) 
+    : Thread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:

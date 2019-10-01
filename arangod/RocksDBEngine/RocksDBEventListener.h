@@ -79,7 +79,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBEventListener : public rocksdb::EventListener {
  public:
-  RocksDBEventListener(application_features::ApplicationServer&);
+  explicit RocksDBEventListener(application_features::ApplicationServer&);
   virtual ~RocksDBEventListener();
 
   void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;

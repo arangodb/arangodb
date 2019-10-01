@@ -57,7 +57,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
       
@@ -75,7 +75,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       alternateSortingIndex = 'skip_a_b';
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

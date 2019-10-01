@@ -5,7 +5,8 @@
 
 @RESTDESCRIPTION
 Upload a specific local backup to a remote repository, or query
-progress on a previously scheduled upload operation.
+progress on a previously scheduled upload operation, or abort
+a running upload operation.
 
 @RESTBODYPARAM{id,string,optional,string}
 The identifier for this backup. This is required when an upload
@@ -24,8 +25,13 @@ attribute. See the description of the _arangobackup_ program in the manual
 for a description of the `config` object.
 
 @RESTBODYPARAM{uploadId,string,optional,string}
-Upload ID to specify for which upload operation progress is queried.
-If you specify this, leave out all other body parameters.
+Upload ID to specify for which upload operation progress is queried or
+the upload operation to abort.
+If you specify this, leave out all the above body parameters.
+
+@RESTBODYPARAM{abort,boolean,optional,boolean}
+Set this to `true` if a running upload operation should be aborted. In
+this case, the only other body parameter which is needed is `uploadId`.
 
 @RESTRETURNCODES
 
