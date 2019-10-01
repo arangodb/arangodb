@@ -68,18 +68,18 @@ arangodb::IndexIterator::DocumentCallback MaterializerExecutor::ReadContext::cop
 }
 
 arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters, 
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear, 
+    std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, 
+    std::unordered_set<RegisterId> registersToKeep,
     RegisterId inNmColPtr, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx )
-  : ExecutorInfos (
+  : ExecutorInfos(
       std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>({inNmColPtr, inNmDocId})),
       std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>({outDocRegId})),
       nrInputRegisters, nrOutputRegisters,
       std::move(registersToClear), std::move(registersToKeep)),
-      _inNonMaterializedColRegId(inNmColPtr), _inNonMaterializedDocRegId(inNmDocId), 
+      _inNonMaterializedColRegId(inNmColPtr), _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
 }
 

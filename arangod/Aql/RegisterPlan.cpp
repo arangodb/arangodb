@@ -238,7 +238,7 @@ void RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
-    case ExecutionNode::MATERIALIZER: 
+    case ExecutionNode::MATERIALIZER:
     case ExecutionNode::SCATTER:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::GATHER:

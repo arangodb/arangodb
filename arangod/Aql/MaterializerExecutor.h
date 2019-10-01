@@ -56,7 +56,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
-  
+
   inline RegisterId outputMaterializedDocumentRegId() const {
     return _outMaterializedDocumentRegId;
   }
@@ -69,8 +69,8 @@ class MaterializerExecutorInfos : public ExecutorInfos {
     return _inNonMaterializedDocRegId;
   }
 
-  inline transaction::Methods* trx() const { 
-    return _trx; 
+  inline transaction::Methods* trx() const {
+    return _trx;
   }
 
  private:
@@ -85,7 +85,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
 };
 
 class MaterializerExecutor {
-public:
+ public:
   struct Properties {
     static constexpr bool preservesOrder = true;
     static constexpr bool allowsBlockPassthrough = false;
@@ -124,7 +124,7 @@ public:
   ReadContext _readDocumentContext;
   Infos const& _infos;
   Fetcher& _fetcher;
-};  
+};
 
 }  // namespace aql
 }  // namespace arangodb

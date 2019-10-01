@@ -2274,39 +2274,39 @@ const char* MATERIALIZER_NODE_IN_NM_COL_PARAM = "inNmColPtr";
 const char* MATERIALIZER_NODE_IN_NM_DOC_PARAM = "inNmDocId";
 const char* MATERIALIZER_NODE_OUT_VARIABLE_PARAM = "outVariable";
 
-MaterializerNode::MaterializerNode(ExecutionPlan * plan, size_t id, 
-                                                  aql::Variable const & inColPtr, 
-                                                  aql::Variable const & inDocId, 
+MaterializerNode::MaterializerNode(ExecutionPlan * plan, size_t id,
+                                                  aql::Variable const & inColPtr,
+                                                  aql::Variable const & inDocId,
                                                   aql::Variable const & outVariable)
   : ExecutionNode(plan, id), _inNonMaterializedColPtr(&inColPtr),
       _inNonMaterializedDocId(&inDocId), _outVariable(&outVariable) {}
 
-MaterializerNode::MaterializerNode(ExecutionPlan * plan, arangodb::velocypack::Slice const & base) 
+MaterializerNode::MaterializerNode(ExecutionPlan * plan, arangodb::velocypack::Slice const & base)
   : ExecutionNode(plan, base),
   _inNonMaterializedColPtr(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZER_NODE_IN_NM_COL_PARAM, true)),
   _inNonMaterializedDocId(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZER_NODE_IN_NM_DOC_PARAM, true)),
   _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZER_NODE_OUT_VARIABLE_PARAM)) {}
 
-void MaterializerNode::toVelocyPackHelper(arangodb::velocypack::Builder & nodes, unsigned flags, 
+void MaterializerNode::toVelocyPackHelper(arangodb::velocypack::Builder & nodes, unsigned flags,
                                                          std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-  
+
   nodes.add(VPackValue(MATERIALIZER_NODE_IN_NM_COL_PARAM));
   _inNonMaterializedColPtr->toVelocyPack(nodes);
-  
+
   nodes.add(VPackValue(MATERIALIZER_NODE_IN_NM_DOC_PARAM));
   _inNonMaterializedDocId->toVelocyPack(nodes);
-  
+
   nodes.add(VPackValue(MATERIALIZER_NODE_OUT_VARIABLE_PARAM));
   _outVariable->toVelocyPack(nodes);
-  
+
   nodes.close();
 }
 
 std::unique_ptr<ExecutionBlock> MaterializerNode::createBlock(
     ExecutionEngine & engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const &) const {
-  
+
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inNmColPtrRegId;
@@ -2337,7 +2337,7 @@ std::unique_ptr<ExecutionBlock> MaterializerNode::createBlock(
 
 ExecutionNode * MaterializerNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {
   TRI_ASSERT(plan);
-  
+
   auto* outVariable = _outVariable;
   auto* inNonMaterializedDocId = _inNonMaterializedDocId;
   auto* inNonMaterializedColId = _inNonMaterializedColPtr;

@@ -967,11 +967,11 @@ class MaterializerNode  : public ExecutionNode {
  private:
   /// @brief input variable  non-materialized collection ids
   aql::Variable const* _inNonMaterializedColPtr;
-  
+
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
 
-  /// @brief the variable produced by materialization 
+  /// @brief the variable produced by materialization
   Variable const* _outVariable;
 };
 
