@@ -23,44 +23,21 @@
 #include "ClusterTtlMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/system-functions.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
-#include "Graph/Traverser.h"
-#include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Rest/Version.h"
 #include "RestServer/TtlFeature.h"
-#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Context.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationOptions.h"
-#include "VocBase/KeyGenerator.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Version.h"
-#include "VocBase/ticks.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include "velocypack/StringRef.h"
 #include <velocypack/velocypack-aliases.h>
 
-#include <algorithm>
-#include <numeric>
 #include <vector>
 
 using namespace arangodb;
