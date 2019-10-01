@@ -3125,6 +3125,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       front._nrFiles = totalFiles;
       front._serverId = "";  // makes no sense for whole cluster
       front._isAvailable = i.second.size() == dbServers.size();
+      front._nrPiecesPresent = i.second.size();
       hotBackups.insert(std::make_pair(front._id, front));
     }
   }
