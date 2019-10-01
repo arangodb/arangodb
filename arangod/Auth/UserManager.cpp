@@ -250,8 +250,16 @@ void auth::UserManager::loadFromDB() {
 // private, must be called with _userCacheLock in write mode
 // this method can only be called by users with access to the _system collection
 Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replace) {
-  if (entry.source() != auth::Source::Local) {
-    return Result(TRI_ERROR_USER_EXTERNAL);
+  auto source = entry.source();
+
+  switch (source) {
+    case auth::Source::Local:
+    case auth::Source::Test:
+      break;
+    case auth::Source::LDAP:
+      return Result(TRI_ERROR_USER_EXTERNAL);
+    default:
+      TRI_ASSERT(false);
   }
 
   if (!IsRole(entry.username()) && entry.username() != "root") {
@@ -479,7 +487,7 @@ Result auth::UserManager::storeUser(auth::User const& user) {
     return Result(TRI_ERROR_USER_INVALID_NAME);
   }
 
-  return storeUserInternal(user, true);
+  return storeUserInternal(user, false);
 }
 
 Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func,

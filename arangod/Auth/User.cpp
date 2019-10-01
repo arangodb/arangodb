@@ -103,6 +103,9 @@ static void AddSource(VPackBuilder& builder, auth::Source source) {
     case auth::Source::LDAP:
       builder.add("source", VPackValue("LDAP"));
       break;
+    case auth::Source::Test:
+      builder.add("source", VPackValue("TEST"));
+      break;
     default:
       TRI_ASSERT(false);
   }
@@ -365,7 +368,7 @@ VPackBuilder auth::User::toVPackBuilder() const {
     {
       VPackObjectBuilder o2(&builder, "authData", true);
       builder.add("active", VPackValue(_active));
-      if (_source == auth::Source::Local) {
+      if (_source == auth::Source::Local || _source == auth::Source::Test) {
         VPackObjectBuilder o3(&builder, "simple", true);
         builder.add("hash", VPackValue(_passwordHash));
         builder.add("salt", VPackValue(_passwordSalt));

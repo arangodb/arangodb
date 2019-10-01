@@ -33,7 +33,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -41,13 +40,19 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-users.h"
 
+arangodb::tests::TestHelper::TestHelper() : _v8Initialized(false) {}
+
+arangodb::tests::TestHelper::~TestHelper() {
+  v8Teardown();
+}
+
 // -----------------------------------------------------------------------------
 // Mock Servers
 // -----------------------------------------------------------------------------
 
 arangodb::tests::mocks::MockAqlServer* arangodb::tests::TestHelper::mockAqlServerInit() {
   _mockAqlServer.reset(new arangodb::tests::mocks::MockAqlServer());
-  server.getFeature<arangodb::SystemDatabaseFeature>().use();
+  _system = _mockAqlServer->getFeature<arangodb::SystemDatabaseFeature>().use();
   return _mockAqlServer.get();
 }
 
@@ -56,15 +61,15 @@ arangodb::tests::mocks::MockAqlServer* arangodb::tests::TestHelper::mockAqlServe
 // -----------------------------------------------------------------------------
 
 v8::Isolate* arangodb::tests::TestHelper::v8Isolate() {
-  return _v8Isolate.get();
+  return _v8Isolate;
 }
 
-v8::Local<v8::Context> arangodb::tests::TestHelper::v8Context() {
-  return _v8Context;
+v8::Handle<v8::Context> arangodb::tests::TestHelper::v8Context() {
+  return v8::Local<v8::Context>::New(_v8Isolate, _v8Context);
 }
 
 TRI_v8_global_t* arangodb::tests::TestHelper::v8Globals() {
-  return _v8Globals.get();
+  return _v8Globals;
 }
 
 void arangodb::tests::TestHelper::v8Init() {
@@ -102,45 +107,83 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 void arangodb::tests::TestHelper::v8Setup(TRI_vocbase_t* vocbase) {
   v8Init();
 
+  if (!_v8Initialized) {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  _v8Isolate =
-      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                   [](v8::Isolate* p) -> void { p->Dispose(); });
-  ASSERT_NE(nullptr, _v8Isolate.get());
+  _v8Isolate = v8::Isolate::New(isolateParams);
+  ASSERT_NE(nullptr, _v8Isolate);
+  _v8Isolate->Enter();
 
   // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(_v8Isolate.get());
+  v8::Isolate::Scope isolateScope(_v8Isolate);
 
   // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
 
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(_v8Isolate.get());
+  v8::HandleScope handleScope(_v8Isolate);
 
-  _v8Context = v8::Context::New(_v8Isolate.get());
-
+  v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(_v8Isolate);
+  _v8Context.Reset(_v8Isolate, v8::Context::New(_v8Isolate, nullptr, global));
+  v8::Handle<v8::Context> context = v8::Local<v8::Context>::New(_v8Isolate, _v8Context);
+  
   // required for TRI_AddMethodVocbase(...) later
-  v8::Context::Scope contextScope(_v8Context);
+  v8::Context::Scope contextScope(context);
 
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  _v8Globals.reset(TRI_CreateV8Globals(_v8Isolate.get(), 0));
+  _v8Globals = TRI_CreateV8Globals(_v8Isolate, 0);
 
   // otherwise v8:-utils::CreateErrorObject(...) will fail
-  _v8Globals->ArangoErrorTempl.Reset(_v8Isolate.get(),
-                                     v8::ObjectTemplate::New(_v8Isolate.get()));
+  _v8Globals->ArangoErrorTempl.Reset(_v8Isolate,
+                                     v8::ObjectTemplate::New(_v8Isolate));
 
   _v8Globals->_vocbase = vocbase;
-  TRI_InitV8Users(_v8Context, vocbase, _v8Globals.get(), _v8Isolate.get());
+  TRI_InitV8Users(context, vocbase, _v8Globals, _v8Isolate);
+
+  _v8Initialized = true;
+  }
+}
+
+void arangodb::tests::TestHelper::v8Teardown() {
+  if (_v8Initialized) {
+  delete _v8Globals;
+  _v8Globals = nullptr;
+
+  _v8Context.Reset();
+
+  _v8Isolate->Exit();
+  _v8Isolate->Dispose();
+  _v8Isolate = nullptr;
+
+  _v8Initialized = false;
+  }
 }
 
 // -----------------------------------------------------------------------------
-// ExecContext
+// Users and ExecContext
 // -----------------------------------------------------------------------------
 
 arangodb::ExecContext* arangodb::tests::TestHelper::createExecContext(
-    auth::AuthUser const&, auth::DatabaseResource const&) {
+    auth::AuthUser const& user, auth::DatabaseResource const& database) {
+  _exec = ExecContext::create(user, database);
+  return _exec.get();
+}
+
+void arangodb::tests::TestHelper::disposeExecContext() {
+  _exec.reset();
+}
+								      
+
+void arangodb::tests::TestHelper::usersSetup() {
+  auto usersJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"_users\", \"isSystem\": true }");
+
+  _scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
+        _system.get()->createCollection(usersJson->slice()).get(),
+        [this](arangodb::LogicalCollection* ptr) -> void {
+          _system.get()->dropCollection(ptr->id(), true, 0.0);
+        });
 }
 
 void arangodb::tests::TestHelper::createUser(std::string const& username,

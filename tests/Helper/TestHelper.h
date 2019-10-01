@@ -28,11 +28,11 @@
 #include "Auth/DatabaseResource.h"
 #include "Auth/User.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-struct TRI_vocbase_t;
 struct TRI_v8_global_t;
 
 namespace arangodb {
@@ -46,7 +46,8 @@ class MockAqlServer;
 
 class TestHelper {
  public:
-  static void v8Init();
+  TestHelper();
+  ~TestHelper();
 
   // ---------------------------------------------------------------------------
   // Mock Servers
@@ -58,15 +59,20 @@ class TestHelper {
 
  protected:
   std::unique_ptr<arangodb::tests::mocks::MockAqlServer> _mockAqlServer;
+  SystemDatabaseFeature::ptr _system;
 
   // ---------------------------------------------------------------------------
   // V8
   // ---------------------------------------------------------------------------
 
  public:
+  static void v8Init();
+
   void v8Setup(TRI_vocbase_t*);
+  void v8Teardown();
+
   v8::Isolate* v8Isolate();
-  v8::Local<v8::Context> v8Context();
+  v8::Handle<v8::Context> v8Context();
   TRI_v8_global_t* v8Globals();
 
 
@@ -76,9 +82,11 @@ class TestHelper {
                          std::vector<v8::Local<v8::Value>>&, int errorCode);
 
  protected:
-  std::shared_ptr<v8::Isolate> _v8Isolate;
-  v8::Local<v8::Context> _v8Context;
-  std::unique_ptr<TRI_v8_global_t> _v8Globals;
+  bool _v8Initialized;
+
+  v8::Isolate* _v8Isolate;
+  v8::Persistent<v8::Context> _v8Context;
+  TRI_v8_global_t* _v8Globals;
 
   // -----------------------------------------------------------------------------
   // ExecContext
@@ -87,23 +95,39 @@ class TestHelper {
  public:
   arangodb::ExecContext* createExecContext(auth::AuthUser const&,
                                            auth::DatabaseResource const&);
+  void disposeExecContext();
+
+  void usersSetup();
 
   void createUser(std::string const& username, std::function<void(auth::User*)> callback);
 
+ protected:
+  std::unique_ptr<arangodb::ExecContext> _exec;
+
+ private:
+  std::shared_ptr<arangodb::LogicalCollection> _scopedUsers;
+
+  // ---------------------------------------------------------------------------
+  // Databases
+  // ---------------------------------------------------------------------------
+
+ public:
   TRI_vocbase_t* createDatabase(std::string const& dbName);
 
+  // ---------------------------------------------------------------------------
+  // Collections
+  // ---------------------------------------------------------------------------
+
+ public:
   std::shared_ptr<arangodb::LogicalCollection> createCollection(TRI_vocbase_t*,
                                                                 auth::CollectionResource const&);
 
+  // ---------------------------------------------------------------------------
+  // Views
+  // ---------------------------------------------------------------------------
+
   std::shared_ptr<arangodb::LogicalView> createView(TRI_vocbase_t*,
                                                     auth::CollectionResource const&);
-
- protected:
-  std::unique_ptr<arangodb::ExecContext> exec;
-
-  // -----------------------------------------------------------------------------
-  // Views
-  // -----------------------------------------------------------------------------
 
  public:
   void viewFactoryInit(mocks::MockServer*);

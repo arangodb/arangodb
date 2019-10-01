@@ -65,24 +65,34 @@ class V8UsersTest : public ::testing::Test {
 
  protected:
   arangodb::ExecContext* exec;
-  arangodb::ExecContext::Scope execContextScope;
+  std::unique_ptr<arangodb::ExecContext::Scope> execContextScope;
 
-  V8UsersTest() : 
-    exec(helper.createExecContext(arangodb::auth::AuthUser{USERNAME},
-				  arangodb::auth::DatabaseResource{DB_NAME})),
-    execContextScope(exec) {
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
+  V8UsersTest() : exec(nullptr) {
+    helper.usersSetup();
+
+    exec = helper.createExecContext(arangodb::auth::AuthUser{USERNAME},
+				    arangodb::auth::DatabaseResource{DB_NAME});
+    execContextScope.reset(new arangodb::ExecContext::Scope(exec));
   }
 
   ~V8UsersTest() {
+    helper.disposeExecContext();
+
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
   }
 
+  // name changed between gtest versions
+  static void SetUpTestCase() {
+    SetUpTestSuite();
+  }
+
   static void SetUpTestSuite() {
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::ERR);
+
     helper.viewFactoryInit(helper.mockAqlServerInit());
 
     vocbase = helper.createDatabase(DB_NAME);
@@ -90,10 +100,11 @@ class V8UsersTest : public ::testing::Test {
     helper.v8Setup(vocbase);
 
     auto v8isolate = helper.v8Isolate();
+    v8::HandleScope handleScope(v8isolate);
+    auto v8Context = helper.v8Context();
+    v8::Context::Scope contextScope(v8Context);
+
     auto v8g = helper.v8Globals();
-
-    v8::Context::Scope contextScope(helper.v8Context());
-
     auto arangoUsers =
         v8::Local<v8::ObjectTemplate>::New(v8isolate, v8g->UsersTempl)->NewInstance();
 
@@ -132,7 +143,14 @@ class V8UsersTest : public ::testing::Test {
     };
   }
 
-  void TearDownTestSuite() {}
+  // name changed between gtest versions
+  static void TearDownTestCase() {
+    TearDownTestSuite();
+  }
+
+  static void TearDownTestSuite() {
+    helper.v8Teardown();
+  }
 };
 
 arangodb::tests::TestHelper V8UsersTest::helper;

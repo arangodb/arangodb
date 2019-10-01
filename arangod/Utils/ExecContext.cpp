@@ -81,6 +81,13 @@ bool ExecContext::isAuthEnabled() {
 }
 
 std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
+                                                 auth::DatabaseResource const& database) {
+  auth::DatabaseResource db(database);
+
+  return create(user, std::move(db));
+}
+
+std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
                                                  auth::DatabaseResource&& database) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
