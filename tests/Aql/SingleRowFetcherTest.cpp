@@ -1145,37 +1145,38 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
-namespace fetcherHelper {
-template <>
-void PullAndAssertDataRows<SingleRowFetcher<false>>(SingleRowFetcher<false>& testee,
-                                                    std::vector<std::string> const& dataResults) {
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  ExecutionState state = ExecutionState::HASMORE;
+class SingleRowFetcherWrapper
+    : public fetcherHelper::PatternTestWrapper<SingleRowFetcher<false>> {
+ public:
+  SingleRowFetcherWrapper() : PatternTestWrapper() {}
 
-  // Fetch all rows until done
-  for (auto const& it : dataResults) {
-    std::tie(state, row) = testee.fetchRow();
-    if (it != dataResults.back()) {
-      EXPECT_EQ(state, ExecutionState::HASMORE);
+  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    ExecutionState state = ExecutionState::HASMORE;
+
+    // Fetch all rows until done
+    for (auto const& it : dataResults) {
+      std::tie(state, row) = _fetcher.fetchRow();
+      if (it != dataResults.back()) {
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      }
+      // We cannot guarantee the DONE case on end, as we potentially need to fetch from upstream
+      ASSERT_TRUE(row.isInitialized());
+      EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
     }
-    // We cannot guarantee the DONE case on end, as we potentially need to fetch from upstream
-    ASSERT_TRUE(row.isInitialized());
-    EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
+    // Now assert that we will forever stay in the DONE state and do not move on.
+    std::tie(state, row) = _fetcher.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row.isInitialized());
   }
-  // Now assert that we will forever stay in the DONE state and do not move on.
-  std::tie(state, row) = testee.fetchRow();
-  EXPECT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(row.isInitialized());
-}
-}  // namespace fetcherHelper
+};
 
-using MyFetcher = SingleRowFetcher<false>;
-TEST_SHADOWROW_PATTERN_1(MyFetcher, SingleRowFetcherPattern1Test);
-TEST_SHADOWROW_PATTERN_2(MyFetcher, SingleRowFetcherPattern2Test);
-TEST_SHADOWROW_PATTERN_3(MyFetcher, SingleRowFetcherPattern3Test);
-TEST_SHADOWROW_PATTERN_4(MyFetcher, SingleRowFetcherPattern4Test);
-TEST_SHADOWROW_PATTERN_5(MyFetcher, SingleRowFetcherPattern5Test);
-TEST_SHADOWROW_PATTERN_6(MyFetcher, SingleRowFetcherPattern6Test);
+TEST_SHADOWROW_PATTERN_1(SingleRowFetcherWrapper, SingleRowFetcherPattern1Test);
+TEST_SHADOWROW_PATTERN_2(SingleRowFetcherWrapper, SingleRowFetcherPattern2Test);
+TEST_SHADOWROW_PATTERN_3(SingleRowFetcherWrapper, SingleRowFetcherPattern3Test);
+TEST_SHADOWROW_PATTERN_4(SingleRowFetcherWrapper, SingleRowFetcherPattern4Test);
+TEST_SHADOWROW_PATTERN_5(SingleRowFetcherWrapper, SingleRowFetcherPattern5Test);
+TEST_SHADOWROW_PATTERN_6(SingleRowFetcherWrapper, SingleRowFetcherPattern6Test);
 
 }  // namespace aql
 }  // namespace tests

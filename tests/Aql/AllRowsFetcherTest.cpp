@@ -374,45 +374,47 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 7);
 }
 
-namespace fetcherHelper {
-template <>
-void PullAndAssertDataRows<AllRowsFetcher>(AllRowsFetcher& testee,
-                                           std::vector<std::string> const& dataResults) {
-  AqlItemMatrix const* matrix = nullptr;
-  ExecutionState state = ExecutionState::HASMORE;
+class AllRowsFetcherFetchRows : public fetcherHelper::PatternTestWrapper<AllRowsFetcher> {
+ public:
+  AllRowsFetcherFetchRows()
+      : fetcherHelper::PatternTestWrapper<AllRowsFetcher>() {}
 
-  // Fetch all rows until done
-  std::tie(state, matrix) = testee.fetchAllRows();
-  EXPECT_EQ(state, ExecutionState::DONE);
-  if (!dataResults.empty() || matrix != nullptr) {
-    ASSERT_NE(matrix, nullptr);
+  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+    AqlItemMatrix const* matrix = nullptr;
+    ExecutionState state = ExecutionState::HASMORE;
 
-    // Assert that all rows come out in order and only these
-    EXPECT_EQ(matrix->size(), dataResults.size());
-    auto rowIndexes = matrix->produceRowIndexes();
-    ASSERT_EQ(rowIndexes.size(), dataResults.size());
+    // Fetch all rows until done
+    std::tie(state, matrix) = _fetcher.fetchAllRows();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    if (!dataResults.empty() || matrix != nullptr) {
+      ASSERT_NE(matrix, nullptr);
 
-    for (size_t i = 0; i < rowIndexes.size(); ++i) {
-      auto row = matrix->getRow(rowIndexes[i]);
-      ASSERT_TRUE(row.isInitialized());
-      EXPECT_TRUE(row.getValue(0).slice().isEqualString(dataResults[i]));
+      // Assert that all rows come out in order and only these
+      EXPECT_EQ(matrix->size(), dataResults.size());
+      auto rowIndexes = matrix->produceRowIndexes();
+      ASSERT_EQ(rowIndexes.size(), dataResults.size());
+
+      for (size_t i = 0; i < rowIndexes.size(); ++i) {
+        auto row = matrix->getRow(rowIndexes[i]);
+        ASSERT_TRUE(row.isInitialized());
+        EXPECT_TRUE(row.getValue(0).slice().isEqualString(dataResults[i]));
+      }
     }
+
+    AqlItemMatrix const* nextMatrix;
+    // Now assert that we will forever stay in the DONE state and do not move on.
+    std::tie(state, nextMatrix) = _fetcher.fetchAllRows();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(nextMatrix, nullptr);
   }
+};
 
-  AqlItemMatrix const* nextMatrix;
-  // Now assert that we will forever stay in the DONE state and do not move on.
-  std::tie(state, nextMatrix) = testee.fetchAllRows();
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(nextMatrix, nullptr);
-}
-}  // namespace fetcherHelper
-
-TEST_SHADOWROW_PATTERN_1(AllRowsFetcher, AllRowsFetcherPattern1Test);
-TEST_SHADOWROW_PATTERN_2(AllRowsFetcher, AllRowsFetcherPattern2Test);
-TEST_SHADOWROW_PATTERN_3(AllRowsFetcher, AllRowsFetcherPattern3Test);
-TEST_SHADOWROW_PATTERN_4(AllRowsFetcher, AllRowsFetcherPattern4Test);
-TEST_SHADOWROW_PATTERN_5(AllRowsFetcher, AllRowsFetcherPattern5Test);
-TEST_SHADOWROW_PATTERN_6(AllRowsFetcher, AllRowsFetcherPattern6Test);
+TEST_SHADOWROW_PATTERN_1(AllRowsFetcherFetchRows, AllRowsFetcherPattern1Test);
+TEST_SHADOWROW_PATTERN_2(AllRowsFetcherFetchRows, AllRowsFetcherPattern2Test);
+TEST_SHADOWROW_PATTERN_3(AllRowsFetcherFetchRows, AllRowsFetcherPattern3Test);
+TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchRows, AllRowsFetcherPattern4Test);
+TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchRows, AllRowsFetcherPattern5Test);
+TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchRows, AllRowsFetcherPattern6Test);
 
 }  // namespace aql
 }  // namespace tests
