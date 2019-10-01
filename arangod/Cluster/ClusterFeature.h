@@ -66,7 +66,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myRole;
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
-  uint32_t _systemReplicationFactor = 2;
+  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor 
+  std::uint32_t _systemReplicationFactor = 2;
+  std::uint32_t _minReplicationFactor = 1; 
+  std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
+  std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
 
@@ -88,7 +92,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _createWaitsForSyncReplication;
   };
   double indexCreationTimeout() const { return _indexCreationTimeout; }
-  uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
+  uint32_t defaultReplicationFactor() { return _defaultReplicationFactor; }
+  uint32_t systemReplicationFactor() { return _systemReplicationFactor; }
+  std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
+  std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
+  std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
 
   void stop() override final;
 

@@ -40,6 +40,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
@@ -259,6 +260,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   builder.openArray();
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
+      
+    if (ServerState::instance()->isCoordinator()) {
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties);
+      if (res.fail()) {
+        return res;
+      }
+    }
 
     if (info.name.empty()) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -275,6 +283,16 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                arangodb::velocypack::Value(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
+  
+    if (ServerState::instance()->isCoordinator()) {
+      // patch default replicationFactor into the data
+      VPackSlice replicationFactorSlice = info.properties.get(arangodb::StaticStrings::ReplicationFactor);
+      if (replicationFactorSlice.isNone()) {
+        helper.add(arangodb::StaticStrings::ReplicationFactor, 
+                   VPackValue(application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->defaultReplicationFactor()));
+      }
+    }
+
     helper.close();
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
@@ -566,6 +584,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto info = ci->getCollection(collection.vocbase().name(),
                                   std::to_string(collection.id()));
 
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(props);
+    if (res.fail()) {
+      return res;
+    }
+    
     return info->properties(props, partialUpdate);
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);

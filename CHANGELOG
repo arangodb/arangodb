@@ -1,6 +1,31 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Added startup option `--cluster.max-number-of-shards` for restricting the 
+  maximum number of shards when creating new collections. The default
+  value for this setting is `1000`, which is also the previously hard-coded
+  built-in limit. A value of `0` for this option means "unrestricted".
+  When the setting is adjusted, it will not affect already existing
+  collections, but only collections that are created or restored
+  afterwards.
+
+* Added startup options for managing the replication factor for newly
+  created collections:
+
+  - `--cluster.min-replication-factor`: this settings controls the minimum
+    replication factor value that is permitted when creating new collections.
+    No collections can be created which have a replication factor value
+    below this setting's value. The default value is 1.
+  - `--cluster.max-replication-factor`: this settings controls the maximum
+    replication factor value that is permitted when creating new collections.
+    No collections can be created which have a replication factor value
+    above this setting's value. The default value is 10.
+  - `--cluster.default-replication-factor`: this settings controls the default
+    replication factor value that is used when creating new collections and 
+    no value of replication factor has been specified. 
+    If no value is set for this option, the value of the option
+    `--cluster.min-replication-factor` will be used.
+
 * Fixed unintended multiple unlock commands from coordinator to
   transaction locked db servers.
 

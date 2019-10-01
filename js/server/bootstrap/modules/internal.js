@@ -527,6 +527,27 @@
     delete global.SYS_DEBUG_CAN_USE_FAILAT;
   }
   
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief replicationFactor(s) and number of shards
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.DEFAULT_REPLICATION_FACTOR) {
+    exports.defaultReplicationFactor = global.DEFAULT_REPLICATION_FACTOR;
+    delete global.DEFAULT_REPLICATION_FACTOR;
+  }
+  if (global.MIN_REPLICATION_FACTOR) {
+    exports.minReplicationFactor = global.MIN_REPLICATION_FACTOR;
+    delete global.MIN_REPLICATION_FACTOR;
+  }
+  if (global.MAX_REPLICATION_FACTOR) {
+    exports.maxReplicationFactor = global.MAX_REPLICATION_FACTOR;
+    delete global.MAX_REPLICATION_FACTOR;
+  }
+  if (global.MAX_NUMBER_OF_SHARDS) {
+    exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
+    delete global.MAX_NUMBER_OF_SHARDS;
+  }
+  
   // /////////////////////////////////////////////////////////////////////////////
   // / @brief whether or not clustering is enabled
   // /////////////////////////////////////////////////////////////////////////////

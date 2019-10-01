@@ -664,6 +664,12 @@ constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              
 /// another, which has not (yet?) been made known via the agency.
 constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
 
+/// 1450: ERROR_CLUSTER_TOO_MANY_SHARDS
+/// "too many shards"
+/// Will be raised when the number of shards for a collection is higher than
+/// allowed.
+constexpr int TRI_ERROR_CLUSTER_TOO_MANY_SHARDS                                 = 1450;
+
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
 /// Will be raised when a coordinator in a cluster tries to create a collection
