@@ -34,7 +34,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"

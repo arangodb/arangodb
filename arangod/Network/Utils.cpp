@@ -28,7 +28,7 @@
 #include "Basics/NumberUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "VocBase/ticks.h"
