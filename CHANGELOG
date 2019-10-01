@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed Unintended multiple unlock commands from coordinator to
+  transaction locked db servers
+
 * Use execvp instead of execv in hotbackup restore.
 
 * DB server locking / unlocking for hot backup revisited and enhanced
