@@ -242,6 +242,17 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
       if (meta.ok()) {
         LOG_TOPIC("0f208", INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
         LOG_TOPIC("55af7", INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
+        LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
+        LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
+        LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of DBServers: " << meta.get()._nrDBServers;
+        if (!meta.get()._serverId.empty()) {
+          LOG_TOPIC("11112", INFO, arangodb::Logger::BACKUP) << "      serverId: " << meta.get()._serverId;
+        }
+        if (meta.get()._potentiallyInconsistent) {
+          LOG_TOPIC("56241", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: true";
+        } else {
+          LOG_TOPIC("56242", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: false";
+        }
       }
     }
   }
@@ -315,7 +326,14 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
 
   LOG_TOPIC("c4d37", INFO, arangodb::Logger::BACKUP)
       << "Backup succeeded. Generated identifier '" << identifier.copyString() << "'";
-
+  VPackSlice sizeInBytes = resultObject.get("sizeInBytes");
+  VPackSlice nrFiles = resultObject.get("nrFiles");
+  if (sizeInBytes.isInteger() && nrFiles.isInteger()) {
+    uint64_t size = sizeInBytes.getNumber<uint64_t>();
+    uint64_t nr = nrFiles.getNumber<uint64_t>();
+    LOG_TOPIC("ce423", INFO, arangodb::Logger::BACKUP)
+      << "Total size of backup: " << size << ", number of files: " << nr;
+  }
   return result;
 }
 
