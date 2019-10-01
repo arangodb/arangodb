@@ -30,7 +30,7 @@
 
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"

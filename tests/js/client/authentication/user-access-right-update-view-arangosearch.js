@@ -219,21 +219,23 @@ function hasIResearch (db) {
 function UserRightsManagement(name) {
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       rootCreateCollection(testCol1Name);
       rootCreateCollection(testCol2Name);
       rootPrepareCollection(testCol1Name);
       rootPrepareCollection(testCol2Name);
-
+    },
+    setUp: function() {
       rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
       db._useDatabase(dbName);
       helper.switchUser('root', dbName);
     },
 
-    tearDown: function () {
+    tearDown: function() {
       rootDropView(testViewRename);
       rootDropView(testViewName);
-
+    },
+    tearDownAll: function () {
       rootDropCollection(testCol1Name);
       rootDropCollection(testCol2Name);
     },
