@@ -68,7 +68,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myAdvertisedEndpoint;
   std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor 
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
+  std::uint32_t _minReplicationFactor = 1; 
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
   bool _createWaitsForSyncReplication = true;
