@@ -45,7 +45,7 @@ AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID, index_t l
 
 void AgentCallback::shutdown() { _agent = nullptr; }
 
-bool AgentCallback::operator()(network::Response const & r) {
+bool AgentCallback::operator()(arangodb::network::Response const& r) {
   if (r.ok()) {
     if (_agent) {
       auto body = r.slice();
