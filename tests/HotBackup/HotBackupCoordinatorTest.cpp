@@ -463,6 +463,7 @@ TEST_F(HotBackupTest, test_repository_normalization) {
   prefix = "/b";
   result = RClone::normalizeRepositoryString(config, prefix, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+  ASSERT_EQ(repo, "local:/a/b/c");
 
 }
 
