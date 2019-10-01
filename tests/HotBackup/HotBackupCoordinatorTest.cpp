@@ -422,11 +422,11 @@ TEST_F(HotBackupTest, test_repository_normalization) {
   result = RClone::normalizeRepositoryString(config, prefix, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(repo, "S3:");
-/*
+
   repo = "S3:/..";
   result = RClone::normalizeRepositoryString(config, prefix, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
-  ASSERT_EQ(repo, "S3:");*/
+  ASSERT_EQ(repo, "S3:");
 
   repo = "local:/a";
   result = RClone::normalizeRepositoryString(config, prefix, repo);
@@ -443,7 +443,7 @@ TEST_F(HotBackupTest, test_repository_normalization) {
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(repo, "local:/a");
 
-  /*repo = "local:/a/../";
+  repo = "local:/a/../";
   result = RClone::normalizeRepositoryString(config, prefix, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(repo, "local:/");
@@ -451,7 +451,7 @@ TEST_F(HotBackupTest, test_repository_normalization) {
   repo = "local:/../a/.././";
   result = RClone::normalizeRepositoryString(config, prefix, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
-  ASSERT_EQ(repo, "local:/");*/
+  ASSERT_EQ(repo, "local:/");
 
   repo = "local:/";
   prefix = "/";
