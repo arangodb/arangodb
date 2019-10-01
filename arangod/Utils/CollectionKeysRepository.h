@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Utils/CollectionKeys.h"
 #include "VocBase/voc-types.h"
 
