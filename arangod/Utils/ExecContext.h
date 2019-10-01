@@ -162,12 +162,12 @@ struct ExecContextScope {
 struct ExecContextSuperuserScope {
   explicit ExecContextSuperuserScope()
   : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = &ExecContext::Superuser;
+    ExecContext::CURRENT = ExecContext::superuser();
   }
 
   explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
     if (cond) {
-      ExecContext::CURRENT = &ExecContext::Superuser;
+      ExecContext::CURRENT = ExecContext::superuser();
     }
   }
 
