@@ -254,6 +254,11 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
         } else {
           LOG_TOPIC("56242", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: false";
         }
+        if (meta.get()._isAvailable) {
+          LOG_TOPIC("56241", INFO, arangodb::Logger::BACKUP) << "      available: true";
+        } else {
+          LOG_TOPIC("56242", INFO, arangodb::Logger::BACKUP) << "      available: false";
+        }
       }
     }
   }
