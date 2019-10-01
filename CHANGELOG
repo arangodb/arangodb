@@ -6,9 +6,19 @@ devel
 * Fixed Unintended multiple unlock commands from coordinator to
   transaction locked db servers
 
-* Use execvp instead of execv in hotbackup restore.
+* Disallow using `_id` or `_rev` as shard keys in clustered collections.
 
-* DB server locking / unlocking for hot backup revisited and enhanced
+  Using these attributes for sharding was not supported before, but didn't trigger
+  any errors. Instead, collections were created and silently using `_key` as
+  the shard key, without making the caller aware of that an unsupported shard
+  keys was used.
+
+* DB server locking / unlocking for hot backup revisited and enhanced.
+
+* Fixed unintended multiple unlock commands from coordinator to
+  transaction locked db servers.
+
+* Use execvp instead of execv in hotbackup restore.
 
 * Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
   in the cluster. It now also may speed up fullCount with sorted indexes and a

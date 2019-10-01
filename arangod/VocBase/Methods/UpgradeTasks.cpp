@@ -421,7 +421,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   //       present or created), raise an error if not?
 
   if (res.fail()) {
-    LOG_TOPIC("e32fi", ERR, Logger::STARTUP)
+    LOG_TOPIC("94824", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -440,7 +440,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fa", ERR, Logger::STARTUP)
+    LOG_TOPIC("fedc0", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -459,7 +459,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
   res = ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
 
   if (res.fail()) {
-    LOG_TOPIC("e32fe", ERR, Logger::STARTUP)
+    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -467,7 +467,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fd", ERR, Logger::STARTUP)
+    LOG_TOPIC("dffbd", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;
