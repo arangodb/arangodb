@@ -36,7 +36,7 @@ size_t const CollectionKeysRepository::MaxCollectCount = 32;
 /// @brief create a collection keys repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionKeysRepository::CollectionKeysRepository() : _lock(), _keys() {
+CollectionKeysRepository::CollectionKeysRepository() : _lock(), _keys(), _stopped(false) {
   _keys.reserve(64);
 }
 
@@ -82,7 +82,9 @@ CollectionKeysRepository::~CollectionKeysRepository() {
 
 void CollectionKeysRepository::store(std::unique_ptr<arangodb::CollectionKeys> keys) {
   MUTEX_LOCKER(mutexLocker, _lock);
-  _keys.emplace(keys->id(), std::move(keys));
+  if (!_stopped) {
+    _keys.emplace(keys->id(), std::move(keys));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
