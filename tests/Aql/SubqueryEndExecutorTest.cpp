@@ -90,7 +90,7 @@ TEST_F(SubqueryEndExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryEndExecutor::Properties::preservesOrder)
       << "The block has no effect on ordering of elements, it adds additional "
          "rows only.";
-  EXPECT_FALSE(SubqueryEndExecutor::Properties::allowsBlockPassthrough)
+  EXPECT_EQ(SubqueryEndExecutor::Properties::allowsBlockPassthrough, ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of rows.";
   EXPECT_TRUE(SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize)
       << "The block produces one output row per input row plus potentially a "

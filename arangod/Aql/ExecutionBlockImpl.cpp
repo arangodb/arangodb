@@ -199,7 +199,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   // according to its heap size, thus resulting in a smaller allocated output
   // block. However, it won't report DONE after, because a LIMIT block with
   // fullCount must continue to count after the sorted output.
-  if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough &&
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable &&
                       !std::is_same<Executor, ConstrainedSortExecutor>::value) {
     TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
   }
@@ -214,7 +214,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     SharedAqlItemBlockPtr& newBlock) const {
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
                                               infos().registersToClear(),
@@ -284,7 +284,7 @@ struct ExecuteSkipVariant<SkipVariants::GET_SOME> {
 template <class Executor>
 static SkipVariants constexpr skipType() {
   bool constexpr useFetcher =
-      Executor::Properties::allowsBlockPassthrough &&
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
       !std::is_same<Executor, SubqueryExecutor<true>>::value;
 
   bool constexpr useExecutor = hasSkipRows<Executor>::value;
@@ -588,7 +588,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
       typename Executor::Infos const& infos,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(Executor::Properties::allowsBlockPassthrough,
+    static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
                   "This function can only be used with executors supporting "
                   "`allowsBlockPassthrough`");
     static_assert(hasFetchBlockForPassthrough<Executor>::value,
@@ -677,7 +677,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
     size_t nrItems, RegisterCount nrRegs) {
-  static_assert(!Executor::Properties::allowsBlockPassthrough ||
+  static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
                     !Executor::Properties::inputSizeRestrictsOutputSize,
                 "At most one of Properties::allowsBlockPassthrough or "
                 "Properties::inputSizeRestrictsOutputSize should be true for "
@@ -694,7 +694,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       "Properties::inputSizeRestrictsOutputSize is true");
 
   constexpr RequestWrappedBlockVariant variant =
-      Executor::Properties::allowsBlockPassthrough
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable
           ? RequestWrappedBlockVariant::PASS_THROUGH
           : Executor::Properties::inputSizeRestrictsOutputSize
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
