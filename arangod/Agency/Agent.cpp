@@ -30,16 +30,20 @@
 #include <thread>
 
 #include "Agency/AgentCallback.h"
-#include "Agency/GossipCallback.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -430,11 +434,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
+  
+  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   // _lastSent only accessed in main thread
   std::string const myid = id();
@@ -576,7 +578,8 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // Body
-      Builder builder;
+      VPackBufferUInt8 buffer;
+      Builder builder(buffer);
       builder.add(VPackValue(VPackValueType::Array));
 
       if (needSnapshot) {
@@ -633,12 +636,12 @@ void Agent::sendAppendEntriesRPC() {
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       // Send request
-      std::unordered_map<std::string, std::string> headerFields;
-      cc->asyncRequest(1, _config.poolAt(followerId),
-                       arangodb::rest::RequestType::POST, path.str(),
-                       std::make_shared<std::string>(builder.toJson()), headerFields,
-                       std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-                       150.0, true);
+      auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
+      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+                           std::move(buffer), network::Timeout(150)).thenValue([=](network::Response r) {
+        ac->operator()(r);
+      });
+      
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
@@ -669,11 +672,6 @@ void Agent::resign(term_t otherTerm) {
 
 /// Leader's append entries, empty ones for heartbeat, triggered by Constituent
 void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
 
   if (!leading()) {
     LOG_TOPIC("95220", DEBUG, Logger::AGENCY)
@@ -704,13 +702,20 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
         << " because we are no longer leading.";
     return;
   }
+  
+  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   // Send request
-  std::unordered_map<std::string, std::string> headerFields;
-  cc->asyncRequest(1, _config.poolAt(followerId), arangodb::rest::RequestType::POST,
-                   path.str(), std::make_shared<std::string>("[]"), headerFields,
-                   std::make_shared<AgentCallback>(this, followerId, 0, 0),
-                   3 * _config.minPing() * _config.timeoutMult(), true);
+  VPackBufferUInt8 buffer;
+  buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
+  auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
+  network::Timeout timeout(3 * _config.minPing() * _config.timeoutMult());
+  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+                       std::move(buffer), timeout).thenValue([=](network::Response r) {
+    ac->operator()(r);
+  });
+  
   _constituent.notifyHeartbeatSent(followerId);
 
   double now = TRI_microtime();
@@ -1703,10 +1708,9 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Add whatever is missing in our list.
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
-query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
-  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << in->slice().toJson();
+query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
+  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << slice.toJson();
 
-  VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20001,
@@ -1914,9 +1918,8 @@ bool Agent::ready() const {
 
 
 
-void Agent::trashStoreCallback(std::string const& url, query_t const& body) {
+void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
 
-  auto const& slice = body->slice();
   TRI_ASSERT(slice.isObject());
 
   // body consists of object holding keys index, term and the observed keys

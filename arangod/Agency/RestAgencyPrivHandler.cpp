@@ -185,13 +185,18 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-
-        query_t query = _request->toVelocyPackBuilderPtr();
+        
+        bool success = false;
+        VPackSlice const query = this->parseVPackBody(success);
+        if (!success) { // error already written
+          return RestStatus::DONE;
+        }
+        
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
           LOG_TOPIC("bcd46", DEBUG, Logger::AGENCY)
-              << "Responding to gossip request " << query->toJson() << " with "
+              << "Responding to gossip request " << query.toJson() << " with "
               << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {
             return reportError(slice);
