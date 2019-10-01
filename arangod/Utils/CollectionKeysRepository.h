@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Utils/CollectionKeys.h"
 #include "VocBase/voc-types.h"
 
@@ -89,6 +90,15 @@ class CollectionKeysRepository {
 
   bool garbageCollect(bool force);
 
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief stop further stores, this is used on shutdown
+  //////////////////////////////////////////////////////////////////////////
+
+  void stopStores() {
+    MUTEX_LOCKER(mutexLocker, _lock);
+    _stopped = true;
+  }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mutex for the repository
@@ -107,6 +117,13 @@ class CollectionKeysRepository {
   //////////////////////////////////////////////////////////////////////////////
 
   static size_t const MaxCollectCount;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief stopped flag, indicating that no more CollectionKeys can be
+  /// stored
+  ////////////////////////////////////////////////////////////////////////////
+
+  bool _stopped;
 };
 }  // namespace arangodb
 
