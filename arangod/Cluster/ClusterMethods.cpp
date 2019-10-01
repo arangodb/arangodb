@@ -2465,11 +2465,7 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
 /// @brief get TTL properties from all DBservers
 Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& out) {
   ClusterInfo& ci = feature.clusterInfo();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return Result(TRI_ERROR_SHUTTING_DOWN);
-  }
+
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
   std::string const url("/_api/ttl/properties");
 
@@ -2508,60 +2504,43 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
 Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
                                       VPackSlice const& properties, VPackBuilder& out) {
   ClusterInfo& ci = feature.clusterInfo();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return Result(TRI_ERROR_SHUTTING_DOWN);
-  }
+
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string const url("/_api/ttl/properties");
 
-  auto body = std::make_shared<std::string>(properties.toJson());
-  std::unordered_map<std::string, std::string> headers;
-  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
-    // set collection name (shard id)
-    cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
-                     url, body, headers, nullptr, 120.0);
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(DBservers.size());
+
+  VPackBufferUInt8 buffer;
+  buffer.append(properties.begin(), properties.byteSize());
+  for (std::string const& server : DBservers) {
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                   fuerte::RestVerb::Put, url,
+                                                   buffer, network::Timeout(120)));
   }
 
-  // Now listen to the results:
-  bool set = false;
-  int count;
-  int nrok = 0;
-  int globalErrorCode = TRI_ERROR_INTERNAL;
-  for (count = (int)DBservers.size(); count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        VPackSlice answer = res.answer->payload();
-        if (!set) {
-          out.add(answer.get("result"));
-          set = true;
-        }
-        nrok++;
-      } else {
-        // got an error. Now try to find the errorNum value returned (if any)
-        TRI_ASSERT(res.answer != nullptr);
-        auto resBody = res.answer->toVelocyPackBuilderPtr();
-        VPackSlice resSlice = resBody->slice();
-        if (resSlice.isObject()) {
-          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+  return futures::collectAll(std::move(futures))
+      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+        for (auto const& tryRes : results) {
+          network::Response const& r = tryRes.get();
+          if (r.fail()) {
+            return network::fuerteToArangoErrorCode(r.error);
+          }
 
-          if (code != TRI_ERROR_NO_ERROR) {
-            globalErrorCode = code;
+          if (r.response->statusCode() == fuerte::StatusOK) {
+            out.add(r.slice().get("result"));
+            break;
+          } else {
+            int code = network::errorCodeFromBody(r.slice());
+            if (code != TRI_ERROR_NO_ERROR) {
+              return code;
+            }
           }
         }
-      }
-    }
-  }
-
-  if (nrok != (int)DBservers.size()) {
-    return Result(globalErrorCode);
-  }
-
-  return Result();
+        return TRI_ERROR_NO_ERROR;
+      })
+      .get();
 }
 
 #ifndef USE_ENTERPRISE
