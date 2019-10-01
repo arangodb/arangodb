@@ -187,12 +187,15 @@ std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetc
     row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
 
     TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
-    if (isLastRowInBlock(depInfo) && depInfo._upstreamState == ExecutionState::DONE) {
+    if (isLastRowInBlock(depInfo) && isDone(depInfo)) {
       depInfo._currentBlock = nullptr;
       depInfo._rowIndex = 0;
       rowState = ExecutionState::DONE;
+    } else if (noMoreDataRows(depInfo)) {
+      ++depInfo._rowIndex;
+      rowState = ExecutionState::DONE;
     } else {
-      depInfo._rowIndex++;
+      ++depInfo._rowIndex;
       rowState = ExecutionState::HASMORE;
     }
   } else {
@@ -243,6 +246,18 @@ bool MultiDependencySingleRowFetcher::isLastRowInBlock(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   TRI_ASSERT(indexIsValid(info));
   return info._rowIndex + 1 == info._currentBlock->size();
+}
+
+bool MultiDependencySingleRowFetcher::noMoreDataRows(
+    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
+  return (isDone(info) && (!indexIsValid(info) || isLastRowInBlock(info))) ||
+         nextRowIsShadowRow(info);
+}
+
+bool MultiDependencySingleRowFetcher::nextRowIsShadowRow(
+    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
+  return indexIsValid(info) && !isLastRowInBlock(info) &&
+         info._currentBlock->isShadowRow(info._rowIndex + 1);
 }
 
 size_t MultiDependencySingleRowFetcher::getRowIndex(

@@ -155,6 +155,8 @@ class MultiDependencySingleRowFetcher {
   bool isDone(DependencyInfo const& info) const;
 
   bool isLastRowInBlock(DependencyInfo const& info) const;
+  bool noMoreDataRows(DependencyInfo const& info) const;
+  bool nextRowIsShadowRow(DependencyInfo const& info) const;
 
   size_t getRowIndex(DependencyInfo const& info) const;
 
