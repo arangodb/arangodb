@@ -103,6 +103,7 @@ function gatherBlockTestSuite () {
       assertEqual(c1.count(), 4000);
       if (idx !== null) {
         db._dropIndex(idx);
+        idx = null;
       }
       db._drop(cn4);
     },
