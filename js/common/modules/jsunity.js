@@ -103,7 +103,11 @@ jsUnity.results.fail = function (index, testName, message) {
       ENDTEST = newtime;
     }
     print(internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
-
+    if (RESULTS.hasOwnProperty('message')) {
+      RESULTS['message'] += "\n" + currentSuiteName + " - failed at: " + message;
+    } else {
+      RESULTS['message'] = currentSuiteName + " - failed at: " + message;
+    }
     return;
   }
 
@@ -283,6 +287,10 @@ function Run (testsuite) {
       COMPLETE[attrname][suite.suiteName] = RESULTS[attrname];
     } else if (RESULTS.hasOwnProperty(attrname)) {
       if (COMPLETE.hasOwnProperty(attrname)) {
+        if (attrname === 'message') {
+          COMPLETE[attrname] += "\n\n" + RESULTS[attrname];
+          continue;
+        }
         print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
         duplicates.push(attrname);
       }
