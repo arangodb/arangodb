@@ -62,6 +62,7 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/MaterializerExecutor.h"
 
 #include <type_traits>
 
@@ -199,8 +200,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   // block. However, it won't report DONE after, because a LIMIT block with
   // fullCount must continue to count after the sorted output.
   if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough &&
-                      !std::is_same<Executor, ConstrainedSortExecutor<CopyRowProducer>>::value &&
-                      !std::is_same<Executor, ConstrainedSortExecutor<MaterializerProducer>>::value) {
+                      !std::is_same<Executor, ConstrainedSortExecutor>::value) {
     TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
   }
 
@@ -313,7 +313,8 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, LimitExecutor>::value ||
                      std::is_same<Executor, IdExecutor<false, SingleRowFetcher<false>>>::value ||
                      std::is_same<Executor, ConstrainedSortExecutor>::value ||
-                     std::is_same<Executor, SortingGatherExecutor>::value),
+                     std::is_same<Executor, SortingGatherExecutor>::value ||
+                     std::is_same<Executor, MaterializerExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -720,9 +721,8 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor<CopyRowProducer>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor<MaterializerProducer>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
@@ -762,10 +762,10 @@ template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor<CopyRowProducer>>;
-template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor<MaterializerProducer>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializerExecutor>;

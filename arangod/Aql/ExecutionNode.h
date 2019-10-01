@@ -153,6 +153,7 @@ class ExecutionNode {
     DISTRIBUTE_CONSUMER = 28,
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
+    MATERIALIZER = 31,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -925,6 +926,51 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+};
+
+class MaterializerNode  : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+
+ public:
+  MaterializerNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+                   aql::Variable const& inDocId, aql::Variable const& outVariable);
+
+  MaterializerNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return ExecutionNode::MATERIALIZER; }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+
+  /// @brief getVariablesSetHere
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
+ private:
+  /// @brief input variable  non-materialized collection ids
+  aql::Variable const* _inNonMaterializedColPtr;
+  
+  /// @brief input variable non-materialized document ids
+  aql::Variable const* _inNonMaterializedDocId;
+
+  /// @brief the variable produced by materialization 
+  Variable const* _outVariable;
 };
 
 }  // namespace aql

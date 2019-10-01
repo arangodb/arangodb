@@ -884,10 +884,10 @@ void IResearchViewNode::planNodeRegisters(
     TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedColPtr->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedDocId->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
   }
 }
 

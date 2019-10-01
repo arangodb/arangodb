@@ -1395,7 +1395,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                                       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                                       arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1428,7 +1429,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN);
-      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry(),
+                         arangodb::aql::SerializationFormat::SHADOWROWS);
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2191,8 +2193,8 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockSingleServerLateMaterialized) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,  testDBInfo(server.server(),
+                        "testVocbase", 1));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
@@ -2243,10 +2245,11 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServerLateMaterialized) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0);
   arangodb::aql::Variable const outNmColPtr("variable100", 100);
@@ -2361,8 +2364,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server(),
+                        "testVocbase", 1));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
@@ -2372,10 +2375,11 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"),
                              arangodb::aql::PART_MAIN);
-  query.prepare(arangodb::QueryRegistryFeature::registry());
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::SingletonNode singleton(query.plan(), 0);
   arangodb::aql::Variable const outVariable("variable", 0);
   arangodb::aql::Variable const outNmColPtr("variable100", 100);

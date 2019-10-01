@@ -59,6 +59,7 @@
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/MaterializerExecutor.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
 #include "Meta/static_assert_size.h"
@@ -110,7 +111,9 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY_END), "SubqueryEndNode"},
     {static_cast<int>(ExecutionNode::DISTRIBUTE_CONSUMER),
-     "DistributeConsumer"}};
+     "DistributeConsumer"},
+    {static_cast<int>(ExecutionNode::MATERIALIZER),
+     "MaterializerNode"}};
 
 // FIXME -- this temporary function should be
 // replaced by a ExecutionNode member variable
@@ -346,6 +349,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new SubqueryEndNode(plan, slice);
     case DISTRIBUTE_CONSUMER:
       return new DistributeConsumerNode(plan, slice);
+    case MATERIALIZER:
+      return new MaterializerNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -2263,4 +2268,107 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
   }
 
   return allEqual;
+}
+
+const char* MATERIALIZER_NODE_IN_NM_COL_PARAM = "inNmColPtr";
+const char* MATERIALIZER_NODE_IN_NM_DOC_PARAM = "inNmDocId";
+const char* MATERIALIZER_NODE_OUT_VARIABLE_PARAM = "outVariable";
+
+MaterializerNode::MaterializerNode(ExecutionPlan * plan, size_t id, 
+                                                  aql::Variable const & inColPtr, 
+                                                  aql::Variable const & inDocId, 
+                                                  aql::Variable const & outVariable)
+  : ExecutionNode(plan, id), _inNonMaterializedColPtr(&inColPtr),
+      _inNonMaterializedDocId(&inDocId), _outVariable(&outVariable) {}
+
+MaterializerNode::MaterializerNode(ExecutionPlan * plan, arangodb::velocypack::Slice const & base) 
+  : ExecutionNode(plan, base),
+  _inNonMaterializedColPtr(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZER_NODE_IN_NM_COL_PARAM, true)),
+  _inNonMaterializedDocId(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZER_NODE_IN_NM_DOC_PARAM, true)),
+  _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZER_NODE_OUT_VARIABLE_PARAM)) {}
+
+void MaterializerNode::toVelocyPackHelper(arangodb::velocypack::Builder & nodes, unsigned flags, 
+                                                         std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+  
+  nodes.add(VPackValue(MATERIALIZER_NODE_IN_NM_COL_PARAM));
+  _inNonMaterializedColPtr->toVelocyPack(nodes);
+  
+  nodes.add(VPackValue(MATERIALIZER_NODE_IN_NM_DOC_PARAM));
+  _inNonMaterializedDocId->toVelocyPack(nodes);
+  
+  nodes.add(VPackValue(MATERIALIZER_NODE_OUT_VARIABLE_PARAM));
+  _outVariable->toVelocyPack(nodes);
+  
+  nodes.close();
+}
+
+std::unique_ptr<ExecutionBlock> MaterializerNode::createBlock(
+    ExecutionEngine & engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const &) const {
+  
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId inNmColPtrRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmColPtrRegId = it->second.registerId;
+  }
+  RegisterId inNmDocIdRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmDocIdRegId = it->second.registerId;
+  }
+  RegisterId outDocumentRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    outDocumentRegId = it->second.registerId;
+  }
+  TRI_ASSERT(engine.getQuery());
+  MaterializerExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId, outDocumentRegId, engine.getQuery()->trx());
+  return std::make_unique<ExecutionBlockImpl<MaterializerExecutor>>(&engine, this,
+                                                             std::move(infos));
+}
+
+ExecutionNode * MaterializerNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {
+  TRI_ASSERT(plan);
+  
+  auto* outVariable = _outVariable;
+  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
+  auto* inNonMaterializedColId = _inNonMaterializedColPtr;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
+    inNonMaterializedColId = plan->getAst()->variables()->createVariable(inNonMaterializedColId);
+  }
+
+  auto node =
+      std::make_unique<MaterializerNode>(plan, _id, *inNonMaterializedColId, *inNonMaterializedDocId, *outVariable);
+  return cloneHelper(std::move(node), withDependencies, withProperties);
+}
+
+CostEstimate MaterializerNode::estimateCost() const {
+  // we look for parent as we will materialize so many documents so be asked by parent
+  if (_dependencies.empty()) {
+    return aql::CostEstimate::empty();
+  }
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
+  // we will materialize all output of our dependency
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
+}
+
+void MaterializerNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+  vars.emplace(_inNonMaterializedColPtr);
+  vars.emplace(_inNonMaterializedDocId);
+}
+
+std::vector<Variable const*> MaterializerNode::getVariablesSetHere() const {
+  return std::vector<Variable const*>{_outVariable};
 }

@@ -274,7 +274,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule) {
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
       // currently only arangosearch view node supports late materialization
@@ -297,16 +297,16 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         continue; //loop is aleady optimized
       }
       ExecutionNode* current = node->getFirstDependency();
-      SortNode* sortNode = nullptr;
+      ExecutionNode* sortNode = nullptr;
       // examinig plan. We are looking for SortNode closest to lowerest LimitNode
       // without document body usage before that node.
-      // this node could be used as materializer
+      // this node could be appended with materializer
       bool stopSearch = false;
       while (current != loop) {
         switch (current->getType()) {
         case arangodb::aql::ExecutionNode::SORT:
           if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
-            sortNode = EN::castTo<SortNode*>(current);
+            sortNode = current;
           }
           break;
         case arangodb::aql::ExecutionNode::REMOTE:
@@ -341,12 +341,24 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       if (sortNode) {
         // we could apply late materialization
         // 1. We need to notify view - it should not materialize documents, but produce only localDocIds
-        // 2. We need to tell sort node to do materialization
+        // 2. We need to add materializer after limit node to do materialization
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
-        sortNode->setMaterialization(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
+        // insert a scatter node
+        auto materializerNode =
+            plan->registerNode(std::make_unique<MaterializerNode>(
+              plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
+
+        // on cluster we need to materializer node stay close to sort node on db server (to avoid network hop for materialization calls)
+        // however on single server we move it to limit node to make materialization as lazy as possible
+        auto materializerDependency = ServerState::instance()->isCoordinator() ? sortNode : node;
+        auto* dependencyParent = materializerDependency->getFirstParent();
+        TRI_ASSERT(dependencyParent);
+        dependencyParent->removeDependency(materializerDependency);
+        dependencyParent->addDependency(materializerNode);
+        materializerDependency->addParent(materializerNode);
         modified = true;
       }
     }

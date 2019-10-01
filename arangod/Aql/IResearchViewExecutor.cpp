@@ -136,41 +136,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
   TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
              getOutputRegisters()->end());
 }
-RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
-  return _outputRegister;
-}
-RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const noexcept {
-  return _numScoreRegisters;
-}
-std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const
-    noexcept {
-  return _reader;
-}
-Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
-const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
-    noexcept {
-  return _scorers;
-}
-ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
-  return _plan;
-}
-Variable const& IResearchViewExecutorInfos::outVariable() const noexcept {
-  return _outVariable;
-}
-aql::AstNode const& IResearchViewExecutorInfos::filterCondition() const noexcept {
-  return _filterCondition;
-}
-const IResearchViewExecutorInfos::VarInfoMap& IResearchViewExecutorInfos::varInfoMap() const
-    noexcept {
-  return _varInfoMap;
-}
-int IResearchViewExecutorInfos::getDepth() const noexcept { return _depth; }
-bool IResearchViewExecutorInfos::volatileSort() const noexcept {
-  return _volatileSort;
-}
-bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
-  return _volatileFilter;
-}
+
 const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearchViewExecutorInfos::sort() const
     noexcept {
   return _sort;
@@ -901,8 +867,8 @@ size_t IResearchViewExecutor<ordered, materialized>::skip(size_t limit) {
   return toSkip - limit;
 }
 
-template <bool ordered>
-bool IResearchViewExecutor<ordered>::writeRow(IResearchViewExecutor::ReadContext& ctx,
+template <bool ordered, bool materialized>
+bool IResearchViewExecutor<ordered, materialized>::writeRow(IResearchViewExecutor::ReadContext& ctx,
                                               IResearchViewExecutor::IndexReadBufferEntry bufferEntry) {
   TRI_ASSERT(_collection);
 
@@ -949,8 +915,8 @@ IResearchViewMergeExecutor<ordered, materialized>::MinHeapContext::MinHeapContex
     const IResearchViewSort& sort, size_t sortBuckets, std::vector<Segment>& segments) noexcept
     : _less(sort, sortBuckets), _segments(&segments) {}
 
-template <bool ordered, materialized>
-bool IResearchViewMergeExecutor<ordered>::MinHeapContext::operator()(const size_t i) const {
+template <bool ordered, bool materialized>
+bool IResearchViewMergeExecutor<ordered, materialized>::MinHeapContext::operator()(const size_t i) const {
   assert(i < _segments->size());
   auto& segment = (*_segments)[i];
   while (segment.docs->next()) {
@@ -1141,8 +1107,8 @@ size_t IResearchViewMergeExecutor<ordered, materialized>::skip(size_t limit) {
   return toSkip - limit;
 }
 
-template <bool ordered>
-bool IResearchViewMergeExecutor<ordered>::writeRow(
+template <bool ordered, bool materialized>
+bool IResearchViewMergeExecutor<ordered, materialized>::writeRow(
     IResearchViewMergeExecutor::ReadContext& ctx,
     IResearchViewMergeExecutor::IndexReadBufferEntry bufferEntry) {
   auto const& id = this->_indexReadBuffer.getValue(bufferEntry);

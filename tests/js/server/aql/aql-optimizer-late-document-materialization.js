@@ -173,19 +173,18 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
+      let nodeDependency  = undefined;
       plan.nodes.forEach(function(node) {
-        if (node.type === "SortNode") {
-          if (node.hasOwnProperty('outDocument')) {
-            // there should be no materializer before (e.g. double materialization)
-            assertFalse(materializeNodeFound);
-            materializeNodeFound = true;
-          } else {
-            // the other sort node should be limited but not a materializer
-            // BM25 node on single and TFIDF on cluster as for cluster
-            // only first sort will be on DBServers
-            assertEqual(node.limit, isCluster ? 4 : 10);
-          }
+        if (node.type === "MaterializerNode") {
+          // there should be no materializer before (e.g. double materialization)
+          assertFalse(materializeNodeFound);
+          materializeNodeFound = true;
+          // the other sort node should be limited but not a materializer
+          // BM25 node on single and TFIDF on cluster as for cluster
+          // only first sort will be on DBServers
+          assertEqual(nodeDependency.limit, isCluster ? 4 : 10);
         }
+        nodeDependency = node; // as we walk the plan this will be next node dependency
       });
       // materilizer should be there
       assertTrue(materializeNodeFound);
@@ -212,20 +211,6 @@ function lateDocumentMaterializationRuleTestSuite () {
       });
       assertEqual(0, expected.size);
     },
-    testQueryResultsWithMultipleCollectionsNoSortLimit() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 RETURN d ";
-      // run query without sort-limit optimization in order to test non constrained sort implementation
-      let plan = AQL_EXPLAIN(query, {},{optimizer:{rules:["-sort-limit"]}}).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
-      assertEqual(4, result.json.length);
-      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
-      result.json.forEach(function(doc) {
-        assertTrue(expectedKeys.has(doc._key));
-        expectedKeys.delete(doc._key);
-      });
-      assertEqual(0, expectedKeys.size);
-    },
     testQueryResultsSkipSome() {
       let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
@@ -234,28 +219,11 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(1, result.json.length);
       assertEqual(result.json[0]._key, 'c2');
     },
-    testQueryResultsSkipSomeNoSortLimit() {
-      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d ";
-      // run query without sort-limit optimization in order to test non constrained sort implementation
-      let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
-      assertEqual(1, result.json.length);
-      assertEqual(result.json[0]._key, 'c2');
-    },
     testQueryResultsSkipAll() {
       let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
-      assertEqual(0, result.json.length);
-    },
-    testQueryResultsSkipAllNoSortLimit() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d ";
-      // run query without sort-limit optimization in order to test non constrained sort implementation
-      let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
       assertEqual(0, result.json.length);
     },
     testQueryResultsInSubquery() {
@@ -293,16 +261,19 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
+      let nodeDependency = undefined;
       // sort by TFIDF node must be materializer (identified by limit value = 4 (1 to skip and 3 to limit))
       // as last SORT needs materialized document
       // and SORT by BM25 is not lowest possible variant
       // However in cluster only first sort suitable, as later sorts depend 
       // on all db servers results and performed on coordinator
       plan.nodes.forEach(function(node) {
-        if( node.type === "SortNode" && node.hasOwnProperty('outDocument')) {
-          assertEqual(node.limit, isCluster ? 6 : 4);
+        if( node.type === "MaterializerNode") {
+          assertFalse(materializeNodeFound); // no double materialization
+          assertEqual(nodeDependency.limit, isCluster ? 6 : 4);
           materializeNodeFound = true;
         }
+        nodeDependency = node;
       });
       assertTrue(materializeNodeFound);
     },
@@ -320,11 +291,14 @@ function lateDocumentMaterializationRuleTestSuite () {
       // as SORT by BM25 is not lowest possible variant
       // However in cluster only first sort suitable, as later sorts depend 
       // on all db servers results and performed on coordinator
+      let nodeDependency = undefined;
       plan.nodes.forEach(function(node) {
-        if( node.type === "SortNode" && node.hasOwnProperty('outDocument')) {
-          assertEqual(node.limit, isCluster ? 6 : 4);
+        if( node.type === "MaterializerNode") {
+          assertFalse(materializeNodeFound);
+          assertEqual(nodeDependency.limit, isCluster ? 6 : 4);
           materializeNodeFound = true;
         }
+        nodeDependency = node;
       });
       assertTrue(materializeNodeFound);
     },

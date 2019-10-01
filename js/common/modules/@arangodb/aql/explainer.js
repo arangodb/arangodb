@@ -966,6 +966,8 @@ function processQuery(query, explain, planIndex) {
       case 'parameter':
       case 'datasource parameter':
         return value('@' + node.name);
+      case 'MaterializerNode':
+        return 'PIZDA';
       default:
         return 'unhandled node type (' + node.type + ')';
     }
@@ -1451,16 +1453,9 @@ function processQuery(query, explain, planIndex) {
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'SortNode':
-        let sortMaterialization = '';
-        if (node.hasOwnProperty('inNmDocId') && node.hasOwnProperty('inNmColPtr') && 
-            node.hasOwnProperty('outDocument')) {
-          sortMaterialization += ' ' + variableName(node.outDocument) + ' = ' +
-                            'materialize(' + variableName(node.inNmColPtr) +
-                            ', ' + variableName(node.inNmDocId) + ')';
-        }
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + sortMaterialization + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+        }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
@@ -1649,6 +1644,8 @@ function processQuery(query, explain, planIndex) {
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+      case 'MaterializerNode':
+      	return variableName(node.outVariable) + ' = ' + keyword('MATERIALIZE') + '(' + variableName(node.inNmColPtr) + ',' + variableName(node.inNmDocId)  + ')';
     }
 
     return 'unhandled node type (' + node.type + ')';

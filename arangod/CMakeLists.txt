@@ -344,6 +344,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Aql/MaterializerExecutor.cpp
 )
 
 set(LIB_ARANGO_VOCBASE_SOURCES
