@@ -78,6 +78,11 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   bool parseDirection(TRI_edge_direction_e& direction);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Validate that the collection exists and is an edge collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool validateCollection(std::string const& name);
 };
 }  // namespace arangodb
 

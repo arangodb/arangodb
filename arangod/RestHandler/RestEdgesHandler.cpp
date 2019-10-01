@@ -30,8 +30,10 @@
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -97,8 +99,8 @@ std::string queryString(TRI_edge_direction_e dir) {
     case TRI_EDGE_OUT:
       return "FOR e IN @@collection FILTER e._from == @vertex RETURN e";
     case TRI_EDGE_ANY:
-      return "FOR e IN @@collection FILTER e._from == @vertex || e._to == "
-             "@vertex RETURN e";
+      return "FOR e IN @@collection FILTER (e._from == @vertex || e._to == "
+             "@vertex) RETURN e";
   }
 }
 
@@ -119,6 +121,23 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
 }
 }  // namespace
 
+bool RestEdgesHandler::validateCollection(std::string const& name) {
+  CollectionNameResolver resolver(_vocbase);
+  std::shared_ptr<LogicalCollection> collection = resolver.getCollection(name);
+
+  if (!collection) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return false;
+  }
+
+  if (collection->type() != TRI_COL_TYPE_EDGE) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return false;
+  }
+
+  return true;
+}
+
 // read in- or outbound edges
 bool RestEdgesHandler::readEdges() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -132,6 +151,9 @@ bool RestEdgesHandler::readEdges() {
   }
 
   std::string collectionName = suffixes[0];
+  if (!validateCollection(collectionName)) {
+    return false;
+  }
 
   TRI_edge_direction_e direction;
   if (!parseDirection(direction)) {
@@ -216,6 +238,9 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   std::string collectionName = suffixes[0];
+  if (!validateCollection(collectionName)) {
+    return false;
+  }
 
   TRI_edge_direction_e direction;
   if (!parseDirection(direction)) {
@@ -227,6 +252,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.openObject();
   // build edges
   resultBuilder.add("edges", VPackValue(VPackValueType::Array));
+  
+  std::unordered_set<std::string> foundEdges;
 
   std::shared_ptr<transaction::Context> ctx;
   for (VPackSlice it : VPackArrayIterator(body)) {
@@ -246,7 +273,11 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
     VPackSlice edges = queryResult.data->slice();
     for (VPackSlice edge : VPackArrayIterator(edges)) {
-      resultBuilder.add(edge);
+      std::string key = transaction::helpers::extractKeyFromDocument(edge).copyString();
+      if (foundEdges.find(key) == foundEdges.end()) {
+        resultBuilder.add(edge);
+        foundEdges.emplace(std::move(key));
+      }
     }
     ctx = queryResult.context;
   }
