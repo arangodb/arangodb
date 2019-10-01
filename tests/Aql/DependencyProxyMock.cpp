@@ -167,6 +167,14 @@ MultiDependencyProxyMock<passBlocksThrough>::fetchBlockForDependency(size_t depe
 }
 
 template <bool passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, size_t> MultiDependencyProxyMock<passBlocksThrough>::skipSomeForDependency(
+    size_t dependency, size_t atMost) {
+  auto fetchRes = fetchBlockForDependency(dependency, atMost);
+  auto rows = fetchRes.second == nullptr ? 0 : fetchRes.second->size();
+  return {fetchRes.first, rows};
+}
+
+template <bool passBlocksThrough>
 bool MultiDependencyProxyMock<passBlocksThrough>::allBlocksFetched() const {
   for (auto& dep : _dependencyMocks) {
     if (!dep.allBlocksFetched()) {

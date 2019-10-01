@@ -101,6 +101,9 @@ class MultiDependencyProxyMock
       size_t dependency,
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 
+  std::pair<arangodb::aql::ExecutionState, size_t> skipSomeForDependency(size_t dependency,
+                                                                         size_t atMost) override;
+
   inline size_t numberDependencies() const override {
     return _dependencyMocks.size();
   }
