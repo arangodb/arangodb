@@ -116,7 +116,7 @@ void AcceptorTcp<T>::open() {
   }
   _open = true;
   
-  LOG_TOPIC("853A9", DEBUG, arangodb::Logger::COMMUNICATION)
+  LOG_TOPIC("853a9", DEBUG, arangodb::Logger::COMMUNICATION)
   << "successfully opened acceptor TCP";
   
   asyncAccept();
@@ -161,7 +161,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
     
-    LOG_TOPIC("853AA", DEBUG, arangodb::Logger::COMMUNICATION)
+    LOG_TOPIC("853aa", DEBUG, arangodb::Logger::COMMUNICATION)
     << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
 
     auto commTask =

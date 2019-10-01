@@ -2129,7 +2129,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       TRI_ASSERT(phy != nullptr);
       Result r = phy->meta().deserializeMeta(_db, *collection);
       if (r.fail()) {
-        LOG_TOPIC("4A404", ERR, arangodb::Logger::ENGINES) << "error while "
+        LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES) << "error while "
         << "loading metadata of collection '" << collection->name() << "': '"
         << r.errorMessage() << "'";
       }
