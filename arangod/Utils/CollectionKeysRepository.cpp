@@ -36,7 +36,7 @@ size_t const CollectionKeysRepository::MaxCollectCount = 32;
 /// @brief create a collection keys repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionKeysRepository::CollectionKeysRepository() : _lock(), _keys() {
+CollectionKeysRepository::CollectionKeysRepository() : _lock(), _keys(), _stopped(false) {
   _keys.reserve(64);
 }
 
