@@ -54,9 +54,11 @@ function explainSuite () {
       db._drop(cn);
       c = db._create(cn);
 
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        c.save({ _key: "testkey" + i, value: i });
+        docs.push({ _key: "testkey" + i, value: i });
       }
+      c.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
