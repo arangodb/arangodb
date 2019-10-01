@@ -71,11 +71,3 @@ SharedAqlItemBlockPtr itemBlock::concatenate(AqlItemBlockManager& manager,
 
   return res;
 }
-
-void itemBlock::forRowInBlock(SharedAqlItemBlockPtr const& block,
-                              std::function<void(InputAqlItemRow&&)> const& callback) {
-  TRI_ASSERT(block != nullptr);
-  for (std::size_t index = 0; index < block->size(); ++index) {
-    callback(InputAqlItemRow{block, index});
-  }
-}

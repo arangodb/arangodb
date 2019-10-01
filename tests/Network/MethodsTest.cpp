@@ -26,20 +26,22 @@
 
 #include "gtest/gtest.h"
 
-#include "Network/ConnectionPool.h"
-#include "Network/Methods.h"
-#include "Network/NetworkFeature.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Mocks/Servers.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Cluster/ClusterFeature.h"
+#include "Network/ConnectionPool.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 
@@ -82,33 +84,20 @@ struct DummyPool : public network::ConnectionPool {
   std::shared_ptr<DummyConnection> _conn;
 };
 
-struct NetworkMethodsTest : public ::testing::Test {
-  NetworkMethodsTest() : server(false), pool(config()) {
-    // suppress {threads} scheduler loop caught exception: bad_function_call
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
-                                    arangodb::LogLevel::FATAL);
-
+struct NetworkMethodsTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
+  NetworkMethodsTest() : server(false) {
     server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
+
+    pool = std::make_unique<DummyPool>(config());
   }
 
-  ~NetworkMethodsTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
-                                    arangodb::LogLevel::DEFAULT);
-  }
-
- protected:
-  
-  void SetUp() override {
-    auto& feature = server.getFeature<arangodb::NetworkFeature>();
-    feature.setPoolTesting(&this->pool);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  
-  // void TearDown() override {}
-  
-  static network::ConnectionPool::Config config() {
+ private:
+  network::ConnectionPool::Config config() {
     network::ConnectionPool::Config config;
+    config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
@@ -116,24 +105,24 @@ struct NetworkMethodsTest : public ::testing::Test {
     return config;
   }
 
+ protected:
   tests::mocks::MockCoordinator server;
-  DummyPool pool;
+  std::unique_ptr<DummyPool> pool;
 };
 
 TEST_F(NetworkMethodsTest, simple_request) {
-  pool._conn->_err = fuerte::Error::NoError;
-  
+  pool->_conn->_err = fuerte::Error::NoError;
+
   fuerte::ResponseHeader header;
   header.responseCode = fuerte::StatusAccepted;
   header.contentType(fuerte::ContentType::VPack);
-  pool._conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"error\":false}");
   auto resBuffer = b->steal();
-  pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
-  
+  pool->_conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
+
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.getFeature<arangodb::NetworkFeature>();
-  auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+  auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, network::Timeout(60.0));
 
   network::Response res = std::move(f).get();
@@ -144,11 +133,10 @@ TEST_F(NetworkMethodsTest, simple_request) {
 }
 
 TEST_F(NetworkMethodsTest, request_failure) {
-  pool._conn->_err = fuerte::Error::ConnectionClosed;
-  
+  pool->_conn->_err = fuerte::Error::ConnectionClosed;
+
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.getFeature<NetworkFeature>();
-  auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+  auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, network::Timeout(60.0));
 
   network::Response res = std::move(f).get();
@@ -159,29 +147,29 @@ TEST_F(NetworkMethodsTest, request_failure) {
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   // Step 1: Provoke a connection error
-  pool._conn->_err = fuerte::Error::CouldNotConnect;
-  
+  pool->_conn->_err = fuerte::Error::CouldNotConnect;
+
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.getFeature<NetworkFeature>();
-  auto f = network::sendRequestRetry(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
-                                     "/", buffer, network::Timeout(5.0));
+  auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
+                                     fuerte::RestVerb::Get, "/", buffer,
+                                     network::Timeout(5.0));
 
   // the default behaviour should be to retry after 200 ms
   std::this_thread::sleep_for(std::chrono::milliseconds(5));
   ASSERT_FALSE(f.isReady());
-  ASSERT_EQ(pool._conn->_sendRequestNum, 1);
-  
+  ASSERT_EQ(pool->_conn->_sendRequestNum, 1);
+
   // Step 2: Now respond with no error
-  pool._conn->_err = fuerte::Error::NoError;
-  
+  pool->_conn->_err = fuerte::Error::NoError;
+
   fuerte::ResponseHeader header;
   header.contentType(fuerte::ContentType::VPack);
   header.responseCode = fuerte::StatusAccepted;
-  pool._conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"error\":false}");
   auto resBuffer = b->steal();
-  pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
-  
+  pool->_conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
+
   auto status = f.wait_for(std::chrono::milliseconds(350));
   ASSERT_EQ(futures::FutureStatus::Ready, status);
   
@@ -193,41 +181,40 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
 }
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
-    // Step 1: Provoke a data source not found error
-    pool._conn->_err = fuerte::Error::NoError;
-    fuerte::ResponseHeader header;
-    header.contentType(fuerte::ContentType::VPack);
-    header.responseCode = fuerte::StatusNotFound;
-    pool._conn->_response = std::make_unique<fuerte::Response>(std::move(header));
-    std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"errorNum\":1203}");
-    auto resBuffer = b->steal();
-    pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
-    
-    VPackBuffer<uint8_t> buffer;
-    auto& feature = server.getFeature<NetworkFeature>();
-    auto f = network::sendRequestRetry(feature, "tcp://example.org:80",
-                                       fuerte::RestVerb::Get, "/", buffer,
-                                       network::Timeout(5.0), {}, true);
+  // Step 1: Provoke a data source not found error
+  pool->_conn->_err = fuerte::Error::NoError;
+  fuerte::ResponseHeader header;
+  header.contentType(fuerte::ContentType::VPack);
+  header.responseCode = fuerte::StatusNotFound;
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"errorNum\":1203}");
+  auto resBuffer = b->steal();
+  pool->_conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
 
-    // the default behaviour should be to retry after 200 ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    ASSERT_FALSE(f.isReady());
-    
-    // Step 2: Now respond with no error
-    pool._conn->_err = fuerte::Error::NoError;
-    
-    header.responseCode = fuerte::StatusAccepted;
-    header.contentType(fuerte::ContentType::VPack);
-    pool._conn->_response = std::make_unique<fuerte::Response>(std::move(header));
-    b = VPackParser::fromJson("{\"error\":false}");
-    pool._conn->_response->setPayload(*(b->steal().get()), 0);
-    
-    auto status = f.wait_for(std::chrono::milliseconds(350));
-    ASSERT_EQ(futures::FutureStatus::Ready, status);
-    
-    network::Response res = std::move(f).get();
-    ASSERT_EQ(res.destination, "tcp://example.org:80");
-    ASSERT_EQ(res.error, fuerte::Error::NoError);
-    ASSERT_NE(res.response, nullptr);
-    ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
+  VPackBuffer<uint8_t> buffer;
+  auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
+                                     fuerte::RestVerb::Get, "/", buffer,
+                                     network::Timeout(5.0), {}, true);
+
+  // the default behaviour should be to retry after 200 ms
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  ASSERT_FALSE(f.isReady());
+  
+  // Step 2: Now respond with no error
+  pool->_conn->_err = fuerte::Error::NoError;
+
+  header.responseCode = fuerte::StatusAccepted;
+  header.contentType(fuerte::ContentType::VPack);
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  b = VPackParser::fromJson("{\"error\":false}");
+  pool->_conn->_response->setPayload(*(b->steal().get()), 0);
+
+  auto status = f.wait_for(std::chrono::milliseconds(350));
+  ASSERT_EQ(futures::FutureStatus::Ready, status);
+  
+  network::Response res = std::move(f).get();
+  ASSERT_EQ(res.destination, "tcp://example.org:80");
+  ASSERT_EQ(res.error, fuerte::Error::NoError);
+  ASSERT_NE(res.response, nullptr);
+  ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
 }

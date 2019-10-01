@@ -316,8 +316,9 @@ class GatherNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(std::make_unique<GatherNode>(plan, _id, _sortmode),
-                       withDependencies, withProperties);
+    auto other = std::make_unique<GatherNode>(plan, _id, _sortmode);
+    other->setConstrainedSortLimit(constrainedSortLimit());
+    return cloneHelper(std::move(other), withDependencies, withProperties);
   }
 
   /// @brief creates corresponding ExecutionBlock
@@ -344,6 +345,12 @@ class GatherNode final : public ExecutionNode {
   SortMode sortMode() const noexcept { return _sortmode; }
   void sortMode(SortMode sortMode) noexcept { _sortmode = sortMode; }
 
+  void setConstrainedSortLimit(size_t limit) noexcept;
+
+  size_t constrainedSortLimit() const noexcept;
+
+  bool isSortingGather() const noexcept;
+
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
@@ -351,6 +358,10 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
+
+  /// @brief In case this was created from a constrained heap sorting node, this
+  /// is its limit (which is greater than zero). Otherwise, it's zero.
+  size_t _limit;
 };
 
 /// @brief class RemoteNode

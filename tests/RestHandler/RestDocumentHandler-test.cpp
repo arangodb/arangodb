@@ -22,8 +22,10 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/RestHandlerMock.h"
-#include "../Mocks/Servers.h"
+#include "IResearch/RestHandlerMock.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+
 #include "Basics/StaticStrings.h"
 #include "RestHandler/RestDocumentHandler.h"
 
@@ -31,7 +33,8 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class RestDocumentHandlerTestBase {
+class RestDocumentHandlerTestBase
+    : public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
  protected:
   arangodb::tests::mocks::MockRestServer server;
 

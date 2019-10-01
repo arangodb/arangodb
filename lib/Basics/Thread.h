@@ -89,12 +89,14 @@ class Thread {
          bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
- public:
   // whether or not the thread is allowed to start during prepare
   virtual bool isSystem() { return false; }
 
   /// @brief whether or not the thread is chatty on shutdown
   virtual bool isSilent() { return false; }
+
+  /// @brief the underlying application server
+  application_features::ApplicationServer& server() { return _server; }
 
   /// @brief flags the thread as stopping
   /// Classes that override this function must ensure that they
@@ -145,9 +147,6 @@ class Thread {
   void shutdown();
 
  protected:
-  application_features::ApplicationServer& _server;
-
- protected:
   /// @brief the thread program
   virtual void run() = 0;
 
@@ -160,9 +159,11 @@ class Thread {
   void markAsStopped();
   void runMe();
   void releaseRef();
+ 
+ protected:
+  application_features::ApplicationServer& _server;
 
  private:
-  bool const _deleteOnExit;
   std::atomic<bool> _threadStructInitialized;
   std::atomic<int> _refs;
 
@@ -177,6 +178,8 @@ class Thread {
   // Failure to terminate within the specified time results in process abortion!
   // The default value is INFINITE, i.e., we want to wait forever instead of aborting the process.
   std::uint32_t _terminationTimeout;
+  
+  bool const _deleteOnExit;
 
   basics::ConditionVariable* _finishedCondition;
 

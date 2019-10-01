@@ -54,6 +54,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
+  Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
@@ -180,6 +181,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
+  Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Network/ConnectionPoolTest.cpp
