@@ -961,7 +961,7 @@ void IResearchViewMergeExecutor<ordered>::reset() {
     auto sortReader = ::sortColumn(segment);
 
     if (!sortReader) {
-      LOG_TOPIC("ad14z", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("af4cd", WARN, arangodb::iresearch::TOPIC)
           << "encountered a sub-reader without a sort column while "
              "executing a query, ignoring";
       continue;
@@ -1012,7 +1012,7 @@ void IResearchViewMergeExecutor<ordered>::reset() {
     auto pkReader = ::pkColumn(segment);
 
     if (!pkReader) {
-      LOG_TOPIC("bd81z", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("ee041", WARN, arangodb::iresearch::TOPIC)
           << "encountered a sub-reader without a primary key column while "
              "executing a query, ignoring";
       continue;
