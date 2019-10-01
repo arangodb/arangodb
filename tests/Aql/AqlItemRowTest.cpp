@@ -325,6 +325,10 @@ using RowTypes = ::testing::Types<InputAqlItemRow, ShadowAqlItemRow>;
 
 TYPED_TEST_CASE(AqlItemRowsCommonEqTest, RowTypes);
 
+template <class T> T createInvalidRow();
+template <> InputAqlItemRow createInvalidRow<InputAqlItemRow>() { return InputAqlItemRow{CreateInvalidInputRowHint{}}; }
+template <> ShadowAqlItemRow createInvalidRow<ShadowAqlItemRow>() { return ShadowAqlItemRow{CreateInvalidShadowRowHint{}}; }
+
 TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
   using RowType = TypeParam;
   // We use the same value (and shadow row depth) for all rows, so we surely
@@ -338,6 +342,9 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
     block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
     otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
   }
+
+  RowType const invalidRow = createInvalidRow<RowType>();
+  RowType const otherInvalidRow = createInvalidRow<RowType>();
 
   // same rows must be equal
   EXPECT_TRUE((RowType{block, 0}.operator==(RowType{block, 0})));
@@ -376,6 +383,22 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
   EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 0}));
   EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 1})));
   EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 1}));
+
+  // comparisons with an invalid row must be false
+  EXPECT_FALSE((RowType{block, 0}.operator==(invalidRow)));
+  EXPECT_FALSE((RowType{block, 0} == invalidRow));
+  EXPECT_FALSE((invalidRow.operator==(RowType{block, 0})));
+  EXPECT_FALSE((invalidRow == RowType{block, 0}));
+  EXPECT_TRUE((RowType{block, 0}.operator!=(invalidRow)));
+  EXPECT_TRUE((RowType{block, 0} != invalidRow));
+  EXPECT_TRUE((invalidRow.operator!=(RowType{block, 0})));
+  EXPECT_TRUE((invalidRow != RowType{block, 0}));
+
+  // two invalid rows must be equal
+  EXPECT_TRUE((invalidRow.operator==(otherInvalidRow)));
+  EXPECT_TRUE((invalidRow == otherInvalidRow));
+  EXPECT_FALSE((invalidRow.operator!=(otherInvalidRow)));
+  EXPECT_FALSE((invalidRow != otherInvalidRow));
 }
 
 TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
@@ -389,6 +412,9 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
     block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
     otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
   }
+
+  RowType const invalidRow = createInvalidRow<RowType>();
+  RowType const otherInvalidRow = createInvalidRow<RowType>();
 
   // same rows must be considered equivalent
   EXPECT_TRUE((RowType{block, 0}.equates(RowType{block, 0})));
@@ -405,6 +431,13 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
   // an equivalent row in a different block must be considered equivalent, even with a different index
   EXPECT_TRUE((RowType{block, 1}.equates(RowType{otherBlock, 0})));
   EXPECT_TRUE((RowType{otherBlock, 0}.equates(RowType{block, 1})));
+
+  // comparisons with an invalid row must be false
+  EXPECT_FALSE((RowType{block, 0}.equates(invalidRow)));
+  EXPECT_FALSE((invalidRow.equates(RowType{block, 0})));
+
+  // two invalid rows must be equal
+  EXPECT_TRUE((invalidRow.equates(otherInvalidRow)));
 }
 
 class AqlShadowRowsEqTest : public ::testing::Test {
