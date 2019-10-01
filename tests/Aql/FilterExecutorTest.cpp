@@ -64,7 +64,7 @@ class FilterExecutorTest : public ::testing::Test {
 
 TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -77,7 +77,7 @@ TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait
 
 TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -97,7 +97,7 @@ TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
 TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -134,7 +134,7 @@ TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_
 TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -216,7 +216,7 @@ TEST_F(FilterExecutorTest,
        there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_does_not_wait) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -259,7 +259,7 @@ TEST_F(FilterExecutorTest,
        there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_waits) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 

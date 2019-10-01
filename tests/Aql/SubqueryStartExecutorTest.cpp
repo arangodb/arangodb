@@ -79,7 +79,7 @@ TEST_F(SubqueryStartExecutorTest, check_properties) {
 TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   auto infos = MakeBaseInfos(1);
   SubqueryStartExecutor testee(fetcher, infos);
 
@@ -98,7 +98,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
   auto input = VPackParser::fromJson(R"([
       ["a"]
   ])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   auto infos = MakeBaseInfos(1);
   SubqueryStartExecutor testee(fetcher, infos);
 
@@ -123,7 +123,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
       ["b"],
       ["c"]
   ])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   auto infos = MakeBaseInfos(1);
   SubqueryStartExecutor testee(fetcher, infos);
 
@@ -151,7 +151,7 @@ TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
       ["b"],
       ["c"]
   ])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   auto infos = MakeBaseInfos(1);
   SubqueryStartExecutor testee(fetcher, infos);
 
@@ -199,7 +199,7 @@ TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
 
   auto infos = MakeBaseInfos(1);
   {
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
     SubqueryStartExecutor testee(fetcher, infos);
 
     NoStats stats{};
@@ -221,7 +221,7 @@ TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
     // having 3 data rows alternating with 3 shadow rows
   }
   {
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, 6, false, block);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, 6, false, block);
     SubqueryStartExecutor testee(fetcher, infos);
     block.reset(new AqlItemBlock(itemBlockManager, 1000, 1));
 

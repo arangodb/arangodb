@@ -39,7 +39,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool DistinctCollectExecutor::Properties::preservesOrder;
-constexpr bool DistinctCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough DistinctCollectExecutor::Properties::allowsBlockPassthrough;
 constexpr bool DistinctCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(

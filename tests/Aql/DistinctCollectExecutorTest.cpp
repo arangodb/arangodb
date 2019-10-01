@@ -84,7 +84,7 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_doesnt_w
                                      std::move(groupRegisters), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, 2));
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   DistinctCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -102,7 +102,7 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_waits) {
                                      std::move(groupRegisters), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, 2));
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   DistinctCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -130,7 +130,7 @@ TEST_F(DistinctCollectExecutorTest,
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   DistinctCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -174,7 +174,7 @@ TEST_F(DistinctCollectExecutorTest,
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   DistinctCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -226,7 +226,7 @@ TEST_F(DistinctCollectExecutorTest,
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   DistinctCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -287,7 +287,7 @@ TEST_F(DistinctCollectExecutorTest,
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   DistinctCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),

@@ -32,7 +32,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-template <bool>
+template <BlockPassthrough>
 class DependencyProxy;
 
 /**
@@ -44,7 +44,7 @@ class DependencyProxy;
  *        of fetchRow.
  */
 class ConstFetcher {
-  using DependencyProxy = aql::DependencyProxy<true>;
+  using DependencyProxy = aql::DependencyProxy<BlockPassthrough::Enable>;
 
  public:
   explicit ConstFetcher(DependencyProxy& executionBlock);

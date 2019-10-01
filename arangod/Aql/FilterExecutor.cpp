@@ -38,7 +38,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool FilterExecutor::Properties::preservesOrder;
-constexpr bool FilterExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough FilterExecutor::Properties::allowsBlockPassthrough;
 constexpr bool FilterExecutor::Properties::inputSizeRestrictsOutputSize;
 
 FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,

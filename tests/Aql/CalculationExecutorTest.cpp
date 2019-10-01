@@ -109,7 +109,7 @@ class CalculationExecutorTest : public ::testing::Test {
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -126,7 +126,7 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -147,7 +147,7 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -191,7 +191,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
