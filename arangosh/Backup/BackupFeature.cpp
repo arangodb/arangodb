@@ -245,6 +245,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
         LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
         LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
         LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of DBServers: " << meta.get()._nrDBServers;
+        LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of available pieces: " << meta.get()._nrPiecesPresent;
         if (!meta.get()._serverId.empty()) {
           LOG_TOPIC("11112", INFO, arangodb::Logger::BACKUP) << "      serverId: " << meta.get()._serverId;
         }
