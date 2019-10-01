@@ -42,7 +42,6 @@ function optimizerIndexesTestSuite () {
   var idx = null;
   var idx1 = null;
   let deleteDefaultIdx = function() {
-    // c.dropIndex(c.getIndexes()[1])
     db._dropIndex(idx);
     idx = null;
   };
