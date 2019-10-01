@@ -32,17 +32,45 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
-  if (_dataFetched) {
-    return {ExecutionState::DONE, nullptr};
+  switch (_dataFetchedState) {
+    case ALL_DATA_FETCHED:
+      // Avoid unnecessary upstream calls
+      return {ExecutionState::DONE, nullptr};
+    case NONE:
+    case SHADOW_ROW_FETCHED: {
+      auto state = fetchData();
+      if (state == ExecutionState::WAITING) {
+        return {state, nullptr};
+      }
+      _dataFetchedState = ALL_DATA_FETCHED;
+      return {state, _aqlItemMatrix.get()};
+    }
+    case DATA_FETCH_ONGOING:
+      // Invalid state, we switch between singleRow
+      // and allRows fetches.
+      TRI_ASSERT(false);
+      // In production hand out the Matrix
+      // This way the function behaves as if no single row fetch would have taken place
+      _dataFetchedState = ALL_DATA_FETCHED;
+      return {ExecutionState::DONE, _aqlItemMatrix.get()};
   }
-  // Avoid unnecessary upstream calls
+  // Unreachable code
+  TRI_ASSERT(false);
+  return {ExecutionState::DONE, nullptr};
+}
+
+std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMost) {
+  if (_dataFetchedState == ALL_DATA_FETCHED) {
+    // Avoid unnecessary upstream calls
+    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+  }
 
   auto state = fetchData();
   if (state == ExecutionState::WAITING) {
-    return {state, nullptr};
+    return {state, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  _dataFetched = true;
-  return {state, _aqlItemMatrix.get()};
+
+  return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
 }
 
 ExecutionState AllRowsFetcher::fetchData() {
@@ -100,7 +128,7 @@ AllRowsFetcher::AllRowsFetcher(DependencyProxy<false>& executionBlock)
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),
       _blockToReturnNext(0),
-      _dataFetched(false) {}
+      _dataFetchedState(NONE) {}
 
 RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
@@ -116,7 +144,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
     std::size_t limit = ExecutionBlock::DefaultBatchSize()) {
-  // TODO FIXME, this implementation does not cover shadowRows
+  // TODO this method is considered obsolete.
+  // It cannot yet be removed as we need modification on the calling Executors which is ongoing
+  // However this method will not be fixed and updated for ShadowRows
   while (_upstreamState != ExecutionState::DONE) {
     auto state = fetchUntilDone();
     if (state == ExecutionState::WAITING) {
@@ -124,12 +154,16 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForMo
     }
   }
   TRI_ASSERT(_aqlItemMatrix != nullptr);
+  // This is to remember that this function is obsolete and needs to be removed
+  // before releasing the ShadowRow improvement!
+  TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
   auto size = _aqlItemMatrix->numberOfBlocks();
   if (_blockToReturnNext >= size) {
     return {ExecutionState::DONE, nullptr};
   }
   auto blk = _aqlItemMatrix->getBlock(_blockToReturnNext);
   ++_blockToReturnNext;
+
   return {(_blockToReturnNext < size ? ExecutionState::HASMORE : ExecutionState::DONE),
           std::move(blk)};
 }
@@ -154,6 +188,13 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPa
 }
 
 std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_t atMost) {
+  TRI_ASSERT(_dataFetchedState != DATA_FETCH_ONGOING);
+  if (ADB_UNLIKELY(_dataFetchedState == DATA_FETCH_ONGOING)) {
+    // If we get into this case the logic of the executors is violated.
+    // We urgently need to investigate every query that gets into this sate.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Internal AQL dataFlow error.");
+  }
   // We are required to fetch data rows first!
   TRI_ASSERT(_aqlItemMatrix != nullptr);
 
@@ -170,15 +211,24 @@ std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_
   }
 
   ShadowAqlItemRow row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  if (_aqlItemMatrix->stoppedOnShadowRow()) {
-    if (_dataFetched || !_aqlItemMatrix->peekShadowRow().isRelevant()) {
-      row = _aqlItemMatrix->popShadowRow();
-      _dataFetched = false;
-    }
+  // We do only POP a shadow row, if we are actually stopping on one.
+  // and if we have either returned all data before it (ALL_DATA_FETCHED)
+  // or it is NOT relevant.
+  if (_aqlItemMatrix->stoppedOnShadowRow() &&
+      (_dataFetchedState == ALL_DATA_FETCHED ||
+       !_aqlItemMatrix->peekShadowRow().isRelevant())) {
+    row = _aqlItemMatrix->popShadowRow();
+    // We handed out a shadowRow
+    _dataFetchedState = SHADOW_ROW_FETCHED;
   }
-  if (!_dataFetched &&
+
+  // We need to return more only if we are in the state that we have read a
+  // ShadowRow And we still have items in the Matrix.
+  // else we return the upstream state.
+  if (_dataFetchedState == SHADOW_ROW_FETCHED &&
       (_aqlItemMatrix->size() > 0 || _aqlItemMatrix->stoppedOnShadowRow())) {
     state = ExecutionState::HASMORE;
   }
+
   return {state, row};
 }

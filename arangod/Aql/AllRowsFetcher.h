@@ -79,6 +79,14 @@ class ShadowAqlItemRow;
  * - This class should be used if the Executor requires that ALL input is produced before it can start to work, e.g. it gives guarantees on side effects or needs to do Sorting.
  */
 class AllRowsFetcher {
+ private:
+  enum FetchState {
+    NONE,
+    DATA_FETCH_ONGOING,
+    ALL_DATA_FETCHED,
+    SHADOW_ROW_FETCHED
+  };
+
  public:
   explicit AllRowsFetcher(DependencyProxy<false>& executionBlock);
 
@@ -107,6 +115,33 @@ class AllRowsFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
+
+  /**
+   * @brief Fetch one new AqlItemRow from upstream.
+   *        **Guarantee**: the row returned is valid only
+   *        until the next call to fetchRow.
+   *        **Guarantee**: All input rows have been produced from upstream before the first row is returned here
+   *
+   * @param atMost may be passed if a block knows the maximum it might want to
+   *        fetch from upstream (should apply only to the LimitExecutor). Will
+   *        not fetch more than the default batch size, so passing something
+   *        greater than it will not have any effect.
+   *
+   * @return A pair with the following properties:
+   *         ExecutionState:
+   *           WAITING => IO going on, immediatly return to caller.
+   *           DONE => No more to expect from Upstream, if you are done with
+   *                   this row return DONE to caller.
+   *           HASMORE => There is potentially more from above, call again if
+   *                      you need more input.
+   *         AqlItemRow:
+   *           If WAITING => Do not use this Row, it is a nullptr.
+   *           If HASMORE => The Row is guaranteed to not be a nullptr.
+   *           If DONE => Row can be a nullptr (nothing received) or valid.
+   */
+  // This is only TEST_VIRTUAL, so we ignore this lint warning:
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // AllRowsFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
@@ -149,7 +184,7 @@ class AllRowsFetcher {
   ExecutionState _upstreamState;
   std::size_t _blockToReturnNext;
 
-  bool _dataFetched;
+  FetchState _dataFetchedState;
 
  private:
   /**

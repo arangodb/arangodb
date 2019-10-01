@@ -416,6 +416,40 @@ TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchRows, AllRowsFetcherPattern4Test);
 TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchRows, AllRowsFetcherPattern5Test);
 TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchRows, AllRowsFetcherPattern6Test);
 
+class AllRowsFetcherFetchSingleRow
+    : public fetcherHelper::PatternTestWrapper<AllRowsFetcher> {
+ public:
+  AllRowsFetcherFetchSingleRow()
+      : fetcherHelper::PatternTestWrapper<AllRowsFetcher>() {}
+
+  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    ExecutionState state = ExecutionState::HASMORE;
+
+    // Fetch all rows until done
+    for (auto const& it : dataResults) {
+      std::tie(state, row) = _fetcher.fetchRow();
+      if (it != dataResults.back()) {
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      }
+      // We cannot guarantee the DONE case on end, as we potentially need to fetch from upstream
+      ASSERT_TRUE(row.isInitialized());
+      EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
+    }
+    // Now assert that we will forever stay in the DONE state and do not move on.
+    std::tie(state, row) = _fetcher.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row.isInitialized());
+  }
+};
+
+TEST_SHADOWROW_PATTERN_1(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern1Test);
+TEST_SHADOWROW_PATTERN_2(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern2Test);
+TEST_SHADOWROW_PATTERN_3(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern3Test);
+TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern4Test);
+TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern5Test);
+TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern6Test);
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
