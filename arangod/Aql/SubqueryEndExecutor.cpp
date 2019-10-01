@@ -21,17 +21,20 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/SubqueryEndExecutor.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SubqueryEndExecutor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool SubqueryEndExecutor::Properties::preservesOrder;
+constexpr bool SubqueryEndExecutor::Properties::allowsBlockPassthrough;
+constexpr bool SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -42,17 +45,15 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     transaction::Methods* trxPtr, RegisterId outReg)
     : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr), _outReg(outReg) { }
+      _trxPtr(trxPtr),
+      _outReg(outReg) {}
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
-    : _fetcher(fetcher),
-      _infos(infos),
-      _accumulator(nullptr),
-      _state(ACCUMULATE) {
+    : _fetcher(fetcher), _infos(infos), _accumulator(nullptr), _state(ACCUMULATE) {
   resetAccumulator();
 }
 
@@ -125,7 +126,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         // Reset the accumulator in case we read more data
         resetAccumulator();
 
-        if (state ==  ExecutionState::DONE) {
+        if (state == ExecutionState::DONE) {
           return {ExecutionState::DONE, NoStats{}};
         } else {
           _state = FORWARD_IRRELEVANT_SHADOW_ROWS;
