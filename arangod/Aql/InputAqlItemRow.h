@@ -47,7 +47,7 @@ struct AqlValue;
 
 struct CreateInvalidInputRowHint {
   // Forbid creating this via `{}`
-  explicit CreateInvalidInputRowHint() = default;
+  constexpr explicit CreateInvalidInputRowHint() = default;
 };
 
 /**
@@ -63,7 +63,8 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint);
+  constexpr explicit InputAqlItemRow(CreateInvalidInputRowHint)
+      : _block(nullptr), _baseIndex(0) {}
 
   InputAqlItemRow(
       // cppcheck-suppress passedByValue

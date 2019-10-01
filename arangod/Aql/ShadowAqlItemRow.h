@@ -32,7 +32,7 @@ namespace aql {
 
 struct CreateInvalidShadowRowHint {
   // Forbid creating this via `{}`
-  explicit CreateInvalidShadowRowHint() = default;
+  constexpr explicit CreateInvalidShadowRowHint() = default;
 };
 
 /**
@@ -53,7 +53,8 @@ struct CreateInvalidShadowRowHint {
 
 class ShadowAqlItemRow {
  public:
-  explicit ShadowAqlItemRow(CreateInvalidShadowRowHint);
+  constexpr explicit ShadowAqlItemRow(CreateInvalidShadowRowHint)
+      : _block(nullptr), _baseIndex(0) {}
 
   explicit ShadowAqlItemRow(
       // cppcheck-suppress passedByValue

@@ -25,9 +25,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ShadowAqlItemRow::ShadowAqlItemRow(CreateInvalidShadowRowHint)
-    : _block(nullptr), _baseIndex(0) {}
-
 ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(isInitialized());
@@ -98,7 +95,7 @@ bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
-    return isInitialized() && other.isInitialized();
+    return isInitialized() == other.isInitialized();
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(getNrRegisters() == other.getNrRegisters());

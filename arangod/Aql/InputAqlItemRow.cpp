@@ -251,9 +251,6 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   result.add("raw", raw.slice());
 }
 
-InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
-    : _block(nullptr), _baseIndex(0) {}
-
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
@@ -292,7 +289,7 @@ bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
-    return isInitialized() && other.isInitialized();
+    return isInitialized() == other.isInitialized();
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
