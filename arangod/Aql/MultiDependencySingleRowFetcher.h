@@ -160,6 +160,10 @@ class MultiDependencySingleRowFetcher {
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
                                                                       size_t atMost);
+
+  bool isAtShadowRow(DependencyInfo const& info) const;
+
+  bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
 };
 
 }  // namespace aql

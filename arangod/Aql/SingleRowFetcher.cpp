@@ -135,6 +135,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchShadowRow(size_t atMost) {
+  // TODO We should never fetch from upstream here, as we can't know atMost - only the executor does.
   if (!fetchBlockIfNecessary(atMost)) {
     return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
   }
