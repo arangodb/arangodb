@@ -413,6 +413,16 @@ TEST_F(HotBackupTest, test_repository_normalization) {
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(repo, "local:/a");
 
+  repo = "local:/a/../";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/");
+
+  repo = "local:/../a/.././";
+  result = RClone::normalizeRepositoryString(config, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/");
+
   repo = "S3:////////////";
   result = RClone::normalizeRepositoryString(config, repo);
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
