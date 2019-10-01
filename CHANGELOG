@@ -10,6 +10,11 @@ devel
 
 * DB server locking / unlocking for hot backup revisited and enhanced.
 
+* Fixed unintended multiple unlock commands from coordinator to
+  transaction locked db servers.
+
+* Use execvp instead of execv in hotbackup restore.
+
 * Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
   in the cluster. It now also may speed up fullCount with sorted indexes and a
   limit.
