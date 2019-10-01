@@ -4314,7 +4314,7 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
         return arangodb::Result(
           TRI_ERROR_CLUSTER_TIMEOUT, "timeout waiting for all db servers to report backup list");
       } else {
-        LOG_TOPIC("f9u3f", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
+        LOG_TOPIC("f9f3f", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
         std::this_thread::sleep_for(wait);
         wait *= 1.1;
       }
