@@ -73,6 +73,7 @@ function optimizerIndexesTestSuite () {
     tearDown: function() {
       if (idx1 !== null) {
         db._dropIndex(idx1);
+        idx1 = null;
       }
     },
 
