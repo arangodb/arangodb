@@ -478,38 +478,40 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
                                                         application_features::ApplicationServer& server) {
   Result res;
-    
-  auto const& cl = server.getFeature<ClusterFeature>();
+   
+  if (slice.isObject()) {
+    auto const& cl = server.getFeature<ClusterFeature>();
 
-  auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
-  if (numberOfShardsSlice.isNumber()) {
-    uint32_t const maxNumberOfShards = cl.maxNumberOfShards();
-    uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
-    if (maxNumberOfShards > 0 &&
-        numberOfShards > maxNumberOfShards) {
-      res.reset(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
-                std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
+    auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
+    if (numberOfShardsSlice.isNumber()) {
+      uint32_t const maxNumberOfShards = cl.maxNumberOfShards();
+      uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
+      if (maxNumberOfShards > 0 &&
+          numberOfShards > maxNumberOfShards) {
+        res.reset(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
+            std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
+      }
     }
-  }
 
-  auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
-  if (replicationFactorSlice.isNumber()) {
-    int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
-    if (replicationFactorProbe <= 0) {
-      res.reset(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
-    } else {
-      uint32_t const minReplicationFactor = cl.minReplicationFactor();
-      uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
-      uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+    auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+    if (replicationFactorSlice.isNumber()) {
+      int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
+      if (replicationFactorProbe <= 0) {
+        res.reset(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+      } else {
+        uint32_t const minReplicationFactor = cl.minReplicationFactor();
+        uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
+        uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
 
-      if (replicationFactor > maxReplicationFactor &&
-          maxReplicationFactor > 0) {
-        res.reset(TRI_ERROR_BAD_PARAMETER,
-                  std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
-      } else if (replicationFactor < minReplicationFactor &&
-                 minReplicationFactor > 0) {
-        res.reset(TRI_ERROR_BAD_PARAMETER,
-                  std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+        if (replicationFactor > maxReplicationFactor &&
+            maxReplicationFactor > 0) {
+          res.reset(TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+        } else if (replicationFactor < minReplicationFactor &&
+            minReplicationFactor > 0) {
+          res.reset(TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+        }
       }
     }
   }
