@@ -40,7 +40,7 @@ function optimizerEdgeIndexTestSuite () {
   var e;
 
   return {
-    setUp: function () {
+    setUpAll: function () {
       db._drop('UnitTestsCollection');
       db._drop('UnitTestsEdgeCollection');
       db._create('UnitTestsCollection');
@@ -59,7 +59,7 @@ function optimizerEdgeIndexTestSuite () {
       internal.waitForEstimatorSync();
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop('UnitTestsCollection');
       db._drop('UnitTestsEdgeCollection');
     },

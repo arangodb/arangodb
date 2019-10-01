@@ -59,6 +59,8 @@
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/IndexHint.h"
+#include "Aql/Variable.h"
+#include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"

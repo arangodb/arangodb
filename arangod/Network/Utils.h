@@ -36,8 +36,8 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
-class NetworkFeature;
 class ClusterInfo;
+class NetworkFeature;
 
 namespace network {
 
