@@ -48,7 +48,6 @@ struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
 class TransactionState;
-struct TtlStatistics;
 
 /// @brief convert ClusterComm error into arango error code
 int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
@@ -232,17 +231,6 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
 
 int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                            bool waitForCollector, double maxWaitTime = -1.0);
-
-/// @brief get TTL statistics from all DBservers and aggregate them
-Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
-
-/// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
-
-/// @brief set TTL properties on all DBservers
-Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
-                                      arangodb::velocypack::Slice const& properties,
-                                      arangodb::velocypack::Builder& out);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
