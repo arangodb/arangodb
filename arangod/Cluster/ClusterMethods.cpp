@@ -1221,7 +1221,7 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
           }
         }
 
-        auto aggregate_indexes = [](std::vector<double> vec) -> double {
+        auto aggregate_indexes = [](std::vector<double> const& vec) -> double {
           TRI_ASSERT(!vec.empty());
           double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
           rv /= static_cast<double>(vec.size());
@@ -1985,17 +1985,16 @@ void fetchVerticesFromEngines(
   // And go fast-path
 
   // slow path, sharding not deducable from _id
-  transaction::BuilderLeaser lease(&trx);
-  lease->clear();
-  lease->openObject();
-  lease->add(VPackValue("keys"));
-  lease->openArray();
+  VPackBufferUInt8 buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(VPackValue("keys"));
+  builder.openArray();
   for (auto const& v : vertexIds) {
-    // TRI_ASSERT(v.isString());
-    lease->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
+    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
-  lease->close();  // 'keys' Array
-  lease->close();  // base object
+  builder.close();  // 'keys' Array
+  builder.close();  // base object
 
   std::string const url = "/_db/" + StringUtils::urlEncode(trx.vocbase().name()) +
                           "/_internal/traverser/vertex/";
@@ -2005,8 +2004,6 @@ void fetchVerticesFromEngines(
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
-  VPackBufferUInt8 buffer;
-  buffer.append(lease->data(), lease->size());
   for (auto const& engine : *engines) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
@@ -2031,8 +2028,7 @@ void fetchVerticesFromEngines(
             THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
           }
           if (r.response->statusCode() != fuerte::StatusOK) {
-            int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                resSlice, "errorNum", TRI_ERROR_INTERNAL);
+            int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
             // We have an error case here. Throw it.
             THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
                                                      resSlice, StaticStrings::ErrorMessage,
@@ -2134,8 +2130,7 @@ void fetchVerticesFromEngines(
             THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
           }
           if (r.response->statusCode() != fuerte::StatusOK) {
-            int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                resSlice, "errorNum", TRI_ERROR_INTERNAL);
+            int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
             // We have an error case here. Throw it.
             THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
                                                      resSlice, StaticStrings::ErrorMessage,
@@ -2399,10 +2394,13 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
+  
+  VPackBufferUInt8 buffer;
+  buffer.append(VPackSlice::noneSlice().begin(), 1); // necessary for some reason
   for (std::string const& server : DBservers) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Put,
-                                  url, VPackBufferUInt8(), network::Timeout(120)));
+                                  url, buffer, network::Timeout(120)));
   }
 
   return futures::collectAll(std::move(futures))
@@ -2692,7 +2690,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
     }
 
     if (resSlice.get("error").getBoolean()) {
-      return arangodb::Result(static_cast<int>(resSlice.get("errorNum").getNumber<uint64_t>()),
+      return arangodb::Result(static_cast<int>(resSlice.get(StaticStrings::ErrorNum).getNumber<uint64_t>()),
                               resSlice.get("errorMessage").copyString());
     }
 

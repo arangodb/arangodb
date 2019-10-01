@@ -115,8 +115,6 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
 
   arangodb::aql::Query query(false, vocbase, aql::QueryString(queryString(dir)),
                              bindParameters, options, arangodb::aql::PART_MAIN);
-  query.queryOptions().cache = false;
-
   return query.executeSync(QueryRegistryFeature::registry());
 }
 }  // namespace
