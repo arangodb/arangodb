@@ -182,7 +182,7 @@ function lateDocumentMaterializationRuleTestSuite () {
           // the other sort node should be limited but not a materializer
           // BM25 node on single and TFIDF on cluster as for cluster
           // only first sort will be on DBServers
-          assertEqual(nodeDependency.limit, isCluster ? 4 : 10);
+          assertEqual(nodeDependency.limit, isCluster ? 10 : 4);
         }
         nodeDependency = node; // as we walk the plan this will be next node dependency
       });
@@ -270,7 +270,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       plan.nodes.forEach(function(node) {
         if( node.type === "MaterializerNode") {
           assertFalse(materializeNodeFound); // no double materialization
-          assertEqual(nodeDependency.limit, isCluster ? 6 : 4);
+          assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
           materializeNodeFound = true;
         }
         nodeDependency = node;
@@ -295,7 +295,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       plan.nodes.forEach(function(node) {
         if( node.type === "MaterializerNode") {
           assertFalse(materializeNodeFound);
-          assertEqual(nodeDependency.limit, isCluster ? 6 : 4);
+          assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
           materializeNodeFound = true;
         }
         nodeDependency = node;

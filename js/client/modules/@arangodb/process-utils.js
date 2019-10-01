@@ -601,8 +601,9 @@ function killWithCoreDump (options, instanceInfo) {
 // / @brief aggregates information from /proc about the SUT
 // //////////////////////////////////////////////////////////////////////////////
 function getProcessStats(pid) {
-  let processStats = statisticsExternal(pid);
+  let processStats = undefined;
   if (platform === 'linux') {
+    processStats = statisticsExternal(pid);
     let pidStr = "" + pid;
     let ioraw;
     try {
