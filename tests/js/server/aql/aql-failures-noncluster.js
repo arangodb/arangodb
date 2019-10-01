@@ -79,6 +79,10 @@ function ahuacatlFailureSuite () {
       e.insert(docs);
     },
 
+    setUp: function () {
+      idx = null;
+    },
+
     tearDownAll: function () {
       internal.debugClearFailAt();
       db._drop(cn);
@@ -89,6 +93,10 @@ function ahuacatlFailureSuite () {
 
     tearDown: function() {
       internal.debugClearFailAt();
+      if (idx != null) {
+        db._dropIndex(idx);
+        idx = null;
+      }
     },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test UNION for memleaks
