@@ -27,10 +27,19 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
+#include "Logger/LogMacros.h"
 using namespace arangodb;
 using namespace arangodb::aql;
 
 static constexpr uint32_t InvalidRowIndex{UINT32_MAX};
+
+namespace {
+static uint32_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
+  auto const& shadowIndexes = block->getShadowRowIndexes();
+  TRI_ASSERT(!shadowIndexes.empty());
+  return (*shadowIndexes.rbegin()) + 1;
+}
+}  // namespace
 
 size_t AqlItemMatrix::numberOfBlocks() const noexcept { return _blocks.size(); }
 
@@ -49,18 +58,24 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   if (!empty()) {
     result.reserve(size());
     uint32_t index = 0;
-    for (auto const& block : _blocks) {
+    if (_blocks.size() == 1) {
+      // Special case, we only have a single block
+      auto const& block = _blocks.front();
       // Default case, 0 -> end
       uint32_t startRow = 0;
       // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
       uint32_t endRow = static_cast<uint32_t>(block->size());
 
-      if (block == _blocks.front() && block->hasShadowRows()) {
-        // We start with a shadow row, we need to cut indexes before the start row
-        auto const& shadowIndexes = block->getShadowRowIndexes();
-        TRI_ASSERT(!shadowIndexes.empty());
-        if (block == _blocks.back() && stoppedOnShadowRow()) {
-          // We only have this block, we might have the case of two ShadowRows
+      if (block->hasShadowRows()) {
+        // We have one (or more) shadowRow(s) with this block.
+        // We need to adjast start / end row to the slice of ShadowRows we are working on.
+        if (stoppedOnShadowRow()) {
+          // We need to stop on _lastShadowRow;
+          endRow = _lastShadowRow;
+
+          auto const& shadowIndexes = block->getShadowRowIndexes();
+          TRI_ASSERT(!shadowIndexes.empty());
+          // we need to start at the ShadowRow before _lastShadowRow
           auto before = shadowIndexes.find(_lastShadowRow);
           if (before != shadowIndexes.begin()) {
             before--;
@@ -69,25 +84,40 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
             // NOTE: This could already be the next shadowRow. in this case we return an empty list
             startRow = *before + 1;
           }
-          // Else start from the beginning
-          endRow = _lastShadowRow;
         } else {
-          // Start at the Row after the ShadowRow.
+          // We need to start after the last shadowRow
           // NOTE: this might be AFTER the block, but this will be sorted out by the loop later.
-          startRow = (*shadowIndexes.rbegin()) + 1;
-        }
-      } else if (block == _blocks.back()) {
-        // We are on the last node. Stop on the _lastShadowRow
-        if (block->hasShadowRows()) {
-          TRI_ASSERT(stoppedOnShadowRow());
-          endRow = _lastShadowRow;
+          startRow = ::FirstReleveantDataRowInBlock(block);
         }
       }
       for (; startRow < endRow; ++startRow) {
         TRI_ASSERT(!block->isShadowRow(startRow));
         result.emplace_back(index, startRow);
       }
-      ++index;
+    } else {
+      for (auto const& block : _blocks) {
+        // Default case, 0 -> end
+        uint32_t startRow = 0;
+        // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
+        uint32_t endRow = static_cast<uint32_t>(block->size());
+
+        if (block == _blocks.front() && block->hasShadowRows()) {
+          // The first block was sliced by a ShadowRow, we need to pick everything after the last:
+          startRow = FirstReleveantDataRowInBlock(block);
+        } else if (block == _blocks.back() && block->hasShadowRows()) {
+          // The last Block is sliced by a shadowRow. We can only use data up to this shadow row
+          endRow = _lastShadowRow;
+        } else {
+          // Intermediate blocks cannot have shadow rows.
+          // Go from 0 -> end
+          TRI_ASSERT(!block->hasShadowRows());
+        }
+        for (; startRow < endRow; ++startRow) {
+          TRI_ASSERT(!block->isShadowRow(startRow));
+          result.emplace_back(index, startRow);
+        }
+        ++index;
+      }
     }
   }
   return result;
