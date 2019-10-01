@@ -611,7 +611,6 @@ function ahuacatlFailureModifySuite () {
   var c;
   var e;
   var count = 5000;
-  var idx = null;
         
   var assertFailingQuery = function (query, rulesToExclude) {
     if (!rulesToExclude) {
