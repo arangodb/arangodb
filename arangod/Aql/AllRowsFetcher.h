@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
 #define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/types.h"
 
@@ -36,7 +37,6 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemMatrix;
 class SharedAqlItemBlockPtr;
 enum class ExecutionState;
 template <bool>
@@ -185,6 +185,9 @@ class AllRowsFetcher {
   std::size_t _blockToReturnNext;
 
   FetchState _dataFetchedState;
+
+  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
+  std::size_t _nextReturn;
 
  private:
   /**

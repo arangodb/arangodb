@@ -52,7 +52,8 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
     for (auto const& block : _blocks) {
       // Default case, 0 -> end
       uint32_t startRow = 0;
-      uint32_t endRow = block->size();
+      // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
+      uint32_t endRow = static_cast<uint32_t>(block->size());
 
       if (block == _blocks.front() && block->hasShadowRows()) {
         // We start with a shadow row, we need to cut indexes before the start row

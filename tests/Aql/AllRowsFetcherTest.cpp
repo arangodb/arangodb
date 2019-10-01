@@ -431,8 +431,9 @@ class AllRowsFetcherFetchSingleRow
       std::tie(state, row) = _fetcher.fetchRow();
       if (it != dataResults.back()) {
         EXPECT_EQ(state, ExecutionState::HASMORE);
+      } else {
+        EXPECT_EQ(state, ExecutionState::DONE);
       }
-      // We cannot guarantee the DONE case on end, as we potentially need to fetch from upstream
       ASSERT_TRUE(row.isInitialized());
       EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
     }
