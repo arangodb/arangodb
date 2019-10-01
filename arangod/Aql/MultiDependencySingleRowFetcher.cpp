@@ -108,6 +108,18 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
   TRI_ASSERT(allDone || allShadow);
   TRI_ASSERT(allShadow == row.isInitialized());
 
+  if (allShadow) {
+    TRI_ASSERT(row.isInitialized());
+    for (auto& dep : _dependencyInfos) {
+      if (isLastRowInBlock(dep) && isDone(dep)) {
+        dep._currentBlock = nullptr;
+        dep._rowIndex = 0;
+      } else {
+        ++dep._rowIndex;
+      }
+    }
+  }
+
   ExecutionState const state = allDone ? ExecutionState::DONE : ExecutionState::HASMORE;
 
   return {state, row};
