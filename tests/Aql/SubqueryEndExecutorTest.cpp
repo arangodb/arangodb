@@ -25,6 +25,8 @@
 #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "Mocks/Death_Test.h"
+
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SubqueryEndExecutor.h"
 
@@ -162,8 +164,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
   SharedAqlItemBlockPtr outputBlock;
 
   SharedAqlItemBlockPtr inputBlock =
-      buildBlock<1>(itemBlockManager, {{{42}}, {{1}}, {{34}}, {{1}}},
-                    {{1, 0}, {3, 0}});
+      buildBlock<1>(itemBlockManager, {{{42}}, {{1}}, {{34}}, {{1}}}, {{1, 0}, {3, 0}});
 
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
@@ -282,7 +283,8 @@ TEST_F(SubqueryEndExecutorTest_DeathTest, no_shadow_row) {
   outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
   OutputAqlItemRow output{std::move(outputBlock), _infos.getOutputRegisters(),
                           _infos.registersToKeep(), _infos.registersToClear()};
-  EXPECT_DEATH(std::tie(state, std::ignore) = testee.produceRows(output), ".*");
+  CORE_FREE_DEATH_TEST(std::tie(state, std::ignore) = testee.produceRows(output),
+                       ".*");
 }
 
 TEST_F(SubqueryEndExecutorTest_DeathTest, misplaced_irrelevant_shadowrow) {
@@ -299,5 +301,6 @@ TEST_F(SubqueryEndExecutorTest_DeathTest, misplaced_irrelevant_shadowrow) {
   outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
   OutputAqlItemRow output{std::move(outputBlock), _infos.getOutputRegisters(),
                           _infos.registersToKeep(), _infos.registersToClear()};
-  EXPECT_DEATH(std::tie(state, std::ignore) = testee.produceRows(output), ".*");
+  CORE_FREE_DEATH_TEST(std::tie(state, std::ignore) = testee.produceRows(output),
+                       ".*");
 }
