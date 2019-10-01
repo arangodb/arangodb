@@ -118,13 +118,15 @@ function rootCreateCollection (colName) {
 function rootPrepareCollection (colName, numDocs = 1, defKey = true) {
   if (rootTestCollection(colName, false)) {
     db._collection(colName).truncate({ compact: false });
+    let docs = [];
     for(var i = 0; i < numDocs; ++i) {
       var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
       if (!defKey) {
         doc._key = colName + i;
       }
-      db._collection(colName).save(doc, {waitForSync: true});
+      docs.push(doc);
     }
+    db._collection(colName).insert(docs, {waitForSync: true});
   }
   helper.switchUser(name, dbName);
 };
@@ -217,21 +219,23 @@ function hasIResearch (db) {
 function UserRightsManagement(name) {
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       rootCreateCollection(testCol1Name);
       rootCreateCollection(testCol2Name);
       rootPrepareCollection(testCol1Name);
       rootPrepareCollection(testCol2Name);
-
+    },
+    setUp: function() {
       rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
       db._useDatabase(dbName);
       helper.switchUser('root', dbName);
     },
 
-    tearDown: function () {
+    tearDown: function() {
       rootDropView(testViewRename);
       rootDropView(testViewName);
-
+    },
+    tearDownAll: function () {
       rootDropCollection(testCol1Name);
       rootDropCollection(testCol2Name);
     },

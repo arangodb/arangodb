@@ -73,27 +73,31 @@ function ahuacatlLegacyGeoTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
 
       locations = db._create("UnitTestsAhuacatlLocations");
+      let docs = [];
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
-          locations.save({"latitude" : lat, "longitude" : lon });
+          docs.push({"latitude" : lat, "longitude" : lon });
         }
       }
+      locations.insert(docs);
 
       locations.ensureGeoIndex("latitude", "longitude");
 
       //locations without index
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
+      docs = [];
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
-          locationsNon.save({"latitude" : lat, "longitude" : lon });
+          docs.push({"latitude" : lat, "longitude" : lon });
         }
       }
+      locationsNon.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
