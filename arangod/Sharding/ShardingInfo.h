@@ -24,6 +24,8 @@
 #ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
 #define ARANGOD_CLUSTER_SHARDING_INFO_H 1
 
+#include "Basics/Result.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <unordered_set>
@@ -74,6 +76,10 @@ class ShardingInfo {
   /// class hierarchy. VirtualSmartEdgeCollection calls this function
   /// in its constructor, after the shardingInfo has been set up already
   void numberOfShards(size_t numberOfShards);
+
+  /// @brief validates the number of shards and the replication factor
+  /// in slice against the minimum and maximum configured values
+  static Result validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice);
 
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
