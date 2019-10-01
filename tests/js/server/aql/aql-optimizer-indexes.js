@@ -1948,6 +1948,7 @@ function optimizerIndexesModifyTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
+      idx = null;
 
       results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ 'one', 'one' ], results.json, query);
