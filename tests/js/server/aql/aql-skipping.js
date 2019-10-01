@@ -50,9 +50,11 @@ function aqlSkippingTestsuite () {
     setUpAll : function () {
       var c = db._createDocumentCollection('skipCollection', { numberOfShards: 5 });
       // c size > 1000 because of internal batchSize of 1000
+      let docs = [];
       for (var i = 0; i < 2000; i++) {
-        c.save({i: i});
+        docs.push({i: i});
       }
+      c.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,15 +216,17 @@ function aqlSkippingIndexTestsuite () {
       const values = _.range(7); // 0..6
 
       // insert a total of 7^4 = 2401 documents:
+      let docs = [];
       for (const a of values) {
         for (const b of values) {
           for (const c of values) {
             for (const d of values) {
-              col.insert({a, b, c, d});
+              docs.push({a, b, c, d});
             }
           }
         }
       }
+      col.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -485,26 +489,30 @@ function aqlSkippingIResearchTestsuite () {
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
 
+      let docs = [];
+      let docs2 = [];
       for (let i = 0; i < 5; i++) {
-        c.save({ a: "foo", b: "bar", c: i });
-        c.save({ a: "foo", b: "baz", c: i });
-        c.save({ a: "bar", b: "foo", c: i });
-        c.save({ a: "baz", b: "foo", c: i });
+        docs.push({ a: "foo", b: "bar", c: i });
+        docs.push({ a: "foo", b: "baz", c: i });
+        docs.push({ a: "bar", b: "foo", c: i });
+        docs.push({ a: "baz", b: "foo", c: i });
 
-        c2.save({ a: "foo", b: "bar", c: i });
-        c2.save({ a: "bar", b: "foo", c: i });
-        c2.save({ a: "baz", b: "foo", c: i });
+        docs2.push({ a: "foo", b: "bar", c: i });
+        docs2.push({ a: "bar", b: "foo", c: i });
+        docs2.push({ a: "baz", b: "foo", c: i });
       }
 
-      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      c.save({ name: "half", text: "quick fox over lazy" });
-      c.save({ name: "other half", text: "the brown jumps the dog" });
-      c.save({ name: "quarter", text: "quick over" });
+      docs.push({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+      docs.push({ name: "half", text: "quick fox over lazy" });
+      docs.push({ name: "other half", text: "the brown jumps the dog" });
+      docs.push({ name: "quarter", text: "quick over" });
 
-      c.save({ name: "numeric", anotherNumericField: 0 });
-      c.save({ name: "null", anotherNullField: null });
-      c.save({ name: "bool", anotherBoolField: true });
-      c.save({ _key: "foo", xyz: 1 });
+      docs2.push({ name: "numeric", anotherNumericField: 0 });
+      docs2.push({ name: "null", anotherNullField: null });
+      docs2.push({ name: "bool", anotherBoolField: true });
+      docs2.push({ _key: "foo", xyz: 1 });
+      c.insert(docs);
+      c2.insert(docs2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
