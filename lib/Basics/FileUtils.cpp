@@ -464,7 +464,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
         if (isSubDirectory(src)) {
           long systemError;
           int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
-          if (rc != TRI_ERROR_NO_ERROR) {
+          if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
             rc_bool = false;
             break;
           }
