@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fix config directory handling, so we don't trap into UNC path lookups on Windows.
+
 * Ignore symlinks when copying JavaScript files at startup via the option
   `--javascript.copy-installation`. This potentially fixes the following
   error message at startup:
