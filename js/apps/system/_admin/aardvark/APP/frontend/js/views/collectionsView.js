@@ -713,12 +713,15 @@
               if ($('#is-satellite-collection').val() === 'true') {
                 $('#new-replication-factor').prop('disabled', true);
                 $('#new-write-concern').prop('disabled', true);
+                $('#new-collection-shards').prop('disabled', true);
               } else {
                 $('#new-replication-factor').prop('disabled', false);
                 $('#new-write-concern').prop('disabled', false);
+                $('#new-collection-shards').prop('disabled', false);
               }
               $('#new-replication-factor').val('').focus().focusout();
               $('#new-write-concern').val('').focus().focusout();
+              $('#new-collection-shards').val('').focus().focusout();
             });
           }
         }
