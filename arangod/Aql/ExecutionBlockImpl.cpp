@@ -331,7 +331,24 @@ static SkipVariants constexpr skipType() {
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
+  auto state = ExecutionState::HASMORE;
 
+  while (state == ExecutionState::HASMORE && _skipped < atMost) {
+    auto res = skipSomeOnceWithoutTrace(atMost);
+    TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
+    state = res.first;
+    _skipped += res.second;
+  }
+
+  size_t skipped = 0;
+  if (state != ExecutionState::WAITING) {
+    std::swap(skipped, _skipped);
+  }
+  return traceSkipSomeEnd(state, skipped);
+}
+
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWithoutTrace(size_t atMost) {
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
   if (customSkipType == SkipVariants::GET_SOME) {
@@ -355,8 +372,9 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   _engine->_stats += stats;
   TRI_ASSERT(skipped <= atMost);
 
-  return traceSkipSomeEnd(state, skipped);
+  return {state, skipped};
 }
+
 
 template <bool customInit>
 struct InitializeCursor {};
@@ -390,6 +408,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
+
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
 
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
   // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
@@ -436,6 +457,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<true, ConstFetch
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
+
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
 
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
