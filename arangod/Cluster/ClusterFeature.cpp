@@ -219,7 +219,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_defaultReplicationFactor > 0 &&
       _maxReplicationFactor > 0 && 
       _defaultReplicationFactor > _maxReplicationFactor) {
-    LOG_TOPIC("6cf0c", FATAL, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("5af7e", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. Must not be higher than `--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
@@ -241,7 +241,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   
   if (_systemReplicationFactor > 0 &&
       _systemReplicationFactor < _minReplicationFactor) {
-    LOG_TOPIC("b9aea", FATAL, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not be lower than `--cluster.min-replication-factor`";
     FATAL_ERROR_EXIT();
   }
