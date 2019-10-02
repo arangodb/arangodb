@@ -974,6 +974,13 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
+    if (ServerState::instance()->isCoordinator()) {
+      // validate numberOfShards and replicationFactor
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(input.get("options"), _vocbase.server());
+      if (res.fail()) {
+        return res;
+      }
+    }
     return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
     return Result{e.code(), e.message()};
