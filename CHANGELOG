@@ -1,3 +1,13 @@
+v3.5.2 (XXXX-XX-XX)
+-------------------
+
+* Ignore symlinks when copying JavaScript files at startup via the option
+  `--javascript.copy-installation`. This potentially fixes the following
+  error message at startup:
+
+      Error copying JS installation files to '...': failed to open source file ...: No such file or directory
+
+
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
