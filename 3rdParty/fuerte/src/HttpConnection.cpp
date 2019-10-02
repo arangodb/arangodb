@@ -319,7 +319,9 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
 
   bool haveAuth = false;
   for (auto const& pair : req.header.meta()) {
-    if (boost::iequals(fu_content_length_key, pair.first)) {
+    if (boost::iequals(fu_content_length_key, pair.first) ||
+        boost::iequals(fu_content_type_key, pair.first) ||
+        boost::iequals(fu_accept_key, pair.first)) {
       continue;  // skip content-length header
     }
 

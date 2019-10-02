@@ -238,14 +238,6 @@ class Future {
     return std::move(getStateTryChecked());
   }
 
-  /// Returns a reference to the result value if it is ready, with a reference
-  /// category and const-qualification like those of the future.
-  /// Does not `wait()`; see `get()` for that.
-  /*T& value() &;
-  T const& value() const&;
-  T&& value() &&;
-  T const&& value() const&&;*/
-
   /// Returns a reference to the result's Try if it is ready, with a reference
   /// category and const-qualification like those of the future.
   /// Does not `wait()`; see `get()` for that.

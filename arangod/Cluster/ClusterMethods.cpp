@@ -1980,21 +1980,21 @@ void fetchVerticesFromEngines(
     transaction::Methods& trx,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
-    std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>& result) {
+    std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
+    std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake) {
   // TODO map id => ServerID if possible
   // And go fast-path
 
   // slow path, sharding not deducable from _id
-  VPackBufferUInt8 buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject();
-  builder.add(VPackValue("keys"));
-  builder.openArray();
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add(VPackValue("keys"));
+  leased->openArray();
   for (auto const& v : vertexIds) {
-    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
+    leased->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
-  builder.close();  // 'keys' Array
-  builder.close();  // base object
+  leased->close();  // 'keys' Array
+  leased->close();  // base object
 
   std::string const url = "/_db/" + StringUtils::urlEncode(trx.vocbase().name()) +
                           "/_internal/traverser/vertex/";
@@ -2008,7 +2008,7 @@ void fetchVerticesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  buffer, network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  *(leased->buffer()), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   futures::collectAll(std::move(futures))
@@ -2016,115 +2016,12 @@ void fetchVerticesFromEngines(
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
 
-          if (r.fail()) {
-            THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r.error));
-          }
-
-          auto buffer = r.response->stealPayload();
-
-          VPackSlice resSlice(buffer->data());
-          if (!resSlice.isObject()) {
-            // Response has invalid format
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
-          }
-          if (r.response->statusCode() != fuerte::StatusOK) {
-            int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
-            // We have an error case here. Throw it.
-            THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
-                                                     resSlice, StaticStrings::ErrorMessage,
-                                                     TRI_errno_string(code)));
-          }
-          for (auto const& pair : VPackObjectIterator(resSlice)) {
-            arangodb::velocypack::StringRef key(pair.key);
-            if (vertexIds.erase(key) == 0) {
-              // We either found the same vertex twice,
-              // or found a vertex we did not request.
-              // Anyways something somewhere went seriously wrong
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-            }
-            TRI_ASSERT(result.find(key) == result.end());
-            auto val = VPackBuilder::clone(pair.value);
-
-            VPackSlice id = val.slice().get(StaticStrings::IdString);
-            if (!id.isString()) {
-              // invalid id type
-              LOG_TOPIC("e0b50", ERR, Logger::GRAPHS)
-                  << "got invalid edge id type: " << id.typeName();
-              continue;
-            }
-            TRI_ASSERT(id.isString());
-            result.emplace(arangodb::velocypack::StringRef(id), val.steal());
-          }
-        }
-      })
-      .get();
-
-  // Fill everything we did not find with NULL
-  for (auto const& v : vertexIds) {
-    result.emplace(v,
-                   VPackBuilder::clone(arangodb::velocypack::Slice::nullSlice()).steal());
-  }
-  vertexIds.clear();
-}
-
-/// @brief fetch vertices from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        If any server responds with a document
-///        it will be inserted into the result.
-///        If no server responds with a document
-///        a 'null' will be inserted into the result.
-///        ShortestPathVariant
-
-void fetchVerticesFromEngines(
-    transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
-    std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake) {
-  // TODO map id => ServerID if possible
-  // And go fast-path
-
-  // slow path, sharding not deducable from _id
-  VPackBufferUInt8 buffer;
-  VPackBuilder builder(buffer);
-  builder.clear();
-  builder.openObject();
-  builder.add(VPackValue("keys"));
-  builder.openArray();
-  for (auto const& v : vertexIds) {
-    // TRI_ASSERT(v.isString());
-    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
-  }
-  builder.close();  // 'keys' Array
-  builder.close();  // base object
-
-  std::string const url = "/_db/" + StringUtils::urlEncode(trx.vocbase().name()) +
-                          "/_internal/traverser/vertex/";
-
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-
-  std::vector<Future<network::Response>> futures;
-  futures.reserve(engines->size());
-
-  for (auto const& engine : *engines) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  url + StringUtils::itoa(engine.second),
-                                  buffer, network::Timeout(CL_DEFAULT_TIMEOUT)));
-  }
-
-  futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
           if (r.fail()) {
             THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r.error));
           }
 
           auto payload = r.response->stealPayload();
-          VPackSlice resSlice = VPackSlice(payload->data());
+          VPackSlice resSlice(payload->data());
           if (!resSlice.isObject()) {
             // Response has invalid format
             THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
@@ -2136,8 +2033,8 @@ void fetchVerticesFromEngines(
                                                      resSlice, StaticStrings::ErrorMessage,
                                                      TRI_errno_string(code)));
           }
+          
           bool cached = false;
-
           for (auto const& pair : VPackObjectIterator(resSlice)) {
             arangodb::velocypack::StringRef key(pair.key);
             if (vertexIds.erase(key) == 0) {
@@ -2157,6 +2054,12 @@ void fetchVerticesFromEngines(
         }
       })
       .get();
+
+  // Fill everything we did not find with NULL
+  for (auto const& v : vertexIds) {
+    result.emplace(v, VPackSlice::noneSlice());
+  }
+  vertexIds.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

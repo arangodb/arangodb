@@ -4086,13 +4086,19 @@ function transactionTTLStreamSuite () {
         collections: { read: cn }
       });
 
-      internal.sleep(12);
-      try {
-        trx.collection(cn).save({key:'val'});
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
-      }
+      let x = 60;
+      do {
+        internal.sleep(1);
+
+        try {
+          trx.collection(cn).save({key:'val'});
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+          return;
+        }
+
+      } while(!done && x-- > 0);
+      fail(); // should not be reached
     }
   };
 }
