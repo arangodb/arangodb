@@ -295,7 +295,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
 
 TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_doesnt_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -308,7 +308,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_produce
 
 TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -330,7 +330,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_d
   myGraph.addVertex("2");
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -362,7 +362,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   myGraph.addVertex("2");
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -400,7 +400,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   myGraph.addVertex("2");
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -501,7 +501,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -514,7 +514,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesn
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -537,7 +537,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_w
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -569,7 +569,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
   OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
@@ -606,7 +606,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_ed
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
   myGraph.addEdge("1", "2", "1->2");

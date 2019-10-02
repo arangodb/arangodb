@@ -187,7 +187,7 @@ template <typename FetcherType>
 struct ModificationExecutorBase {
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize =
         false;  // Disabled because prefetch does not work in the Cluster
                 // Maybe This should ask for a 1:1 relation.

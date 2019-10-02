@@ -83,7 +83,7 @@ class SortExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;

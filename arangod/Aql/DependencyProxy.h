@@ -42,7 +42,7 @@ class AqlItemBlockManager;
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
-template <bool allowBlockPassthrough>
+template <BlockPassthrough allowBlockPassthrough>
 class DependencyProxy {
  public:
   /**

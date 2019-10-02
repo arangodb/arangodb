@@ -38,7 +38,7 @@ using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 constexpr bool TraversalExecutor::Properties::preservesOrder;
-constexpr bool TraversalExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough TraversalExecutor::Properties::allowsBlockPassthrough;
 constexpr bool TraversalExecutor::Properties::inputSizeRestrictsOutputSize;
 
 TraversalExecutorInfos::TraversalExecutorInfos(

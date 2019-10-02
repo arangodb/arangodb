@@ -44,7 +44,7 @@ class ExecutionEngine;
 class ExecutorInfos;
 class InputAqlItemRow;
 
-template <bool pass>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 struct AstNode;
@@ -188,7 +188,7 @@ class IndexExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 

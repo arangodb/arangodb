@@ -104,7 +104,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
 };
 
 TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_doesnt_wait) {
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -115,7 +115,7 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_doesnt_wait) {
 }
 
 TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_waits) {
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -187,7 +187,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -223,7 +223,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait) {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_2) {
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -267,7 +267,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_2) {
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_3) {
   // Input order needs to be guaranteed
   auto input = VPackParser::fromJson("[ [1], [1], [2], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -311,7 +311,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_3) {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_4) {
   auto input = VPackParser::fromJson("[ [1], [1], [2], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -346,7 +346,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_4) {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_waits) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -434,7 +434,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -525,7 +525,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -631,7 +631,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),

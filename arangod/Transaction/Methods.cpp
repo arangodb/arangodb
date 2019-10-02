@@ -3283,7 +3283,7 @@ Future<Result> Methods::replicateOperations(
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
   network::Timeout const timeout(chooseTimeout(count, payload->size()));
-  auto& networkFeature = vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
     // TODO we could steal the payload at least once
     VPackBuffer<uint8_t> buffer;
@@ -3291,7 +3291,7 @@ Future<Result> Methods::replicateOperations(
 
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry(networkFeature, "server:" + f, requestType,
+    auto future = network::sendRequestRetry(pool, "server:" + f, requestType,
                                             path, std::move(buffer), timeout,
                                             headers, /*retryNotFound*/ true);
     futures.emplace_back(std::move(future));

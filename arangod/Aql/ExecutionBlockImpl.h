@@ -98,7 +98,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
   static_assert(
-      !Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
+    Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable || Executor::Properties::preservesOrder,
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
  public:

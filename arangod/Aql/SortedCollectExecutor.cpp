@@ -41,7 +41,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool SortedCollectExecutor::Properties::preservesOrder;
-constexpr bool SortedCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough SortedCollectExecutor::Properties::allowsBlockPassthrough;
 constexpr bool SortedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 static const AqlValue EmptyValue;
