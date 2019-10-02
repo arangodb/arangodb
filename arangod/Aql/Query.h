@@ -307,7 +307,7 @@ class Query {
   CollectionNameResolver const& resolver();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::unique_ptr<ExecutionPlan> stealPlan() { return std::move(preparePlan()); }
+  std::unique_ptr<ExecutionPlan> stealPlan() { return preparePlan(); }
 #endif
 
  private:
