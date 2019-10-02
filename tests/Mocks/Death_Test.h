@@ -32,6 +32,10 @@
 #ifndef ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H
 #define ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H 1
 
+#ifndef _WIN32
+
+// Enabled on Linux and Mac
+
 #define EXPECT_DEATH_CORE_FREE(func, assertion) \
   EXPECT_DEATH(                                 \
       [&]() {                                   \
@@ -42,5 +46,15 @@
         func;                                   \
       }(),                                      \
       assertion)
+
+#else
+
+// Disabled on windows
+// If anyone knows how to disable core creation of a forked process
+// please feel free to fix it here.
+
+#define EXPECT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
+
+#endif
 
 #endif
