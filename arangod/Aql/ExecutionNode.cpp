@@ -112,7 +112,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SUBQUERY_END), "SubqueryEndNode"},
     {static_cast<int>(ExecutionNode::DISTRIBUTE_CONSUMER),
      "DistributeConsumer"},
-    {static_cast<int>(ExecutionNode::MATERIALIZER),
+    {static_cast<int>(ExecutionNode::MATERIALIZE),
      "MaterializeNode"}};
 
 // FIXME -- this temporary function should be
@@ -349,7 +349,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new SubqueryEndNode(plan, slice);
     case DISTRIBUTE_CONSUMER:
       return new DistributeConsumerNode(plan, slice);
-    case MATERIALIZER:
+    case MATERIALIZE:
       return new MaterializeNode(plan, slice);
     default: {
       // should not reach this point

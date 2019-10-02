@@ -155,7 +155,7 @@ class ExecutionNode {
     DISTRIBUTE_CONSUMER = 28,
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
-    MATERIALIZER = 31,
+    MATERIALIZE = 31,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -941,7 +941,7 @@ class MaterializeNode  : public ExecutionNode {
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return ExecutionNode::MATERIALIZER; }
+  NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
