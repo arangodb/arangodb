@@ -712,9 +712,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        // node->setCondition(_condition.release());
         originalFilterConditions->normalize();
-        node->setCondition(originalFilterConditions.release());
+        node->setCondition(std::move(originalFilterConditions));
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
         // depend on sth issued by this traverser or later
