@@ -112,7 +112,7 @@ std::string buildFilename(char const* path, char const* name) {
 
   if (!result.empty()) {
     result = removeTrailingSeparator(result);
-    if (result.length() == 1 && result[0] != TRI_DIR_SEPARATOR_CHAR) {
+    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
       result += TRI_DIR_SEPARATOR_CHAR;
     }
   }
@@ -134,7 +134,7 @@ std::string buildFilename(std::string const& path, std::string const& name) {
 
   if (!result.empty()) {
     result = removeTrailingSeparator(result);
-    if (result.length() == 1 && result[0] != TRI_DIR_SEPARATOR_CHAR) {
+    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
       result += TRI_DIR_SEPARATOR_CHAR;
     }
   }
