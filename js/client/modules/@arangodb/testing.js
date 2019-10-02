@@ -293,7 +293,7 @@ function findTestCases(options) {
 
 function isClusterTest(options) {
   let rc = false;
-  if (!options.hasOwnProperty('test') || (typeof (options.test) !== 'undefined')) {
+  if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     if (typeof (options.test) === 'string') {
       rc = (options.test.search('-cluster') >= 0);
     } else {
