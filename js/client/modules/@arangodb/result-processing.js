@@ -547,7 +547,7 @@ function locateLongRunning(options, results) {
             count: Object.keys(testSuite).filter(testCase => skipInternalMember(testSuite, testCase)).length
           });
       } else {
-        if (!testSuite.hasOwnProperty('skipped') && !testSuite.skipped) {
+        if (!testSuite.hasOwnProperty('skipped') || !testSuite.skipped) {
           print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
         }
       }        
