@@ -60,4 +60,6 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
+The result is consists of a `list` of hot backups by their `id`, where `id` uniquely identifies a specific hot backup, `version` depicts the version of ArangoDB, which was used to create any individual hot backup and `datetime` identifies the time of creation of the hot backup.
+
 @endDocuBlock

@@ -67,4 +67,6 @@ are detailed in the returned error document.
     }
 @END_EXAMPLE_ARANGOSH_RUN
 
+The `result` object returns the `id` of the fail safe hot backup to return to, if necessary. And the all telling `isCluster` boolean attribute.
+
 @endDocuBlock

@@ -83,6 +83,8 @@ there is no known upload operation with the given `uploadId`.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
+The `result` object of the body holds the `uploadId` string attribute which can be used to follow the upload process.
+
 @EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted_rocksdb}
     try {
       require("fs").makeDirectory("/tmp/backups");

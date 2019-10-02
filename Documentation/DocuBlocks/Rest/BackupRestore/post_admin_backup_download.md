@@ -98,6 +98,8 @@ there is no known download operation with the given `downloadId`.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
+The `result` object of the body holds the `downloadId` string attribute which can be used to follow the download process.
+
 @EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted_rocksdb}
     var hotbackup = require("@arangodb/hotbackup");
     try {
@@ -149,5 +151,6 @@ there is no known download operation with the given `downloadId`.
       }
     };
 @END_EXAMPLE_ARANGOSH_RUN
+
 
 @endDocuBlock
