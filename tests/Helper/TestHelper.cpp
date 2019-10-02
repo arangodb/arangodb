@@ -20,14 +20,18 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
-#include "TestHelper.h"
 #include <libplatform/libplatform.h>
 #include <src/api.h>
 #include <src/objects-inl.h>
 #include <src/objects/scope-info.h>
 
+#include "TestHelper.h"
+
+#include "../IResearch/common.h"
 #include "Mocks/Servers.h"
 
 #include "Replication/ReplicationFeature.h"
@@ -40,37 +44,36 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-users.h"
 
-arangodb::tests::TestHelper::TestHelper() : _v8Initialized(false) {}
+arangodb::tests::TestHelper::TestHelper()
+    : _mockServer(nullptr),
+      _system(nullptr),
+      _v8Initialized(false),
+      _v8Isolate(nullptr),
+      _v8Globals(nullptr) {}
 
-arangodb::tests::TestHelper::~TestHelper() {
-  v8Teardown();
-}
+arangodb::tests::TestHelper::~TestHelper() { v8Teardown(); }
 
 // -----------------------------------------------------------------------------
 // Mock Servers
 // -----------------------------------------------------------------------------
 
-arangodb::tests::mocks::MockAqlServer* arangodb::tests::TestHelper::mockAqlServerInit() {
-  _mockAqlServer.reset(new arangodb::tests::mocks::MockAqlServer());
-  _system = _mockAqlServer->getFeature<arangodb::SystemDatabaseFeature>().use();
-  return _mockAqlServer.get();
+arangodb::tests::mocks::MockServer* arangodb::tests::TestHelper::mockAqlServerInit() {
+  _mockServer.reset(new arangodb::tests::mocks::MockAqlServer());
+  _system = _mockServer->getFeature<arangodb::SystemDatabaseFeature>().use();
+  return _mockServer.get();
 }
 
 // -----------------------------------------------------------------------------
 // V8
 // -----------------------------------------------------------------------------
 
-v8::Isolate* arangodb::tests::TestHelper::v8Isolate() {
-  return _v8Isolate;
-}
+v8::Isolate* arangodb::tests::TestHelper::v8Isolate() { return _v8Isolate; }
 
 v8::Handle<v8::Context> arangodb::tests::TestHelper::v8Context() {
   return v8::Local<v8::Context>::New(_v8Isolate, _v8Context);
 }
 
-TRI_v8_global_t* arangodb::tests::TestHelper::v8Globals() {
-  return _v8Globals;
-}
+TRI_v8_global_t* arangodb::tests::TestHelper::v8Globals() { return _v8Globals; }
 
 void arangodb::tests::TestHelper::v8Init() {
   struct init_t {
@@ -104,60 +107,133 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 };
 }  // namespace
 
-void arangodb::tests::TestHelper::v8Setup(TRI_vocbase_t* vocbase) {
+void arangodb::tests::TestHelper::v8Setup() {
   v8Init();
 
   if (!_v8Initialized) {
-  v8::Isolate::CreateParams isolateParams;
-  ArrayBufferAllocator arrayBufferAllocator;
-  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  _v8Isolate = v8::Isolate::New(isolateParams);
-  ASSERT_NE(nullptr, _v8Isolate);
-  _v8Isolate->Enter();
+    v8::Isolate::CreateParams isolateParams;
+    ArrayBufferAllocator arrayBufferAllocator;
+    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    _v8Isolate = v8::Isolate::New(isolateParams);
+    ASSERT_NE(nullptr, _v8Isolate);
+    _v8Isolate->Enter();
 
-  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(_v8Isolate);
+    // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(_v8Isolate);
 
-  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
 
-  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(_v8Isolate);
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(_v8Isolate);
 
-  v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(_v8Isolate);
-  _v8Context.Reset(_v8Isolate, v8::Context::New(_v8Isolate, nullptr, global));
-  v8::Handle<v8::Context> context = v8::Local<v8::Context>::New(_v8Isolate, _v8Context);
-  
-  // required for TRI_AddMethodVocbase(...) later
-  v8::Context::Scope contextScope(context);
+    v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(_v8Isolate);
+    _v8Context.Reset(_v8Isolate, v8::Context::New(_v8Isolate, nullptr, global));
+    v8::Handle<v8::Context> context = v8::Local<v8::Context>::New(_v8Isolate, _v8Context);
 
-  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  _v8Globals = TRI_CreateV8Globals(_v8Isolate, 0);
+    // required for TRI_AddMethodVocbase(...) later
+    v8::Context::Scope contextScope(context);
 
-  // otherwise v8:-utils::CreateErrorObject(...) will fail
-  _v8Globals->ArangoErrorTempl.Reset(_v8Isolate,
-                                     v8::ObjectTemplate::New(_v8Isolate));
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    _v8Globals = TRI_CreateV8Globals(_v8Isolate, 0);
 
-  _v8Globals->_vocbase = vocbase;
-  TRI_InitV8Users(context, vocbase, _v8Globals, _v8Isolate);
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    _v8Globals->ArangoErrorTempl.Reset(_v8Isolate, v8::ObjectTemplate::New(_v8Isolate));
 
-  _v8Initialized = true;
+    _v8Globals->_vocbase = _system.get();
+    TRI_InitV8Users(context, _v8Globals->_vocbase, _v8Globals, _v8Isolate);
+
+    _v8Initialized = true;
   }
 }
 
 void arangodb::tests::TestHelper::v8Teardown() {
   if (_v8Initialized) {
-  delete _v8Globals;
-  _v8Globals = nullptr;
+    delete _v8Globals;
+    _v8Globals = nullptr;
 
-  _v8Context.Reset();
+    _v8Context.Reset();
 
-  _v8Isolate->Exit();
-  _v8Isolate->Dispose();
-  _v8Isolate = nullptr;
+    _v8Isolate->Exit();
+    _v8Isolate->Dispose();
+    _v8Isolate = nullptr;
 
-  _v8Initialized = false;
+    _v8Initialized = false;
   }
+}
+
+void arangodb::tests::TestHelper::callFunction(v8::Persistent<v8::Object>& obj,
+                                               v8::Persistent<v8::Value>& func,
+                                               std::vector<std::string> const& args) {
+  ASSERT_NE(nullptr, _v8Isolate);
+
+  v8::HandleScope handleScope(_v8Isolate);
+
+  auto context = v8Context();
+  v8::Context::Scope contextScope(context);
+
+  auto f = v8::Local<v8::Value>::New(_v8Isolate, func);
+  std::vector<v8::Local<v8::Value>> arguments;
+
+  for (auto a : args) {
+    arguments.push_back(TRI_V8_STD_STRING(_v8Isolate, a));
+  }
+
+  v8::TryCatch tryCatch(_v8Isolate);
+
+  auto result =
+      v8::Function::Cast(*f)->CallAsFunction(context,
+                                             v8::Local<v8::Object>::New(_v8Isolate, obj),
+                                             static_cast<int>(arguments.size()),
+                                             arguments.data());
+
+  ASSERT_FALSE(result.IsEmpty());
+  ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
+  ASSERT_FALSE(tryCatch.HasCaught());
+}
+
+void arangodb::tests::TestHelper::callFunctionThrow(v8::Persistent<v8::Object>& obj,
+                                                    v8::Persistent<v8::Value>& func,
+                                                    std::vector<std::string> const& args,
+                                                    int errorCode) {
+  ASSERT_NE(nullptr, _v8Isolate);
+
+  v8::HandleScope handleScope(_v8Isolate);
+
+  auto context = v8Context();
+  v8::Context::Scope contextScope(context);
+
+  auto f = v8::Local<v8::Value>::New(_v8Isolate, func);
+  std::vector<v8::Local<v8::Value>> arguments;
+
+  for (auto a : args) {
+    arguments.push_back(TRI_V8_STD_STRING(_v8Isolate, a));
+  }
+
+  v8::TryCatch tryCatch(_v8Isolate);
+
+  auto result =
+      v8::Function::Cast(*f)->CallAsFunction(context,
+                                             v8::Local<v8::Object>::New(_v8Isolate, obj),
+                                             static_cast<int>(arguments.size()),
+                                             arguments.data());
+  ASSERT_TRUE(result.IsEmpty());
+  ASSERT_TRUE(tryCatch.HasCaught());
+
+  arangodb::velocypack::Builder response;
+  auto res = TRI_V8ToVPack(_v8Isolate, response, tryCatch.Exception(), false);
+
+  std::string masked = response.toJson();
+  std::cout << "#### " << masked << std::endl;
+
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, res);
+
+  auto slice = response.slice();
+
+  ASSERT_TRUE(slice.isObject());
+  ASSERT_TRUE(slice.hasKey(arangodb::StaticStrings::ErrorNum));
+  ASSERT_TRUE(slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>());
+  ASSERT_EQ(errorCode, slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>());
 }
 
 // -----------------------------------------------------------------------------
@@ -170,21 +246,20 @@ arangodb::ExecContext* arangodb::tests::TestHelper::createExecContext(
   return _exec.get();
 }
 
-void arangodb::tests::TestHelper::disposeExecContext() {
-  _exec.reset();
-}
-								      
+void arangodb::tests::TestHelper::disposeExecContext() { _exec.reset(); }
 
 void arangodb::tests::TestHelper::usersSetup() {
   auto usersJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"_users\", \"isSystem\": true }");
 
   _scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        _system.get()->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          _system.get()->dropCollection(ptr->id(), true, 0.0);
-        });
+      _system.get()->createCollection(usersJson->slice()).get(),
+      [this](arangodb::LogicalCollection* ptr) -> void {
+        _system.get()->dropCollection(ptr->id(), true, 0.0);
+      });
 }
+
+void arangodb::tests::TestHelper::usersTeardown() { _scopedUsers.reset(); }
 
 void arangodb::tests::TestHelper::createUser(std::string const& username,
                                              std::function<void(auth::User*)> callback) {
@@ -201,21 +276,41 @@ void arangodb::tests::TestHelper::createUser(std::string const& username,
   userManager->setAuthInfo(arangodb::auth::UserMap{});
   auto res = userManager->storeUser(user);
 
-  ASSERT_EQ(true, res.ok());
+  ASSERT_TRUE(res.ok());
 }
 
 // -----------------------------------------------------------------------------
 // Databases
 // -----------------------------------------------------------------------------
 
-TRI_vocbase_t* arangodb::tests::TestHelper::createDatabase(std::string const& dbName) {}
+TRI_vocbase_t* arangodb::tests::TestHelper::createDatabase(std::string const& dbName) {
+  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+  auto& databaseFeature = _mockServer->getFeature<arangodb::DatabaseFeature>();
+  auto res = databaseFeature.createDatabase(testDBInfo(_mockServer->server(), dbName), vocbase);
+  EXPECT_TRUE(res.ok());
+
+  return vocbase;
+}
 
 // -----------------------------------------------------------------------------
 // Collections
 // -----------------------------------------------------------------------------
 
 std::shared_ptr<arangodb::LogicalCollection> arangodb::tests::TestHelper::createCollection(
-    TRI_vocbase_t*, auth::CollectionResource const&) {}
+    TRI_vocbase_t* vocbase, auth::CollectionResource const& collection) {
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"" + collection.collection() + "\" }");
+
+  auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
+      vocbase->createCollection(collectionJson->slice()).get(),
+      [vocbase](arangodb::LogicalCollection* ptr) -> void {
+        vocbase->dropCollection(ptr->id(), false, 0);
+      });
+
+  EXPECT_NE(nullptr, logicalCollection.get());
+
+  return logicalCollection;
+}
 
 // -----------------------------------------------------------------------------
 // Views
@@ -277,194 +372,17 @@ void arangodb::tests::TestHelper::viewFactoryInit(mocks::MockServer* server) {
 }
 
 std::shared_ptr<arangodb::LogicalView> arangodb::tests::TestHelper::createView(
-    TRI_vocbase_t*, auth::CollectionResource const&) {}
+    TRI_vocbase_t* vocbase, auth::CollectionResource const& view) {
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"" + view.collection() + "\" }");
 
-void arangodb::tests::TestHelper::callFunction(v8::Handle<v8::Value>,
-                                               std::vector<v8::Local<v8::Value>>&) {}
-
-void arangodb::tests::TestHelper::callFunctionThrow(v8::Handle<v8::Value>,
-                                                    std::vector<v8::Local<v8::Value>>&,
-                                                    int errorCode) {}
-
-#if 0
-
-#include "Aql/QueryRegistry.h"
-#include "Basics/StaticStrings.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "VocBase/vocbase.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-// The following v8 headers must be included late, or MSVC fails to compile
-// (error in mswsockdef.h), because V8's win32-headers.h #undef some macros like
-// CONST and VOID. If, e.g., "Cluster/ClusterInfo.h" (which is in turn included
-// here by "Sharding/ShardingFeature.h") is included after these, compilation
-// fails. Another option than to include the following headers late is to
-// include ClusterInfo.h before them.
-// I have not dug into which header included by ClusterInfo.h will finally
-// include mwsockdef.h. Nor did I check whether all of the following headers
-// will include V8's "src/base/win32-headers.h".
-
-// #include "src/api.h"
-// #include "src/objects-inl.h"
-// #include "src/objects/scope-info.h"
-
-
-
-
-
-
-std::shared_ptr<arangodb::LogicalCollection> arangodb::tests::TestHelper::createCollection(TRI_vocbase_t* vocbase, CollectionResource const& collection) {
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"" + collection.collectionName() "\" }");
-
-  auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-      vocbase->createCollection(collectionJson->slice()).get(),
-      [vocbase](arangodb::LogicalCollection* ptr) -> void {
-	vocbase->dropCollection(ptr->id(), false, 0);
+  auto logicalView = std::shared_ptr<arangodb::LogicalView>(
+      vocbase->createView(viewJson->slice()).get(),
+      [vocbase](arangodb::LogicalView* ptr) -> void {
+        vocbase->dropView(ptr->id(), false);
       });
 
-  ASSERT_NE(nullptr, logicalCollection.get());
-
-  return logicalCollection;
-}
-
-std::shared_ptr<arangodb::LogicalView> arangodb::tests::TestHelper::createView(std::string const& collectionName) {
-    auto viewJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"" + collection.collectionName() "\", \"type\": \"testViewType\" }");
-
-    auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
-        [vocbase](arangodb::LogicalView* ptr) -> void {
-          vocbase->dropView(ptr->id(), false);
-        });
-  ASSERT_NE(nullptr, logicalCollection.get());
+  EXPECT_NE(nullptr, logicalView.get());
 
   return logicalView;
 }
-
-void callFunction() {
-  v8::TryCatch tryCatch(isolate.get());
-  auto result = v8::Function::Cast(*fn_revokeCollection)
-                    ->CallAsFunction(context, arangoUsers,
-                                     static_cast<int>(revokeWildcardArgs.size()),
-                                     revokeWildcardArgs.data());
-  EXPECT_TRUE((!result.IsEmpty()));
-  EXPECT_TRUE((result.ToLocalChecked()->IsUndefined()));
-  EXPECT_TRUE((!tryCatch.HasCaught()));
-}
-
-void callFunctionThrow() {
-  v8::TryCatch tryCatch(isolate.get());
-
-  auto result = v8::Function::Cast(*fn_revokeCollection)
-		    ->CallAsFunction(context, arangoUsers,
-				     static_cast<int>(revokeArgs.size()),
-				     revokeArgs.data());
-  EXPECT_TRUE((result.IsEmpty()));
-  EXPECT_TRUE((tryCatch.HasCaught()));
-
-  arangodb::velocypack::Builder response;
-
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-						   tryCatch.Exception(), false)));
-  auto slice = response.slice();
-  EXPECT_TRUE((slice.isObject()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-	       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-	       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-		   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-}
-
-StorageEngineMock engine;
-  ViewFactory viewFactory;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  std::unique_ptr<TRI_vocbase_t> system;
-
-
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-void mockDatabase() {
-
-}
-
-unmockDatabase  ~V8UsersTest() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::EngineSelectorFeature::ENGINE =
-        nullptr;  // nullify only after DatabaseFeature::unprepare()
-
-
-
-    createDatabase() {
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
-          "Database");
-  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature->createDatabase(1, "testDatabase", vocbase).ok());
-    }
-
-
-
-    /// ??? 
-  auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-  userManager->setGlobalVersion(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
-
-
-  // exec context
-  std::unique_ptr<arangodb::ExecContext> userScope(
-      arangodb::ExecContext::create(arangodb::auth::AuthUser{V8UsersTest::USERNAME},
-                                    arangodb::auth::DatabaseResource{vocbase->name()})
-          .release());
-
-#if 0
-
-struct TestView : public arangodb::LogicalView {
-  arangodb::Result _appendVelocyPackResult;
-  arangodb::velocypack::Builder _properties;
-
-  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-      : arangodb::LogicalView(vocbase, definition, planVersion) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-    builder.add("properties", _properties.slice());
-    return _appendVelocyPackResult;
-  }
-  virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
-  virtual void open() override {}
-  virtual arangodb::Result renameImpl(std::string const&) override {
-    return arangodb::Result();
-  }
-  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                      bool partialUpdate) override {
-    _properties = arangodb::velocypack::Builder(properties);
-    return arangodb::Result();
-  }
-  virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-    return true;
-  }
-};
-
-
-
-#endif
-
-#endif

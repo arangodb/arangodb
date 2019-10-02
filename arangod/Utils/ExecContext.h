@@ -134,6 +134,10 @@ class ExecContext : public RequestContext {
 
   bool isStandardUser() const { return _type == Type::User; }
 
+  void setSystemDbAuthLevel(auth::Level level) {
+    _systemDbAuthLevel = level;
+  }
+
   // should immediately cancel this operation
   bool isCanceled() const { return _canceled; }
   void cancel() { _canceled = true; }

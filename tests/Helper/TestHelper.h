@@ -54,11 +54,11 @@ class TestHelper {
   // ---------------------------------------------------------------------------
 
  public:
-  arangodb::tests::mocks::MockAqlServer* mockAqlServerInit();
-  arangodb::tests::mocks::MockAqlServer* mockAqlServer();
+  arangodb::tests::mocks::MockServer* mockAqlServerInit();
+  arangodb::tests::mocks::MockServer* mockAqlServer();
 
  protected:
-  std::unique_ptr<arangodb::tests::mocks::MockAqlServer> _mockAqlServer;
+  std::unique_ptr<arangodb::tests::mocks::MockServer> _mockServer;
   SystemDatabaseFeature::ptr _system;
 
   // ---------------------------------------------------------------------------
@@ -68,18 +68,21 @@ class TestHelper {
  public:
   static void v8Init();
 
-  void v8Setup(TRI_vocbase_t*);
+  void v8Setup();
   void v8Teardown();
 
   v8::Isolate* v8Isolate();
   v8::Handle<v8::Context> v8Context();
   TRI_v8_global_t* v8Globals();
 
+  void callFunction(v8::Persistent<v8::Object>& obj,
+		    v8::Persistent<v8::Value>& func,
+		    std::vector<std::string> const& args);
 
-  void callFunction(v8::Handle<v8::Value>, std::vector<v8::Local<v8::Value>>&);
-
-  void callFunctionThrow(v8::Handle<v8::Value>,
-                         std::vector<v8::Local<v8::Value>>&, int errorCode);
+  void callFunctionThrow(v8::Persistent<v8::Object>& obj,
+			 v8::Persistent<v8::Value>& func,
+                         std::vector<std::string> const& args,
+			 int errorCode);
 
  protected:
   bool _v8Initialized;
@@ -98,6 +101,7 @@ class TestHelper {
   void disposeExecContext();
 
   void usersSetup();
+  void usersTeardown();
 
   void createUser(std::string const& username, std::function<void(auth::User*)> callback);
 
