@@ -173,13 +173,13 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      let nodeDependency  = undefined;
+      let nodeDependency  = null;
       plan.nodes.forEach(function(node) {
         if (node.type === "MaterializerNode") {
           // there should be no materializer before (e.g. double materialization)
           assertFalse(materializeNodeFound);
           materializeNodeFound = true;
-          // the other sort node should be limited but not a materializer
+          // the other sort node should be limited but not have a materializer
           // BM25 node on single and TFIDF on cluster as for cluster
           // only first sort will be on DBServers
           assertEqual(nodeDependency.limit, isCluster ? 10 : 4);
@@ -261,8 +261,8 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      let nodeDependency = undefined;
-      // sort by TFIDF node must be materializer (identified by limit value = 4 (1 to skip and 3 to limit))
+      let nodeDependency = null;
+      // sort by TFIDF node`s limit must be appended with materializer (identified by limit value = 3)
       // as last SORT needs materialized document
       // and SORT by BM25 is not lowest possible variant
       // However in cluster only first sort suitable, as later sorts depend 
@@ -287,11 +287,11 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      // sort by TFIDF node must be materializer (identified by limit value = 4 (1 to skip and 3 to limit))
+      // sort by TFIDF node`s limit must be appended with materializer (identified by limit value = 3)
       // as SORT by BM25 is not lowest possible variant
       // However in cluster only first sort suitable, as later sorts depend 
       // on all db servers results and performed on coordinator
-      let nodeDependency = undefined;
+      let nodeDependency = null;
       plan.nodes.forEach(function(node) {
         if( node.type === "MaterializerNode") {
           assertFalse(materializeNodeFound);
