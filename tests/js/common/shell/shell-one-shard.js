@@ -187,19 +187,23 @@ function OneShardPropertiesSuite () {
     
     testValuesBelowMinReplicationFactor : function () {
       let min = internal.minReplicationFactor;
-      try {
-        db._createDatabase(dn, { replicationFactor : min - 1 });
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      if (min > 0) {
+        try {
+          db._createDatabase(dn, { replicationFactor : min - 1 });
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
       }
     },
 
     testValuesAboveMaxReplicationFactor : function () {
       let max = internal.maxReplicationFactor;
-      try {
-        db._createDatabase(dn, { replicationFactor : max + 1 });
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      if (max > 0) {
+        try {
+          db._createDatabase(dn, { replicationFactor : max + 1 });
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
       }
     },
   
