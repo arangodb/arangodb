@@ -24,6 +24,7 @@
 #define ARANGOD_FUTURES_FUTURE_H 1
 
 #include <chrono>
+#include <condition_variable>
 #include <thread>
 
 #include "Basics/debugging.h"
@@ -126,6 +127,27 @@ template <class T>
 using decay_t = typename decay<T>::type;
 
 struct EmptyConstructor {};
+
+// uses a condition_variable to wait
+template<typename T>
+void waitImpl(Future<T>& f) {
+  if (f.isReady()) {
+    return; // short-circuit
+  }
+  
+  std::mutex m;
+  std::condition_variable cv;
+  
+  std::unique_lock<std::mutex> lock(m);
+  
+  Promise<T> p;
+  f.thenFinal([&p, &cv](Try<T>&& t) {
+    p.setTry(std::move(t));
+    cv.notify_one();
+  });
+  f = std::move(p.getFuture());
+  cv.wait(lock, [&f]{return f.isReady();});
+}
 }  // namespace detail
 
 /// @brief Specifies state of a future as returned by wait_for and wait_until
@@ -247,10 +269,12 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() const {
-    while (!isReady()) {
+  void wait() {
+    unsigned i = 8;
+    while (!isReady() && i--) {
       std::this_thread::yield();
     }
+    detail::waitImpl(*this);
   }
 
   /// waits for the result, returns if it is not available
