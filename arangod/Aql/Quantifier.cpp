@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Quantifier.h"
+
 #include "Aql/AstNode.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb::aql;
 

@@ -25,12 +25,11 @@
 
 #include "Aql/InAndOutRowExpressionContext.h"
 
+#include <velocypack/Slice.h>
+
 #include <utility>
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
 namespace transaction {
 class Methods;
 }

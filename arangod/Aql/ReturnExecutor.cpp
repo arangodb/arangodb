@@ -31,6 +31,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr bool ReturnExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough ReturnExecutor::Properties::allowsBlockPassthrough;
+constexpr bool ReturnExecutor::Properties::inputSizeRestrictsOutputSize;
+
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                          RegisterId nrOutputRegisters, bool doCount)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),

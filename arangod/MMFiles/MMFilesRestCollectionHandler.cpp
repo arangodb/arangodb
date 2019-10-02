@@ -28,9 +28,10 @@
 
 using namespace arangodb;
 
-MMFilesRestCollectionHandler::MMFilesRestCollectionHandler(GeneralRequest* request,
+MMFilesRestCollectionHandler::MMFilesRestCollectionHandler(application_features::ApplicationServer& server,
+                                                           GeneralRequest* request,
                                                            GeneralResponse* response)
-    : RestCollectionHandler(request, response) {}
+    : RestCollectionHandler(server, request, response) {}
 
 Result MMFilesRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
                                                            std::string const& command,

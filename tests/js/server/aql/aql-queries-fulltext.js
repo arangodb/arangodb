@@ -71,9 +71,10 @@ function ahuacatlFulltextTestSuite () {
     testFulltext1 : function () {
       var actual;
 
-      fulltext.save({ id : 1, text : "some rubbish text" });
-      fulltext.save({ id : 2, text : "More rubbish test data. The index should be able to handle all this." });
-      fulltext.save({ id : 3, text : "even MORE rubbish. Nevertheless this should be handled well, too." });
+      fulltext.insert([
+        { id : 1, text : "some rubbish text" },
+        { id : 2, text : "More rubbish test data. The index should be able to handle all this." },
+        { id : 3, text : "even MORE rubbish. Nevertheless this should be handled well, too." }]);
      
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') SORT d.id RETURN d.id");
       assertEqual([ 1 ], actual);
@@ -115,10 +116,12 @@ function ahuacatlFulltextTestSuite () {
         "Loewenschuetzer moechten maechtige Mueller koedern",
         "Moechten boese wichte wenig mueller melken?"
       ];
-      
+
+      let docs = [];
       for (var i = 0; i < texts.length; ++i) {
-        fulltext.save({ id : (i + 1), text : texts[i] });
+        docs.push({ id : (i + 1), text : texts[i] });
       }
+      fulltext.insert(docs);
      
       var actual;
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'prefix:möchten,müller') SORT d.id RETURN d.id");
@@ -147,9 +150,9 @@ function ahuacatlFulltextTestSuite () {
     },
     
     testLimit : function () {
-      fulltext.save({ id : 1, text : "some rubbish text" });
-      fulltext.save({ id : 2, text : "More rubbish test data. The index should be able to handle all this." });
-      fulltext.save({ id : 3, text : "even MORE rubbish. Nevertheless this should be handled well, too." });
+      fulltext.insert([{ id : 1, text : "some rubbish text" },
+                       { id : 2, text : "More rubbish test data. The index should be able to handle all this." },
+                       { id : 3, text : "even MORE rubbish. Nevertheless this should be handled well, too." }]);
       
       let actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1, 1 RETURN d._id");
       assertEqual([ ], actual);
@@ -186,9 +189,11 @@ function ahuacatlFulltextTestSuite () {
     },
     
     testLimitMany : function () {
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        fulltext.save({ text : "some rubbish text" });
+        docs.push({ text : "some rubbish text" });
       }
+      fulltext.insert(docs);
       
       let actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 999, 1 RETURN 1");
       assertEqual([ 1 ], actual);

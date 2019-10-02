@@ -23,9 +23,9 @@
 #include "AllRowsFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/SortExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -81,7 +81,7 @@ std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
   return {ExecutionState::DONE, _aqlItemMatrix->size()};
 }
 
-AllRowsFetcher::AllRowsFetcher(DependencyProxy<false>& executionBlock)
+AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock)
     : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),
@@ -130,4 +130,9 @@ ExecutionState AllRowsFetcher::upstreamState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
+}
+
+std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPassthrough(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

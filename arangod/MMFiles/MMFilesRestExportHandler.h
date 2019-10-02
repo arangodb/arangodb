@@ -33,7 +33,8 @@
 namespace arangodb {
 class MMFilesRestExportHandler : public RestVocbaseBaseHandler {
  public:
-  MMFilesRestExportHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestExportHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
  public:
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }

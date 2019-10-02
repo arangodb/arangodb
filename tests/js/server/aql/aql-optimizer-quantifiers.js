@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for ANY|ALL|NONE
@@ -39,7 +39,7 @@ function optimizerQuantifiersTestSuite () {
   var c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -48,7 +48,7 @@ function optimizerQuantifiersTestSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
     
@@ -56,30 +56,30 @@ function optimizerQuantifiersTestSuite () {
       var query = "[] ALL == '1'", result;
       
       result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
-      assertEqual(true, result);
+      assertTrue(result);
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
-      assertEqual(true, result);
+      assertTrue(result);
     },
     
     testAnyEmpty : function () {
       var query = "[] ANY == '1'", result;
       
       result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
-      assertEqual(false, result);
+      assertFalse(result);
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
-      assertEqual(false, result);
+      assertFalse(result);
     },
 
     testNoneEmpty : function () {
       var query = "[] NONE == '1'", result;
       
       result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
-      assertEqual(true, result);
+      assertTrue(result);
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
-      assertEqual(true, result);
+      assertTrue(result);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

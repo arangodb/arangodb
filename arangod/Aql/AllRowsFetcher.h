@@ -23,18 +23,22 @@
 #ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
 #define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionState.h"
+#include "Aql/types.h"
 
+#include <Basics/Common.h>
 #include <Basics/Exceptions.h>
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-template <bool>
+class AqlItemMatrix;
+class SharedAqlItemBlockPtr;
+enum class ExecutionState;
+template <BlockPassthrough>
 class DependencyProxy;
 
 /**
@@ -43,7 +47,7 @@ class DependencyProxy;
  */
 class AllRowsFetcher {
  public:
-  explicit AllRowsFetcher(DependencyProxy<false>& executionBlock);
+  explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
@@ -74,10 +78,7 @@ class AllRowsFetcher {
   // AllRowsFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  };
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
 
   /**
    * @brief Prefetch the number of rows that will be returned from upstream.
@@ -105,7 +106,7 @@ class AllRowsFetcher {
   ExecutionState upstreamState();
 
  private:
-  DependencyProxy<false>* _dependencyProxy;
+  DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
   ExecutionState _upstreamState;

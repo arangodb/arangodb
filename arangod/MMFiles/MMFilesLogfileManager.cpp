@@ -37,9 +37,11 @@
 #include "Basics/memory-map.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesAllocatorThread.h"
 #include "MMFiles/MMFilesCollectorThread.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesRemoverThread.h"
 #include "MMFiles/MMFilesSynchronizerThread.h"
 #include "MMFiles/MMFilesWalMarker.h"
@@ -50,6 +52,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -125,14 +128,14 @@ MMFilesLogfileManager::MMFilesLogfileManager(application_features::ApplicationSe
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("EngineSelector");
-  startsAfter("MMFilesEngine");
-  startsAfter("SystemDatabase");
+  startsAfter<DatabaseFeature>();
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<MMFilesEngine>();
+  startsAfter<SystemDatabaseFeature>();
 
-  onlyEnabledWith("MMFilesEngine");
+  onlyEnabledWith<MMFilesEngine>();
 }
 
 // destroy the logfile manager
@@ -266,9 +269,8 @@ void MMFilesLogfileManager::prepare() {
   Instance = this;
   FoundLastTick = 0;  // initialize the last found tick value to "not found"
 
-  auto databasePath =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _databasePath = databasePath->directory();
+  auto& databasePath = server().getFeature<DatabasePathFeature>();
+  _databasePath = databasePath.directory();
 
   _shutdownFile = shutdownFilename();
   bool const shutdownFileExists = basics::FileUtils::exists(_shutdownFile);
@@ -324,8 +326,9 @@ void MMFilesLogfileManager::start() {
   }
 
   // initialize some objects
-  _slots = new MMFilesWalSlots(this, _numberOfSlots, 0);
-  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors, _recoveryTick));
+  _slots = new MMFilesWalSlots(*this, _numberOfSlots, 0);
+  _recoverState.reset(new MMFilesWalRecoverState(server().getFeature<DatabaseFeature>(),
+                                                 _ignoreRecoveryErrors, _recoveryTick));
 
   TRI_ASSERT(!_allowWrites);
 
@@ -1639,7 +1642,7 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
     }
 
     // don't hang forever on shutdown
-    if (application_features::ApplicationServer::isStopping()) {
+    if (server().isStopping()) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1774,7 +1777,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       return TRI_ERROR_NO_ERROR;
     }
 
-    if (application_features::ApplicationServer::isStopping()) {
+    if (server().isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
@@ -1812,7 +1815,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       << ", maxWaitTime: " << maxWaitTime;
   logStatus();
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (server().isStopping()) {
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
@@ -2029,7 +2032,7 @@ int MMFilesLogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 
 // start the synchronizer thread
 int MMFilesLogfileManager::startMMFilesSynchronizerThread() {
-  _synchronizerThread = new MMFilesSynchronizerThread(this, _syncInterval);
+  _synchronizerThread = new MMFilesSynchronizerThread(*this, _syncInterval);
 
   if (!_synchronizerThread->start()) {
     delete _synchronizerThread;
@@ -2051,7 +2054,7 @@ void MMFilesLogfileManager::stopMMFilesSynchronizerThread() {
 
 // start the allocator thread
 int MMFilesLogfileManager::startMMFilesAllocatorThread() {
-  _allocatorThread = new MMFilesAllocatorThread(this);
+  _allocatorThread = new MMFilesAllocatorThread(*this);
 
   if (!_allocatorThread->start()) {
     delete _allocatorThread;
@@ -2075,7 +2078,7 @@ void MMFilesLogfileManager::stopMMFilesAllocatorThread() {
 int MMFilesLogfileManager::startMMFilesCollectorThread() {
   WRITE_LOCKER(locker, _collectorThreadLock);
 
-  _collectorThread = new MMFilesCollectorThread(this);
+  _collectorThread = new MMFilesCollectorThread(*this);
 
   if (!_collectorThread->start()) {
     delete _collectorThread;
@@ -2132,7 +2135,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
 
 // start the remover thread
 int MMFilesLogfileManager::startMMFilesRemoverThread() {
-  _removerThread = new MMFilesRemoverThread(this);
+  _removerThread = new MMFilesRemoverThread(*this);
 
   if (!_removerThread->start()) {
     delete _removerThread;

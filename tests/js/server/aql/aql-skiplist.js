@@ -52,9 +52,11 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       skiplist = internal.db._create("UnitTestsAhuacatlSkiplist");
       skiplist.ensureSkiplist("a");
 
+      let docs = [];
       for (var i = 0; i < 10000; ++i) {
-        skiplist.save({a: i});
+        docs.push({a: i});
       }
+      skiplist.insert(docs);
     },
 
     tearDown : function () {

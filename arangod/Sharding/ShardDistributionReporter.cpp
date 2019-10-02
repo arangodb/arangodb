@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ShardDistributionReporter.h"
 #include "VocBase/LogicalCollection.h"
@@ -268,11 +269,12 @@ ShardDistributionReporter::ShardDistributionReporter(std::shared_ptr<ClusterComm
 
 ShardDistributionReporter::~ShardDistributionReporter() {}
 
-std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance() {
+std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
+    application_features::ApplicationServer& server) {
   if (_theInstance == nullptr) {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     _theInstance =
-        std::make_shared<ShardDistributionReporter>(ClusterComm::instance(),
-                                                    ClusterInfo::instance());
+        std::make_shared<ShardDistributionReporter>(ClusterComm::instance(), &ci);
   }
   return _theInstance;
 }

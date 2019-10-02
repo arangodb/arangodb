@@ -320,6 +320,10 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _ctx->serializeAllVariables(_trx, builder);
 }
 
+void BaseOptions::setCollectionToShard(std::map<std::string, std::string>const& in){
+  _collectionToShard = std::move(in);
+}
+
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
 
 arangodb::aql::Query* BaseOptions::query() const { return _query; }
@@ -353,6 +357,7 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.close();
 
   result.add(VPackValue("tmpVar"));
+  TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
 }
 
@@ -421,7 +426,8 @@ EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
       // the emplace_back cannot throw here, as we reserved enough space before
-      csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
+      csrs.emplace_back(
+          new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
     }
     opCursors.emplace_back(std::move(csrs));
   }
@@ -446,7 +452,7 @@ void BaseOptions::activateCache(bool enableDocumentCache,
                                 std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
+  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {

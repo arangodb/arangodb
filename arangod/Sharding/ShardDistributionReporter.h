@@ -45,7 +45,7 @@ class ShardDistributionReporter {
   // During production use this singleton instance.
   // Do not actively create your own instance.
   // The Constructor is only public for testing purposes.
-  static std::shared_ptr<ShardDistributionReporter> instance();
+  static std::shared_ptr<ShardDistributionReporter> instance(application_features::ApplicationServer&);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

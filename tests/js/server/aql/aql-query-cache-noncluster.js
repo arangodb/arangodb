@@ -116,11 +116,6 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRenameCollection1 : function () {
-      if (require("@arangodb/cluster").isCluster()) {
-        // renaming collections not supported in cluster
-        return;
-      }
-
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -161,11 +156,6 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRenameCollection2 : function () {
-      if (require("@arangodb/cluster").isCluster()) {
-        // renaming collections not supported in cluster
-        return;
-      }
-
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 

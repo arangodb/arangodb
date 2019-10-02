@@ -24,12 +24,15 @@
 #include "Store.h"
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "StoreCallback.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -109,8 +112,9 @@ inline static bool endpointPathFromUrl(std::string const& url,
 }
 
 /// Ctor with name
-Store::Store(Agent* agent, std::string const& name)
-    : _agent(agent), _node(name, this) {}
+Store::Store(arangodb::application_features::ApplicationServer& server, Agent* agent,
+             std::string const& name)
+    : _server(server), _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -322,16 +326,20 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     for (auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
       urls.push_back(it->first);
     }
+    
+    auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+    network::ConnectionPool* cp = nf.pool();
 
     // Callback
 
     for (auto const& url : urls) {
 
-      auto body = std::make_shared<VPackBuilder>();  // host
+      auto buffer = std::make_shared<VPackBufferUInt8>();
+      VPackBuilder body(*buffer);  // host
       {
-        VPackObjectBuilder b(body.get());
-        body->add("term", VPackValue(term));
-        body->add("index", VPackValue(index));
+        VPackObjectBuilder b(&body);
+        body.add("term", VPackValue(term));
+        body.add("index", VPackValue(index));
 
         auto ret = in.equal_range(url);
 
@@ -344,14 +352,14 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
         // Work the map into JSON
         for (auto const& m : result) {
-          body->add(VPackValue(m.first));
+          body.add(VPackValue(m.first));
           {
-            VPackObjectBuilder guard(body.get());
+            VPackObjectBuilder guard(&body);
             for (auto const& m2 : m.second) {
-              body->add(VPackValue(m2.first));
+              body.add(VPackValue(m2.first));
               {
-                VPackObjectBuilder guard2(body.get());
-                body->add("op", VPackValue(m2.second));
+                VPackObjectBuilder guard2(&body);
+                body.add("op", VPackValue(m2.second));
               }
             }
           }
@@ -360,14 +368,23 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-        std::unordered_map<std::string, std::string> hf;
+        
+        Agent* agent = _agent;
+        network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
+                             *buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+          if (r.fail() || r.response->statusCode() >= 400) {
+            LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
+              << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
+              << "): " << r.slice().toJson();
 
-        arangodb::ClusterComm::instance()->asyncRequest(
-            coordinatorTransactionID, endpoint, rest::RequestType::POST, path,
-            std::make_shared<std::string>(body->toString()), hf,
-            std::make_shared<StoreCallback>(url, body, _agent), 1.0, true, 0.01);
-
+            if (r.ok() && r.response->statusCode() == 404 && _agent != nullptr) {
+              LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << url;
+              agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+            }
+          }
+          
+        });
+        
       } else {
         LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
       }

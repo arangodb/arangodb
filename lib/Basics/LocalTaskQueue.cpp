@@ -168,6 +168,7 @@ void LocalTaskQueue::join() {
 //////////////////////////////////////////////////////////////////////////////
 
 void LocalTaskQueue::dispatchAndWait() {
+  auto& server = application_features::ApplicationServer::server();
   // regular task loop
   if (!_queue.empty()) {
     while (true) {
@@ -190,8 +191,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 &&
-          application_features::ApplicationServer::isStopping()) {
+      if (_missing > 0 && _started == 0 && server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -219,8 +219,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 &&
-          application_features::ApplicationServer::isStopping()) {
+      if (_missing > 0 && _started == 0 && server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 

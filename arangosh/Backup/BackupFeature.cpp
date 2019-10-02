@@ -243,6 +243,17 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
       if (meta.ok()) {
         LOG_TOPIC("0f208", INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
         LOG_TOPIC("55af7", INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
+        LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
+        LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
+        LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of DBServers: " << meta.get()._nrDBServers;
+        if (!meta.get()._serverId.empty()) {
+          LOG_TOPIC("11112", INFO, arangodb::Logger::BACKUP) << "      serverId: " << meta.get()._serverId;
+        }
+        if (meta.get()._potentiallyInconsistent) {
+          LOG_TOPIC("56241", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: true";
+        } else {
+          LOG_TOPIC("56242", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: false";
+        }
       }
     }
   }
@@ -316,7 +327,14 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
 
   LOG_TOPIC("c4d37", INFO, arangodb::Logger::BACKUP)
       << "Backup succeeded. Generated identifier '" << identifier.copyString() << "'";
-
+  VPackSlice sizeInBytes = resultObject.get("sizeInBytes");
+  VPackSlice nrFiles = resultObject.get("nrFiles");
+  if (sizeInBytes.isInteger() && nrFiles.isInteger()) {
+    uint64_t size = sizeInBytes.getNumber<uint64_t>();
+    uint64_t nr = nrFiles.getNumber<uint64_t>();
+    LOG_TOPIC("ce423", INFO, arangodb::Logger::BACKUP)
+      << "Total size of backup: " << size << ", number of files: " << nr;
+  }
   return result;
 }
 
@@ -324,7 +342,6 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::BackupFeature::Options const& options,
                                 arangodb::ClientManager& clientManager) {
   arangodb::Result result;
-
   double originalUptime = 0.0;
   if (options.maxWaitForRestart > 0.0) {
     result = ::getUptime(client, originalUptime);
@@ -646,10 +663,10 @@ arangodb::Result executeTransfere(arangodb::httpclient::SimpleHttpClient& client
 namespace arangodb {
 
 BackupFeature::BackupFeature(application_features::ApplicationServer& server, int& exitCode)
-    : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{Logger::BACKUP}, _exitCode{exitCode} {
+    : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{server, Logger::BACKUP}, _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
+  startsAfter<ClientFeature>();
 };
 
 std::string BackupFeature::featureName() { return ::FeatureName; }
@@ -752,9 +769,9 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   using namespace arangodb::application_features;
 
   auto const& positionals = options->processingResult()._positionals;
-  auto client = ApplicationServer::getFeature<arangodb::ClientFeature>("Client");
+  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
-  if (client->databaseName() != "_system") {
+  if (client.databaseName() != "_system") {
     LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
       << "hot backups are global and must be performed on the _system database with super user privileges";
     FATAL_ERROR_EXIT();

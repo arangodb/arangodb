@@ -26,19 +26,21 @@
 #include "IndexExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
@@ -48,6 +50,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool IndexExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough IndexExecutor::Properties::allowsBlockPassthrough;
+constexpr bool IndexExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {
 /// resolve constant attribute accesses
@@ -63,6 +69,7 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
     }
   }
 }
+
 static inline DocumentProducingFunctionContext createContext(InputAqlItemRow const& inputRow,
                                                              IndexExecutorInfos& infos) {
   return DocumentProducingFunctionContext(
@@ -160,6 +167,86 @@ IndexExecutorInfos::IndexExecutorInfos(
       }
     }
   }
+}
+
+ExecutionEngine* IndexExecutorInfos::getEngine() const { return _engine; }
+
+Collection const* IndexExecutorInfos::getCollection() const {
+  return _collection;
+}
+
+Variable const* IndexExecutorInfos::getOutVariable() const {
+  return _outVariable;
+}
+
+std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexcept {
+  return _projections;
+}
+
+transaction::Methods* IndexExecutorInfos::getTrxPtr() const noexcept {
+  return _trxPtr;
+}
+
+std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePositions() const noexcept {
+  return _coveringIndexAttributePositions;
+}
+
+bool IndexExecutorInfos::getProduceResult() const noexcept {
+  return _produceResult;
+}
+
+bool IndexExecutorInfos::getUseRawDocumentPointers() const noexcept {
+  return _useRawDocumentPointers;
+}
+
+std::vector<transaction::Methods::IndexHandle> const& IndexExecutorInfos::getIndexes() const
+    noexcept {
+  return _indexes;
+}
+
+AstNode const* IndexExecutorInfos::getCondition() const noexcept {
+  return _condition;
+}
+
+bool IndexExecutorInfos::getV8Expression() const noexcept {
+  return _hasV8Expression;
+}
+
+RegisterId IndexExecutorInfos::getOutputRegisterId() const noexcept {
+  return _outputRegisterId;
+}
+
+std::vector<std::unique_ptr<NonConstExpression>> const& IndexExecutorInfos::getNonConstExpressions() const
+    noexcept {
+  return _nonConstExpression;
+}
+
+bool IndexExecutorInfos::hasMultipleExpansions() const noexcept {
+  return _hasMultipleExpansions;
+}
+
+IndexIteratorOptions IndexExecutorInfos::getOptions() const { return _options; }
+
+bool IndexExecutorInfos::isAscending() const noexcept {
+  return _options.ascending;
+}
+
+Ast* IndexExecutorInfos::getAst() const noexcept { return _ast; }
+
+std::vector<Variable const*> const& IndexExecutorInfos::getExpInVars() const noexcept {
+  return _expInVars;
+}
+
+std::vector<RegisterId> const& IndexExecutorInfos::getExpInRegs() const noexcept {
+  return _expInRegs;
+}
+
+void IndexExecutorInfos::setHasMultipleExpansions(bool flag) {
+  _hasMultipleExpansions = flag;
+}
+
+bool IndexExecutorInfos::hasNonConstParts() const {
+  return !_nonConstExpression.empty();
 }
 
 IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
@@ -310,6 +397,10 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   TRI_ASSERT(skipped == toSkip || !hasMore());
 
   return static_cast<size_t>(skipped);
+}
+
+bool IndexExecutor::CursorReader::isCovering() const {
+  return _type == Type::Covering;
 }
 
 void IndexExecutor::initIndexes(InputAqlItemRow& input) {
@@ -545,13 +636,13 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, skipped);  // tupple, cannot use initializer list due to build failure
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
       }
 
       if (!_input) {
@@ -560,7 +651,7 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, skipped);  // tupple, cannot use initializer list due to build failure
       }
 
       initIndexes(_input);
@@ -590,8 +681,19 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   _skipped = 0;
 
   if (_state == ExecutionState::DONE && !_input) {
-    return std::make_tuple(ExecutionState::DONE, stats, skipped); // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(ExecutionState::DONE, stats,
+                           skipped);  // tupple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
+  return std::make_tuple(ExecutionState::HASMORE, stats,
+                         skipped);  // tupple, cannot use initializer list due to build failure
+}
+
+IndexExecutor::CursorReader& IndexExecutor::getCursor() {
+  TRI_ASSERT(_currentIndex < _cursors.size());
+  return _cursors[_currentIndex];
+}
+
+bool IndexExecutor::needsUniquenessCheck() const noexcept {
+  return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
 }

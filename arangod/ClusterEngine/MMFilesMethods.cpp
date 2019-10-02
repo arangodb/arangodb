@@ -23,6 +23,7 @@
 #include "MMFilesMethods.h"
 
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -41,16 +42,17 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
 
+  auto& server = ce->server();
   // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
+  ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
 
   // First determine the collection ID from the name:
-  auto collinfo = ci->getCollectionNT(dbname, collname);
+  auto collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }

@@ -22,6 +22,7 @@
 
 #include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -68,13 +69,14 @@ int ClusterTransactionCollection::use(int nestingLevel) {
 
   if (_collection == nullptr) {
     // open the collection
-    ClusterInfo* ci = ClusterInfo::instance();
-    if (ci == nullptr) {
+    if (_transaction->vocbase().server().isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
+    ClusterInfo& ci =
+        _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     _collection =
-        ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+        ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     if (_collection == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }

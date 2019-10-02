@@ -26,26 +26,23 @@
 #ifndef ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 
-#include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_map>
 
 namespace arangodb {
 namespace aql {
-
-class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
+struct Aggregator;
 
 class HashedCollectExecutorInfos : public ExecutorInfos {
  public:
@@ -65,16 +62,12 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
-    return _groupRegisters;
-  }
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const {
-    return _aggregateRegisters;
-  }
-  std::vector<std::string> getAggregateTypes() const { return _aggregateTypes; }
-  bool getCount() const noexcept { return _count; }
-  transaction::Methods* getTransaction() const { return _trxPtr; }
-  RegisterId getCollectRegister() const noexcept { return _collectRegister; }
+  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
+  std::vector<std::string> getAggregateTypes() const;
+  bool getCount() const noexcept;
+  transaction::Methods* getTransaction() const;
+  RegisterId getCollectRegister() const noexcept;
 
  private:
   /// @brief aggregate types
@@ -106,9 +99,9 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
 class HashedCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = HashedCollectExecutorInfos;
@@ -142,7 +135,7 @@ class HashedCollectExecutor {
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
-  Infos const& infos() const noexcept { return _infos; }
+  Infos const& infos() const noexcept;
 
   /**
    * @brief Shall be executed until it returns DONE, then never again.

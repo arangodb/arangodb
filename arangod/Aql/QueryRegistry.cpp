@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
@@ -116,13 +115,15 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
-    LOG_TOPIC("780f7", DEBUG, arangodb::Logger::AQL) << "Query id " << id << " not found in registry";
+    LOG_TOPIC("780f7", DEBUG, arangodb::Logger::AQL)
+        << "Query id " << id << " not found in registry";
     return nullptr;
   }
 
   std::unique_ptr<QueryInfo>& qi = q->second;
   if (qi->_isOpen) {
-    LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is already in open";
+    LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
+        << "Query with id " << id << " is already in open";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "query with given vocbase and id is already open");
   }
@@ -131,7 +132,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
 
   if (!qi->_isPrepared) {
     try {
-      qi->_query->prepare(this);
+      qi->_query->prepare(this, SerializationFormat::SHADOWROWS);
     } catch (...) {
       qi->_isOpen = false;
       qi->_expires = 0.0;
@@ -156,7 +157,8 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
-    LOG_TOPIC("6671d", DEBUG, arangodb::Logger::AQL) << "Query id " << id << " not found in registry";
+    LOG_TOPIC("6671d", DEBUG, arangodb::Logger::AQL)
+        << "Query id " << id << " not found in registry";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "query with given vocbase and id not found");
   }
@@ -170,7 +172,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   if (!qi->_isPrepared) {
     qi->_isPrepared = true;
     try {
-      qi->_query->prepare(this);
+      qi->_query->prepare(this, SerializationFormat::SHADOWROWS);
     } catch (...) {
       qi->_isOpen = false;
       qi->_expires = 0.0;
@@ -180,11 +182,13 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
-  LOG_TOPIC("ae981", DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now returned.";
+  LOG_TOPIC("ae981", DEBUG, arangodb::Logger::AQL)
+      << "query with id " << id << " is now returned.";
 }
 
 /// @brief destroy
-void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened) {
+void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
+                            int errorCode, bool ignoreOpened) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -229,7 +233,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
 
   if (!queryInfo->_isPrepared) {
     queryInfo->_isPrepared = true;
-    queryInfo->_query->prepare(this);
+    queryInfo->_query->prepare(this, SerializationFormat::SHADOWROWS);
   }
 
   // If the query was open, we can delete it right away, if not, we need
@@ -244,14 +248,14 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
 
       if (res.fail()) {
         // not much we can do here except logging the error
-        LOG_TOPIC("440a1", ERR, arangodb::Logger::AQL) 
-          << "unable to commit query with id " << id 
-          << ": " << res.errorMessage() 
-          << ", current status: " << transaction::statusString(trx->status());
+        LOG_TOPIC("440a1", ERR, arangodb::Logger::AQL)
+            << "unable to commit query with id " << id << ": " << res.errorMessage()
+            << ", current status: " << transaction::statusString(trx->status());
       }
     }
   }
-  LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now destroyed";
+  LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
+      << "query with id " << id << " is now destroyed";
 }
 
 void QueryRegistry::destroy(std::string const& vocbase) {
@@ -265,7 +269,7 @@ void QueryRegistry::destroy(std::string const& vocbase) {
     }
 
     for (auto& it : (*m).second) {
-      it.second->_expires = 0.0; 
+      it.second->_expires = 0.0;
       if (it.second->_isOpen) {
         // query in use by another thread/request
         it.second->_query->kill();
@@ -277,7 +281,8 @@ void QueryRegistry::destroy(std::string const& vocbase) {
 }
 
 ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
-  LOG_TOPIC("d9870", DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << " is in use.";
+  LOG_TOPIC("d9870", DEBUG, arangodb::Logger::AQL)
+      << "Test if query with id " << id << " is in use.";
 
   READ_LOCKER(readLocker, _lock);
 
@@ -289,7 +294,8 @@ ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
-    LOG_TOPIC("48f28", DEBUG, arangodb::Logger::AQL) << "Query id " << id << " not found in registry";
+    LOG_TOPIC("48f28", DEBUG, arangodb::Logger::AQL)
+        << "Query id " << id << " not found in registry";
     return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
   }
   return ResultT<bool>::success(q->second->_isOpen);
@@ -320,12 +326,14 @@ void QueryRegistry::expireQueries() {
   }
 
   if (!queriesLeft.empty()) {
-    LOG_TOPIC("4f142", TRACE, arangodb::Logger::AQL) << "queries left in QueryRegistry: " << queriesLeft;
+    LOG_TOPIC("4f142", TRACE, arangodb::Logger::AQL)
+        << "queries left in QueryRegistry: " << queriesLeft;
   }
 
   for (auto& p : toDelete) {
     try {  // just in case
-      LOG_TOPIC("e95dc", DEBUG, arangodb::Logger::AQL) << "timeout for query with id " << p.second;
+      LOG_TOPIC("e95dc", DEBUG, arangodb::Logger::AQL)
+          << "timeout for query with id " << p.second;
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED, false);
     } catch (...) {
     }
@@ -364,7 +372,7 @@ void QueryRegistry::destroyAll() {
   }
 
   size_t count = 0;
-  {    
+  {
     READ_LOCKER(readlock, _lock);
     for (auto& p : _queries) {
       count += p.second.size();
@@ -381,7 +389,6 @@ void QueryRegistry::disallowInserts() {
   _disallowInserts = true;
   // from here on, there shouldn't be any more inserts into the registry
 }
-
 
 QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared)
     : _vocbase(&(query->vocbase())),
