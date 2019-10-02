@@ -79,23 +79,41 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
       return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
     }
   }
-  TRI_ASSERT(std::all_of(_dependencyInfos.cbegin(), _dependencyInfos.cend(),
-                         [this](auto const& dep) {
-                           return isDone(dep) || indexIsValid(dep);
-                         }));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    auto const begin = _dependencyInfos.cbegin();
+    auto const end = _dependencyInfos.cend();
+    // The previous loop assures that all dependencies must either have a valid
+    // index, or be both done and have no valid index.
+    TRI_ASSERT(std::all_of(begin, end, [this](auto const& dep) {
+      return isDone(dep) || indexIsValid(dep);
+    }));
+
+    bool const anyDone = std::any_of(begin, end, [this](auto const& dep) {
+      return !indexIsValid(dep);
+    });
+    bool const anyShadow = std::any_of(begin, end, [this](auto const& dep) {
+      return indexIsValid(dep) && isAtShadowRow(dep);
+    });
+    // We must not both have a dependency that's completely done, and a shadow row in another dependency. Otherwise it indicates an error upstream, because each shadow row must have been inserted in all dependencies by the distribute/scatter block.
+    TRI_ASSERT(!(anyShadow && anyDone));
+  }
+#endif
 
   bool allDone = true;
   bool allShadow = true;
   auto row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   for (auto const& dep : _dependencyInfos) {
     if (!indexIsValid(dep)) {
-      TRI_ASSERT(isDone(dep));
       allShadow = false;
     } else {
       allDone = false;
       if (!isAtShadowRow(dep)) {
+        // We have one dependency that's not done and not a shadow row.
         return {ExecutionState::HASMORE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
       } else if (!row.isInitialized()) {
+        // Save the first shadow row we encounter
         row = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
       } else {
         TRI_ASSERT(row.isInitialized());
@@ -104,7 +122,11 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
       }
     }
   }
+  // Obviously, at most one of those can be true.
   TRI_ASSERT(!(allDone && allShadow));
+  // If we've encountered any shadow row, no dependency may be done.
+  // And if we've encountered any non-shadow row, we must have returned in the
+  // loop immediately.
   TRI_ASSERT(allShadow == row.isInitialized());
 
   if (allShadow) {
@@ -216,10 +238,10 @@ std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipRowsForDe
   size_t skip = 0;
   while (indexIsValid(depInfo) && !isAtShadowRow(depInfo) && skip < atMost) {
     ++skip;
+    ++depInfo._rowIndex;
   }
 
   if (skip > 0) {
-    depInfo._rowIndex += skip;
     ExecutionState const state =
         noMoreDataRows(depInfo) ? ExecutionState::DONE : ExecutionState::HASMORE;
     return {state, skip};
@@ -233,7 +255,13 @@ std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipRowsForDe
   }
 
   TRI_ASSERT(!indexIsValid(depInfo));
-  return skipSomeForDependency(dependency, atMost);
+  ExecutionState state;
+  size_t skipped;
+  std::tie(state, skipped) = skipSomeForDependency(dependency, atMost);
+  if (skipped < atMost) {
+    state = ExecutionState::DONE;
+  }
+  return {state, skipped};
 }
 
 bool MultiDependencySingleRowFetcher::indexIsValid(
