@@ -1031,7 +1031,7 @@ INSTANTIATE_TEST_CASE_P(MultiDependencySingleRowFetcherShadowRowTestInstance,
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_test) {
   constexpr size_t numDeps = 1;
-  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
 
   dependencyProxyMock.getDependencyMock(0).shouldReturn(
       alternatingDataAndShadowRows({0, 1, 2, 3}));
@@ -1078,7 +1078,7 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_fetch_shadow_row_tes
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps) {
   constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
 
   dependencyProxyMock.getDependencyMock(0).shouldReturn(
       alternatingDataAndShadowRows({0, 1, 2, 3}));
@@ -1176,7 +1176,7 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps) {
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps_reverse_pull) {
   constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
 
   dependencyProxyMock.getDependencyMock(0).shouldReturn(
       alternatingDataAndShadowRows({0, 1, 2, 3}));
@@ -1274,7 +1274,7 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, fetch_shadow_rows_2_deps_re
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_skip_shadow_row_test) {
   constexpr size_t numDeps = 1;
-  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
 
   dependencyProxyMock.getDependencyMock(0).shouldReturn(
       alternatingDataAndShadowRows({0, 1, 2, 3}));
@@ -1315,7 +1315,7 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_skip_shadow_row_test
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps) {
   constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
 
   dependencyProxyMock.getDependencyMock(0).shouldReturn(
       alternatingDataAndShadowRows({0, 1, 2, 3}));
@@ -1406,7 +1406,7 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps) {
 
 TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps_reverse_pull) {
   constexpr size_t numDeps = 2;
-  MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
+  MultiDependencyProxyMock<BlockPassthrough::Disable> dependencyProxyMock{monitor, 1, numDeps};
 
   dependencyProxyMock.getDependencyMock(0).shouldReturn(
       alternatingDataAndShadowRows({0, 1, 2, 3}));
