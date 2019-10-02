@@ -221,10 +221,7 @@ TEST_F(V8UsersTest, v8_users_test_revoke_collection) {
 // ---------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_grant_view) {
-  auto view = helper.createView(vocbase, COLLECTION_RESOURCE);
-  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
-    user->grantCollection(COLLECTION_RESOURCE, RO);
-  });
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {});
 
   EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RO));
   EXPECT_FALSE(exec->hasAccess(COLLECTION_RESOURCE, RW));
@@ -241,7 +238,6 @@ TEST_F(V8UsersTest, v8_users_test_grant_view) {
 // -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, v8_users_test_revoke_view) {
-  auto view = helper.createView(vocbase, COLLECTION_RESOURCE);
   helper.createUser(USERNAME, [](arangodb::auth::User* user) {
     user->grantCollection(COLLECTION_RESOURCE, RO);
   });
