@@ -30,6 +30,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/types.h"
 
 #include <memory>
 
@@ -37,7 +38,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-template <bool>
+template <BlockPassthrough>
 class DependencyProxy;
 
 /**
@@ -48,10 +49,10 @@ class DependencyProxy;
  *        this row stays valid until the next call
  *        of fetchRow.
  */
-template <bool passBlocksThrough>
+template <BlockPassthrough blockPassthrough>
 class SingleRowFetcher {
  public:
-  explicit SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock);
+  explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
@@ -93,7 +94,8 @@ class SingleRowFetcher {
 
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 
-  // TODO enable_if<passBlocksThrough>
+  // TODO enable_if<blockPassthrough>
+  // std::enable_if<blockPassthrough == BlockPassthrough::Enable>
   TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
@@ -137,7 +139,7 @@ class SingleRowFetcher {
   }
 
  private:
-  DependencyProxy<passBlocksThrough>* _dependencyProxy;
+  DependencyProxy<blockPassthrough>* _dependencyProxy;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.

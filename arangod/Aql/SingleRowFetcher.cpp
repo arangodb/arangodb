@@ -34,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock)
     : _dependencyProxy(&executionBlock),
       _upstreamState(ExecutionState::HASMORE),
@@ -42,7 +42,7 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocks
       _currentRow{CreateInvalidInputRowHint{}},
       _currentShadowRow{CreateInvalidShadowRowHint{}} {}
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
   if (_upstreamState == ExecutionState::DONE) {
     return {_upstreamState, nullptr};
@@ -59,7 +59,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThro
   return res;
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
     : _dependencyProxy(nullptr),
       _upstreamState(ExecutionState::HASMORE),
@@ -67,13 +67,13 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
       _currentRow{CreateInvalidInputRowHint{}},
       _currentShadowRow{CreateInvalidShadowRowHint{}} {}
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
   return _dependencyProxy->fetchBlockForPassthrough(atMost);
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
   TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
   TRI_ASSERT(!indexIsValid());
@@ -86,7 +86,7 @@ std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(
   return res;
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
@@ -107,7 +107,7 @@ bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
   return true;
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
   if (!fetchBlockIfNecessary(atMost)) {
     return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
@@ -133,7 +133,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
   return {returnState(false), _currentRow};
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchShadowRow(size_t atMost) {
   if (!fetchBlockIfNecessary(atMost)) {
     return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
@@ -160,12 +160,12 @@ std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>:
   return {returnState(true), _currentShadowRow};
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
   return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough passBlocksThrough>
 ExecutionState SingleRowFetcher<passBlocksThrough>::returnState(bool isShadowRow) const {
   if (!indexIsValid()) {
     // We are locally done, return the upstream state
@@ -178,5 +178,5 @@ ExecutionState SingleRowFetcher<passBlocksThrough>::returnState(bool isShadowRow
   return ExecutionState::HASMORE;
 }
 
-template class ::arangodb::aql::SingleRowFetcher<false>;
-template class ::arangodb::aql::SingleRowFetcher<true>;
+template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Disable>;
+template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Enable>;

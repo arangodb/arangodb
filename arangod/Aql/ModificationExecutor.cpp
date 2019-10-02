@@ -35,18 +35,18 @@ using namespace arangodb::aql;
 template <typename FetcherType>
 constexpr bool ModificationExecutorBase<FetcherType>::Properties::preservesOrder;
 template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough ModificationExecutorBase<FetcherType>::Properties::allowsBlockPassthrough;
 template <typename FetcherType>
 constexpr bool ModificationExecutorBase<FetcherType>::Properties::inputSizeRestrictsOutputSize;
 
 namespace arangodb {
 namespace aql {
 std::string toString(AllRowsFetcher&) { return "AllRowsFetcher"; }
-std::string toString(SingleBlockFetcher<true>&) {
-  return "SingleBlockFetcher<true>";
+std::string toString(SingleBlockFetcher<BlockPassthrough::Enable>&) {
+  return "SingleBlockFetcher<BlockPassthrough::Enable>";
 }
-std::string toString(SingleBlockFetcher<false>&) {
-  return "SingleBlockFetcher<false>";
+std::string toString(SingleBlockFetcher<BlockPassthrough::Disable>&) {
+  return "SingleBlockFetcher<BlockPassthrough::Disable>";
 }
 }  // namespace aql
 }  // namespace arangodb
@@ -122,13 +122,13 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
   return {this->_fetcher.upstreamState(), std::move(stats)};
 }
 
-template class ::arangodb::aql::ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>;
 template class ::arangodb::aql::ModificationExecutor<Insert, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Remove, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>;
 template class ::arangodb::aql::ModificationExecutor<Remove, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Replace, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>;
 template class ::arangodb::aql::ModificationExecutor<Replace, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Update, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>;
 template class ::arangodb::aql::ModificationExecutor<Update, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Upsert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>;
+template class ::arangodb::aql::ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>;
 template class ::arangodb::aql::ModificationExecutor<Upsert, AllRowsFetcher>;

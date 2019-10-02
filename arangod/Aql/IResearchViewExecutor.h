@@ -53,7 +53,7 @@ struct Scorer;
 namespace aql {
 struct ExecutionStats;
 class OutputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class IResearchViewExecutorInfos : public ExecutorInfos {
@@ -130,7 +130,7 @@ class IResearchViewExecutorBase {
     // writes scorer information in additional register for a following sort
     // block to use.
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

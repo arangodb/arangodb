@@ -37,7 +37,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool ConstrainedSortExecutor::Properties::preservesOrder;
-constexpr bool ConstrainedSortExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough ConstrainedSortExecutor::Properties::allowsBlockPassthrough;
 constexpr bool ConstrainedSortExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {

@@ -44,7 +44,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool EnumerateCollectionExecutor::Properties::preservesOrder;
-constexpr bool EnumerateCollectionExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough EnumerateCollectionExecutor::Properties::allowsBlockPassthrough;
 constexpr bool EnumerateCollectionExecutor::Properties::inputSizeRestrictsOutputSize;
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(

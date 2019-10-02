@@ -31,7 +31,7 @@
 namespace arangodb {
 namespace aql {
 
-template <bool allowsPassThrough>
+template <BlockPassthrough allowsPassThrough>
 class SingleRowFetcher;
 class NoStats;
 class ExecutorInfos;
@@ -41,7 +41,7 @@ class SubqueryStartExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 

@@ -34,7 +34,7 @@ namespace aql {
 class ExecutionBlock;
 class NoStats;
 class OutputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class SubqueryExecutorInfos : public ExecutorInfos {
@@ -68,7 +68,7 @@ class SubqueryExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
