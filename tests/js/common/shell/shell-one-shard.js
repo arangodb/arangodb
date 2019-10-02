@@ -32,6 +32,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require('internal');
+const ERRORS = arangodb.errors;
 const isEnterprise = internal.isEnterprise();
 const isCluster = internal.isCluster();
 
@@ -43,7 +44,7 @@ function OneShardPropertiesSuite () {
       try {
         db._useDatabase("_system");
         db._dropDatabase(dn);
-      } catch(ex) {
+      } catch (ex) {
       }
     },
 
@@ -51,7 +52,7 @@ function OneShardPropertiesSuite () {
       try {
         db._useDatabase("_system");
         db._dropDatabase(dn);
-      } catch(ex) {
+      } catch (ex) {
       }
     },
     
@@ -181,6 +182,24 @@ function OneShardPropertiesSuite () {
           //without enterprise we can not have a replication factor of 1
           assertEqual(props.replicationFactor, 1);
         }
+      }
+    },
+    
+    testValuesBelowMinReplicationFactor : function () {
+      let min = internal.minReplicationFactor;
+      try {
+        db._createDatabase(dn, { replicationFactor : min - 1 });
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+    testValuesAboveMaxReplicationFactor : function () {
+      let max = internal.maxReplicationFactor;
+      try {
+        db._createDatabase(dn, { replicationFactor : max + 1 });
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
   
