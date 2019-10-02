@@ -63,7 +63,7 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
-#include "Aql/MaterializerExecutor.h"
+#include "Aql/MaterializeExecutor.h"
 
 #include <type_traits>
 

@@ -72,18 +72,18 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       VarInfoMap const& varInfoMap,
       int depth);
 
-  RegisterId getOutputRegister() const noexcept { return _outputRegister; }
-  RegisterId getNumScoreRegisters() const noexcept { return _numScoreRegisters; }
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept { return _reader; }
-  Query& getQuery() const noexcept { return _query; }
-  std::vector<iresearch::Scorer> const& scorers() const noexcept { return _scorers; }
-  ExecutionPlan const& plan() const noexcept { return _plan; }
-  Variable const& outVariable() const noexcept { return _outVariable; }
-  aql::AstNode const& filterCondition() const noexcept { return _filterCondition; }
-  VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
-  int getDepth() const noexcept { return _depth; }
-  bool volatileSort() const noexcept { return _volatileSort; }
-  bool volatileFilter() const noexcept { return _volatileFilter; }
+  RegisterId getOutputRegister() const noexcept;
+  RegisterId getNumScoreRegisters() const noexcept;
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
+  Query& getQuery() const noexcept;
+  std::vector<iresearch::Scorer> const& scorers() const noexcept;
+  ExecutionPlan const& plan() const noexcept;
+  Variable const& outVariable() const noexcept;
+  aql::AstNode const& filterCondition() const noexcept;
+  VarInfoMap const& varInfoMap() const noexcept;
+  int getDepth() const noexcept;
+  bool volatileSort() const noexcept;
+  bool volatileFilter() const noexcept;
 
   // first - sort
   // second - number of sort conditions to take into account

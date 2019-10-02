@@ -137,10 +137,58 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
              getOutputRegisters()->end());
 }
 
+RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
+  return _outputRegister;
+}
+
+RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const noexcept {
+  return _numScoreRegisters;
+}
+
+std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const
+    noexcept {
+  return _reader;
+}
+
+Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
+
+const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
+    noexcept {
+  return _scorers;
+}
+
+ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
+  return _plan;
+}
+
+Variable const& IResearchViewExecutorInfos::outVariable() const noexcept {
+  return _outVariable;
+}
+
+aql::AstNode const& IResearchViewExecutorInfos::filterCondition() const noexcept {
+  return _filterCondition;
+}
+
+const IResearchViewExecutorInfos::VarInfoMap& IResearchViewExecutorInfos::varInfoMap() const
+    noexcept {
+  return _varInfoMap;
+}
+
+int IResearchViewExecutorInfos::getDepth() const noexcept { return _depth; }
+
+bool IResearchViewExecutorInfos::volatileSort() const noexcept {
+  return _volatileSort;
+}
+
+bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
+  return _volatileFilter;
+}
+
 const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearchViewExecutorInfos::sort() const
     noexcept {
   return _sort;
 }
+
 bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const noexcept {
   return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
 }
