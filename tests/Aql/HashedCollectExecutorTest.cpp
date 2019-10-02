@@ -101,8 +101,8 @@ TEST_F(HashedCollectExecutorTestNoRows, the_producer_doesnt_wait) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(HashedCollectExecutorTestNoRows, the_producer_waits) {
@@ -112,12 +112,12 @@ TEST_F(HashedCollectExecutorTestNoRows, the_producer_waits) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 class HashedCollectExecutorTestRowsNoCount : public ::testing::Test {
@@ -177,18 +177,18 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
@@ -204,8 +204,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
 
   // now sort vector and check for appearances
   std::sort(myNumbers.begin(), myNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
 }
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
@@ -217,23 +217,23 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
@@ -253,9 +253,9 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
 
   // now sort vector and check for appearances
   std::sort(myNumbers.begin(), myNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
-  ASSERT_TRUE(myNumbers.at(2) == 3);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
+  ASSERT_EQ(myNumbers.at(2), 3);
 }
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
@@ -267,23 +267,23 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
@@ -303,9 +303,9 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
 
   // now sort vector and check for appearances
   std::sort(myNumbers.begin(), myNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
-  ASSERT_TRUE(myNumbers.at(2) == 3);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
+  ASSERT_EQ(myNumbers.at(2), 3);
 }
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
@@ -317,18 +317,18 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
@@ -344,8 +344,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
 
   // now sort vector and check for appearances
   std::sort(myNumbers.begin(), myNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
 }
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
@@ -357,26 +357,26 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
@@ -392,8 +392,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
 
   // now sort vector and check for appearances
   std::sort(myNumbers.begin(), myNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
 }
 
 TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
@@ -447,18 +447,18 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   std::vector<double> myCountNumbers;
@@ -487,10 +487,10 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   std::sort(myNumbers.begin(), myNumbers.end());
 
   std::sort(myCountNumbers.begin(), myCountNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
-  ASSERT_TRUE(myCountNumbers.at(0) == 1);
-  ASSERT_TRUE(myCountNumbers.at(1) == 2);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
+  ASSERT_EQ(myCountNumbers.at(0), 1);
+  ASSERT_EQ(myCountNumbers.at(1), 2);
 }
 
 TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
@@ -544,23 +544,23 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<int64_t> myNumbers;
   std::vector<int64_t> myCountNumbers;
@@ -598,12 +598,12 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
   std::sort(myNumbers.begin(), myNumbers.end());
 
   std::sort(myCountNumbers.begin(), myCountNumbers.end());
-  ASSERT_TRUE(myNumbers.at(0) == 1);
-  ASSERT_TRUE(myNumbers.at(1) == 2);
-  ASSERT_TRUE(myNumbers.at(2) == 3);
-  ASSERT_TRUE(myCountNumbers.at(0) == 1);
-  ASSERT_TRUE(myCountNumbers.at(1) == 1);
-  ASSERT_TRUE(myCountNumbers.at(2) == 1);
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
+  ASSERT_EQ(myNumbers.at(2), 3);
+  ASSERT_EQ(myCountNumbers.at(0), 1);
+  ASSERT_EQ(myCountNumbers.at(1), 1);
+  ASSERT_EQ(myCountNumbers.at(2), 1);
 }
 
 TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
@@ -657,23 +657,23 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<std::string> myStrings;
   std::vector<int64_t> myCountNumbers;
@@ -711,12 +711,12 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   std::sort(myStrings.begin(), myStrings.end());
 
   std::sort(myCountNumbers.begin(), myCountNumbers.end());
-  ASSERT_TRUE(myStrings.at(0) == "a");
-  ASSERT_TRUE(myStrings.at(1) == "aa");
-  ASSERT_TRUE(myStrings.at(2) == "aaa");
-  ASSERT_TRUE(myCountNumbers.at(0) == 1);
-  ASSERT_TRUE(myCountNumbers.at(1) == 1);
-  ASSERT_TRUE(myCountNumbers.at(2) == 1);
+  ASSERT_EQ(myStrings.at(0), "a");
+  ASSERT_EQ(myStrings.at(1), "aa");
+  ASSERT_EQ(myStrings.at(2), "aaa");
+  ASSERT_EQ(myCountNumbers.at(0), 1);
+  ASSERT_EQ(myCountNumbers.at(1), 1);
+  ASSERT_EQ(myCountNumbers.at(2), 1);
 }
 
 }  // namespace aql

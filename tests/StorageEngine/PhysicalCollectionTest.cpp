@@ -155,7 +155,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   EXPECT_EQ(3, slice.get("_zoo").getNumber<int>());
 
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE(slice.head() == 0xbU);
+  EXPECT_EQ(slice.head(), 0xbU);
 
   // iterate over the data in the order that is stored in the builder
   {

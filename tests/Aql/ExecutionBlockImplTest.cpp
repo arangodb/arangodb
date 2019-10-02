@@ -132,16 +132,16 @@ TEST_F(ExecutionBlockImplTest,
 
   size_t atMost = 1000;
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(block != nullptr);
-  ASSERT_TRUE(block->size() == 1);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_NE(block, nullptr);
+  ASSERT_EQ(block->size(), 1);
+  ASSERT_EQ(state, ExecutionState::DONE);
 
   // done should stay done!
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(block == nullptr);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(block, nullptr);
+  ASSERT_EQ(state, ExecutionState::DONE);
 }
 
 TEST_F(ExecutionBlockImplTest,
@@ -159,17 +159,17 @@ TEST_F(ExecutionBlockImplTest,
   size_t skipped = 0;
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_EQ(skipped, 0);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(skipped == 1);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(skipped, 1);
 
   // done should stay done!
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(skipped, 0);
 }
 
 TEST_F(ExecutionBlockImplTest,
@@ -198,44 +198,44 @@ TEST_F(ExecutionBlockImplTest,
   size_t total = 0;
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
 
-  ASSERT_TRUE(total == 5);
+  ASSERT_EQ(total, 5);
 }
 
 TEST_F(ExecutionBlockImplTest,
@@ -262,37 +262,37 @@ TEST_F(ExecutionBlockImplTest,
   size_t total = 0;
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   total = total + block->size();
 
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(block == nullptr);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(block, nullptr);
 
-  ASSERT_TRUE(total == 5);
+  ASSERT_EQ(total, 5);
 }
 
 TEST_F(ExecutionBlockImplTest,
@@ -321,48 +321,48 @@ TEST_F(ExecutionBlockImplTest,
   size_t skipped = 0;
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_EQ(skipped, 0);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(skipped == 1);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_EQ(skipped, 1);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_EQ(skipped, 0);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(skipped == 1);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_EQ(skipped, 1);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_EQ(skipped, 0);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(skipped == 1);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_EQ(skipped, 1);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_EQ(skipped, 0);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(skipped == 1);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_EQ(skipped, 1);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_EQ(skipped, 0);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(skipped == 1);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(skipped, 1);
 
   std::tie(state, skipped) = testee.skipSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(skipped == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(skipped, 0);
 }
 
 TEST_F(ExecutionBlockImplTest,
@@ -378,8 +378,8 @@ TEST_F(ExecutionBlockImplTest,
 
   size_t atMost = 1000;
   std::tie(state, block) = testee.getSome(atMost);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(block == nullptr);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(block, nullptr);
 }
 
 }  // namespace aql

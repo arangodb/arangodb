@@ -159,7 +159,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
+    ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
@@ -167,15 +167,15 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection2));
+    ASSERT_NE(nullptr, logicalCollection2);
   }
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase.createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
-  EXPECT_TRUE(!view->primarySort().empty());
-  EXPECT_TRUE(1 == view->primarySort().size());
+  ASSERT_FALSE(!view);
+  EXPECT_FALSE(view->primarySort().empty());
+  EXPECT_EQ(1, view->primarySort().size());
 
   // add link to collection
   {
@@ -184,7 +184,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -195,12 +195,12 @@ TEST_F(IResearchViewSortedTest, SingleField) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
@@ -212,7 +212,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
@@ -239,7 +239,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE((
         arangodb::tests::executeQuery(
             vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
@@ -271,7 +271,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -287,7 +287,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(insertedDocs.size() == resultIt.size());
+    EXPECT_EQ(insertedDocs.size(), resultIt.size());
 
     auto expectedDoc = insertedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -297,7 +297,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == insertedDocs.rend());
+    EXPECT_EQ(expectedDoc, insertedDocs.rend());
   }
 
   // return subset
@@ -322,7 +322,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -346,7 +346,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : resultIt) {
@@ -357,7 +357,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // return subset + limit
@@ -382,7 +382,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -404,7 +404,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : resultIt) {
@@ -415,7 +415,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
 
@@ -447,7 +447,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
+    ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
@@ -455,15 +455,15 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection2));
+    ASSERT_NE(nullptr, logicalCollection2);
   }
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase.createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
-  EXPECT_TRUE(!view->primarySort().empty());
-  EXPECT_TRUE(4 == view->primarySort().size());
+  ASSERT_FALSE(!view);
+  EXPECT_FALSE(view->primarySort().empty());
+  EXPECT_EQ(4, view->primarySort().size());
 
   // add link to collection
   {
@@ -472,7 +472,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -483,12 +483,12 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
@@ -500,7 +500,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
@@ -527,7 +527,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE((
         arangodb::tests::executeQuery(
             vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
@@ -561,7 +561,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -577,7 +577,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(insertedDocs.size() == resultIt.size());
+    EXPECT_EQ(insertedDocs.size(), resultIt.size());
 
     auto expectedDoc = insertedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -587,7 +587,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == insertedDocs.rend());
+    EXPECT_EQ(expectedDoc, insertedDocs.rend());
   }
 
   // return all
@@ -611,7 +611,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -627,7 +627,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(insertedDocs.size() == resultIt.size());
+    EXPECT_EQ(insertedDocs.size(), resultIt.size());
 
     auto expectedDoc = insertedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -637,7 +637,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == insertedDocs.rend());
+    EXPECT_EQ(expectedDoc, insertedDocs.rend());
   }
 
   // return subset
@@ -662,7 +662,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -686,7 +686,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : resultIt) {
@@ -697,7 +697,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // return subset + limit
@@ -722,7 +722,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -744,7 +744,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : resultIt) {
@@ -755,7 +755,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // return subset + limit
@@ -780,7 +780,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
 
     // check sort is set
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-    EXPECT_TRUE(1 == nodes.size());
+    EXPECT_EQ(1, nodes.size());
     auto* viewNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
             nodes.front());
@@ -798,7 +798,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : resultIt) {
@@ -809,6 +809,6 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
