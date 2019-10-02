@@ -78,6 +78,18 @@ function GeneralGraphClusterCreationSuite() {
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
       }
     },
+    
+    testCreateMoreShardsThanAllowedExistingCollections : function () {
+      db._create(vn);
+      db._createEdgeCollection(en);
+      let max = internal.maxNumberOfShards;
+      try {
+        graph._create(gn, edgeDef, null, { numberOfShards: max + 1 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
@@ -99,6 +111,28 @@ function GeneralGraphClusterCreationSuite() {
     },
     
     testMaxReplicationFactor : function () {
+      let max = internal.maxReplicationFactor;
+      try {
+        let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: max });
+        let properties = db._graphs.document(gn);
+        assertEqual(max, properties.replicationFactor);
+        
+        graph._drop(gn, true);
+        try {
+          graph._create(gn, edgeDef, null, { replicationFactor: max + 1 });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      } catch (err) {
+        // if creation fails, then it must have been exactly this error
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testMaxReplicationFactorExistingCollection : function () {
+      db._create(vn);
+      db._createEdgeCollection(en);
       let max = internal.maxReplicationFactor;
       try {
         let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: max });
