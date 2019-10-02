@@ -51,7 +51,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 struct Variable;
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos : public ExecutorInfos {
@@ -101,7 +101,7 @@ class EnumerateCollectionExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     /* With some more modifications this could be turned to true. Actually the
    output of this block is input * itemsInCollection */
     static constexpr bool inputSizeRestrictsOutputSize = false;

@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool ReturnExecutor::Properties::preservesOrder;
-constexpr bool ReturnExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough ReturnExecutor::Properties::allowsBlockPassthrough;
 constexpr bool ReturnExecutor::Properties::inputSizeRestrictsOutputSize;
 
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
