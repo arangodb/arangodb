@@ -175,7 +175,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       let materializeNodeFound = false;
       let nodeDependency  = null;
       plan.nodes.forEach(function(node) {
-        if (node.type === "MaterializerNode") {
+        if (node.type === "MaterializeNode") {
           // there should be no materializer before (e.g. double materialization)
           assertFalse(materializeNodeFound);
           materializeNodeFound = true;
@@ -268,7 +268,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       // However in cluster only first sort suitable, as later sorts depend 
       // on all db servers results and performed on coordinator
       plan.nodes.forEach(function(node) {
-        if( node.type === "MaterializerNode") {
+        if( node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound); // no double materialization
           assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
           materializeNodeFound = true;
@@ -293,7 +293,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       // on all db servers results and performed on coordinator
       let nodeDependency = null;
       plan.nodes.forEach(function(node) {
-        if( node.type === "MaterializerNode") {
+        if( node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound);
           assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
           materializeNodeFound = true;

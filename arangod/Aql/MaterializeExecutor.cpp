@@ -20,7 +20,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MaterializerExecutor.h"
+#include "MaterializeExecutor.h"
 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -31,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-arangodb::IndexIterator::DocumentCallback MaterializerExecutor::ReadContext::copyDocumentCallback(ReadContext & ctx) {
+arangodb::IndexIterator::DocumentCallback MaterializeExecutor::ReadContext::copyDocumentCallback(ReadContext & ctx) {
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
@@ -83,7 +83,7 @@ arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
       _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
 }
 
-std::pair<ExecutionState, NoStats> arangodb::aql::MaterializerExecutor::produceRows(OutputAqlItemRow & output) {
+std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRows(OutputAqlItemRow & output) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutionState state;
   bool written = false;
@@ -111,7 +111,7 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializerExecutor::produceR
   return {state, NoStats{}};
 }
 
-std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializerExecutor::skipRows(size_t toSkipRequested) {
+std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializeExecutor::skipRows(size_t toSkipRequested) {
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(toSkipRequested);

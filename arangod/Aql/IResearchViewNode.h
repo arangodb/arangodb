@@ -190,8 +190,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   // Following two variables should be set in pairs.
   // Info is split between 2 registers to allow constructing
   // AqlValue with type VPACK_INLINE, which is much faster(no allocations!).
-  // CollectionId  is needed for materialization step -
+  // CollectionPtr  is needed for materialization step -
   // as view could return documents from different collections.
+  // We store raw ptr to collection as materialization is expected to happen
+  // on same server (it is ensured by optimizer rule as network hop is expensive!)
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
   /// @brief output variable to write only non-materialized collection ids

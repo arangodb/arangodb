@@ -348,7 +348,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
         // insert a scatter node
         auto materializerNode =
-            plan->registerNode(std::make_unique<MaterializerNode>(
+            plan->registerNode(std::make_unique<MaterializeNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
         // on cluster we need to materializer node stay close to sort node on db server (to avoid network hop for materialization calls)

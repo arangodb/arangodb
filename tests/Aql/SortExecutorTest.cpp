@@ -220,7 +220,7 @@ TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_doesnt_wait) {
         100, itemBlockManager, 1, 1,
         {}, {0}, &trx, false);
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   ConstrainedSortExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -239,7 +239,7 @@ TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_doesnt_wait_skipr
         100, itemBlockManager, 1, 1,
         {}, {0}, &trx, false);
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   ConstrainedSortExecutor testee(fetcher, infos);
 
   size_t skipped;
@@ -254,7 +254,7 @@ TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_waits) {
         100, itemBlockManager, 1, 1,
         {}, {0}, &trx, false);
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   ConstrainedSortExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -277,7 +277,7 @@ TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_waits_skiprows) {
         100, itemBlockManager, 1, 1,
         {}, {0}, &trx, false);
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   ConstrainedSortExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -299,7 +299,7 @@ TEST_F(SortExecutorTest, constrained_rows_upstream_we_are_waiting_for_list_of_nu
         {}, {0}, &trx, false);
   std::shared_ptr<VPackBuilder> input =
       VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   ConstrainedSortExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -379,7 +379,7 @@ TEST_F(SortExecutorTest, constrained_rows_upstream_we_are_waiting_for_list_of_nu
         {}, {0}, &trx, false);
   std::shared_ptr<VPackBuilder> input =
       VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   ConstrainedSortExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of

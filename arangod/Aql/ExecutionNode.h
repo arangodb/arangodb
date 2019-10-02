@@ -930,15 +930,15 @@ class NoResultsNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 };
 
-class MaterializerNode  : public ExecutionNode {
+class MaterializeNode  : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
 
  public:
-  MaterializerNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
                    aql::Variable const& inDocId, aql::Variable const& outVariable);
 
-  MaterializerNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ExecutionNode::MATERIALIZER; }

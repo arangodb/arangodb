@@ -20,8 +20,8 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MATERIALIZER_EXECUTOR_H
-#define ARANGOD_AQL_MATERIALIZER_EXECUTOR_H
+#ifndef ARANGOD_AQL_MATERIALIZE_EXECUTOR_H
+#define ARANGOD_AQL_MATERIALIZE_EXECUTOR_H
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -40,7 +40,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 class NoStats;
 
@@ -84,20 +84,20 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   transaction::Methods* _trx;
 };
 
-class MaterializerExecutor {
+class MaterializeExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = MaterializerExecutorInfos;
   using Stats = NoStats;
 
-  MaterializerExecutor(MaterializerExecutor&&) = default;
-  MaterializerExecutor(MaterializerExecutor const&) = delete;
-  MaterializerExecutor(Fetcher& fetcher, Infos& infos) : _readDocumentContext(infos), _infos(infos), _fetcher(fetcher) {}
+  MaterializeExecutor(MaterializeExecutor&&) = default;
+  MaterializeExecutor(MaterializeExecutor const&) = delete;
+  MaterializeExecutor(Fetcher& fetcher, Infos& infos) : _readDocumentContext(infos), _infos(infos), _fetcher(fetcher) {}
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);

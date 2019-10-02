@@ -316,7 +316,7 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
                      std::is_same<Executor, ConstrainedSortExecutor>::value ||
                      std::is_same<Executor, SortingGatherExecutor>::value ||
-                     std::is_same<Executor, MaterializerExecutor>::value),
+                     std::is_same<Executor, MaterializeExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -723,8 +723,8 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
@@ -771,4 +771,4 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<MaterializerExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor>;

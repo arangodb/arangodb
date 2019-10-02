@@ -966,8 +966,6 @@ function processQuery(query, explain, planIndex) {
       case 'parameter':
       case 'datasource parameter':
         return value('@' + node.name);
-      case 'MaterializerNode':
-        return 'PIZDA';
       default:
         return 'unhandled node type (' + node.type + ')';
     }
@@ -1123,15 +1121,12 @@ function processQuery(query, explain, planIndex) {
             return variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join(', ');
         }
-		    let materialization = '';
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
-          materialization += ', ' + variableName(node.outNmColPtr) + ', ' + 
-                            variableName(node.outNmDocId);
           viewAnnotation += ' with late materialization';
         }
         viewAnnotation +=  ' */';
-        return keyword('FOR ') + variableName(node.outVariable) + materialization + keyword(' IN ') + 
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + 
                view(node.view) + condition + sortCondition + scorers +
                '   ' + annotation(viewAnnotation);
       case 'IndexNode':
@@ -1644,8 +1639,8 @@ function processQuery(query, explain, planIndex) {
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
-      case 'MaterializerNode':
-      	return variableName(node.outVariable) + ' = ' + keyword('MATERIALIZE') + '(' + variableName(node.inNmColPtr) + ',' + variableName(node.inNmDocId)  + ')';
+      case 'MaterializeNode':
+      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }
 
     return 'unhandled node type (' + node.type + ')';
