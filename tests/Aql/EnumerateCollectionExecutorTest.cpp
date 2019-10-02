@@ -119,7 +119,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
 };
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait) {
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   EnumerateCollectionExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -129,12 +129,12 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   EnumerateCollectionExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -144,12 +144,12 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 }  // namespace aql

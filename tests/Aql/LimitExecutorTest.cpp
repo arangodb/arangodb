@@ -73,7 +73,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_doesnt_wait) {
   auto input = VPackParser::fromJson("[ [1] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
 
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -89,7 +89,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_waits) {
   auto input = VPackParser::fromJson("[ [1] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
 
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -97,7 +97,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_waits) {
                           infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_FALSE(result.produced());
   ASSERT_EQ(0, stats.getFullCount());
 
   std::tie(state, stats) = testee.produceRows(result);
@@ -109,7 +109,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_waits) {
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_false) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -122,13 +122,13 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 }
 
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -149,7 +149,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_1_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -170,7 +170,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_false) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -179,7 +179,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::DONE, state);
@@ -189,7 +189,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   auto block = row.stealBlock();
   AqlValue value = block->getValue(0, 0);
@@ -200,7 +200,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
   size_t fullCount = 0;
@@ -210,7 +210,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());
   fullCount += stats.getFullCount();
 
@@ -224,19 +224,19 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
@@ -261,7 +261,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_
   bool constexpr waiting = false;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -302,7 +302,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_
   bool constexpr waiting = false;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
   size_t fullCount = 0;
@@ -351,7 +351,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
   bool constexpr waiting = true;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -360,11 +360,11 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::HASMORE, state);
@@ -373,7 +373,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::HASMORE, state);
@@ -382,7 +382,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::DONE, state);
@@ -408,7 +408,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
   bool constexpr waiting = true;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
   size_t fullCount = 0;
@@ -418,13 +418,13 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(1, stats.getFullCount());
   fullCount += stats.getFullCount();
 
@@ -437,7 +437,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());
   fullCount += stats.getFullCount();
 
@@ -450,7 +450,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
   EXPECT_EQ(0, stats.getFullCount());
   fullCount += stats.getFullCount();
 
@@ -541,7 +541,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_10) {
   size_t constexpr limit = 10;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
@@ -592,7 +592,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_10) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -606,7 +606,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_4) {
   size_t constexpr limit = 4;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
@@ -653,7 +653,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_4) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -667,7 +667,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_0) {
   size_t constexpr limit = 0;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
@@ -710,7 +710,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_0) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -724,7 +724,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_4_limit_4) {
   size_t constexpr limit = 4;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
@@ -769,7 +769,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_4_limit_4) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -783,7 +783,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_10_limit_1) 
   size_t constexpr limit = 1;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
 
   // Output spec:
@@ -822,7 +822,7 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_10_limit_1) 
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -842,7 +842,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
   bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
@@ -882,7 +882,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -899,7 +899,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
   bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
@@ -932,7 +932,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -949,7 +949,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_read_1_offset_2_limit
   bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
@@ -985,7 +985,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_read_1_offset_2_limit
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -1002,7 +1002,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_10_limit_12) {
   bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
@@ -1036,7 +1036,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_10_limit_12) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);
@@ -1053,7 +1053,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
   bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
 
   // Output spec:
@@ -1090,7 +1090,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);
   if (expectedOutput == nullptr) {
-    ASSERT_TRUE(actualOutput == nullptr);
+    ASSERT_EQ(actualOutput, nullptr);
   } else {
     ASSERT_FALSE(actualOutput == nullptr);
     EXPECT_EQ(*expectedOutput, *actualOutput);

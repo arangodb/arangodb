@@ -50,10 +50,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _minReplicationFactor(1),
       _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike,
                                                                      "")),
-      _avoidServers(),
-      _shardKeys(),
-      _shardIds(new ShardMap()),
-      _shardingStrategy() {
+      _shardIds(new ShardMap()) {
   bool const isSmart =
       basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
 
@@ -161,9 +158,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     if (shardKeysSlice.isArray()) {
       for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
-          std::string key = sk.copyString();
+          velocypack::StringRef key = sk.stringRef();
           // remove : char at the beginning or end (for enterprise)
-          std::string stripped;
+          velocypack::StringRef stripped;
           if (!key.empty()) {
             if (key.front() == ':') {
               stripped = key.substr(1);
@@ -173,14 +170,20 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
               stripped = key;
             }
           }
-          // system attributes are not allowed (except _key)
-          if (!stripped.empty() && stripped != StaticStrings::IdString &&
-              stripped != StaticStrings::RevString) {
-            _shardKeys.emplace_back(key);
+          // system attributes are not allowed (except _key, _from and _to)
+          if (stripped == StaticStrings::IdString || 
+              stripped == StaticStrings::RevString) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, 
+                                           "_id or _rev cannot be used as shard keys");
+          }
+
+          if (!stripped.empty()) {
+            _shardKeys.emplace_back(key.toString());
           }
         }
       }
-      if (_shardKeys.empty()) {  // && !isCluster) {
+      if (_shardKeys.empty()) { 
+        // && !isCluster) {
         // Compatibility. Old configs might store empty shard-keys locally.
         // This is translated to ["_key"]. In cluster-case this always was
         // forbidden.

@@ -1483,7 +1483,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
       return pool;
     }
 
-    LOG_TOPIC("1a29z", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("826db", WARN, arangodb::iresearch::TOPIC)
         << "failure to get arangosearch analyzer name '" << name << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (arangodb::basics::Exception& e) {

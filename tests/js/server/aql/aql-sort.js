@@ -56,16 +56,18 @@ function sortTestSuite () {
   var c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 8 });
 
+      let docs = [];
       for (var i = 0; i < 11111; ++i) {
-        c.save({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c.insert(docs);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

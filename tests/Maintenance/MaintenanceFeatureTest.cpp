@@ -179,15 +179,15 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
-  ASSERT_TRUE(0 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == COMPLETE);
+  ASSERT_EQ(0, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getDoneTime());
-  ASSERT_TRUE(noTime == tf._recentAction->getLastStatTime());
+  ASSERT_EQ(noTime, tf._recentAction->getLastStatTime());
   ASSERT_TRUE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
   ASSERT_TRUE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
 }
@@ -210,17 +210,17 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
-  ASSERT_TRUE(!result.ok());
-  ASSERT_TRUE(!tf._recentAction->result().ok());
-  ASSERT_TRUE(0 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == FAILED);
+  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(tf._recentAction->result().ok());
+  ASSERT_EQ(0, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), FAILED);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getDoneTime());
-  ASSERT_TRUE(noTime == tf._recentAction->getLastStatTime());
+  ASSERT_EQ(noTime, tf._recentAction->getLastStatTime());
   ASSERT_TRUE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
   ASSERT_TRUE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
 }
@@ -244,10 +244,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
-  ASSERT_TRUE(1 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == COMPLETE);
+  ASSERT_EQ(1, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
@@ -275,12 +275,12 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
-  ASSERT_TRUE(!result.ok());
-  ASSERT_TRUE(!tf._recentAction->result().ok());
-  ASSERT_TRUE(1 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == FAILED);
+  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(tf._recentAction->result().ok());
+  ASSERT_EQ(1, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), FAILED);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
@@ -310,10 +310,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
-  ASSERT_TRUE(2 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == COMPLETE);
+  ASSERT_EQ(2, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
@@ -343,10 +343,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
-  ASSERT_TRUE(100 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == COMPLETE);
+  ASSERT_EQ(100, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
@@ -375,12 +375,12 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
-  ASSERT_TRUE(!result.ok());
-  ASSERT_TRUE(!tf._recentAction->result().ok());
-  ASSERT_TRUE(100 == tf._recentAction->getProgress());
-  ASSERT_TRUE(tf._recentAction->getState() == FAILED);
+  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(tf._recentAction->result().ok());
+  ASSERT_EQ(100, tf._recentAction->getProgress());
+  ASSERT_EQ(tf._recentAction->getState(), FAILED);
   ASSERT_TRUE(tf._recentAction->done());
-  ASSERT_TRUE(1 == tf._recentAction->id());
+  ASSERT_EQ(1, tf._recentAction->id());
 
   ASSERT_TRUE(baseTime <= tf._recentAction->getCreateTime());
   ASSERT_TRUE(baseTime <= tf._recentAction->getStartTime());
@@ -443,7 +443,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
               arangodb::maintenance::NORMAL_PRIORITY)));
   result = tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
-  ASSERT_TRUE(!result.ok());  // has not executed, ok() is about parse and list add
+  ASSERT_FALSE(result.ok());  // has not executed, ok() is about parse and list add
   // _recentAction will NOT contain the aborted object ... don't test it
 
   //

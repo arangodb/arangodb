@@ -52,21 +52,24 @@ function withinRectangleSuite () {
       var i, j ;
       db._create("geo");
       indexId = db.geo.ensureGeoIndex("lat", "lon");
-
+      let geodocs = [];
       for (i = -40; i < 40; ++i) {
         for (j = -40; j < 40; ++j) {
-          db.geo.save({ lat: i, lon: j });
+          geodocs.push({ lat: i, lon: j });
         }
       }
+      db.geo.insert(geodocs);
+      geodocs = [];
 
       db._create("geo2");
       indexId = db.geo2.ensureGeoIndex("pos");
 
       for (i = -40; i < 40; ++i) {
         for (j = -40; j < 40; ++j) {
-          db.geo2.save({ pos : [i, j] });
+          geodocs.push({ pos : [i, j] });
         }
       }
+      db.geo2.insert(geodocs);
 
     },
 

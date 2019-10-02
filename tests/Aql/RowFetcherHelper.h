@@ -56,7 +56,7 @@ namespace aql {
 /**
  * @brief Mock for SingleRowFetcher
  */
-template <bool passBlocksThrough>
+template<::arangodb::aql::BlockPassthrough passBlocksThrough>
 class SingleRowFetcherHelper
     : public arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:

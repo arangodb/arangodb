@@ -40,7 +40,7 @@ class Methods;
 
 namespace aql {
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class AqlItemMatrix;
@@ -59,7 +59,7 @@ class ConstrainedSortExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
