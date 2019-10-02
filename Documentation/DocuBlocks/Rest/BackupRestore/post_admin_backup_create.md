@@ -12,8 +12,6 @@ guarantee consistency. Note that the backup at first resides on the
 same machine and hard drive as the original data. Make sure to upload
 it to a remote site for an actual backup.
 
-The body of the request may contain an object with the following attributes:
-
 @RESTBODYPARAM{label,string,optional,string}
 The label for this backup. The label is used together with a
 timestamp string create a unique backup identifier, `<timestamp>_<label>`.
@@ -65,6 +63,6 @@ within the timeout, then an *HTTP 408* is returned.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-The result `body` contains besides the above discussed error codes the `result` object, if `code` is equal to `201`, which holds the unique identifier of this hot backup as the string attibute `id`, the full size in bytes as `sizeInBytes`, the number of idividual files as `nrFiles` and the number of database servers as `nrDBServers`. Single server deployments list potentially misleadingly `nrDBServers: 1`. 
+The result `body` contains besides the above discussed error codes the `result` object, if `code` is equal to `201`, which holds the unique identifier of this hot backup as the string attibute `id`, the full size in bytes as `sizeInBytes`, the number of idividual files as `nrFiles` and the number of database servers as `nrDBServers`. Single server deployments list potentially misleadingly `nrDBServers: 1`. Furthermore, the body contains a `datetime` time stamp and the flag `potentiallyInconsistent`, which indicates that the backup could inconsistent. This only happens if `allowInconsistent` has happened.
 
 @endDocuBlock
