@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 template <CalculationType calculationType>
 constexpr bool CalculationExecutor<calculationType>::Properties::preservesOrder;
 template <CalculationType calculationType>
-constexpr bool CalculationExecutor<calculationType>::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough CalculationExecutor<calculationType>::Properties::allowsBlockPassthrough;
 template <CalculationType calculationType>
 constexpr bool CalculationExecutor<calculationType>::Properties::inputSizeRestrictsOutputSize;
 

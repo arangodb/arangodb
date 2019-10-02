@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool SubqueryEndExecutor::Properties::preservesOrder;
-constexpr bool SubqueryEndExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough SubqueryEndExecutor::Properties::allowsBlockPassthrough;
 constexpr bool SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(

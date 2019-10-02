@@ -52,7 +52,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool IndexExecutor::Properties::preservesOrder;
-constexpr bool IndexExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough IndexExecutor::Properties::allowsBlockPassthrough;
 constexpr bool IndexExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {

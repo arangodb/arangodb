@@ -78,7 +78,7 @@ class ReturnExecutor {
     // The return executor is now only used for projecting some register to
     // register 0. So it does not pass through, but copy one column into a new
     // block with only this column.
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
