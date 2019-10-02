@@ -23,14 +23,15 @@
 #include "DependencyProxy.h"
 
 #include "Aql/BlocksWithClients.h"
+#include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <bool passBlocksThrough>
-ExecutionState DependencyProxy<passBlocksThrough>::prefetchBlock(size_t atMost) {
+template <BlockPassthrough blockPassthrough>
+ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   SharedAqlItemBlockPtr block;
@@ -71,7 +72,7 @@ ExecutionState DependencyProxy<passBlocksThrough>::prefetchBlock(size_t atMost) 
       state = ExecutionState::HASMORE;
     }
   }
-  if /* constexpr */ (passBlocksThrough) {
+  if /* constexpr */ (blockPassthrough == BlockPassthrough::Enable) {
     // Reposit block for pass-through executors.
     _blockPassThroughQueue.push_back({state, block});
   }
@@ -80,10 +81,10 @@ ExecutionState DependencyProxy<passBlocksThrough>::prefetchBlock(size_t atMost) 
   return ExecutionState::HASMORE;
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough blockPassthrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
-DependencyProxy<passBlocksThrough>::fetchBlock(size_t atMost) {
+DependencyProxy<blockPassthrough>::fetchBlock(size_t atMost) {
   if (_blockQueue.empty()) {
     ExecutionState state = prefetchBlock(atMost);
     // prefetchBlock returns HASMORE iff it pushed a block onto _blockQueue.
@@ -104,11 +105,11 @@ DependencyProxy<passBlocksThrough>::fetchBlock(size_t atMost) {
   return {state, std::move(block)};
 }
 
-template <bool passBlocksThrough>
+template <BlockPassthrough blockPassthrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 // NOLINTNEXTLINE google-default-arguments
-DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
-  TRI_ASSERT(!passBlocksThrough);
+DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, size_t atMost) {
+  TRI_ASSERT(blockPassthrough == BlockPassthrough::Disable);
   ExecutionBlock& upstream = upstreamBlockForDependency(dependency);
 
   TRI_ASSERT(atMost > 0);
@@ -142,10 +143,10 @@ DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, s
   return {state, block};
 }
 
-template <bool allowBlockPassthrough>
-std::pair<ExecutionState, size_t> DependencyProxy<allowBlockPassthrough>::skipSomeForDependency(
+template <BlockPassthrough blockPassthrough>
+std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeForDependency(
     size_t const dependency, size_t const atMost) {
-  TRI_ASSERT(!allowBlockPassthrough);
+  TRI_ASSERT(blockPassthrough == BlockPassthrough::Disable);
 
   TRI_ASSERT(_blockPassThroughQueue.empty());
   TRI_ASSERT(_blockQueue.empty());
@@ -177,8 +178,8 @@ std::pair<ExecutionState, size_t> DependencyProxy<allowBlockPassthrough>::skipSo
   return {state, skipped};
 }
 
-template <bool allowBlockPassthrough>
-std::pair<ExecutionState, size_t> DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
+template <BlockPassthrough blockPassthrough>
+std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(size_t const toSkip) {
   TRI_ASSERT(_blockPassThroughQueue.empty());
   TRI_ASSERT(_blockQueue.empty());
 
@@ -224,10 +225,10 @@ std::pair<ExecutionState, size_t> DependencyProxy<allowBlockPassthrough>::skipSo
   return {state, skipped};
 }
 
-template <bool allowBlockPassthrough>
-std::pair<ExecutionState, SharedAqlItemBlockPtr>
-DependencyProxy<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
-  TRI_ASSERT(allowBlockPassthrough);  // TODO check this with enable_if in the header already
+template <BlockPassthrough blockPassthrough>
+std::pair<ExecutionState, SharedAqlItemBlockPtr> DependencyProxy<blockPassthrough>::fetchBlockForPassthrough(
+    size_t atMost) {
+  TRI_ASSERT(blockPassthrough == BlockPassthrough::Enable);  // TODO check this with enable_if in the header already
 
   if (_blockPassThroughQueue.empty()) {
     ExecutionState state = prefetchBlock(atMost);
@@ -249,8 +250,8 @@ DependencyProxy<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) 
   return {state, std::move(block)};
 }
 
-template <bool allowBlockPassthrough>
-DependencyProxy<allowBlockPassthrough>::DependencyProxy(
+template <BlockPassthrough blockPassthrough>
+DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
     RegisterId nrInputRegisters)
@@ -264,18 +265,18 @@ DependencyProxy<allowBlockPassthrough>::DependencyProxy(
       _currentDependency(0),
       _skipped(0) {}
 
-template <bool allowBlockPassthrough>
-RegisterId DependencyProxy<allowBlockPassthrough>::getNrInputRegisters() const {
+template <BlockPassthrough blockPassthrough>
+RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
   return _nrInputRegisters;
 }
 
-template <bool allowBlockPassthrough>
-size_t DependencyProxy<allowBlockPassthrough>::numberDependencies() const {
+template <BlockPassthrough blockPassthrough>
+size_t DependencyProxy<blockPassthrough>::numberDependencies() const {
   return _dependencies.size();
 }
 
-template <bool allowBlockPassthrough>
-void DependencyProxy<allowBlockPassthrough>::reset() {
+template <BlockPassthrough blockPassthrough>
+void DependencyProxy<blockPassthrough>::reset() {
   _blockQueue.clear();
   _blockPassThroughQueue.clear();
   _currentDependency = 0;
@@ -284,29 +285,29 @@ void DependencyProxy<allowBlockPassthrough>::reset() {
   _skipped = 0;
 }
 
-template <bool allowBlockPassthrough>
-AqlItemBlockManager& DependencyProxy<allowBlockPassthrough>::itemBlockManager() {
+template <BlockPassthrough blockPassthrough>
+AqlItemBlockManager& DependencyProxy<blockPassthrough>::itemBlockManager() {
   return _itemBlockManager;
 }
 
-template <bool allowBlockPassthrough>
-AqlItemBlockManager const& DependencyProxy<allowBlockPassthrough>::itemBlockManager() const {
+template <BlockPassthrough blockPassthrough>
+AqlItemBlockManager const& DependencyProxy<blockPassthrough>::itemBlockManager() const {
   return _itemBlockManager;
 }
 
-template <bool allowBlockPassthrough>
-ExecutionBlock& DependencyProxy<allowBlockPassthrough>::upstreamBlock() {
+template <BlockPassthrough blockPassthrough>
+ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlock() {
   return upstreamBlockForDependency(_currentDependency);
 }
 
-template <bool allowBlockPassthrough>
-ExecutionBlock& DependencyProxy<allowBlockPassthrough>::upstreamBlockForDependency(size_t index) {
+template <BlockPassthrough blockPassthrough>
+ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlockForDependency(size_t index) {
   TRI_ASSERT(_dependencies.size() > index);
   return *_dependencies[index];
 }
 
-template <bool allowBlockPassthrough>
-bool DependencyProxy<allowBlockPassthrough>::advanceDependency() {
+template <BlockPassthrough blockPassthrough>
+bool DependencyProxy<blockPassthrough>::advanceDependency() {
   if (_currentDependency + 1 >= _dependencies.size()) {
     return false;
   }
@@ -314,5 +315,5 @@ bool DependencyProxy<allowBlockPassthrough>::advanceDependency() {
   return true;
 }
 
-template class ::arangodb::aql::DependencyProxy<true>;
-template class ::arangodb::aql::DependencyProxy<false>;
+template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Enable>;
+template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Disable>;

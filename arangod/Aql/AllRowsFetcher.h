@@ -39,7 +39,7 @@ namespace aql {
 class AqlItemBlock;
 class SharedAqlItemBlockPtr;
 enum class ExecutionState;
-template <bool>
+template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
 
@@ -88,7 +88,7 @@ class AllRowsFetcher {
   };
 
  public:
-  explicit AllRowsFetcher(DependencyProxy<false>& executionBlock);
+  explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
@@ -178,7 +178,7 @@ class AllRowsFetcher {
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
  private:
-  DependencyProxy<false>* _dependencyProxy;
+  DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
   ExecutionState _upstreamState;

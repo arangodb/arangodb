@@ -150,7 +150,7 @@ std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
   return {ExecutionState::DONE, _aqlItemMatrix->size()};
 }
 
-AllRowsFetcher::AllRowsFetcher(DependencyProxy<false>& executionBlock)
+AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock)
     : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),

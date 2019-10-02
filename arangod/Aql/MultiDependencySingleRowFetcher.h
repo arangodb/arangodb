@@ -35,7 +35,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-template <bool>
+template <BlockPassthrough>
 class DependencyProxy;
 
 /**
@@ -83,7 +83,7 @@ class MultiDependencySingleRowFetcher {
   };
 
  public:
-  explicit MultiDependencySingleRowFetcher(DependencyProxy<false>& executionBlock);
+  explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
  protected:
@@ -219,7 +219,7 @@ class MultiDependencySingleRowFetcher {
   }
 
  private:
-  DependencyProxy<false>* _dependencyProxy;
+  DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
   /**
    * @brief Holds the information for all dependencies
