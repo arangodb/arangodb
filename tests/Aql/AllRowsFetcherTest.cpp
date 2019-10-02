@@ -57,20 +57,20 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     ASSERT_TRUE(matrix->empty());
-    ASSERT_TRUE(matrix->size() == 0);
+    ASSERT_EQ(matrix->size(), 0);
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 1);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
@@ -82,24 +82,24 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     ASSERT_TRUE(matrix->empty());
-    ASSERT_TRUE(matrix->size() == 0);
+    ASSERT_EQ(matrix->size(), 0);
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immediately) {
@@ -112,8 +112,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
@@ -123,13 +123,13 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 1);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then_done) {
@@ -143,8 +143,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
@@ -154,13 +154,13 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_done) {
@@ -174,12 +174,12 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
@@ -189,13 +189,13 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmore_then_done) {
@@ -210,12 +210,12 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
@@ -225,13 +225,13 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 3);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3);
 }
 
 // TODO the following tests should be simplified, a simple output
@@ -252,8 +252,8 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
     AllRowsFetcher testee(dependencyProxyMock);
 
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(6, matrix->size());
@@ -268,13 +268,13 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 3);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3);
 }
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
@@ -296,19 +296,19 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
 
     // wait when fetching the 1st and 2nd block
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
 
     // now get the matrix
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(6, matrix->size());
@@ -322,13 +322,13 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 6);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 6);
 }
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
@@ -351,19 +351,19 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
 
     // wait when fetching the 1st and 2nd block
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(matrix == nullptr);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_EQ(matrix, nullptr);
 
     // now get the matrix
     std::tie(state, matrix) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix != nullptr);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_NE(matrix, nullptr);
     EXPECT_EQ(1, matrix->getNrRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(6, matrix->size());
@@ -377,13 +377,13 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(matrix2 == matrix);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_EQ(matrix2, matrix);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 7);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 7);
 }
 
 }  // namespace aql

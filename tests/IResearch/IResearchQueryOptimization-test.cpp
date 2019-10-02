@@ -82,7 +82,7 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
         "{ \"links\" : {"
         "\"collection_1\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -93,12 +93,12 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
   }
 
   void SetUp() override {
@@ -116,13 +116,13 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_1\" }");
       logicalCollection1 = vocbase().createCollection(collectionJson->slice());
-      ASSERT_TRUE((nullptr != logicalCollection1));
+      ASSERT_NE(nullptr, logicalCollection1);
     }
 
     // add view
     auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
         vocbase().createView(createJson->slice()));
-    ASSERT_TRUE((false == !view));
+    ASSERT_FALSE(!view);
 
     // add link to collection
     addLinkToCollection(view);
@@ -134,7 +134,7 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.begin().ok()));
+      EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection
       auto builder = VPackParser::fromJson(
@@ -150,7 +150,7 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
         EXPECT_TRUE(res.ok());
       }
 
-      EXPECT_TRUE((trx.commit().ok()));
+      EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
                        ->commit()
                        .ok()));
@@ -174,7 +174,7 @@ TEST_F(IResearchQueryOptimizationTest, test_1) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -199,7 +199,7 @@ TEST_F(IResearchQueryOptimizationTest, test_1) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -210,7 +210,7 @@ TEST_F(IResearchQueryOptimizationTest, test_1) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x == y
@@ -222,7 +222,7 @@ TEST_F(IResearchQueryOptimizationTest, test_2) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -259,7 +259,7 @@ TEST_F(IResearchQueryOptimizationTest, test_2) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -270,7 +270,7 @@ TEST_F(IResearchQueryOptimizationTest, test_2) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x > y
@@ -282,7 +282,7 @@ TEST_F(IResearchQueryOptimizationTest, test_3) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -307,7 +307,7 @@ TEST_F(IResearchQueryOptimizationTest, test_3) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -318,7 +318,7 @@ TEST_F(IResearchQueryOptimizationTest, test_3) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x < y
@@ -330,7 +330,7 @@ TEST_F(IResearchQueryOptimizationTest, test_4) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -358,7 +358,7 @@ TEST_F(IResearchQueryOptimizationTest, test_4) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -369,7 +369,7 @@ TEST_F(IResearchQueryOptimizationTest, test_4) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x < y
@@ -381,7 +381,7 @@ TEST_F(IResearchQueryOptimizationTest, test_5) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -407,7 +407,7 @@ TEST_F(IResearchQueryOptimizationTest, test_5) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -418,7 +418,7 @@ TEST_F(IResearchQueryOptimizationTest, test_5) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x > y
@@ -430,7 +430,7 @@ TEST_F(IResearchQueryOptimizationTest, test_6) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -468,7 +468,7 @@ TEST_F(IResearchQueryOptimizationTest, test_6) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -479,7 +479,7 @@ TEST_F(IResearchQueryOptimizationTest, test_6) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   /*
@@ -507,7 +507,7 @@ TEST_F(IResearchQueryOptimizationTest, test_7) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -515,9 +515,9 @@ TEST_F(IResearchQueryOptimizationTest, test_7) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
   */
 
@@ -530,7 +530,7 @@ TEST_F(IResearchQueryOptimizationTest, test_8) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -556,7 +556,7 @@ TEST_F(IResearchQueryOptimizationTest, test_8) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -567,7 +567,7 @@ TEST_F(IResearchQueryOptimizationTest, test_8) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a != y, x > y
@@ -579,7 +579,7 @@ TEST_F(IResearchQueryOptimizationTest, test_9) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -607,7 +607,7 @@ TEST_F(IResearchQueryOptimizationTest, test_9) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -618,7 +618,7 @@ TEST_F(IResearchQueryOptimizationTest, test_9) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a < y, x < y
@@ -630,7 +630,7 @@ TEST_F(IResearchQueryOptimizationTest, test_10) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -667,7 +667,7 @@ TEST_F(IResearchQueryOptimizationTest, test_10) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -678,7 +678,7 @@ TEST_F(IResearchQueryOptimizationTest, test_10) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a < y, x == y
@@ -690,7 +690,7 @@ TEST_F(IResearchQueryOptimizationTest, test_11) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -718,7 +718,7 @@ TEST_F(IResearchQueryOptimizationTest, test_11) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -729,7 +729,7 @@ TEST_F(IResearchQueryOptimizationTest, test_11) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a < y, x > y
@@ -741,7 +741,7 @@ TEST_F(IResearchQueryOptimizationTest, test_12) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -769,7 +769,7 @@ TEST_F(IResearchQueryOptimizationTest, test_12) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -780,7 +780,7 @@ TEST_F(IResearchQueryOptimizationTest, test_12) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a <= y, x < y
@@ -792,7 +792,7 @@ TEST_F(IResearchQueryOptimizationTest, test_13) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -830,7 +830,7 @@ TEST_F(IResearchQueryOptimizationTest, test_13) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -841,7 +841,7 @@ TEST_F(IResearchQueryOptimizationTest, test_13) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a <= y, x == y
@@ -853,7 +853,7 @@ TEST_F(IResearchQueryOptimizationTest, test_14) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -891,7 +891,7 @@ TEST_F(IResearchQueryOptimizationTest, test_14) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -902,7 +902,7 @@ TEST_F(IResearchQueryOptimizationTest, test_14) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a <= y, x > y
@@ -914,7 +914,7 @@ TEST_F(IResearchQueryOptimizationTest, test_15) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -942,7 +942,7 @@ TEST_F(IResearchQueryOptimizationTest, test_15) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -953,7 +953,7 @@ TEST_F(IResearchQueryOptimizationTest, test_15) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a >= y, x < y
@@ -965,7 +965,7 @@ TEST_F(IResearchQueryOptimizationTest, test_16) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -993,7 +993,7 @@ TEST_F(IResearchQueryOptimizationTest, test_16) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1004,7 +1004,7 @@ TEST_F(IResearchQueryOptimizationTest, test_16) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a >= y, x == y
@@ -1016,7 +1016,7 @@ TEST_F(IResearchQueryOptimizationTest, test_17) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -1050,7 +1050,7 @@ TEST_F(IResearchQueryOptimizationTest, test_17) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1061,7 +1061,7 @@ TEST_F(IResearchQueryOptimizationTest, test_17) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a >= y, x > y
@@ -1073,7 +1073,7 @@ TEST_F(IResearchQueryOptimizationTest, test_18) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -1111,7 +1111,7 @@ TEST_F(IResearchQueryOptimizationTest, test_18) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1122,7 +1122,7 @@ TEST_F(IResearchQueryOptimizationTest, test_18) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a > y, x < y
@@ -1134,7 +1134,7 @@ TEST_F(IResearchQueryOptimizationTest, test_19) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1162,7 +1162,7 @@ TEST_F(IResearchQueryOptimizationTest, test_19) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1173,7 +1173,7 @@ TEST_F(IResearchQueryOptimizationTest, test_19) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a > y, x == y
@@ -1185,7 +1185,7 @@ TEST_F(IResearchQueryOptimizationTest, test_20) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -1219,7 +1219,7 @@ TEST_F(IResearchQueryOptimizationTest, test_20) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1230,7 +1230,7 @@ TEST_F(IResearchQueryOptimizationTest, test_20) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a > y, x > y
@@ -1242,7 +1242,7 @@ TEST_F(IResearchQueryOptimizationTest, test_21) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME
     // check structure
@@ -1280,7 +1280,7 @@ TEST_F(IResearchQueryOptimizationTest, test_21) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1291,7 +1291,7 @@ TEST_F(IResearchQueryOptimizationTest, test_21) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a IN [ y ]
@@ -1303,7 +1303,7 @@ TEST_F(IResearchQueryOptimizationTest, test_22) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // FIXME optimize
     // check structure
@@ -1335,7 +1335,7 @@ TEST_F(IResearchQueryOptimizationTest, test_22) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1346,7 +1346,7 @@ TEST_F(IResearchQueryOptimizationTest, test_22) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x < y
@@ -1358,7 +1358,7 @@ TEST_F(IResearchQueryOptimizationTest, test_23) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1380,7 +1380,7 @@ TEST_F(IResearchQueryOptimizationTest, test_23) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1391,7 +1391,7 @@ TEST_F(IResearchQueryOptimizationTest, test_23) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x == y
@@ -1403,7 +1403,7 @@ TEST_F(IResearchQueryOptimizationTest, test_24) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1424,7 +1424,7 @@ TEST_F(IResearchQueryOptimizationTest, test_24) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1435,7 +1435,7 @@ TEST_F(IResearchQueryOptimizationTest, test_24) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a == y, x > y
@@ -1447,7 +1447,7 @@ TEST_F(IResearchQueryOptimizationTest, test_25) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1469,7 +1469,7 @@ TEST_F(IResearchQueryOptimizationTest, test_25) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1480,7 +1480,7 @@ TEST_F(IResearchQueryOptimizationTest, test_25) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a != y, x < y
@@ -1492,7 +1492,7 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1515,7 +1515,7 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1526,7 +1526,7 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a != y, x == y
@@ -1553,7 +1553,7 @@ TEST_F(IResearchQueryOptimizationTest, test_27) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1564,7 +1564,7 @@ TEST_F(IResearchQueryOptimizationTest, test_27) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a != y, x > y
@@ -1576,7 +1576,7 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1599,7 +1599,7 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1610,7 +1610,7 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a < y, x < y
@@ -1622,7 +1622,7 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1643,7 +1643,7 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1654,7 +1654,7 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a < y, x == y
@@ -1666,7 +1666,7 @@ TEST_F(IResearchQueryOptimizationTest, test_30) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1691,7 +1691,7 @@ TEST_F(IResearchQueryOptimizationTest, test_30) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1702,7 +1702,7 @@ TEST_F(IResearchQueryOptimizationTest, test_30) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a < y, x > y
@@ -1714,7 +1714,7 @@ TEST_F(IResearchQueryOptimizationTest, test_31) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1739,7 +1739,7 @@ TEST_F(IResearchQueryOptimizationTest, test_31) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1750,7 +1750,7 @@ TEST_F(IResearchQueryOptimizationTest, test_31) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a <= y, x < y
@@ -1762,7 +1762,7 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1783,7 +1783,7 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1794,7 +1794,7 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [x] && a <= y, x == y
@@ -1806,7 +1806,7 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1827,7 +1827,7 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1838,7 +1838,7 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a <= y, x > y
@@ -1850,7 +1850,7 @@ TEST_F(IResearchQueryOptimizationTest, test_34) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1875,7 +1875,7 @@ TEST_F(IResearchQueryOptimizationTest, test_34) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1886,7 +1886,7 @@ TEST_F(IResearchQueryOptimizationTest, test_34) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a >= y, x < y
@@ -1898,7 +1898,7 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1923,7 +1923,7 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1934,7 +1934,7 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [ x ] && a >= y, x == y
@@ -1946,7 +1946,7 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -1967,7 +1967,7 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1978,7 +1978,7 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [x] && a >= y, x > y
@@ -1990,7 +1990,7 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2011,7 +2011,7 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2022,7 +2022,7 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [x] && a > y, x < y
@@ -2034,7 +2034,7 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2059,7 +2059,7 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2070,7 +2070,7 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [x] && a > y, x == y
@@ -2082,7 +2082,7 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2107,7 +2107,7 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2118,7 +2118,7 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a IN [x] && a > y, x > y
@@ -2130,7 +2130,7 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2151,7 +2151,7 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2162,7 +2162,7 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a == y, x < y
@@ -2173,7 +2173,7 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2195,7 +2195,7 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2206,7 +2206,7 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a == y, x == y
@@ -2217,7 +2217,7 @@ TEST_F(IResearchQueryOptimizationTest, test_42) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2238,7 +2238,7 @@ TEST_F(IResearchQueryOptimizationTest, test_42) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2249,7 +2249,7 @@ TEST_F(IResearchQueryOptimizationTest, test_42) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a == y, x > y
@@ -2260,7 +2260,7 @@ TEST_F(IResearchQueryOptimizationTest, test_43) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2282,7 +2282,7 @@ TEST_F(IResearchQueryOptimizationTest, test_43) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2293,7 +2293,7 @@ TEST_F(IResearchQueryOptimizationTest, test_43) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a != y, x < y
@@ -2304,7 +2304,7 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2327,7 +2327,7 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2338,7 +2338,7 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a != y, x == y
@@ -2364,7 +2364,7 @@ TEST_F(IResearchQueryOptimizationTest, test_45) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2375,7 +2375,7 @@ TEST_F(IResearchQueryOptimizationTest, test_45) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a != y, x > y
@@ -2386,7 +2386,7 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2409,7 +2409,7 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2420,7 +2420,7 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a < y, x < y
@@ -2431,7 +2431,7 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2452,7 +2452,7 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2463,7 +2463,7 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a < y, x == y
@@ -2474,7 +2474,7 @@ TEST_F(IResearchQueryOptimizationTest, test_48) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2499,7 +2499,7 @@ TEST_F(IResearchQueryOptimizationTest, test_48) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2510,7 +2510,7 @@ TEST_F(IResearchQueryOptimizationTest, test_48) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a < y, x > y
@@ -2521,7 +2521,7 @@ TEST_F(IResearchQueryOptimizationTest, test_49) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2546,7 +2546,7 @@ TEST_F(IResearchQueryOptimizationTest, test_49) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2557,7 +2557,7 @@ TEST_F(IResearchQueryOptimizationTest, test_49) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a <= y, x < y
@@ -2568,7 +2568,7 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2589,7 +2589,7 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2600,7 +2600,7 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a <= y, x == y
@@ -2611,7 +2611,7 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2632,7 +2632,7 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2643,7 +2643,7 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a <= y, x > y
@@ -2654,7 +2654,7 @@ TEST_F(IResearchQueryOptimizationTest, test_52) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2679,7 +2679,7 @@ TEST_F(IResearchQueryOptimizationTest, test_52) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2690,7 +2690,7 @@ TEST_F(IResearchQueryOptimizationTest, test_52) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a >= y, x < y
@@ -2701,7 +2701,7 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2726,7 +2726,7 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2737,7 +2737,7 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a >= y, x == y
@@ -2748,7 +2748,7 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2769,7 +2769,7 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2780,7 +2780,7 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a >= y, x > y
@@ -2791,7 +2791,7 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2812,7 +2812,7 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2823,7 +2823,7 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a > y, x < y
@@ -2834,7 +2834,7 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2859,7 +2859,7 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2870,7 +2870,7 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a > y, x == y
@@ -2881,7 +2881,7 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2906,7 +2906,7 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2917,7 +2917,7 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a == x && a > y, x > y
@@ -2928,7 +2928,7 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2949,7 +2949,7 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -2960,7 +2960,7 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a == y, x < y
@@ -2971,7 +2971,7 @@ TEST_F(IResearchQueryOptimizationTest, test_59) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -2996,7 +2996,7 @@ TEST_F(IResearchQueryOptimizationTest, test_59) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3007,7 +3007,7 @@ TEST_F(IResearchQueryOptimizationTest, test_59) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a == y, x < y
@@ -3018,7 +3018,7 @@ TEST_F(IResearchQueryOptimizationTest, test_60) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3041,7 +3041,7 @@ TEST_F(IResearchQueryOptimizationTest, test_60) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3052,7 +3052,7 @@ TEST_F(IResearchQueryOptimizationTest, test_60) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a == y, x == y
@@ -3078,7 +3078,7 @@ TEST_F(IResearchQueryOptimizationTest, test_61) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3089,7 +3089,7 @@ TEST_F(IResearchQueryOptimizationTest, test_61) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a == y, x > y
@@ -3100,7 +3100,7 @@ TEST_F(IResearchQueryOptimizationTest, test_62) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3125,7 +3125,7 @@ TEST_F(IResearchQueryOptimizationTest, test_62) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3136,7 +3136,7 @@ TEST_F(IResearchQueryOptimizationTest, test_62) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a == y, x > y
@@ -3147,7 +3147,7 @@ TEST_F(IResearchQueryOptimizationTest, test_63) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3170,7 +3170,7 @@ TEST_F(IResearchQueryOptimizationTest, test_63) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3181,7 +3181,7 @@ TEST_F(IResearchQueryOptimizationTest, test_63) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a != y, x < y
@@ -3192,7 +3192,7 @@ TEST_F(IResearchQueryOptimizationTest, test_64) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3220,7 +3220,7 @@ TEST_F(IResearchQueryOptimizationTest, test_64) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3231,7 +3231,7 @@ TEST_F(IResearchQueryOptimizationTest, test_64) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a != y, x < y
@@ -3242,7 +3242,7 @@ TEST_F(IResearchQueryOptimizationTest, test_65) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3268,7 +3268,7 @@ TEST_F(IResearchQueryOptimizationTest, test_65) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3279,7 +3279,7 @@ TEST_F(IResearchQueryOptimizationTest, test_65) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a != y, x == y
@@ -3290,7 +3290,7 @@ TEST_F(IResearchQueryOptimizationTest, test_66) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3314,7 +3314,7 @@ TEST_F(IResearchQueryOptimizationTest, test_66) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3325,7 +3325,7 @@ TEST_F(IResearchQueryOptimizationTest, test_66) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a != y, x == y
@@ -3336,7 +3336,7 @@ TEST_F(IResearchQueryOptimizationTest, test_67) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3358,7 +3358,7 @@ TEST_F(IResearchQueryOptimizationTest, test_67) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3369,7 +3369,7 @@ TEST_F(IResearchQueryOptimizationTest, test_67) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a != y, x > y
@@ -3380,7 +3380,7 @@ TEST_F(IResearchQueryOptimizationTest, test_68) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3406,7 +3406,7 @@ TEST_F(IResearchQueryOptimizationTest, test_68) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3417,7 +3417,7 @@ TEST_F(IResearchQueryOptimizationTest, test_68) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a < y, x < y
@@ -3428,7 +3428,7 @@ TEST_F(IResearchQueryOptimizationTest, test_69) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3456,7 +3456,7 @@ TEST_F(IResearchQueryOptimizationTest, test_69) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3467,7 +3467,7 @@ TEST_F(IResearchQueryOptimizationTest, test_69) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a < y, x == y
@@ -3478,7 +3478,7 @@ TEST_F(IResearchQueryOptimizationTest, test_70) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3504,7 +3504,7 @@ TEST_F(IResearchQueryOptimizationTest, test_70) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3515,7 +3515,7 @@ TEST_F(IResearchQueryOptimizationTest, test_70) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a < y, x == y
@@ -3526,7 +3526,7 @@ TEST_F(IResearchQueryOptimizationTest, test_71) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3554,7 +3554,7 @@ TEST_F(IResearchQueryOptimizationTest, test_71) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3565,7 +3565,7 @@ TEST_F(IResearchQueryOptimizationTest, test_71) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a < y, x == y
@@ -3576,7 +3576,7 @@ TEST_F(IResearchQueryOptimizationTest, test_72) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3604,7 +3604,7 @@ TEST_F(IResearchQueryOptimizationTest, test_72) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3615,7 +3615,7 @@ TEST_F(IResearchQueryOptimizationTest, test_72) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a < y, x > y
@@ -3626,7 +3626,7 @@ TEST_F(IResearchQueryOptimizationTest, test_73) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3654,7 +3654,7 @@ TEST_F(IResearchQueryOptimizationTest, test_73) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3665,7 +3665,7 @@ TEST_F(IResearchQueryOptimizationTest, test_73) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a < y, x > y
@@ -3676,7 +3676,7 @@ TEST_F(IResearchQueryOptimizationTest, test_74) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3702,7 +3702,7 @@ TEST_F(IResearchQueryOptimizationTest, test_74) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3713,7 +3713,7 @@ TEST_F(IResearchQueryOptimizationTest, test_74) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a <= y, x < y
@@ -3724,7 +3724,7 @@ TEST_F(IResearchQueryOptimizationTest, test_75) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3752,7 +3752,7 @@ TEST_F(IResearchQueryOptimizationTest, test_75) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3763,7 +3763,7 @@ TEST_F(IResearchQueryOptimizationTest, test_75) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a <= y, x < y
@@ -3774,7 +3774,7 @@ TEST_F(IResearchQueryOptimizationTest, test_76) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3800,7 +3800,7 @@ TEST_F(IResearchQueryOptimizationTest, test_76) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3811,7 +3811,7 @@ TEST_F(IResearchQueryOptimizationTest, test_76) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a <= y, x == y
@@ -3822,7 +3822,7 @@ TEST_F(IResearchQueryOptimizationTest, test_77) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3850,7 +3850,7 @@ TEST_F(IResearchQueryOptimizationTest, test_77) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3861,7 +3861,7 @@ TEST_F(IResearchQueryOptimizationTest, test_77) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a <= y, x == y
@@ -3872,7 +3872,7 @@ TEST_F(IResearchQueryOptimizationTest, test_78) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3898,7 +3898,7 @@ TEST_F(IResearchQueryOptimizationTest, test_78) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3909,7 +3909,7 @@ TEST_F(IResearchQueryOptimizationTest, test_78) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a <= y, x > y
@@ -3920,7 +3920,7 @@ TEST_F(IResearchQueryOptimizationTest, test_79) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3948,7 +3948,7 @@ TEST_F(IResearchQueryOptimizationTest, test_79) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -3959,7 +3959,7 @@ TEST_F(IResearchQueryOptimizationTest, test_79) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a <= y, x > y
@@ -3970,7 +3970,7 @@ TEST_F(IResearchQueryOptimizationTest, test_80) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -3996,7 +3996,7 @@ TEST_F(IResearchQueryOptimizationTest, test_80) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4007,7 +4007,7 @@ TEST_F(IResearchQueryOptimizationTest, test_80) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a >= y, x < y
@@ -4018,7 +4018,7 @@ TEST_F(IResearchQueryOptimizationTest, test_81) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4046,7 +4046,7 @@ TEST_F(IResearchQueryOptimizationTest, test_81) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4057,7 +4057,7 @@ TEST_F(IResearchQueryOptimizationTest, test_81) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a >= y, x < y
@@ -4068,7 +4068,7 @@ TEST_F(IResearchQueryOptimizationTest, test_82) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4094,7 +4094,7 @@ TEST_F(IResearchQueryOptimizationTest, test_82) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4105,7 +4105,7 @@ TEST_F(IResearchQueryOptimizationTest, test_82) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a >= y, x == y
@@ -4116,7 +4116,7 @@ TEST_F(IResearchQueryOptimizationTest, test_83) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4144,7 +4144,7 @@ TEST_F(IResearchQueryOptimizationTest, test_83) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4155,7 +4155,7 @@ TEST_F(IResearchQueryOptimizationTest, test_83) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a >= y, x == y
@@ -4166,7 +4166,7 @@ TEST_F(IResearchQueryOptimizationTest, test_84) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4192,7 +4192,7 @@ TEST_F(IResearchQueryOptimizationTest, test_84) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4203,7 +4203,7 @@ TEST_F(IResearchQueryOptimizationTest, test_84) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a >= y, x > y
@@ -4214,7 +4214,7 @@ TEST_F(IResearchQueryOptimizationTest, test_85) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4242,7 +4242,7 @@ TEST_F(IResearchQueryOptimizationTest, test_85) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4253,7 +4253,7 @@ TEST_F(IResearchQueryOptimizationTest, test_85) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a >= y, x > y
@@ -4264,7 +4264,7 @@ TEST_F(IResearchQueryOptimizationTest, test_86) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4290,7 +4290,7 @@ TEST_F(IResearchQueryOptimizationTest, test_86) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4301,7 +4301,7 @@ TEST_F(IResearchQueryOptimizationTest, test_86) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a > y, x < y
@@ -4312,7 +4312,7 @@ TEST_F(IResearchQueryOptimizationTest, test_87) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4340,7 +4340,7 @@ TEST_F(IResearchQueryOptimizationTest, test_87) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4351,7 +4351,7 @@ TEST_F(IResearchQueryOptimizationTest, test_87) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a > y, x < y
@@ -4362,7 +4362,7 @@ TEST_F(IResearchQueryOptimizationTest, test_88) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4388,7 +4388,7 @@ TEST_F(IResearchQueryOptimizationTest, test_88) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4399,7 +4399,7 @@ TEST_F(IResearchQueryOptimizationTest, test_88) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a > y, x == y
@@ -4410,7 +4410,7 @@ TEST_F(IResearchQueryOptimizationTest, test_89) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4438,7 +4438,7 @@ TEST_F(IResearchQueryOptimizationTest, test_89) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4449,7 +4449,7 @@ TEST_F(IResearchQueryOptimizationTest, test_89) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a > y, x == y
@@ -4460,7 +4460,7 @@ TEST_F(IResearchQueryOptimizationTest, test_90) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4486,7 +4486,7 @@ TEST_F(IResearchQueryOptimizationTest, test_90) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4497,7 +4497,7 @@ TEST_F(IResearchQueryOptimizationTest, test_90) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a > y, x > y
@@ -4508,7 +4508,7 @@ TEST_F(IResearchQueryOptimizationTest, test_91) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4536,7 +4536,7 @@ TEST_F(IResearchQueryOptimizationTest, test_91) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4547,7 +4547,7 @@ TEST_F(IResearchQueryOptimizationTest, test_91) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a != x && a > y, x > y
@@ -4558,7 +4558,7 @@ TEST_F(IResearchQueryOptimizationTest, test_92) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4584,7 +4584,7 @@ TEST_F(IResearchQueryOptimizationTest, test_92) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4595,7 +4595,7 @@ TEST_F(IResearchQueryOptimizationTest, test_92) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a == y, x < y
@@ -4606,7 +4606,7 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4631,7 +4631,7 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4642,7 +4642,7 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a == y, x == y
@@ -4653,7 +4653,7 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4678,7 +4678,7 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4689,7 +4689,7 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a == y, x > y
@@ -4700,7 +4700,7 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4721,7 +4721,7 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4732,7 +4732,7 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a != y, x < y
@@ -4743,7 +4743,7 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4771,7 +4771,7 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4782,7 +4782,7 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a != y, x < y
@@ -4793,7 +4793,7 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4819,7 +4819,7 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4830,7 +4830,7 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a != y, x == y
@@ -4841,7 +4841,7 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4869,7 +4869,7 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4880,7 +4880,7 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a != y, x == y
@@ -4891,7 +4891,7 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4917,7 +4917,7 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4928,7 +4928,7 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a != y, x > y
@@ -4939,7 +4939,7 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -4967,7 +4967,7 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -4978,7 +4978,7 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a != y, x > y
@@ -4989,7 +4989,7 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5015,7 +5015,7 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5026,7 +5026,7 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a < y, x < y
@@ -5037,7 +5037,7 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5061,7 +5061,7 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5072,7 +5072,7 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a < y, x == y
@@ -5083,7 +5083,7 @@ TEST_F(IResearchQueryOptimizationTest, test_103) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5107,7 +5107,7 @@ TEST_F(IResearchQueryOptimizationTest, test_103) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5118,7 +5118,7 @@ TEST_F(IResearchQueryOptimizationTest, test_103) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a < y, x > y
@@ -5129,7 +5129,7 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -5153,7 +5153,7 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5164,7 +5164,7 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a <= y, x < y
@@ -5175,7 +5175,7 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5199,7 +5199,7 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5210,7 +5210,7 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a <= y, x == y
@@ -5221,7 +5221,7 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5245,7 +5245,7 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5256,7 +5256,7 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a <= y, x > y
@@ -5267,7 +5267,7 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5291,7 +5291,7 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5302,7 +5302,7 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a >= y, x < y
@@ -5313,7 +5313,7 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5341,7 +5341,7 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5352,7 +5352,7 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a >= y, x == y
@@ -5363,7 +5363,7 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5391,7 +5391,7 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5402,7 +5402,7 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a >= y, x > y
@@ -5413,7 +5413,7 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5441,7 +5441,7 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5452,7 +5452,7 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a > y, x < y
@@ -5463,7 +5463,7 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5489,7 +5489,7 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5500,7 +5500,7 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a > y, x == y
@@ -5511,7 +5511,7 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5539,7 +5539,7 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5550,7 +5550,7 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a < x && a > y, x > y
@@ -5561,7 +5561,7 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5589,7 +5589,7 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5600,7 +5600,7 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a == y, x < y
@@ -5611,7 +5611,7 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5636,7 +5636,7 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5647,7 +5647,7 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a == y, x == y
@@ -5658,7 +5658,7 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5679,7 +5679,7 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5690,7 +5690,7 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a == y, x > y
@@ -5701,7 +5701,7 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5722,7 +5722,7 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5733,7 +5733,7 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a != y, x < y
@@ -5744,7 +5744,7 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5772,7 +5772,7 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5783,7 +5783,7 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a != y, x < y
@@ -5794,7 +5794,7 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5820,7 +5820,7 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5831,7 +5831,7 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a != y, x == y
@@ -5842,7 +5842,7 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5868,7 +5868,7 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5879,7 +5879,7 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a != y, x == y
@@ -5890,7 +5890,7 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5918,7 +5918,7 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5929,7 +5929,7 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a != y, x > y
@@ -5940,7 +5940,7 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -5968,7 +5968,7 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -5979,7 +5979,7 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a != y, x > y
@@ -5990,7 +5990,7 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6016,7 +6016,7 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6027,7 +6027,7 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a < y, x < y
@@ -6038,7 +6038,7 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6062,7 +6062,7 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6073,7 +6073,7 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a < y, x == y
@@ -6084,7 +6084,7 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6108,7 +6108,7 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6119,7 +6119,7 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a < y, x > y
@@ -6130,7 +6130,7 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6154,7 +6154,7 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6165,7 +6165,7 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a <= y, x < y
@@ -6176,7 +6176,7 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6200,7 +6200,7 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6211,7 +6211,7 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a <= y, x == y
@@ -6222,7 +6222,7 @@ TEST_F(IResearchQueryOptimizationTest, test_127) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6246,7 +6246,7 @@ TEST_F(IResearchQueryOptimizationTest, test_127) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6257,7 +6257,7 @@ TEST_F(IResearchQueryOptimizationTest, test_127) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a <= y, x > y
@@ -6268,7 +6268,7 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6292,7 +6292,7 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6303,7 +6303,7 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a >= y, x < y
@@ -6314,7 +6314,7 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6342,7 +6342,7 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6353,7 +6353,7 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a >= y, x == y
@@ -6364,7 +6364,7 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6392,7 +6392,7 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6403,7 +6403,7 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a >= y, x > y
@@ -6414,7 +6414,7 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6442,7 +6442,7 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6453,7 +6453,7 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a > y, x < y
@@ -6464,7 +6464,7 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6492,7 +6492,7 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6503,7 +6503,7 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a > y, x == y
@@ -6514,7 +6514,7 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6542,7 +6542,7 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6553,7 +6553,7 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a <= x && a > y, x > y
@@ -6564,7 +6564,7 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6592,7 +6592,7 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6603,7 +6603,7 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a == y, x < y
@@ -6614,7 +6614,7 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6635,7 +6635,7 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6646,7 +6646,7 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a == y, x == y
@@ -6657,7 +6657,7 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6678,7 +6678,7 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6689,7 +6689,7 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a == y, x > y
@@ -6700,7 +6700,7 @@ TEST_F(IResearchQueryOptimizationTest, test_137) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6725,7 +6725,7 @@ TEST_F(IResearchQueryOptimizationTest, test_137) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6736,7 +6736,7 @@ TEST_F(IResearchQueryOptimizationTest, test_137) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a != y, x < y
@@ -6747,7 +6747,7 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6775,7 +6775,7 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6786,7 +6786,7 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a != y, x < y
@@ -6797,7 +6797,7 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6823,7 +6823,7 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6834,7 +6834,7 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a != y, x == y
@@ -6845,7 +6845,7 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6873,7 +6873,7 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6884,7 +6884,7 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a != y, x == y
@@ -6895,7 +6895,7 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6921,7 +6921,7 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6932,7 +6932,7 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a != y, x > y
@@ -6943,7 +6943,7 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -6971,7 +6971,7 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -6982,7 +6982,7 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a != y, x > y
@@ -6993,7 +6993,7 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7019,7 +7019,7 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7030,7 +7030,7 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a < y, x < y
@@ -7041,7 +7041,7 @@ TEST_F(IResearchQueryOptimizationTest, test_144) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7069,7 +7069,7 @@ TEST_F(IResearchQueryOptimizationTest, test_144) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7080,7 +7080,7 @@ TEST_F(IResearchQueryOptimizationTest, test_144) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a < y, x == y
@@ -7091,7 +7091,7 @@ TEST_F(IResearchQueryOptimizationTest, test_145) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7119,7 +7119,7 @@ TEST_F(IResearchQueryOptimizationTest, test_145) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7130,7 +7130,7 @@ TEST_F(IResearchQueryOptimizationTest, test_145) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a < y, x > y
@@ -7141,7 +7141,7 @@ TEST_F(IResearchQueryOptimizationTest, test_146) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7169,7 +7169,7 @@ TEST_F(IResearchQueryOptimizationTest, test_146) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7180,7 +7180,7 @@ TEST_F(IResearchQueryOptimizationTest, test_146) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a <= y, x < y
@@ -7191,7 +7191,7 @@ TEST_F(IResearchQueryOptimizationTest, test_147) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7219,7 +7219,7 @@ TEST_F(IResearchQueryOptimizationTest, test_147) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7230,7 +7230,7 @@ TEST_F(IResearchQueryOptimizationTest, test_147) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a <= y, x == y
@@ -7241,7 +7241,7 @@ TEST_F(IResearchQueryOptimizationTest, test_148) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7269,7 +7269,7 @@ TEST_F(IResearchQueryOptimizationTest, test_148) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7280,7 +7280,7 @@ TEST_F(IResearchQueryOptimizationTest, test_148) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a <= y, x > y
@@ -7291,7 +7291,7 @@ TEST_F(IResearchQueryOptimizationTest, test_149) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7319,7 +7319,7 @@ TEST_F(IResearchQueryOptimizationTest, test_149) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7330,7 +7330,7 @@ TEST_F(IResearchQueryOptimizationTest, test_149) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a >= y, x < y
@@ -7341,7 +7341,7 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7365,7 +7365,7 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7376,7 +7376,7 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a >= y, x == y
@@ -7387,7 +7387,7 @@ TEST_F(IResearchQueryOptimizationTest, test_151) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7411,7 +7411,7 @@ TEST_F(IResearchQueryOptimizationTest, test_151) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7422,7 +7422,7 @@ TEST_F(IResearchQueryOptimizationTest, test_151) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a >= y, x > y
@@ -7433,7 +7433,7 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7457,7 +7457,7 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7468,7 +7468,7 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a > y, x < y
@@ -7479,7 +7479,7 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7503,7 +7503,7 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7514,7 +7514,7 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a > y, x == y
@@ -7525,7 +7525,7 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7549,7 +7549,7 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7560,7 +7560,7 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a >= x && a > y, x > y
@@ -7571,7 +7571,7 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7595,7 +7595,7 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7606,7 +7606,7 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a == y, x < y
@@ -7617,7 +7617,7 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7638,7 +7638,7 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7649,7 +7649,7 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a == y, x == y
@@ -7660,7 +7660,7 @@ TEST_F(IResearchQueryOptimizationTest, test_157) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7685,7 +7685,7 @@ TEST_F(IResearchQueryOptimizationTest, test_157) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7696,7 +7696,7 @@ TEST_F(IResearchQueryOptimizationTest, test_157) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a == y, x > y
@@ -7707,7 +7707,7 @@ TEST_F(IResearchQueryOptimizationTest, test_158) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7732,7 +7732,7 @@ TEST_F(IResearchQueryOptimizationTest, test_158) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7743,7 +7743,7 @@ TEST_F(IResearchQueryOptimizationTest, test_158) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a != y, x < y
@@ -7754,7 +7754,7 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7782,7 +7782,7 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7793,7 +7793,7 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a != y, x < y
@@ -7804,7 +7804,7 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7830,7 +7830,7 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7841,7 +7841,7 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a != y, x == y
@@ -7852,7 +7852,7 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7880,7 +7880,7 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7891,7 +7891,7 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a != y, x == y
@@ -7902,7 +7902,7 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7928,7 +7928,7 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7939,7 +7939,7 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a != y, x > y
@@ -7950,7 +7950,7 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -7978,7 +7978,7 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -7989,7 +7989,7 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a != y, x > y
@@ -8000,7 +8000,7 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8026,7 +8026,7 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8037,7 +8037,7 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a < y, x < y
@@ -8048,7 +8048,7 @@ TEST_F(IResearchQueryOptimizationTest, test_165) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8076,7 +8076,7 @@ TEST_F(IResearchQueryOptimizationTest, test_165) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8087,7 +8087,7 @@ TEST_F(IResearchQueryOptimizationTest, test_165) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a < y, x == y
@@ -8113,7 +8113,7 @@ TEST_F(IResearchQueryOptimizationTest, test_166) {
     assertFilterOptimized(vocbase(), query, expected);
     }
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -8126,7 +8126,7 @@ TEST_F(IResearchQueryOptimizationTest, test_166) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8137,7 +8137,7 @@ TEST_F(IResearchQueryOptimizationTest, test_166) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a < y, x > y
@@ -8148,7 +8148,7 @@ TEST_F(IResearchQueryOptimizationTest, test_167) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8174,7 +8174,7 @@ TEST_F(IResearchQueryOptimizationTest, test_167) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8185,7 +8185,7 @@ TEST_F(IResearchQueryOptimizationTest, test_167) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a <= y, x < y
@@ -8196,7 +8196,7 @@ TEST_F(IResearchQueryOptimizationTest, test_168) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8224,7 +8224,7 @@ TEST_F(IResearchQueryOptimizationTest, test_168) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8235,7 +8235,7 @@ TEST_F(IResearchQueryOptimizationTest, test_168) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a <= y, x == y
@@ -8246,7 +8246,7 @@ TEST_F(IResearchQueryOptimizationTest, test_169) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8274,7 +8274,7 @@ TEST_F(IResearchQueryOptimizationTest, test_169) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8285,7 +8285,7 @@ TEST_F(IResearchQueryOptimizationTest, test_169) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a <= y, x > y
@@ -8296,7 +8296,7 @@ TEST_F(IResearchQueryOptimizationTest, test_170) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8324,7 +8324,7 @@ TEST_F(IResearchQueryOptimizationTest, test_170) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8335,7 +8335,7 @@ TEST_F(IResearchQueryOptimizationTest, test_170) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a >= y, x < y
@@ -8346,7 +8346,7 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8370,7 +8370,7 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8381,7 +8381,7 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a >= y, x == y
@@ -8392,7 +8392,7 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8416,7 +8416,7 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8427,7 +8427,7 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a >= y, x > y
@@ -8438,7 +8438,7 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8462,7 +8462,7 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8473,7 +8473,7 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a > y, x < y
@@ -8484,7 +8484,7 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8508,7 +8508,7 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8519,7 +8519,7 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a > y, x == y
@@ -8530,7 +8530,7 @@ TEST_F(IResearchQueryOptimizationTest, test_175) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8554,7 +8554,7 @@ TEST_F(IResearchQueryOptimizationTest, test_175) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8565,7 +8565,7 @@ TEST_F(IResearchQueryOptimizationTest, test_175) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // a > x && a > y, x > y
@@ -8576,7 +8576,7 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  EXPECT_TRUE(!findEmptyNodes(vocbase(), query));
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
     // check structure
     {
@@ -8600,7 +8600,7 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -8611,5 +8611,5 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }

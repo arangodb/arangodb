@@ -68,8 +68,8 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
   OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
@@ -83,12 +83,12 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
   OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
@@ -103,23 +103,23 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
                        infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 
   // verify result
   AqlValue value;
@@ -127,7 +127,7 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
   for (std::size_t index = 0; index < 3; index++) {
     value = block->getValue(index, 0);
     ASSERT_TRUE(value.isBoolean());
-    ASSERT_TRUE(value.toBoolean() == input->slice().at(index).at(0).getBool());
+    ASSERT_EQ(value.toBoolean(), input->slice().at(index).at(0).getBool());
   }
 }
 
@@ -143,35 +143,35 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
                        infos.registersToClear()};
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 }
 
 }  // namespace aql

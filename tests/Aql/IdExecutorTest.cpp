@@ -70,8 +70,8 @@ TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 }
 
 TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
@@ -82,11 +82,11 @@ TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
 
   // This block consumes all rows at once.
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 
   // verify result
   AqlValue value;
@@ -94,7 +94,7 @@ TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   for (std::size_t index = 0; index < 3; index++) {
     value = block->getValue(index, 0);
     ASSERT_TRUE(value.isBoolean());
-    ASSERT_TRUE(value.toBoolean() == input->slice().at(index).at(0).getBool());
+    ASSERT_EQ(value.toBoolean(), input->slice().at(index).at(0).getBool());
   }
 }
 

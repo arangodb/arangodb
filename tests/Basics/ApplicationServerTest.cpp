@@ -98,14 +98,14 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
 
   server.setupDependencies(true);
 
-  EXPECT_TRUE(!failed);
+  EXPECT_FALSE(failed);
   EXPECT_TRUE(feature1.doesStartBefore<TestFeatureB>());
-  EXPECT_TRUE(!feature1.doesStartAfter<TestFeatureB>());
-  EXPECT_TRUE(!feature1.doesStartBefore<TestFeatureA>());
+  EXPECT_FALSE(feature1.doesStartAfter<TestFeatureB>());
+  EXPECT_FALSE(feature1.doesStartBefore<TestFeatureA>());
   EXPECT_TRUE(feature1.doesStartAfter<TestFeatureA>());
-  EXPECT_TRUE(!feature2.doesStartBefore<TestFeatureA>());
+  EXPECT_FALSE(feature2.doesStartBefore<TestFeatureA>());
   EXPECT_TRUE(feature2.doesStartAfter<TestFeatureA>());
-  EXPECT_TRUE(!feature2.doesStartBefore<TestFeatureB>());
+  EXPECT_FALSE(feature2.doesStartBefore<TestFeatureB>());
   EXPECT_TRUE(feature2.doesStartAfter<TestFeatureB>());
 }
 
@@ -133,7 +133,7 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
   try {
     server.setupDependencies(true);
   } catch (basics::Exception const& ex) {
-    EXPECT_TRUE(ex.code() == TRI_ERROR_INTERNAL);
+    EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
     failed = true;
   }
   EXPECT_TRUE(failed);
@@ -161,7 +161,7 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   try {
     server.setupDependencies(true);
   } catch (basics::Exception const& ex) {
-    EXPECT_TRUE(ex.code() == TRI_ERROR_INTERNAL);
+    EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
     failed = true;
   }
   EXPECT_TRUE(failed);

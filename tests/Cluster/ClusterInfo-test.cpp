@@ -218,9 +218,9 @@ class ClusterInfoTest : public ::testing::Test,
 
 TEST_F(ClusterInfoTest, test_drop_database) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
+  ASSERT_NE(nullptr, database);
   auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
+  ASSERT_NE(nullptr, ci);
 
   // test LogicalView dropped when database dropped
   {
@@ -230,7 +230,7 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     // create database
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_NE(nullptr, vocbase);
 
     // simulate heartbeat thread
     ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
@@ -243,9 +243,9 @@ TEST_F(ClusterInfoTest, test_drop_database) {
       arangodb::LogicalView::ptr logicalView;
       ASSERT_TRUE(
           (viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
-      ASSERT_TRUE((false == !logicalView));
+      ASSERT_FALSE(!logicalView);
     }
-    EXPECT_TRUE((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
+    EXPECT_TRUE(ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok());
     ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(
                    vocbase->name(),
@@ -253,6 +253,6 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     arangodb::LogicalView::ptr logicalView;
     EXPECT_TRUE(
         (viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
-    EXPECT_TRUE((false == !logicalView));
+    EXPECT_FALSE(!logicalView);
   }
 }

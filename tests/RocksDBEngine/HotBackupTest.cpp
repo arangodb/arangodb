@@ -194,7 +194,7 @@ TEST(RocksDBHotBackupOperationParameters, test_timestamp_exception) {
   testee.parseParameters();
 
   EXPECT_FALSE(testee.valid());
-  EXPECT_TRUE((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
+  EXPECT_TRUE(testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout"));
 }
 
 

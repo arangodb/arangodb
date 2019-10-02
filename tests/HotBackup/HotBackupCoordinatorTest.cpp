@@ -227,7 +227,7 @@ TEST_F(HotBackupOnCoordinators, test_one_less_local_server_than_in_backup) {
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
-  ASSERT_TRUE(!res.ok());
+  ASSERT_FALSE(res.ok());
   ASSERT_EQ(matches.size(), 0);
 }
 
