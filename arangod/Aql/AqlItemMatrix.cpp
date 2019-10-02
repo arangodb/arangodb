@@ -155,7 +155,7 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   if (blockPtr->hasShadowRows()) {
     TRI_ASSERT(!blockPtr->getShadowRowIndexes().empty());
     // Let us stop on the first
-    _lastShadowRow = *blockPtr->getShadowRowIndexes().begin();
+    _lastShadowRow = static_cast<uint32_t>(*blockPtr->getShadowRowIndexes().begin());
     _size += _lastShadowRow;
   } else {
     _size += blockPtr->size();
