@@ -38,7 +38,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool CountCollectExecutor::Properties::preservesOrder;
-constexpr bool CountCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough CountCollectExecutor::Properties::allowsBlockPassthrough;
 constexpr bool CountCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 CountCollectExecutorInfos::CountCollectExecutorInfos(
