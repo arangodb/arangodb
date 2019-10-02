@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool SortingGatherExecutor::Properties::preservesOrder;
-constexpr bool SortingGatherExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough SortingGatherExecutor::Properties::allowsBlockPassthrough;
 constexpr bool SortingGatherExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {

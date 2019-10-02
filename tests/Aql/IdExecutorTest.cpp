@@ -66,7 +66,7 @@ class IdExecutorTest : public ::testing::Test {
 
 TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
   ConstFetcherHelper fetcher(itemBlockManager, nullptr);
-  IdExecutor<true, ConstFetcher> testee(fetcher, infos);
+  IdExecutor<::arangodb::aql::BlockPassthrough::Enable, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
@@ -77,7 +77,7 @@ TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
 TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
-  IdExecutor<true, ConstFetcher> testee(fetcher, infos);
+  IdExecutor<::arangodb::aql::BlockPassthrough::Enable, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   // This block consumes all rows at once.

@@ -92,7 +92,7 @@ TEST_F(SubqueryEndExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryEndExecutor::Properties::preservesOrder)
       << "The block has no effect on ordering of elements, it adds additional "
          "rows only.";
-  EXPECT_FALSE(SubqueryEndExecutor::Properties::allowsBlockPassthrough)
+  EXPECT_EQ(SubqueryEndExecutor::Properties::allowsBlockPassthrough, ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of rows.";
   EXPECT_TRUE(SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize)
       << "The block produces one output row per input row plus potentially a "
@@ -103,7 +103,7 @@ TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}}, {{0, 0}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
   SubqueryEndExecutor testee(fetcher, _infos);
 
   ExecutionState state{ExecutionState::HASMORE};
@@ -124,7 +124,7 @@ TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{{1}}, {{1}}}, {{1, 0}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 
@@ -144,7 +144,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_one_shadowrow) {
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{{42}}, {{34}}, {{1}}}, {{2, 0}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 
@@ -166,7 +166,7 @@ TEST_F(SubqueryEndExecutorTest, two_inputs_two_shadowrows) {
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{{42}}, {{1}}, {{34}}, {{1}}}, {{1, 0}, {3, 0}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 
@@ -187,7 +187,7 @@ TEST_F(SubqueryEndExecutorTest, two_input_one_shadowrow_two_irrelevant) {
       buildBlock<1>(itemBlockManager, {{{42}}, {{42}}, {{42}}, {{42}}, {{42}}},
                     {{2, 0}, {3, 1}, {4, 2}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 
@@ -211,7 +211,7 @@ TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
       buildBlock<1>(itemBlockManager, {{{42}}, {{42}}, {{42}}, {{42}}, {{42}}},
                     {{2, 0}, {3, 1}, {4, 2}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 
@@ -226,7 +226,7 @@ TEST_F(SubqueryEndExecutorTest, consume_output_of_subquery_end_executor) {
 
   outputBlock = output.stealBlock();
   inputBlock.swap(outputBlock);
-  SingleRowFetcherHelper<false> fetcher2(itemBlockManager, inputBlock->size(),
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher2(itemBlockManager, inputBlock->size(),
                                          false, inputBlock);
   SubqueryEndExecutor testee2(fetcher2, _infos);
   outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 1));
@@ -251,7 +251,7 @@ TEST_F(SubqueryEndExecutorTest, write_to_register_outside) {
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{{42}}, {{23}}}, {{1, 0}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, infos);
 
@@ -274,7 +274,7 @@ TEST_F(SubqueryEndExecutorTest_DeathTest, no_shadow_row) {
   SharedAqlItemBlockPtr outputBlock;
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 
@@ -292,7 +292,7 @@ TEST_F(SubqueryEndExecutorTest_DeathTest, misplaced_irrelevant_shadowrow) {
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{42}, {42}, {42}}, {{1, 1}, {2, 1}});
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, inputBlock->size(), false, inputBlock);
 
   SubqueryEndExecutor testee(fetcher, _infos);
 

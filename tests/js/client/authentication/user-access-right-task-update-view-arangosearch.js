@@ -234,7 +234,7 @@ const checkError = (e) => {
 function UserRightsManagement(name) {
 
     return {
-	setUp: function() {
+	setUpAll: function() {
 	    helper.switchUser(name, dbName);
 	    db._useDatabase(dbName);
 	    assertEqual(createKeySpace(keySpaceId), true, 'keySpace creation failed for user: ' + name);
@@ -242,21 +242,24 @@ function UserRightsManagement(name) {
             rootCreateCollection(testCol2Name);
             rootPrepareCollection(testCol1Name);
             rootPrepareCollection(testCol2Name);
+        },
 
-            rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
-     helper.switchUser('root', dbName);
+	setUp: function() {
+          rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
+          helper.switchUser('root', dbName);
 	},
 
-	tearDown: function() {
-            rootDropView(testViewRename);
-            rootDropView(testViewName);
-
+	tearDownAll: function() {
             rootDropCollection(testCol1Name);
             rootDropCollection(testCol2Name);
 
 	    dropKeySpace(keySpaceId);
 	},
-	
+	tearDown: function() {
+            rootDropView(testViewRename);
+            rootDropView(testViewName);
+        },
+
 	testCheckAllUsersAreCreated: function() {
 	    helper.switchUser('root', '_system');
 	    assertTrue(userSet.size > 0); 

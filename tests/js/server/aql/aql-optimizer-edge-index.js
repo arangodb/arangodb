@@ -46,16 +46,18 @@ function optimizerEdgeIndexTestSuite () {
       db._create('UnitTestsCollection');
       e = db._createEdgeCollection('UnitTestsEdgeCollection');
 
+      let edocs = [];
       for (var i = 0; i < 2000; i += 100) {
         var j;
 
         for (j = 0; j < i; ++j) {
-          e.save('UnitTestsCollection/from' + i, 'UnitTestsCollection/nono', { value: i + '-' + j });
+          edocs.push({'_from': 'UnitTestsCollection/from' + i, '_to': 'UnitTestsCollection/nono', value: i + '-' + j });
         }
         for (j = 0; j < i; ++j) {
-          e.save('UnitTestsCollection/nono', 'UnitTestsCollection/to' + i, { value: i + '-' + j });
+          edocs.push({'_from': 'UnitTestsCollection/nono', '_to': 'UnitTestsCollection/to' + i, value: i + '-' + j });
         }
       }
+      e.insert(edocs);
       internal.waitForEstimatorSync();
     },
 
