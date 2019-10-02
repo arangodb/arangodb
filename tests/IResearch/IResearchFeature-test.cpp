@@ -161,15 +161,15 @@ TEST_F(IResearchFeatureTest, test_start) {
 
   for (auto& entry : expected) {
     auto* function = arangodb::iresearch::getFunction(functions, entry.first);
-    EXPECT_TRUE((nullptr == function));
+    EXPECT_EQ(nullptr, function);
   };
 
   iresearch.start();
 
   for (auto& entry : expected) {
     auto* function = arangodb::iresearch::getFunction(functions, entry.first);
-    EXPECT_TRUE((nullptr != function));
-    EXPECT_TRUE((entry.second.first == function->arguments));
+    EXPECT_NE(nullptr, function);
+    EXPECT_EQ(entry.second.first, function->arguments);
     EXPECT_TRUE(((entry.second.second == FunctionType::FILTER &&
                   arangodb::iresearch::isFilter(*function)) ||
                  (entry.second.second == FunctionType::SCORER &&
@@ -210,7 +210,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -229,9 +229,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE((logicalView0
@@ -240,20 +240,20 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
   auto logicalView1 = vocbase.lookupView(logicalView0->name());
-  EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-  EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+  EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
+  EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-  EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
+  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
+  EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not present
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
   EXPECT_TRUE((logicalView1
@@ -262,7 +262,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
+  EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
@@ -295,30 +295,30 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-  ASSERT_TRUE((false == !logicalCollection));
+  ASSERT_FALSE(!logicalCollection);
   auto logicalView0 = vocbase.createView(viewJson->slice());
-  ASSERT_TRUE((false == !logicalView0));
+  ASSERT_FALSE(!logicalView0);
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
-  ASSERT_TRUE((created));
-  ASSERT_TRUE((false == !index));
+  ASSERT_TRUE(created);
+  ASSERT_FALSE(!index);
   auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  ASSERT_TRUE((false == !link0));
+  ASSERT_FALSE(!link0);
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));
-  EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
-  EXPECT_TRUE((viewDataPath.exists(result) && result));
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);
+  EXPECT_TRUE(viewDataPath.mkdir());  // create view directory
+  EXPECT_TRUE(viewDataPath.exists(result) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE((logicalView0
@@ -327,20 +327,20 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
   auto logicalView1 = vocbase.lookupView(logicalView0->name());
-  EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-  EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+  EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
+  EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-  EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
+  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
+  EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
   EXPECT_TRUE((logicalView1
@@ -349,11 +349,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
+  EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
 
 TEST_F(IResearchFeatureTest, IResearch_version_test) {
-  EXPECT_TRUE(IResearch_version == arangodb::rest::Version::getIResearchVersion());
+  EXPECT_EQ(IResearch_version, arangodb::rest::Version::getIResearchVersion());
   EXPECT_TRUE(IResearch_version ==
               arangodb::rest::Version::Values["iresearch-version"]);
 }
@@ -380,7 +380,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_test_null_resource_mutex) {
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(100))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE(deallocated);
 }
 
 TEST_F(IResearchFeatureTest, test_async_schedule_task_null_resource_mutex_value) {
@@ -404,7 +404,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_null_resource_mutex_value)
   EXPECT_TRUE((std::cv_status::timeout ==
                cond.wait_for(lock, std::chrono::milliseconds(100))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE(deallocated);
 }
 
 TEST_F(IResearchFeatureTest, test_async_schedule_task_null_functr) {
@@ -443,11 +443,11 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_wait_indefinite) {
   }
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
-  EXPECT_TRUE((false == deallocated));
+  EXPECT_FALSE(deallocated);
   EXPECT_TRUE((std::cv_status::timeout ==
                cond.wait_for(lock, std::chrono::milliseconds(100))));
-  EXPECT_TRUE((false == deallocated));  // still scheduled
-  EXPECT_TRUE((1 == count));
+  EXPECT_FALSE(deallocated);  // still scheduled
+  EXPECT_EQ(1, count);
 }
 
 TEST_F(IResearchFeatureTest, test_async_single_run_task) {
@@ -472,7 +472,7 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(100))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE(deallocated);
 }
 
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
@@ -505,9 +505,9 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(1000))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
-  EXPECT_TRUE((2 == count));
-  EXPECT_TRUE((std::chrono::milliseconds(100) < diff));
+  EXPECT_TRUE(deallocated);
+  EXPECT_EQ(2, count);
+  EXPECT_TRUE(std::chrono::milliseconds(100) < diff);
 }
 
 TEST_F(IResearchFeatureTest, test_async_trigger_task_by_notify) {
@@ -536,18 +536,18 @@ TEST_F(IResearchFeatureTest, test_async_trigger_task_by_notify) {
   }
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
-  EXPECT_TRUE((false == deallocated));
+  EXPECT_FALSE(deallocated);
   EXPECT_TRUE((std::cv_status::timeout ==
                cond.wait_for(lock, std::chrono::milliseconds(100))));
-  EXPECT_TRUE((false == deallocated));
+  EXPECT_FALSE(deallocated);
   feature.asyncNotify();
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(100))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
-  EXPECT_TRUE((false == execVal));
+  EXPECT_TRUE(deallocated);
+  EXPECT_FALSE(execVal);
   auto diff = std::chrono::system_clock::now() - last;
-  EXPECT_TRUE((std::chrono::milliseconds(1000) > diff));
+  EXPECT_TRUE(std::chrono::milliseconds(1000) > diff);
 }
 
 TEST_F(IResearchFeatureTest, test_async_trigger_by_timeout) {
@@ -577,14 +577,14 @@ TEST_F(IResearchFeatureTest, test_async_trigger_by_timeout) {
   }
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
-  EXPECT_TRUE((false == deallocated));
+  EXPECT_FALSE(deallocated);
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(1000))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
-  EXPECT_TRUE((true == execVal));
+  EXPECT_TRUE(deallocated);
+  EXPECT_TRUE(execVal);
   auto diff = std::chrono::system_clock::now() - last;
-  EXPECT_TRUE((std::chrono::milliseconds(300) >= diff));  // could be a little more then 100ms+100ms
+  EXPECT_TRUE(std::chrono::milliseconds(300) >= diff);  // could be a little more then 100ms+100ms
 }
 
 TEST_F(IResearchFeatureTest, test_async_deallocate_empty) {
@@ -616,7 +616,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
                  cond.wait_for(lock, std::chrono::milliseconds(100))));
   }
 
-  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE(deallocated);
 }
 
 TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex) {
@@ -652,7 +652,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
 
   {
     TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
-    EXPECT_TRUE((false == resourceLock.owns_lock()));  // write-lock aquired successfully (read-locks blocked)
+    EXPECT_FALSE(resourceLock.owns_lock());  // write-lock aquired successfully (read-locks blocked)
   }
 
   {
@@ -663,8 +663,8 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   cond.notify_all();  // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
   lock.unlock();      // allow first task to run
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated0));
-  EXPECT_TRUE((true == deallocated1));
+  EXPECT_TRUE(deallocated0);
+  EXPECT_TRUE(deallocated1);
   thread.join();
 }
 
@@ -704,9 +704,9 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   EXPECT_TRUE((std::cv_status::timeout !=
                cond.wait_for(lock, std::chrono::milliseconds(1000))));
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  EXPECT_TRUE((true == deallocated));
-  EXPECT_TRUE((2 == count));
-  EXPECT_TRUE((std::chrono::milliseconds(100) < diff));
+  EXPECT_TRUE(deallocated);
+  EXPECT_EQ(2, count);
+  EXPECT_TRUE(std::chrono::milliseconds(100) < diff);
 }
 #endif
 
@@ -816,11 +816,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                    .ok()));
 
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-  ASSERT_TRUE((false == !logicalCollection));
+  ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
       (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
   auto logicalView0 = ci.getView(vocbase->name(), viewId);
-  ASSERT_TRUE((false == !logicalView0));
+  ASSERT_FALSE(!logicalView0);
 
   // simulate heartbeat thread (create index in current)
   {
@@ -837,9 +837,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                                                        linkJson->slice(), true, tmp)
                    .ok()));
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-  ASSERT_TRUE((false == !logicalCollection));
+  ASSERT_FALSE(!logicalCollection);
   auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView0);
-  ASSERT_TRUE((false == !link0));
+  ASSERT_FALSE(!link0);
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
@@ -849,7 +849,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
   // ensure no upgrade on coordinator
   // simulate heartbeat thread (create index in current)
@@ -861,15 +861,15 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
         "] } }");
     EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
   }
-  EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
-  ASSERT_TRUE((false == !logicalCollection2));
+  ASSERT_FALSE(!logicalCollection2);
   auto logicalView1 = ci.getView(vocbase->name(), viewId);
-  EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-  EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+  EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
+  EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
-  EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-  EXPECT_TRUE((link0->id() == link1->id()));  // ensure new link
+  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_EQ(link0->id(), link1->id());  // ensure new link
   builder.clear();
   builder.openObject();
   EXPECT_TRUE((logicalView1
@@ -878,7 +878,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 after upgrade
+  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
 }
 
 class IResearchFeatureTestDBServer
@@ -988,31 +988,31 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-  ASSERT_TRUE((false == !logicalCollection));
+  ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
-  ASSERT_TRUE((false == !logicalView));
+  ASSERT_FALSE(!logicalView);
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-  ASSERT_TRUE((false == !view));
+  ASSERT_FALSE(!view);
   bool created = false;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
-  ASSERT_TRUE((created));
-  ASSERT_TRUE((false == !index));
+  ASSERT_TRUE(created);
+  ASSERT_FALSE(!index);
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  ASSERT_TRUE((false == !link));
-  ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_FALSE(!link);
+  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE((logicalView
@@ -1021,12 +1021,12 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
-  EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
+  EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not present
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
@@ -1059,7 +1059,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1068,27 +1068,27 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   engine.views.clear();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-  ASSERT_TRUE((false == !logicalCollection));
+  ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
-  ASSERT_TRUE((false == !logicalView));
+  ASSERT_FALSE(!logicalView);
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-  ASSERT_TRUE((false == !view));
+  ASSERT_FALSE(!view);
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
-  ASSERT_TRUE((created));
-  ASSERT_TRUE((false == !index));
+  ASSERT_TRUE(created);
+  ASSERT_FALSE(!index);
   auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  ASSERT_TRUE((false == !link));
-  ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_FALSE(!link);
+  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));
-  EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
-  EXPECT_TRUE((viewDataPath.exists(result) && result));
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);
+  EXPECT_TRUE(viewDataPath.mkdir());  // create view directory
+  EXPECT_TRUE(viewDataPath.exists(result) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE((logicalView
@@ -1097,11 +1097,11 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
                                              arangodb::LogicalDataSource::Serialize::ForPersistence))
                    .ok()));
   builder.close();
-  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
   //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
-  EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
-  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
+  EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
+  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
 }

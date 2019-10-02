@@ -77,7 +77,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
+    ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
@@ -85,13 +85,13 @@ TEST_F(IResearchQueryStringTermTest, test) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection2));
+    ASSERT_NE(nullptr, logicalCollection2);
   }
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase.createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
+  ASSERT_FALSE(!view);
 
   // add link to collection
   {
@@ -100,7 +100,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -111,12 +111,12 @@ TEST_F(IResearchQueryStringTermTest, test) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
@@ -128,7 +128,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
@@ -155,7 +155,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE((arangodb::tests::executeQuery(
                      vocbase,
                      "FOR d IN testView SEARCH 1 ==1 OPTIONS { "
@@ -189,7 +189,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -197,7 +197,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -227,7 +227,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -235,7 +235,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -267,7 +267,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -275,7 +275,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -303,7 +303,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -325,7 +325,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -348,7 +348,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -371,7 +371,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -389,7 +389,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -408,7 +408,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -429,7 +429,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -437,7 +437,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -463,7 +463,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -471,7 +471,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -499,7 +499,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -507,7 +507,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -531,7 +531,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -539,7 +539,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -565,7 +565,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator actualDocs(result);
-    EXPECT_TRUE(expectedDocs.size() == actualDocs.size());
+    EXPECT_EQ(expectedDocs.size(), actualDocs.size());
 
     for (auto expectedDoc = expectedDocs.rbegin(), end = expectedDocs.rend();
          expectedDoc != end; ++expectedDoc) {
@@ -581,7 +581,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       actualDocs.next();
     }
-    EXPECT_TRUE(!actualDocs.valid());
+    EXPECT_FALSE(actualDocs.valid());
   }
 
   // d.duplicated == 'abcd', TFIDF() ASC, name DESC
@@ -601,7 +601,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator actualDocs(result);
-    EXPECT_TRUE(expectedDocs.size() == actualDocs.size());
+    EXPECT_EQ(expectedDocs.size(), actualDocs.size());
 
     for (auto expectedDoc = expectedDocs.rbegin(), end = expectedDocs.rend();
          expectedDoc != end; ++expectedDoc) {
@@ -613,7 +613,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       actualDocs.next();
     }
-    EXPECT_TRUE(!actualDocs.valid());
+    EXPECT_FALSE(actualDocs.valid());
   }
 
   // d.same == 'same', BM25() ASC, TFIDF() ASC, seq DESC
@@ -630,7 +630,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -639,7 +639,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // expression  (invalid value)
@@ -655,7 +655,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -677,7 +677,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
   //    EXPECT_TRUE(result.isArray());
   //
   //    arangodb::velocypack::ArrayIterator resultIt(result);
-  //    EXPECT_TRUE(0 == resultIt.size());
+  //    EXPECT_EQ(0, resultIt.size());
   //
   //    for (auto const actualDoc : resultIt) {
   //      UNUSED(actualDoc);
@@ -702,7 +702,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -710,7 +710,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -736,7 +736,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -744,7 +744,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -769,7 +769,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -777,7 +777,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -803,7 +803,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -811,7 +811,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -836,7 +836,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -844,7 +844,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -877,7 +877,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -885,7 +885,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -924,7 +924,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -932,7 +932,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -958,7 +958,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -966,7 +966,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -993,7 +993,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1004,7 +1004,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // missing term, unordered
@@ -1024,7 +1024,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1032,7 +1032,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1051,7 +1051,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1078,7 +1078,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1086,7 +1086,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1119,14 +1119,14 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       auto const keySlice = resolved.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1149,7 +1149,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1158,7 +1158,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // existing duplicated term, TFIDF() ASC, BM25() ASC, seq DESC
@@ -1186,7 +1186,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(resultIt.size() == expectedDocs.size());
+    EXPECT_EQ(resultIt.size(), expectedDocs.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1196,7 +1196,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // expression: invalid type, unordered
@@ -1218,7 +1218,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1226,7 +1226,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1267,7 +1267,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(resultIt.size() == expectedDocs.size());
+    EXPECT_EQ(resultIt.size(), expectedDocs.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1282,7 +1282,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       }
     }
 
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -1299,7 +1299,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1317,7 +1317,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1335,7 +1335,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1364,7 +1364,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1372,7 +1372,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1391,7 +1391,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1422,7 +1422,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1432,7 +1432,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -1449,7 +1449,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1467,7 +1467,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1485,7 +1485,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1514,7 +1514,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1522,7 +1522,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1541,7 +1541,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(1 == resultIt.size());
+    EXPECT_EQ(1, resultIt.size());
 
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
@@ -1550,7 +1550,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                          resolved, true));
 
     resultIt.next();
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name <= '~' (less than max term), BM25() ASC, TFIDF() ASC seq DESC
@@ -1567,7 +1567,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1576,7 +1576,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -1593,7 +1593,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1611,7 +1611,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1629,7 +1629,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1658,7 +1658,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1666,7 +1666,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1685,8 +1685,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name > '!' (greater than min term), BM25() ASC, TFIDF() ASC seq DESC
@@ -1712,7 +1712,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1722,7 +1722,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -1739,7 +1739,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1757,7 +1757,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1775,7 +1775,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1804,7 +1804,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1812,7 +1812,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1831,7 +1831,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(1 == resultIt.size());
+    EXPECT_EQ(1, resultIt.size());
 
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
@@ -1840,7 +1840,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                          resolved, true));
 
     resultIt.next();
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= '!' (greater or equal than min term), BM25() ASC, TFIDF() ASC seq DESC
@@ -1857,7 +1857,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -1866,7 +1866,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -1884,7 +1884,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1903,7 +1903,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1922,7 +1922,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -1952,7 +1952,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -1960,7 +1960,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -1980,8 +1980,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name > 'H' AND d.name < 'H' , unordered
@@ -1995,8 +1995,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name > '!' AND d.name < '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
@@ -2024,7 +2024,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -2034,7 +2034,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -2052,7 +2052,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2071,7 +2071,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2090,7 +2090,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2120,7 +2120,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -2128,7 +2128,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -2148,8 +2148,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= 'H' AND d.name < 'H' , unordered
@@ -2163,8 +2163,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= '!' AND d.name < '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
@@ -2193,7 +2193,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -2203,7 +2203,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -2221,7 +2221,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2240,7 +2240,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2259,7 +2259,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2289,7 +2289,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -2297,7 +2297,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -2317,8 +2317,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name > 'H' AND d.name <= 'H' , unordered
@@ -2332,8 +2332,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name > '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
@@ -2362,7 +2362,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -2372,7 +2372,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -2390,7 +2390,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2409,7 +2409,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2428,7 +2428,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
+    EXPECT_EQ(0, resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       UNUSED(actualDoc);
@@ -2458,7 +2458,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -2466,7 +2466,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
       auto const key = arangodb::iresearch::getStringRef(keySlice);
 
       auto expectedDoc = expectedDocs.find(key);
-      ASSERT_TRUE(expectedDoc != expectedDocs.end());
+      ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));
@@ -2486,8 +2486,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= 'H' AND d.name <= 'H' , unordered
@@ -2501,7 +2501,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(1 == resultIt.size());
+    EXPECT_EQ(1, resultIt.size());
     EXPECT_TRUE(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
@@ -2509,7 +2509,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                          arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
 
     resultIt.next();
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name > '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
@@ -2538,7 +2538,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -2548,7 +2548,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                            resolved, true));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // -----------------------------------------------------------------------------
@@ -2566,8 +2566,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.seq >= 'H' AND d.seq <= 'S' , unordered
@@ -2581,7 +2581,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(1 == resultIt.size());
+    EXPECT_EQ(1, resultIt.size());
     EXPECT_TRUE(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
@@ -2589,7 +2589,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                          arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
 
     resultIt.next();
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= 'S' AND d.name <= 'N' , unordered
@@ -2603,8 +2603,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.seq >= 'S' AND d.seq <= 'N' , unordered
@@ -2618,7 +2618,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(1 == resultIt.size());
+    EXPECT_EQ(1, resultIt.size());
     EXPECT_TRUE(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
@@ -2626,7 +2626,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                          arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
 
     resultIt.next();
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= 'H' AND d.name <= 'H' , unordered
@@ -2640,8 +2640,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
     ASSERT_TRUE(queryResult.result.ok());
   }
 
@@ -2656,7 +2656,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(1 == resultIt.size());
+    EXPECT_EQ(1, resultIt.size());
     EXPECT_TRUE(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
@@ -2664,7 +2664,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
                          arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
 
     resultIt.next();
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_FALSE(resultIt.valid());
   }
 
   // d.name >= '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
@@ -2680,8 +2680,8 @@ TEST_F(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(0 == resultIt.size());
-    EXPECT_TRUE(!resultIt.valid());
+    EXPECT_EQ(0, resultIt.size());
+    EXPECT_FALSE(resultIt.valid());
     ASSERT_TRUE(queryResult.result.ok());
   }
 }

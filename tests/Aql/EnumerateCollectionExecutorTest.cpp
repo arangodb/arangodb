@@ -129,8 +129,8 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
@@ -144,12 +144,12 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 }  // namespace aql

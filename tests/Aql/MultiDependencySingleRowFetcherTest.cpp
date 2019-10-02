@@ -69,13 +69,13 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 1);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -93,17 +93,17 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row);
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -121,15 +121,15 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 1);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -148,19 +148,19 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -179,19 +179,19 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row);
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -211,23 +211,23 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row);
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 3);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3);
 }
 
 // TODO the following tests should be simplified, a simple output
@@ -254,22 +254,22 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
       std::tie(state, row) = testee.fetchRowForDependency(0);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 3);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -298,31 +298,31 @@ TEST_F(MultiDependencySingleRowFetcherTest,
       if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(0);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(0);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     // wait at the beginning of the 3rd block
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row);
     // last row and DONE
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 6);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 6);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -351,23 +351,23 @@ TEST_F(MultiDependencySingleRowFetcherTest,
       if (rowIdxAndValue == 1 || rowIdxAndValue == 4 || rowIdxAndValue == 6) {
         // wait at the beginning of the 1st, 2nd and 3rd block
         std::tie(state, row) = testee.fetchRowForDependency(0);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(0);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 7);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 7);
 }
 
 /*********************
@@ -391,14 +391,14 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::DONE);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::DONE);
+      ASSERT_FALSE(row);
     }
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == numDeps);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), numDeps);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -420,20 +420,20 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::WAITING);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::WAITING);
+      ASSERT_FALSE(row);
     }
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::DONE);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::DONE);
+      ASSERT_FALSE(row);
     }
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2 * numDeps);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2 * numDeps);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -459,22 +459,22 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::DONE);
+      ASSERT_EQ(state, ExecutionState::DONE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
+      ASSERT_EQ(row.getNrRegisters(), 1);
       if (i == 0) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
       } else if (i == 1) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 23);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 23);
       } else {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 1337);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 1337);
       }
     }
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == numDeps);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), numDeps);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -503,28 +503,28 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
+      ASSERT_EQ(row.getNrRegisters(), 1);
       if (i == 0) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
       } else if (i == 1) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 23);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 23);
       } else {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 1337);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 1337);
       }
     }
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::DONE);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::DONE);
+      ASSERT_FALSE(row);
     }
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2 * numDeps);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2 * numDeps);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -553,28 +553,28 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::WAITING);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::WAITING);
+      ASSERT_FALSE(row);
     }
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::DONE);
+      ASSERT_EQ(state, ExecutionState::DONE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
+      ASSERT_EQ(row.getNrRegisters(), 1);
       if (i == 0) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
       } else if (i == 1) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 23);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 23);
       } else {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 1337);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 1337);
       }
     }
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2 * numDeps);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2 * numDeps);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -606,34 +606,34 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::WAITING);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::WAITING);
+      ASSERT_FALSE(row);
     }
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
+      ASSERT_EQ(row.getNrRegisters(), 1);
       if (i == 0) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 42);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
       } else if (i == 1) {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 23);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 23);
       } else {
-        ASSERT_TRUE(row.getValue(0).slice().getInt() == 1337);
+        ASSERT_EQ(row.getValue(0).slice().getInt(), 1337);
       }
     }
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
-      ASSERT_TRUE(state == ExecutionState::DONE);
-      ASSERT_TRUE(!row);
+      ASSERT_EQ(state, ExecutionState::DONE);
+      ASSERT_FALSE(row);
     }
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 3 * numDeps);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3 * numDeps);
 }
 
 // TODO the following tests should be simplified, a simple output
@@ -672,50 +672,50 @@ TEST_F(MultiDependencySingleRowFetcherTest,
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
       std::tie(state, row) = testee.fetchRowForDependency(0);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
 
     for (rowIdxAndValue = 7; rowIdxAndValue <= 8; rowIdxAndValue++) {
       std::tie(state, row) = testee.fetchRowForDependency(1);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 9;
     std::tie(state, row) = testee.fetchRowForDependency(1);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
 
     for (rowIdxAndValue = 10; rowIdxAndValue <= 10; rowIdxAndValue++) {
       std::tie(state, row) = testee.fetchRowForDependency(2);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 11;
     std::tie(state, row) = testee.fetchRowForDependency(2);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 3 + 2 + 1);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 3 + 2 + 1);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -759,71 +759,71 @@ TEST_F(MultiDependencySingleRowFetcherTest,
       if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(0);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(0);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     // wait at the beginning of the 3rd block
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row);
     // last row and DONE
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
 
     for (rowIdxAndValue = 7; rowIdxAndValue <= 8; rowIdxAndValue++) {
       if (rowIdxAndValue == 7 || rowIdxAndValue == 8) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(1);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(1);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 9;
     std::tie(state, row) = testee.fetchRowForDependency(1);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
 
     for (rowIdxAndValue = 10; rowIdxAndValue <= 10; rowIdxAndValue++) {
       if (rowIdxAndValue == 10) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(2);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(2);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 11;
     std::tie(state, row) = testee.fetchRowForDependency(2);
-    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 12);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 12);
 }
 
 TEST_F(MultiDependencySingleRowFetcherTest,
@@ -870,80 +870,80 @@ TEST_F(MultiDependencySingleRowFetcherTest,
       if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(0);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(0);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     // wait at the beginning of the 3rd block
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row);
     // last row and DONE
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     std::tie(state, row) = testee.fetchRowForDependency(0);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
 
     for (rowIdxAndValue = 7; rowIdxAndValue <= 8; rowIdxAndValue++) {
       if (rowIdxAndValue == 7 || rowIdxAndValue == 8) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(1);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(1);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 9;
     std::tie(state, row) = testee.fetchRowForDependency(1);
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     std::tie(state, row) = testee.fetchRowForDependency(1);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
 
     for (rowIdxAndValue = 10; rowIdxAndValue <= 10; rowIdxAndValue++) {
       if (rowIdxAndValue == 10) {
         // wait at the beginning of the 1st and 2nd block
         std::tie(state, row) = testee.fetchRowForDependency(2);
-        ASSERT_TRUE(state == ExecutionState::WAITING);
-        ASSERT_TRUE(!row);
+        ASSERT_EQ(state, ExecutionState::WAITING);
+        ASSERT_FALSE(row);
       }
       std::tie(state, row) = testee.fetchRowForDependency(2);
-      ASSERT_TRUE(state == ExecutionState::HASMORE);
+      ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_TRUE(row.getNrRegisters() == 1);
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 11;
     std::tie(state, row) = testee.fetchRowForDependency(2);
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_TRUE(row.getNrRegisters() == 1);
-    ASSERT_TRUE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     std::tie(state, row) = testee.fetchRowForDependency(2);
-    ASSERT_TRUE(state == ExecutionState::DONE);
-    ASSERT_TRUE(!row);
+    ASSERT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
-  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 15);
+  ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 15);
 }
 
 }  // namespace aql

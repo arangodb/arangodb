@@ -89,7 +89,7 @@ TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
   OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_TRUE(state == ExecutionState::DONE);
+  EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_FALSE(output.produced());
   EXPECT_EQ(output.numRowsWritten(), 0);
 }
@@ -109,7 +109,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
   OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_TRUE(state == ExecutionState::DONE);
+  EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_FALSE(output.produced());
   EXPECT_EQ(output.numRowsWritten(), 2);
 
@@ -135,7 +135,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
   OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(output);
-  EXPECT_TRUE(state == ExecutionState::DONE);
+  EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_FALSE(output.produced());
   EXPECT_EQ(output.numRowsWritten(), 6);
 
@@ -212,7 +212,7 @@ TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
     OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear()};
     std::tie(state, stats) = testee.produceRows(output);
-    EXPECT_TRUE(state == ExecutionState::DONE);
+    EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_FALSE(output.produced());
     ASSERT_EQ(output.numRowsWritten(), 6);
     block = output.stealBlock();
@@ -236,7 +236,7 @@ TEST_F(SubqueryStartExecutorTest, does_only_add_shadowrows_on_data_rows) {
     OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear()};
     std::tie(state, stats) = testee.produceRows(output);
-    EXPECT_TRUE(state == ExecutionState::DONE);
+    EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_FALSE(output.produced());
     ASSERT_EQ(output.numRowsWritten(), 9);
     block = output.stealBlock();

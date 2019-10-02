@@ -68,7 +68,7 @@ TEST_F(IResearchQueryOrTest, test) {
     auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
+    ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
@@ -76,13 +76,13 @@ TEST_F(IResearchQueryOrTest, test) {
     auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection2));
+    ASSERT_NE(nullptr, logicalCollection2);
   }
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase.createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
+  ASSERT_FALSE(!view);
 
   // add link to collection
   {
@@ -94,7 +94,7 @@ TEST_F(IResearchQueryOrTest, test) {
         "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true, \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -105,12 +105,12 @@ TEST_F(IResearchQueryOrTest, test) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
@@ -122,7 +122,7 @@ TEST_F(IResearchQueryOrTest, test) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
@@ -149,7 +149,7 @@ TEST_F(IResearchQueryOrTest, test) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
@@ -183,7 +183,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -193,7 +193,7 @@ TEST_F(IResearchQueryOrTest, test) {
           resolved);
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // d.name == 'X' OR d.same == 'xyz', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
@@ -214,7 +214,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check 1st (the most relevant doc)
     // {"name":"X","seq":23,"same":"xyz", "duplicated":"vczc", "prefix":"bateradsfsfasdf" }
@@ -237,7 +237,7 @@ TEST_F(IResearchQueryOrTest, test) {
                             resolved, true)));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // d.name == 'K' OR d.value <= 100 OR d.duplicated == abcd, TFIDF(d) DESC, d.seq DESC
@@ -271,7 +271,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check the documents
     auto expectedDoc = expectedDocs.begin();
@@ -279,9 +279,9 @@ TEST_F(IResearchQueryOrTest, test) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
       resultIt.next();
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(*expectedDoc, resolved, true)));
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(*expectedDoc, resolved, true));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // d.name == 'A' OR d.name == 'Q' OR d.same != 'xyz', d.seq DESC
@@ -310,7 +310,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
@@ -319,7 +319,7 @@ TEST_F(IResearchQueryOrTest, test) {
                                         resolved);
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // d.name == 'F' OR EXISTS(d.duplicated), BM25(d) DESC, d.seq DESC
@@ -348,7 +348,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check 1st (the most relevant doc)
     // {"name":"F","seq":5,"same":"xyz", "value":1234 }
@@ -371,7 +371,7 @@ TEST_F(IResearchQueryOrTest, test) {
                             resolved, true)));
       ++expectedDoc;
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.rend());
+    EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
   // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), TFIDF(d) DESC, d.seq DESC
@@ -400,7 +400,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -411,7 +411,7 @@ TEST_F(IResearchQueryOrTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), BM25(d) DESC, d.seq DESC
@@ -440,7 +440,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -451,7 +451,7 @@ TEST_F(IResearchQueryOrTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), BM25(d) DESC, d.seq DESC, LIMIT 3
@@ -475,7 +475,7 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    EXPECT_TRUE(expectedDocs.size() == resultIt.size());
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -486,7 +486,7 @@ TEST_F(IResearchQueryOrTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
@@ -528,13 +528,13 @@ TEST_F(IResearchQueryOrTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE(i < expected.size());
 
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // PHRASE(d['duplicated'], 'v', 2, 'z', 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value > 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
@@ -575,11 +575,11 @@ TEST_F(IResearchQueryOrTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE(i < expected.size());
 
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 }
