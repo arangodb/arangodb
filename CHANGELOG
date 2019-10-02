@@ -1,6 +1,8 @@
 devel
 -----
 
+* Hot backup documentation ammended
+
 * RCLone URL normalization
 
 * Fixed Unintended multiple unlock commands from coordinator to
