@@ -223,8 +223,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
                                      arangodb::transaction::Options());
 
   arangodb::iresearch::FieldIterator it(trx);
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_nested_delimiter) {
@@ -275,7 +275,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
 
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
-  EXPECT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // default analyzer
   auto const expected_analyzer =
@@ -288,7 +288,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
     auto& field = *it;
     std::string const actualName = std::string(field.name());
     auto const expectedValue = expectedValues.find(actualName);
-    ASSERT_TRUE(expectedValues.end() != expectedValue);
+    ASSERT_NE(expectedValues.end(), expectedValue);
 
     auto& refs = expectedValue->second;
     if (!--refs) {
@@ -296,14 +296,14 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
     }
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_TRUE(expected_features == field.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, field.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
 
     ++it;
   }
 
   EXPECT_TRUE(expectedValues.empty());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) {
@@ -354,7 +354,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
 
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
-  EXPECT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // default analyzer
   auto const expected_analyzer =
@@ -367,7 +367,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
     auto& field = *it;
     std::string const actualName = std::string(field.name());
     auto const expectedValue = expectedValues.find(actualName);
-    ASSERT_TRUE(expectedValues.end() != expectedValue);
+    ASSERT_NE(expectedValues.end(), expectedValue);
 
     auto& refs = expectedValue->second;
     if (!--refs) {
@@ -375,14 +375,14 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
     }
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_TRUE(expected_features == field.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, field.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
 
     ++it;
   }
 
   EXPECT_TRUE(expectedValues.empty());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_fields) {
@@ -460,11 +460,11 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
   for (; doc.valid(); ++doc) {
     auto& field = *doc;
     std::string const actualName = std::string(field.name());
-    EXPECT_TRUE(1 == expectedValues.erase(actualName));
+    EXPECT_EQ(1, expectedValues.erase(actualName));
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_TRUE(expected_features == field.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, field.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   EXPECT_TRUE(expectedValues.empty());
@@ -514,22 +514,22 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   auto& value = *it;
-  EXPECT_TRUE(mangleStringIdentity("boost") == value.name());
+  EXPECT_EQ(mangleStringIdentity("boost"), value.name());
   const auto expected_analyzer =
       irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity")->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-  EXPECT_TRUE(expected_features == value.features());
-  EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+  EXPECT_EQ(expected_features, value.features());
+  EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
 
   ++it;
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filtered_2) {
@@ -566,8 +566,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
 
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empty_analyzers) {
@@ -604,8 +604,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empt
 
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_check_value_types) {
@@ -645,161 +645,161 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
-  EXPECT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // stringValue (with IdentityAnalyzer)
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleStringIdentity("stringValue") == field.name());
+    EXPECT_EQ(mangleStringIdentity("stringValue"), field.name());
     auto const expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
-    EXPECT_TRUE(expected_features == field.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
+    EXPECT_EQ(expected_features, field.features());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // stringValue (with EmptyAnalyzer)
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleString("stringValue", "iresearch-document-empty") == field.name());
+    EXPECT_EQ(mangleString("stringValue", "iresearch-document-empty"), field.name());
     auto const expected_analyzer = irs::analysis::analyzers::get(
         "iresearch-document-empty", irs::text_format::vpack,
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
-    EXPECT_TRUE(irs::flags({irs::frequency::type()}) == field.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
+    EXPECT_EQ(irs::flags({irs::frequency::type()}), field.features());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // nullValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNull("nullValue") == field.name());
+    EXPECT_EQ(mangleNull("nullValue"), field.name());
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // trueValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleBool("trueValue") == field.name());
+    EXPECT_EQ(mangleBool("trueValue"), field.name());
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // falseValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleBool("falseValue") == field.name());
+    EXPECT_EQ(mangleBool("falseValue"), field.name());
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // smallIntValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("smallIntValue") == field.name());
+    EXPECT_EQ(mangleNumeric("smallIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // smallNegativeIntValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("smallNegativeIntValue") == field.name());
+    EXPECT_EQ(mangleNumeric("smallNegativeIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // bigIntValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("bigIntValue") == field.name());
+    EXPECT_EQ(mangleNumeric("bigIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // bigNegativeIntValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("bigNegativeIntValue") == field.name());
+    EXPECT_EQ(mangleNumeric("bigNegativeIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // smallDoubleValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("smallDoubleValue") == field.name());
+    EXPECT_EQ(mangleNumeric("smallDoubleValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // bigDoubleValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("bigDoubleValue") == field.name());
+    EXPECT_EQ(mangleNumeric("bigDoubleValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // bigNegativeDoubleValue
   {
     auto& field = *it;
-    EXPECT_TRUE(mangleNumeric("bigNegativeDoubleValue") == field.name());
+    EXPECT_EQ(mangleNumeric("bigNegativeDoubleValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_reset) {
@@ -831,15 +831,15 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
 
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("boost") == value.name());
+    EXPECT_EQ(mangleStringIdentity("boost"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
@@ -848,38 +848,38 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
   // depth (with IdentityAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("depth") == value.name());
+    EXPECT_EQ(mangleStringIdentity("depth"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
-  ASSERT_TRUE(!it.valid());
+  ASSERT_FALSE(it.valid());
 
   it.reset(json1->slice(), linkMeta);
   ASSERT_TRUE(it.valid());
 
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("name") == value.name());
+    EXPECT_EQ(mangleStringIdentity("name"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
-  ASSERT_TRUE(!it.valid());
+  ASSERT_FALSE(it.valid());
 }
 
 TEST_F(IResearchDocumentTest,
@@ -948,7 +948,7 @@ TEST_F(IResearchDocumentTest,
 
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
-  EXPECT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // default analyzer
   auto const expected_analyzer =
@@ -960,15 +960,15 @@ TEST_F(IResearchDocumentTest,
   for (; it != arangodb::iresearch::FieldIterator(trx); ++it) {
     auto& field = *it;
     std::string const actualName = std::string(field.name());
-    EXPECT_TRUE(1 == expectedValues.erase(actualName));
+    EXPECT_EQ(1, expectedValues.erase(actualName));
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_TRUE(expected_features == field.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, field.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   EXPECT_TRUE(expectedValues.empty());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance) {
@@ -1014,7 +1014,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE((linkMeta.init(linkMetaJson->slice(), false, error, sysVocbase.get())));
+  ASSERT_TRUE(linkMeta.init(linkMetaJson->slice(), false, error, sysVocbase.get()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1024,12 +1024,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   arangodb::iresearch::FieldIterator it(trx);
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // nested.foo (with IdentityAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("nested.foo") == value.name());
+    EXPECT_EQ(mangleStringIdentity("nested.foo"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                       arangodb::iresearch::ref<char>(
@@ -1037,91 +1037,91 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // nested.foo (with EmptyAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleString("nested.foo", "iresearch-document-empty") == value.name());
+    EXPECT_EQ(mangleString("nested.foo", "iresearch-document-empty"), value.name());
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_TRUE(!analyzer.next());
+    EXPECT_FALSE(analyzer.next());
   }
 
   // keys[]
   for (size_t i = 0; i < 4; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("keys") == value.name());
+    EXPECT_EQ(mangleStringIdentity("keys"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // boost
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("boost") == value.name());
+    EXPECT_EQ(mangleStringIdentity("boost"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // depth
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleNumeric("depth") == value.name());
+    EXPECT_EQ(mangleNumeric("depth"), value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // fields.fieldA (with IdenityAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("fields.fieldA.name") == value.name());
+    EXPECT_EQ(mangleStringIdentity("fields.fieldA.name"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // fields.fieldA (with EmptyAnalyzer)
   {
@@ -1129,30 +1129,30 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     EXPECT_TRUE(mangleString("fields.fieldA.name",
                              "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_TRUE(!analyzer.next());
+    EXPECT_FALSE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // listValuation (with IdenityAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("listValuation") == value.name());
+    EXPECT_EQ(mangleStringIdentity("listValuation"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // listValuation (with EmptyAnalyzer)
   {
@@ -1160,29 +1160,29 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     EXPECT_TRUE(mangleString("listValuation", "iresearch-document-empty") ==
                 value.name());
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_TRUE(!analyzer.next());
+    EXPECT_FALSE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // locale
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleNull("locale") == value.name());
+    EXPECT_EQ(mangleNull("locale"), value.name());
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // array[0].id
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleNumeric("array[0].id") == value.name());
+    EXPECT_EQ(mangleNumeric("array[0].id"), value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1191,12 +1191,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 3; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // IdentityAnalyzer
     {
       auto& value = *it;
-      EXPECT_TRUE(mangleStringIdentity("array[0].subarr") == value.name());
+      EXPECT_EQ(mangleStringIdentity("array[0].subarr"), value.name());
       const auto expected_analyzer =
           irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
@@ -1204,13 +1204,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_TRUE(expected_features == value.features());
-      EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+      EXPECT_EQ(expected_features, value.features());
+      EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
     }
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // EmptyAnalyzer
     {
@@ -1218,7 +1218,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
       EXPECT_TRUE(mangleString("array[0].subarr", "iresearch-document-empty") ==
                   value.name());
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-      EXPECT_TRUE(!analyzer.next());
+      EXPECT_FALSE(analyzer.next());
     }
   }
 
@@ -1226,12 +1226,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 3; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // IdentityAnalyzer
     {
       auto& value = *it;
-      EXPECT_TRUE(mangleStringIdentity("array[1].subarr") == value.name());
+      EXPECT_EQ(mangleStringIdentity("array[1].subarr"), value.name());
       const auto expected_analyzer =
           irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
@@ -1239,13 +1239,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_TRUE(expected_features == value.features());
-      EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+      EXPECT_EQ(expected_features, value.features());
+      EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
     }
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // EmptyAnalyzer
     {
@@ -1253,48 +1253,48 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
       EXPECT_TRUE(mangleString("array[1].subarr", "iresearch-document-empty") ==
                   value.name());
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-      EXPECT_TRUE(!analyzer.next());
+      EXPECT_FALSE(analyzer.next());
     }
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // array[1].id (IdentityAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleStringIdentity("array[1].id") == value.name());
+    EXPECT_EQ(mangleStringIdentity("array[1].id"), value.name());
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_TRUE(expected_features == value.features());
-    EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+    EXPECT_EQ(expected_features, value.features());
+    EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // array[1].id (EmptyAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleString("array[1].id", "iresearch-document-empty") == value.name());
+    EXPECT_EQ(mangleString("array[1].id", "iresearch-document-empty"), value.name());
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_TRUE(!analyzer.next());
+    EXPECT_FALSE(analyzer.next());
   }
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
   // array[2].id (IdentityAnalyzer)
   {
     auto& value = *it;
-    EXPECT_TRUE(mangleNumeric("array[2].id") == value.name());
+    EXPECT_EQ(mangleNumeric("array[2].id"), value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1303,12 +1303,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 3; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // IdentityAnalyzer
     {
       auto& value = *it;
-      EXPECT_TRUE(mangleStringIdentity("array[2].subarr") == value.name());
+      EXPECT_EQ(mangleStringIdentity("array[2].subarr"), value.name());
       const auto expected_analyzer =
           irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
@@ -1316,13 +1316,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_TRUE(expected_features == value.features());
-      EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
+      EXPECT_EQ(expected_features, value.features());
+      EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
     }
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // EmptyAnalyzer
     {
@@ -1330,13 +1330,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
       EXPECT_TRUE(mangleString("array[2].subarr", "iresearch-document-empty") ==
                   value.name());
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-      EXPECT_TRUE(!analyzer.next());
+      EXPECT_FALSE(analyzer.next());
     }
   }
 
   ++it;
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(it == arangodb::iresearch::FieldIterator(trx));
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
@@ -1440,12 +1440,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     arangodb::iresearch::FieldIterator it(trx);
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // stringValue (with IdentityAnalyzer)
     {
       auto& field = *it;
-      EXPECT_TRUE(mangleStringIdentity("stringValue") == field.name());
+      EXPECT_EQ(mangleStringIdentity("stringValue"), field.name());
       auto const expected_analyzer =
           irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
@@ -1453,29 +1453,29 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-      EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
-      EXPECT_TRUE(expected_features == field.features());
+      EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
+      EXPECT_EQ(expected_features, field.features());
     }
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(arangodb::iresearch::FieldIterator(trx) != it);
+    ASSERT_NE(arangodb::iresearch::FieldIterator(trx), it);
 
     // stringValue (with EmptyAnalyzer)
     {
       auto& field = *it;
-      EXPECT_TRUE(mangleString("stringValue", "empty") == field.name());
+      EXPECT_EQ(mangleString("stringValue", "empty"), field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get(
           "iresearch-document-empty", irs::text_format::vpack,
               arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
-      EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
-      EXPECT_TRUE(expected_analyzer->attributes().features() == field.features());
+      EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
+      EXPECT_EQ(expected_analyzer->attributes().features(), field.features());
     }
 
     ++it;
-    ASSERT_TRUE(!it.valid());
-    ASSERT_TRUE(arangodb::iresearch::FieldIterator(trx) == it);
+    ASSERT_FALSE(it.valid());
+    ASSERT_EQ(arangodb::iresearch::FieldIterator(trx), it);
 
     analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
   }
@@ -1506,23 +1506,23 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     arangodb::iresearch::FieldIterator it(trx);
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
-    ASSERT_TRUE(it != arangodb::iresearch::FieldIterator(trx));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx));
 
     // stringValue (with EmptyAnalyzer)
     {
       auto& field = *it;
-      EXPECT_TRUE(mangleString("stringValue", "empty") == field.name());
+      EXPECT_EQ(mangleString("stringValue", "empty"), field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get(
           "iresearch-document-empty", irs::text_format::vpack,
             arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
-      EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
-      EXPECT_TRUE(expected_analyzer->attributes().features() == field.features());
+      EXPECT_EQ(&expected_analyzer->type(), &analyzer.type());
+      EXPECT_EQ(expected_analyzer->attributes().features(), field.features());
     }
 
     ++it;
-    ASSERT_TRUE(!it.valid());
-    ASSERT_TRUE(arangodb::iresearch::FieldIterator(trx) == it);
+    ASSERT_FALSE(it.valid());
+    ASSERT_EQ(arangodb::iresearch::FieldIterator(trx), it);
 
     analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
   }
@@ -1612,16 +1612,16 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
   }
 
   store0.reader = store0.reader->reopen();
-  EXPECT_TRUE((size == store0.reader->size()));
-  EXPECT_TRUE((size == store0.reader->docs_count()));
+  EXPECT_EQ(size, store0.reader->size());
+  EXPECT_EQ(size, store0.reader->docs_count());
 
   store1.writer->import(*store0.reader);
   store1.writer->commit();
 
   auto reader = store1.reader->reopen();
-  ASSERT_TRUE((reader));
-  EXPECT_TRUE((1 == reader->size()));
-  EXPECT_TRUE((size == reader->docs_count()));
+  ASSERT_TRUE(reader);
+  EXPECT_EQ(1, reader->size());
+  EXPECT_EQ(size, reader->docs_count());
 
   size_t found = 0;
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
@@ -1634,34 +1634,34 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
     EXPECT_TRUE(pkField);
-    EXPECT_TRUE(size == pkField->docs_count());
+    EXPECT_EQ(size, pkField->docs_count());
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     EXPECT_TRUE(filters.empty());
     auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-    ASSERT_TRUE(filter.type() == arangodb::iresearch::PrimaryKeyFilter::type());
-    EXPECT_TRUE(!filters.empty());
+    ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+    EXPECT_FALSE(filters.empty());
 
     // first execution
     {
       auto prepared = filter.prepare(*reader);
       ASSERT_TRUE(prepared);
-      EXPECT_TRUE(prepared == filter.prepare(*reader));  // same object
+      EXPECT_EQ(prepared, filter.prepare(*reader));  // same object
       EXPECT_TRUE(&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
                                  prepared.get()));  // same object
 
       for (auto& segment : *reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_TRUE((nullptr == prepared->execute(segment))); // unusable filter TRI_ASSERT(...) check
-        EXPECT_TRUE((irs::filter::prepared::empty() == filter.prepare(*reader)));  // unusable filter (after execute)
+        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter TRI_ASSERT(...) check
+        EXPECT_EQ(irs::filter::prepared::empty(), filter.prepare(*reader));  // unusable filter (after execute)
 
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
         ++found;
-        EXPECT_TRUE(!docs->next());
+        EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
-        EXPECT_TRUE(!docs->next());
+        EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
 
         auto column =
@@ -1676,7 +1676,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
         arangodb::LocalDocumentId pk;
         EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
-        EXPECT_TRUE(rid == pk.id());
+        EXPECT_EQ(rid, pk.id());
       }
     }
 
@@ -1685,19 +1685,19 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
     //{
     //  auto prepared = filter.prepare(*reader);
     //  ASSERT_TRUE(prepared);
-    //  EXPECT_TRUE(prepared == filter.prepare(*reader)); // same object
+    //  EXPECT_EQ(prepared, filter.prepare(*reader)); // same object
 
     //  for (auto& segment : *reader) {
     //    auto docs = prepared->execute(segment);
     //    ASSERT_TRUE(docs);
-    //    EXPECT_TRUE(docs == prepared->execute(segment)); // same object
-    //    EXPECT_TRUE(!docs->next());
+    //    EXPECT_EQ(docs, prepared->execute(segment)); // same object
+    //    EXPECT_FALSE(docs->next());
     //    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
     //  }
     //}
   }
 
-  EXPECT_TRUE(found == size);
+  EXPECT_EQ(found, size);
 }
 
 TEST_F(IResearchDocumentTest, test_rid_filter) {
@@ -1764,7 +1764,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   // initial population
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
-    EXPECT_TRUE((ridSlice.isNumber<uint64_t>()));
+    EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
@@ -1776,7 +1776,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
-      EXPECT_TRUE((doc));
+      EXPECT_TRUE(doc);
       ++expectedDocs;
       ++expectedLiveDocs;
     }
@@ -1790,14 +1790,14 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
     EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
-    EXPECT_TRUE((doc));
+    EXPECT_TRUE(doc);
   }
 
   store.writer->commit();
   store.reader = store.reader->reopen();
-  EXPECT_TRUE((1 == store.reader->size()));
-  EXPECT_TRUE((expectedDocs + 1 == store.reader->docs_count()));  // +1 for keep-alive doc
-  EXPECT_TRUE((expectedLiveDocs + 1 == store.reader->live_docs_count()));  // +1 for keep-alive doc
+  EXPECT_EQ(1, store.reader->size());
+  EXPECT_EQ(expectedDocs + 1, store.reader->docs_count());  // +1 for keep-alive doc
+  EXPECT_EQ(expectedLiveDocs + 1, store.reader->live_docs_count());  // +1 for keep-alive doc
 
   // check regular filter case (unique rid)
   {
@@ -1809,54 +1809,54 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
-      EXPECT_TRUE((filters.empty()));
+      EXPECT_TRUE(filters.empty());
       auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-      ASSERT_TRUE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
-      EXPECT_TRUE((!filters.empty()));
+      ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+      EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
-      ASSERT_TRUE((prepared));
-      EXPECT_TRUE((prepared == filter.prepare(*store.reader)));  // same object
+      ASSERT_TRUE(prepared);
+      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
       EXPECT_TRUE((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
                                   prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
-        ASSERT_TRUE((docs));
-        // EXPECT_TRUE((nullptr == prepared->execute(segment))); // unusable filter TRI_ASSERT(...) check
-        EXPECT_TRUE((irs::filter::prepared::empty() == filter.prepare(*store.reader)));  // unusable filter (after execute)
+        ASSERT_TRUE(docs);
+        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter TRI_ASSERT(...) check
+        EXPECT_EQ(irs::filter::prepared::empty(), filter.prepare(*store.reader));  // unusable filter (after execute)
 
-        EXPECT_TRUE((docs->next()));
+        EXPECT_TRUE(docs->next());
         auto const id = docs->value();
         ++actualDocs;
-        EXPECT_TRUE((!docs->next()));
-        EXPECT_TRUE((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
-        EXPECT_TRUE((!docs->next()));
-        EXPECT_TRUE((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+        EXPECT_FALSE(docs->next());
+        EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+        EXPECT_FALSE(docs->next());
+        EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
 
         auto column =
             segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-        ASSERT_TRUE((column));
+        ASSERT_TRUE(column);
 
         auto values = column->values();
-        ASSERT_TRUE((values));
+        ASSERT_TRUE(values);
 
         irs::bytes_ref pkValue;
-        EXPECT_TRUE((values(id, pkValue)));
+        EXPECT_TRUE(values(id, pkValue));
 
         arangodb::LocalDocumentId pk;
-        EXPECT_TRUE((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
-        EXPECT_TRUE((rid == pk.id()));
+        EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+        EXPECT_EQ(rid, pk.id());
       }
     }
 
-    EXPECT_TRUE((expectedDocs == actualDocs));
+    EXPECT_EQ(expectedDocs, actualDocs);
   }
 
   // remove + insert (simulate recovery)
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
-    EXPECT_TRUE((ridSlice.isNumber<uint64_t>()));
+    EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
@@ -1870,7 +1870,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
-      EXPECT_TRUE((doc));
+      EXPECT_TRUE(doc);
       ++expectedDocs;
     }
   }
@@ -1884,14 +1884,14 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
     EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
-    EXPECT_TRUE((doc));
+    EXPECT_TRUE(doc);
   }
 
   store.writer->commit();
   store.reader = store.reader->reopen();
-  EXPECT_TRUE((2 == store.reader->size()));
-  EXPECT_TRUE((expectedDocs + 2 == store.reader->docs_count()));  // +2 for keep-alive doc
-  EXPECT_TRUE((expectedLiveDocs + 2 == store.reader->live_docs_count()));  // +2 for keep-alive doc
+  EXPECT_EQ(2, store.reader->size());
+  EXPECT_EQ(expectedDocs + 2, store.reader->docs_count());  // +2 for keep-alive doc
+  EXPECT_EQ(expectedLiveDocs + 2, store.reader->live_docs_count());  // +2 for keep-alive doc
 
   // check 1st recovery case
   {
@@ -1909,55 +1909,55 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
-      EXPECT_TRUE((filters.empty()));
+      EXPECT_TRUE(filters.empty());
       auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-      ASSERT_TRUE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
-      EXPECT_TRUE((!filters.empty()));
+      ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+      EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
-      ASSERT_TRUE((prepared));
-      EXPECT_TRUE((prepared == filter.prepare(*store.reader)));  // same object
+      ASSERT_TRUE(prepared);
+      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
       EXPECT_TRUE((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
                                   prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
-        ASSERT_TRUE((docs));
-        EXPECT_TRUE((nullptr != prepared->execute(segment)));  // usable filter
-        EXPECT_TRUE((nullptr != filter.prepare(*store.reader)));  // usable filter (after execute)
+        ASSERT_TRUE(docs);
+        EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
+        EXPECT_NE(nullptr, filter.prepare(*store.reader));  // usable filter (after execute)
 
         if (docs->next()) {  // old segments will not have any matching docs
           auto const id = docs->value();
           ++actualDocs;
-          EXPECT_TRUE((!docs->next()));
-          EXPECT_TRUE((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
-          EXPECT_TRUE((!docs->next()));
-          EXPECT_TRUE((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+          EXPECT_FALSE(docs->next());
+          EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+          EXPECT_FALSE(docs->next());
+          EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
 
           auto column =
               segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-          ASSERT_TRUE((column));
+          ASSERT_TRUE(column);
 
           auto values = column->values();
-          ASSERT_TRUE((values));
+          ASSERT_TRUE(values);
 
           irs::bytes_ref pkValue;
-          EXPECT_TRUE((values(id, pkValue)));
+          EXPECT_TRUE(values(id, pkValue));
 
           arangodb::LocalDocumentId pk;
-          EXPECT_TRUE((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
-          EXPECT_TRUE((rid == pk.id()));
+          EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+          EXPECT_EQ(rid, pk.id());
         }
       }
     }
 
-    EXPECT_TRUE((expectedLiveDocs == actualDocs));
+    EXPECT_EQ(expectedLiveDocs, actualDocs);
   }
 
   // remove + insert (simulate recovery) 2nd time
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
-    EXPECT_TRUE((ridSlice.isNumber<uint64_t>()));
+    EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
@@ -1971,7 +1971,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
-      EXPECT_TRUE((doc));
+      EXPECT_TRUE(doc);
       ++expectedDocs;
     }
   }
@@ -1985,14 +1985,14 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
     EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
-    EXPECT_TRUE((doc));
+    EXPECT_TRUE(doc);
   }
 
   store.writer->commit();
   store.reader = store.reader->reopen();
-  EXPECT_TRUE((3 == store.reader->size()));
-  EXPECT_TRUE((expectedDocs + 3 == store.reader->docs_count()));  // +3 for keep-alive doc
-  EXPECT_TRUE((expectedLiveDocs + 3 == store.reader->live_docs_count()));  // +3 for keep-alive doc
+  EXPECT_EQ(3, store.reader->size());
+  EXPECT_EQ(expectedDocs + 3, store.reader->docs_count());  // +3 for keep-alive doc
+  EXPECT_EQ(expectedLiveDocs + 3, store.reader->live_docs_count());  // +3 for keep-alive doc
 
   // check 2nd recovery case
   {
@@ -2010,48 +2010,48 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
-      EXPECT_TRUE((filters.empty()));
+      EXPECT_TRUE(filters.empty());
       auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-      ASSERT_TRUE((filter.type() == arangodb::iresearch::PrimaryKeyFilter::type()));
-      EXPECT_TRUE((!filters.empty()));
+      ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+      EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
-      ASSERT_TRUE((prepared));
-      EXPECT_TRUE((prepared == filter.prepare(*store.reader)));  // same object
+      ASSERT_TRUE(prepared);
+      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
       EXPECT_TRUE((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
                                   prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
-        ASSERT_TRUE((docs));
-        EXPECT_TRUE((nullptr != prepared->execute(segment)));  // usable filter
-        EXPECT_TRUE((nullptr != filter.prepare(*store.reader)));  // usable filter (after execute)
+        ASSERT_TRUE(docs);
+        EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
+        EXPECT_NE(nullptr, filter.prepare(*store.reader));  // usable filter (after execute)
 
         if (docs->next()) {  // old segments will not have any matching docs
           auto const id = docs->value();
           ++actualDocs;
-          EXPECT_TRUE((!docs->next()));
-          EXPECT_TRUE((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
-          EXPECT_TRUE((!docs->next()));
-          EXPECT_TRUE((irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())));
+          EXPECT_FALSE(docs->next());
+          EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+          EXPECT_FALSE(docs->next());
+          EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
 
           auto column =
               segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-          ASSERT_TRUE((column));
+          ASSERT_TRUE(column);
 
           auto values = column->values();
-          ASSERT_TRUE((values));
+          ASSERT_TRUE(values);
 
           irs::bytes_ref pkValue;
-          EXPECT_TRUE((values(id, pkValue)));
+          EXPECT_TRUE(values(id, pkValue));
 
           arangodb::LocalDocumentId pk;
-          EXPECT_TRUE((arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue)));
-          EXPECT_TRUE((rid == pk.id()));
+          EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+          EXPECT_EQ(rid, pk.id());
         }
       }
     }
 
-    EXPECT_TRUE((expectedLiveDocs == actualDocs));
+    EXPECT_EQ(expectedLiveDocs, actualDocs);
   }
 }

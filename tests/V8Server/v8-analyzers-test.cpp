@@ -157,7 +157,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
                    .ok()));
   auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                 "::testAnalyzer1");
-  ASSERT_TRUE((false == !analyzer));
+  ASSERT_FALSE(!analyzer);
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -178,7 +178,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -192,7 +192,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
                           ->NewInstance();
     auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
-    EXPECT_TRUE((fn_name->IsFunction()));
+    EXPECT_TRUE(fn_name->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -212,8 +212,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
         v8::Function::Cast(*fn_name)->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsString()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->name() ==
                  TRI_ObjectToString(isolate.get(), result.ToLocalChecked())));
   }
@@ -227,7 +227,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -241,7 +241,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
                           ->NewInstance();
     auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
-    EXPECT_TRUE((fn_name->IsFunction()));
+    EXPECT_TRUE(fn_name->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -263,12 +263,12 @@ TEST_F(V8AnalyzersTest, test_accessors) {
         v8::Function::Cast(*fn_name)->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -284,7 +284,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -298,7 +298,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
                           ->NewInstance();
     auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
-    EXPECT_TRUE((fn_type->IsFunction()));
+    EXPECT_TRUE(fn_type->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -318,8 +318,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
         v8::Function::Cast(*fn_type)->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsString()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->type() ==
                  TRI_ObjectToString(isolate.get(), result.ToLocalChecked())));
   }
@@ -333,7 +333,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -347,7 +347,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
                           ->NewInstance();
     auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
-    EXPECT_TRUE((fn_type->IsFunction()));
+    EXPECT_TRUE(fn_type->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -369,12 +369,12 @@ TEST_F(V8AnalyzersTest, test_accessors) {
         v8::Function::Cast(*fn_type)->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -390,7 +390,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -405,7 +405,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
                           ->NewInstance();
     auto fn_properties =
         v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
-    EXPECT_TRUE((fn_properties->IsFunction()));
+    EXPECT_TRUE(fn_properties->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -425,8 +425,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
                       ->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
 
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     VPackBuilder resultVPack;
     EXPECT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false));
     EXPECT_EQUAL_SLICES(
@@ -443,7 +443,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -458,7 +458,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
                           ->NewInstance();
     auto fn_properties =
         v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
-    EXPECT_TRUE((fn_properties->IsFunction()));
+    EXPECT_TRUE(fn_properties->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -479,12 +479,12 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto result = v8::Function::Cast(*fn_properties)
                       ->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -500,7 +500,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -515,7 +515,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
                           ->NewInstance();
     auto fn_features =
         v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
-    EXPECT_TRUE((fn_features->IsFunction()));
+    EXPECT_TRUE(fn_features->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -534,10 +534,10 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto result = v8::Function::Cast(*fn_features)
                       ->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-    EXPECT_TRUE((analyzer->features().size() == v8Result->Length()));
+    EXPECT_EQ(analyzer->features().size(), v8Result->Length());
   }
 
   // test features (not authorised)
@@ -549,7 +549,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -564,7 +564,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
                           ->NewInstance();
     auto fn_features =
         v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
-    EXPECT_TRUE((fn_features->IsFunction()));
+    EXPECT_TRUE(fn_features->IsFunction());
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -585,12 +585,12 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto result = v8::Function::Cast(*fn_features)
                       ->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -644,7 +644,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -659,7 +659,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -676,12 +676,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -697,7 +697,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -712,7 +712,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"),
@@ -732,12 +732,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -753,7 +753,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -768,7 +768,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::test:Analyzer2"),
@@ -789,12 +789,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -810,7 +810,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -825,7 +825,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::test:Analyzer2"s),
@@ -846,12 +846,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -867,7 +867,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -882,7 +882,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::testAnalyzer"),
@@ -903,12 +903,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
@@ -923,7 +923,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -938,7 +938,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
@@ -959,12 +959,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -980,7 +980,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -995,7 +995,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer1"s),
@@ -1014,13 +1014,13 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
-    EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" == v8Analyzer->name()));
+    EXPECT_FALSE(!v8Analyzer);
+    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
@@ -1028,7 +1028,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1");
-    EXPECT_TRUE((false == !analyzer));
+    EXPECT_FALSE(!analyzer);
   }
 
   // not authorised
@@ -1040,7 +1040,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1055,7 +1055,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
@@ -1076,12 +1076,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1097,7 +1097,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1112,7 +1112,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
@@ -1131,12 +1131,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
+    EXPECT_FALSE(!v8Analyzer);
     EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
@@ -1145,7 +1145,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2");
-    EXPECT_TRUE((false == !analyzer));
+    EXPECT_FALSE(!analyzer);
   }
   // successful creation with DB name prefix
   {
@@ -1156,7 +1156,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1171,7 +1171,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), vocbase.name() + "::testAnalyzer3"s),
@@ -1190,12 +1190,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
+    EXPECT_FALSE(!v8Analyzer);
     EXPECT_EQ(vocbase.name() + "::testAnalyzer3", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
@@ -1203,7 +1203,7 @@ TEST_F(V8AnalyzersTest, test_create) {
         v8Analyzer->properties());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3");
-    EXPECT_TRUE((false == !analyzer));
+    EXPECT_FALSE(!analyzer);
   }
   // successful creation in system db by :: prefix
   {
@@ -1214,7 +1214,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1229,7 +1229,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                            ->NewInstance();
     auto fn_create =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE((fn_create->IsFunction()));
+    EXPECT_TRUE(fn_create->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::testAnalyzer4"s),
@@ -1248,12 +1248,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto result = v8::Function::Cast(*fn_create)
                       ->CallAsFunction(context, fn_create,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
+    EXPECT_FALSE(!v8Analyzer);
     EXPECT_EQ(vocbase.name() + "::testAnalyzer4", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
@@ -1272,7 +1272,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ {\"name\" : \"testVocbase\"} ]"));
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases->slice())));
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, dbFeature.loadDatabases(databases->slice()));
   }
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -1314,7 +1314,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1329,7 +1329,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -1347,12 +1347,12 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -1368,7 +1368,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1383,7 +1383,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1401,18 +1401,18 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
-    EXPECT_TRUE((std::string("identity") == v8Analyzer->name()));
-    EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
+    EXPECT_FALSE(!v8Analyzer);
+    EXPECT_EQ(std::string("identity"), v8Analyzer->name());
+    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8Analyzer->properties());
-    EXPECT_TRUE((2 == v8Analyzer->features().size()));
+    EXPECT_EQ(2, v8Analyzer->features().size());
   }
 
   // get static (unknown analyzer)
@@ -1424,7 +1424,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1439,7 +1439,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
@@ -1457,8 +1457,8 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsNull()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsNull());
   }
 
   // get custom (known analyzer) authorized
@@ -1470,7 +1470,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1485,7 +1485,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
@@ -1503,19 +1503,19 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
+    EXPECT_FALSE(!v8Analyzer);
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8Analyzer->name()));
-    EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
+    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8Analyzer->properties());
-    EXPECT_TRUE((true == v8Analyzer->features().empty()));
+    EXPECT_TRUE(v8Analyzer->features().empty());
   }
 
   // get custom (known analyzer) authorized but wrong current db
@@ -1527,7 +1527,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1542,7 +1542,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
@@ -1567,7 +1567,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1582,7 +1582,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1597,7 +1597,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(
@@ -1617,19 +1617,19 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_TRUE((false == !v8Analyzer));
+    EXPECT_FALSE(!v8Analyzer);
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8Analyzer->name()));
-    EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
+    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8Analyzer->properties());
-    EXPECT_TRUE((true == v8Analyzer->features().empty()));
+    EXPECT_TRUE(v8Analyzer->features().empty());
   }
 
   // get custom (known analyzer) not authorized
@@ -1641,7 +1641,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1656,7 +1656,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
@@ -1676,12 +1676,12 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1697,7 +1697,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1712,7 +1712,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::unknown"),
@@ -1730,8 +1730,8 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsNull()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsNull());
   }
 
   // get custom (unknown analyzer) not authorized
@@ -1743,7 +1743,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1758,7 +1758,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::unknown"),
@@ -1778,12 +1778,12 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1799,7 +1799,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1814,7 +1814,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
@@ -1832,8 +1832,8 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsNull()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsNull());
   }
 
   // get custom (unknown analyzer, unknown vocbase) not authorized
@@ -1845,7 +1845,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1860,7 +1860,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                            ->NewInstance();
     auto fn_get =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE((fn_get->IsFunction()));
+    EXPECT_TRUE(fn_get->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
@@ -1880,12 +1880,12 @@ TEST_F(V8AnalyzersTest, test_get) {
         v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1940,7 +1940,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -1955,7 +1955,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                            ->NewInstance();
     auto fn_list =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE((fn_list->IsFunction()));
+    EXPECT_TRUE(fn_list->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -1977,23 +1977,23 @@ TEST_F(V8AnalyzersTest, test_list) {
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-      EXPECT_TRUE((!v8Analyzer.IsEmpty()));
-      EXPECT_TRUE((v8Analyzer->IsObject()));
+      EXPECT_FALSE(v8Analyzer.IsEmpty());
+      EXPECT_TRUE(v8Analyzer->IsObject());
       auto* analyzer =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !analyzer));
-      EXPECT_TRUE((1 == expected.erase(analyzer->name())));
+      EXPECT_FALSE(!analyzer);
+      EXPECT_EQ(1, expected.erase(analyzer->name()));
     }
 
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(expected.empty());
   }
 
   // system database (not authorised)
@@ -2005,7 +2005,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2020,7 +2020,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                            ->NewInstance();
     auto fn_list =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE((fn_list->IsFunction()));
+    EXPECT_TRUE(fn_list->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2042,23 +2042,23 @@ TEST_F(V8AnalyzersTest, test_list) {
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-      EXPECT_TRUE((!v8Analyzer.IsEmpty()));
-      EXPECT_TRUE((v8Analyzer->IsObject()));
+      EXPECT_FALSE(v8Analyzer.IsEmpty());
+      EXPECT_TRUE(v8Analyzer->IsObject());
       auto* analyzer =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !analyzer));
-      EXPECT_TRUE((1 == expected.erase(analyzer->name())));
+      EXPECT_FALSE(!analyzer);
+      EXPECT_EQ(1, expected.erase(analyzer->name()));
     }
 
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(expected.empty());
   }
 
   // non-system database (authorised, system authorised)
@@ -2070,7 +2070,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2085,7 +2085,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                            ->NewInstance();
     auto fn_list =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE((fn_list->IsFunction()));
+    EXPECT_TRUE(fn_list->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2109,23 +2109,23 @@ TEST_F(V8AnalyzersTest, test_list) {
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-      EXPECT_TRUE((!v8Analyzer.IsEmpty()));
-      EXPECT_TRUE((v8Analyzer->IsObject()));
+      EXPECT_FALSE(v8Analyzer.IsEmpty());
+      EXPECT_TRUE(v8Analyzer->IsObject());
       auto* analyzer =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !analyzer));
-      EXPECT_TRUE((1 == expected.erase(analyzer->name())));
+      EXPECT_FALSE(!analyzer);
+      EXPECT_EQ(1, expected.erase(analyzer->name()));
     }
 
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(expected.empty());
   }
 
   // non-system database (not authorised, system authorised)
@@ -2137,7 +2137,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2152,7 +2152,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                            ->NewInstance();
     auto fn_list =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE((fn_list->IsFunction()));
+    EXPECT_TRUE(fn_list->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2175,23 +2175,23 @@ TEST_F(V8AnalyzersTest, test_list) {
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-      EXPECT_TRUE((!v8Analyzer.IsEmpty()));
-      EXPECT_TRUE((v8Analyzer->IsObject()));
+      EXPECT_FALSE(v8Analyzer.IsEmpty());
+      EXPECT_TRUE(v8Analyzer->IsObject());
       auto* analyzer =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !analyzer));
-      EXPECT_TRUE((1 == expected.erase(analyzer->name())));
+      EXPECT_FALSE(!analyzer);
+      EXPECT_EQ(1, expected.erase(analyzer->name()));
     }
 
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(expected.empty());
   }
 
   // non-system database (authorised, system not authorised)
@@ -2203,7 +2203,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2218,7 +2218,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                            ->NewInstance();
     auto fn_list =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE((fn_list->IsFunction()));
+    EXPECT_TRUE(fn_list->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2241,23 +2241,23 @@ TEST_F(V8AnalyzersTest, test_list) {
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-      EXPECT_TRUE((!v8Analyzer.IsEmpty()));
-      EXPECT_TRUE((v8Analyzer->IsObject()));
+      EXPECT_FALSE(v8Analyzer.IsEmpty());
+      EXPECT_TRUE(v8Analyzer->IsObject());
       auto* analyzer =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !analyzer));
-      EXPECT_TRUE((1 == expected.erase(analyzer->name())));
+      EXPECT_FALSE(!analyzer);
+      EXPECT_EQ(1, expected.erase(analyzer->name()));
     }
 
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(expected.empty());
   }
 
   // non-system database (not authorised, system not authorised)
@@ -2269,7 +2269,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2284,7 +2284,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                            ->NewInstance();
     auto fn_list =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE((fn_list->IsFunction()));
+    EXPECT_TRUE(fn_list->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2306,23 +2306,23 @@ TEST_F(V8AnalyzersTest, test_list) {
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-      EXPECT_TRUE((!v8Analyzer.IsEmpty()));
-      EXPECT_TRUE((v8Analyzer->IsObject()));
+      EXPECT_FALSE(v8Analyzer.IsEmpty());
+      EXPECT_TRUE(v8Analyzer->IsObject());
       auto* analyzer =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !analyzer));
-      EXPECT_TRUE((1 == expected.erase(analyzer->name())));
+      EXPECT_FALSE(!analyzer);
+      EXPECT_EQ(1, expected.erase(analyzer->name()));
     }
 
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(expected.empty());
   }
 }
 
@@ -2390,7 +2390,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2405,7 +2405,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2422,12 +2422,12 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -2443,7 +2443,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2458,7 +2458,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
@@ -2477,12 +2477,12 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
@@ -2498,7 +2498,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2513,7 +2513,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
@@ -2532,19 +2532,19 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1");
-    EXPECT_TRUE((false == !analyzer));
+    EXPECT_FALSE(!analyzer);
   }
 
   // still in use (fail)
@@ -2556,7 +2556,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2571,7 +2571,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
@@ -2579,7 +2579,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                        "::testAnalyzer2");  // hold ref to mark in-use
-    ASSERT_TRUE((false == !inUseAnalyzer));
+    ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -2594,19 +2594,19 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_CONFLICT ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2");
-    EXPECT_TRUE((false == !analyzer));
+    EXPECT_FALSE(!analyzer);
   }
 
   // still in use + force (success)
@@ -2618,7 +2618,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2633,7 +2633,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
@@ -2641,7 +2641,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                        "::testAnalyzer2");  // hold ref to mark in-use
-    ASSERT_TRUE((false == !inUseAnalyzer));
+    ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -2654,11 +2654,11 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsUndefined()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2");
-    EXPECT_TRUE((true == !analyzer));
+    EXPECT_FALSE(analyzer);
   }
 
   // success removal
@@ -2670,7 +2670,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2685,7 +2685,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
@@ -2702,11 +2702,11 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((!result.IsEmpty()));
-    EXPECT_TRUE((result.ToLocalChecked()->IsUndefined()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1");
-    EXPECT_TRUE((true == !analyzer));
+    EXPECT_FALSE(analyzer);
   }
   // removal by system db name with ::
   {
@@ -2717,7 +2717,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2732,7 +2732,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "::testAnalyzer3"),
@@ -2752,8 +2752,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(!result.IsEmpty());
-    EXPECT_TRUE((result.ToLocalChecked()->IsUndefined()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer3");
     EXPECT_EQ(nullptr, analyzer);
@@ -2767,7 +2767,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2782,7 +2782,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
@@ -2803,12 +2803,12 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE((result.IsEmpty()));
-    EXPECT_TRUE((tryCatch.HasCaught()));
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_TRUE(tryCatch.HasCaught());
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
                                                      tryCatch.Exception(), false)));
     auto slice = responce.slice();
-    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -2825,7 +2825,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2840,7 +2840,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
@@ -2857,8 +2857,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(!result.IsEmpty());
-    EXPECT_TRUE((result.ToLocalChecked()->IsUndefined()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get("testVocbase::testAnalyzer2");
     EXPECT_EQ(nullptr, analyzer);
   }
@@ -2871,7 +2871,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto isolate =
         std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
                                      [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_TRUE((nullptr != isolate));
+    ASSERT_NE(nullptr, isolate);
     v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
@@ -2886,7 +2886,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
                            ->NewInstance();
     auto fn_remove =
         v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE((fn_remove->IsFunction()));
+    EXPECT_TRUE(fn_remove->IsFunction());
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer3"),
@@ -2903,8 +2903,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(!result.IsEmpty());
-    EXPECT_TRUE((result.ToLocalChecked()->IsUndefined()));
+    EXPECT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get("testVocbase::testAnalyzer3");
     EXPECT_EQ(nullptr, analyzer);
   }

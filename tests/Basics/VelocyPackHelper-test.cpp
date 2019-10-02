@@ -42,7 +42,7 @@
 #define VPACK_EXPECT_TRUE(expected, func, lValue, rValue)  \
   l = VPackParser::fromJson(lValue);  \
   r = VPackParser::fromJson(rValue);  \
-  EXPECT_TRUE(expected == func(l->slice(), r->slice(), true)); \
+  EXPECT_EQ(expected, func(l->slice(), r->slice(), true)); \
 
 #define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer();
 #define FREE_BUFFER  TRI_FreeStringBuffer(sb);
