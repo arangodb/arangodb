@@ -155,10 +155,12 @@ class MultiDependencySingleRowFetcher {
   bool isDone(DependencyInfo const& info) const;
 
   bool isLastRowInBlock(DependencyInfo const& info) const;
-  bool noMoreDataRows(DependencyInfo const& info) const;
-  bool nextRowIsShadowRow(DependencyInfo const& info) const;
 
-  size_t getRowIndex(DependencyInfo const& info) const;
+  /**
+  * @brief If it returns true, there are no more data row in the current subquery
+  * level. If it returns false, there may or may not be more.
+  */
+  bool noMoreDataRows(DependencyInfo const& info) const;
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
                                                                       size_t atMost);

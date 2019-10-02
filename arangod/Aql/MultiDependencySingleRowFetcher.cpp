@@ -105,7 +105,6 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
     }
   }
   TRI_ASSERT(!(allDone && allShadow));
-  TRI_ASSERT(allDone || allShadow);
   TRI_ASSERT(allShadow == row.isInitialized());
 
   if (allShadow) {
@@ -185,18 +184,17 @@ std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetc
   } else if (!isAtShadowRow(depInfo)) {
     TRI_ASSERT(depInfo._currentBlock != nullptr);
     row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
-
     TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
-    if (isLastRowInBlock(depInfo) && isDone(depInfo)) {
-      depInfo._currentBlock = nullptr;
-      depInfo._rowIndex = 0;
-      rowState = ExecutionState::DONE;
-    } else if (noMoreDataRows(depInfo)) {
-      ++depInfo._rowIndex;
+    ++depInfo._rowIndex;
+    if (noMoreDataRows(depInfo)) {
       rowState = ExecutionState::DONE;
     } else {
-      ++depInfo._rowIndex;
       rowState = ExecutionState::HASMORE;
+    }
+    if (isDone(depInfo) && !indexIsValid(depInfo)) {
+      // Free block
+      depInfo._currentBlock = nullptr;
+      depInfo._rowIndex = 0;
     }
   } else {
     ShadowAqlItemRow shadowAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
@@ -212,24 +210,30 @@ std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipRowsForDe
   TRI_ASSERT(dependency < _dependencyInfos.size());
   auto& depInfo = _dependencyInfos[dependency];
 
-  if (indexIsValid(depInfo)) {
-    std::size_t const rowsLeft = depInfo._currentBlock->size() - depInfo._rowIndex;
-    // indexIsValid guarantees this:
-    TRI_ASSERT(rowsLeft > 0);
-    std::size_t const skip = std::min(rowsLeft, atMost);
-    depInfo._rowIndex += skip;
+  TRI_ASSERT((!indexIsValid(depInfo) || !isAtShadowRow(depInfo) ||
+              ShadowAqlItemRow{depInfo._currentBlock, depInfo._rowIndex}.isRelevant()));
 
-    return {depInfo._upstreamState, skip};
+  size_t skip = 0;
+  while (indexIsValid(depInfo) && !isAtShadowRow(depInfo) && skip < atMost) {
+    ++skip;
+  }
+
+  if (skip > 0) {
+    depInfo._rowIndex += skip;
+    ExecutionState const state =
+        noMoreDataRows(depInfo) ? ExecutionState::DONE : ExecutionState::HASMORE;
+    return {state, skip};
+  }
+
+  TRI_ASSERT(!indexIsValid(depInfo) || isAtShadowRow(depInfo));
+  TRI_ASSERT(skip == 0);
+
+  if (noMoreDataRows(depInfo) || isDone(depInfo)) {
+    return {ExecutionState::DONE, 0};
   }
 
   TRI_ASSERT(!indexIsValid(depInfo));
-  if (!isDone(depInfo)) {
-    return skipSomeForDependency(dependency, atMost);
-  }
-
-  // We should not be called after we're done.
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, 0};
+  return skipSomeForDependency(dependency, atMost);
 }
 
 bool MultiDependencySingleRowFetcher::indexIsValid(
@@ -250,20 +254,7 @@ bool MultiDependencySingleRowFetcher::isLastRowInBlock(
 
 bool MultiDependencySingleRowFetcher::noMoreDataRows(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return (isDone(info) && (!indexIsValid(info) || isLastRowInBlock(info))) ||
-         nextRowIsShadowRow(info);
-}
-
-bool MultiDependencySingleRowFetcher::nextRowIsShadowRow(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return indexIsValid(info) && !isLastRowInBlock(info) &&
-         info._currentBlock->isShadowRow(info._rowIndex + 1);
-}
-
-size_t MultiDependencySingleRowFetcher::getRowIndex(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  TRI_ASSERT(indexIsValid(info));
-  return info._rowIndex;
+  return (isDone(info) && !indexIsValid(info)) || (indexIsValid(info) && isAtShadowRow(info));
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRowsForDependency(
