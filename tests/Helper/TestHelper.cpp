@@ -20,8 +20,6 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "gtest/gtest.h"
 
 #include <libplatform/libplatform.h>
@@ -223,9 +221,6 @@ void arangodb::tests::TestHelper::callFunctionThrow(v8::Persistent<v8::Object>& 
   arangodb::velocypack::Builder response;
   auto res = TRI_V8ToVPack(_v8Isolate, response, tryCatch.Exception(), false);
 
-  std::string masked = response.toJson();
-  std::cout << "#### " << masked << std::endl;
-
   ASSERT_EQ(TRI_ERROR_NO_ERROR, res);
 
   auto slice = response.slice();
@@ -374,7 +369,7 @@ void arangodb::tests::TestHelper::viewFactoryInit(mocks::MockServer* server) {
 std::shared_ptr<arangodb::LogicalView> arangodb::tests::TestHelper::createView(
     TRI_vocbase_t* vocbase, auth::CollectionResource const& view) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"" + view.collection() + "\" }");
+      "{ \"name\": \"" + view.collection() + "\", \"type\": \"testViewType\" }");
 
   auto logicalView = std::shared_ptr<arangodb::LogicalView>(
       vocbase->createView(viewJson->slice()).get(),
