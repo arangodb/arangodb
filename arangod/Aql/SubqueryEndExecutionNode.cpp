@@ -21,15 +21,14 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/SubqueryEndExecutionNode.h"
-#include "Aql/SubqueryEndExecutor.h"
+#include "SubqueryEndExecutionNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IdExecutor.h"
-#include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
-#include "Meta/static_assert_size.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SubqueryEndExecutor.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
