@@ -1287,15 +1287,9 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, simple_skip_shadow_row_test
     ioPairs.emplace_back(std::make_pair(call, result));
   };
 
-  if (cutAt() == 1) {
-    add(SkipRowsForDependency{0, 1000},
-        SkipRowsForDependency::Result{ExecutionState::HASMORE, 1});
-    add(SkipRowsForDependency{0, 1000},
-        SkipRowsForDependency::Result{ExecutionState::DONE, 0});
-  } else {
-    add(SkipRowsForDependency{0, 1000},
-        SkipRowsForDependency::Result{ExecutionState::DONE, 1});
-  }
+
+  add(SkipRowsForDependency{0, 1000},
+      SkipRowsForDependency::Result{ExecutionState::DONE, 1});
   add(SkipRowsForDependency{0, 1000},
       SkipRowsForDependency::Result{ExecutionState::DONE, 0});
   add(FetchShadowRow{1000}, FetchShadowRow::Result{ExecutionState::HASMORE, shadowRow(1)});
@@ -1337,15 +1331,8 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps) {
   };
 
   // fetch dep 1
-  if (cutAt() == 1) {
-    add(SkipRowsForDependency{0, 1000},
-        SkipRowsForDependency::Result{ExecutionState::HASMORE, 1});
-    add(SkipRowsForDependency{0, 1000},
-        SkipRowsForDependency::Result{ExecutionState::DONE, 0});
-  } else {
-    add(SkipRowsForDependency{0, 1000},
-        SkipRowsForDependency::Result{ExecutionState::DONE, 1});
-  }
+  add(SkipRowsForDependency{0, 1000},
+      SkipRowsForDependency::Result{ExecutionState::DONE, 1});
   // dep 1 should stay done
   add(SkipRowsForDependency{0, 1000},
       SkipRowsForDependency::Result{ExecutionState::DONE, 0});
@@ -1435,15 +1422,8 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps_rev
   };
 
   // fetch dep 2
-  if (cutAt() == 1) {
-    add(SkipRowsForDependency{1, 1000},
-        SkipRowsForDependency::Result{ExecutionState::HASMORE, 1});
-    add(SkipRowsForDependency{1, 1000},
-        SkipRowsForDependency::Result{ExecutionState::DONE, 0});
-  } else {
-    add(SkipRowsForDependency{1, 1000},
-        SkipRowsForDependency::Result{ExecutionState::DONE, 1});
-  }
+  add(SkipRowsForDependency{1, 1000},
+      SkipRowsForDependency::Result{ExecutionState::DONE, 1});
   // dep 2 should stay done
   add(SkipRowsForDependency{1, 1000},
       SkipRowsForDependency::Result{ExecutionState::DONE, 0});
@@ -1483,7 +1463,7 @@ TEST_P(MultiDependencySingleRowFetcherShadowRowTest, skip_shadow_rows_2_deps_rev
   }
   // dep 2 should stay done
   add(SkipRowsForDependency{1, 1000},
-      SkipRowsForDependency::Result{ExecutionState::DONE, 1});
+      SkipRowsForDependency::Result{ExecutionState::DONE, 0});
   // fetching the shadow row should not yet be possible
   add(FetchShadowRow{1000},
       FetchShadowRow::Result{ExecutionState::HASMORE, invalidShadowRow()});
