@@ -562,9 +562,9 @@ typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
 ///
 ///      Custom key is needed for the following query
 ///      (assume 'view' is lined with 'c1' and 'c2' in the example below):
-///     FOR d IN view OPTIONS { collections : [ 'c1' ] }
-///     FOR x IN view OPTIONS { collections : [ 'c2' ] }
-///     RETURN {d, x}
+///           FOR d IN view OPTIONS { collections : [ 'c1' ] }
+///           FOR x IN view OPTIONS { collections : [ 'c2' ] }
+///           RETURN {d, x}
 ///
 SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());

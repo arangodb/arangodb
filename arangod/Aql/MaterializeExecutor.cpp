@@ -87,6 +87,11 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutionState state;
   bool written = false;
+  // some micro-optimization
+  auto& callback = _readDocumentContext._callback;
+  auto DocRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
+  auto ColRegId = _readDocumentContext._infos->inputNonMaterializedColRegId();
+  auto* trx = _readDocumentContext._infos->trx();
   do {
     std::tie(state, input) = _fetcher.fetchRow();
     if (state == ExecutionState::WAITING) {
@@ -99,14 +104,13 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
     }
     auto collection =
       reinterpret_cast<arangodb::LogicalCollection const*>(
-        input.getValue(
-          _readDocumentContext._infos->inputNonMaterializedColRegId()).toInt64());
+        input.getValue(ColRegId).toInt64());
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
-    written = collection->readDocumentWithCallback(_readDocumentContext._infos->trx(),
-      LocalDocumentId(input.getValue(_readDocumentContext._infos->inputNonMaterializedDocRegId()).toInt64()),
-      _readDocumentContext._callback);
+    written = collection->readDocumentWithCallback(trx,
+      LocalDocumentId(input.getValue(DocRegId).toInt64()),
+      callback);
   } while (!written && state != ExecutionState::DONE);
   return {state, NoStats{}};
 }
