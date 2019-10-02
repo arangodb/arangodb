@@ -834,8 +834,10 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   walk(*v);
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s);
+    if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
+      auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+      sq->getSubquery()->planRegisters(s);
+    }
   }
   v->reset();
 
@@ -1028,7 +1030,9 @@ ExecutionNode* ExecutionNode::getFirstDependency() const {
   return _dependencies[0];
 }
 
-bool ExecutionNode::hasDependency() const { return (_dependencies.size() == 1); }
+bool ExecutionNode::hasDependency() const {
+  return (_dependencies.size() == 1);
+}
 
 void ExecutionNode::dependencies(std::vector<ExecutionNode*>& result) const {
   for (auto const& it : _dependencies) {
@@ -1037,7 +1041,9 @@ void ExecutionNode::dependencies(std::vector<ExecutionNode*>& result) const {
   }
 }
 
-std::vector<ExecutionNode*> ExecutionNode::getParents() const { return _parents; }
+std::vector<ExecutionNode*> ExecutionNode::getParents() const {
+  return _parents;
+}
 
 bool ExecutionNode::hasParent() const { return (_parents.size() == 1); }
 
@@ -1117,7 +1123,9 @@ const arangodb::HashSet<const Variable*>& ExecutionNode::getVarsUsedLater() cons
   return _varsUsedLater;
 }
 
-void ExecutionNode::setVarsValid(arangodb::HashSet<const Variable*>& v) { _varsValid = v; }
+void ExecutionNode::setVarsValid(arangodb::HashSet<const Variable*>& v) {
+  _varsValid = v;
+}
 
 const arangodb::HashSet<const Variable*>& ExecutionNode::getVarsValid() const {
   TRI_ASSERT(_varUsageValid);
@@ -1416,7 +1424,9 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(_outVariable != nullptr);
 }
 
-ExecutionNode::NodeType EnumerateListNode::getType() const { return ENUMERATE_LIST; }
+ExecutionNode::NodeType EnumerateListNode::getType() const {
+  return ENUMERATE_LIST;
+}
 
 void EnumerateListNode::getVariablesUsedHere(arangodb::HashSet<const Variable*>& vars) const {
   vars.emplace(_inVariable);
@@ -2092,8 +2102,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
       returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
   if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>>(&engine, this, inputRegister,
-                                                                        _count);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>>(
+        &engine, this, inputRegister, _count);
   } else {
     TRI_ASSERT(!returnInheritedResults);
     ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
@@ -2189,7 +2199,7 @@ ExecutionNode::NodeType NoResultsNode::getType() const { return NORESULTS; }
 ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   return cloneHelper(std::make_unique<NoResultsNode>(plan, _id),
-      withDependencies, withProperties);
+                     withDependencies, withProperties);
 }
 
 SortElement::SortElement(Variable const* v, bool asc)
