@@ -232,6 +232,10 @@ target_link_libraries(arangodbtests
   snappy
 )
 
+if (USE_ENTERPRISE)
+  target_link_libraries(arangodbtests arango_rclone)
+endif()
+
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
