@@ -32,15 +32,15 @@
 #ifndef ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H
 #define ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H 1
 
-#define CORE_FREE_DEATH_TEST(func, assertion) \
-  EXPECT_DEATH(                               \
-      [&]() {                                 \
-        rlimit core_limit;                    \
-        core_limit.rlim_cur = 0;              \
-        core_limit.rlim_max = 0;              \
-        setrlimit(RLIMIT_CORE, &core_limit);  \
-        func;                                 \
-      }(),                                    \
+#define EXPECT_DEATH_CORE_FREE(func, assertion) \
+  EXPECT_DEATH(                                 \
+      [&]() {                                   \
+        rlimit core_limit;                      \
+        core_limit.rlim_cur = 0;                \
+        core_limit.rlim_max = 0;                \
+        setrlimit(RLIMIT_CORE, &core_limit);    \
+        func;                                   \
+      }(),                                      \
       assertion)
 
 #endif
