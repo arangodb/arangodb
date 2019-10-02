@@ -32,12 +32,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::preservesOrder;
-template <typename FetcherType>
-constexpr BlockPassthrough ModificationExecutorBase<FetcherType>::Properties::allowsBlockPassthrough;
-template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::inputSizeRestrictsOutputSize;
+template <typename Modifier, typename FetcherType>
+constexpr bool ModificationExecutor<Modifier, FetcherType>::Properties::preservesOrder;
+template <typename Modifier, typename FetcherType>
+constexpr BlockPassthrough ModificationExecutor<Modifier, FetcherType>::Properties::allowsBlockPassthrough;
+template <typename Modifier, typename FetcherType>
+constexpr bool ModificationExecutor<Modifier, FetcherType>::Properties::inputSizeRestrictsOutputSize;
 
 namespace arangodb {
 namespace aql {
@@ -51,13 +51,9 @@ std::string toString(SingleBlockFetcher<BlockPassthrough::Disable>&) {
 }  // namespace aql
 }  // namespace arangodb
 
-template <typename FetcherType>
-ModificationExecutorBase<FetcherType>::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _prepared(false) {}
-
 template <typename Modifier, typename FetcherType>
 ModificationExecutor<Modifier, FetcherType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
-    : ModificationExecutorBase<FetcherType>(fetcher, infos), _modifier() {
+    : _infos(infos), _fetcher(fetcher), _modifier() {
   this->_infos._trx->pinData(this->_infos._aqlCollection->id());  // important for mmfiles
 }
 
@@ -71,11 +67,11 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
   ModificationExecutor::Stats stats;
 
   // TODO - fix / improve prefetching if possible
-  while (!this->_prepared && (this->_fetcher.upstreamState() !=
-                              ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
+  while (!_prepared && (_fetcher.upstreamState() !=
+                        ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
     SharedAqlItemBlockPtr block;
 
-    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
+    std::tie(state, block) = _fetcher.fetchBlockForModificationExecutor(
         _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
                                        // Otherwise it could happen that an insert
                                        // is not seen by subsequent opererations.
@@ -98,28 +94,28 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
     TRI_ASSERT(_modifier._block != nullptr);
 
     // prepares modifier for single row output
-    this->_prepared = _modifier.doModifications(this->_infos, stats);
+    _prepared = _modifier.doModifications(_infos, stats);
 
-    if (!this->_infos._producesResults) {
-      this->_prepared = false;
+    if (!_infos._producesResults) {
+      _prepared = false;
     }
   }
 
-  if (this->_prepared) {
+  if (_prepared) {
     TRI_ASSERT(_modifier._block != nullptr);
 
     // Produces the output
-    bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);
+    bool thisBlockHasMore = _modifier.doOutput(_infos, output);
 
     if (thisBlockHasMore) {
       return {ExecutionState::HASMORE, std::move(stats)};
     } else {
       // we need to get a new block
-      this->_prepared = false;
+      _prepared = false;
     }
   }
 
-  return {this->_fetcher.upstreamState(), std::move(stats)};
+  return {_fetcher.upstreamState(), std::move(stats)};
 }
 
 template class ::arangodb::aql::ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>;

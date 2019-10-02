@@ -183,29 +183,8 @@ struct ModificationExecutorInfos : public ExecutorInfos {
   RegisterId _outputRegisterId;  // single remote
 };
 
-template <typename FetcherType>
-struct ModificationExecutorBase {
-  struct Properties {
-    static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize =
-        false;  // Disabled because prefetch does not work in the Cluster
-                // Maybe This should ask for a 1:1 relation.
-  };
-  using Infos = ModificationExecutorInfos;
-  using Fetcher = FetcherType;  // SingleBlockFetcher<Properties::allowsBlockPassthrough>;
-  using Stats = ModificationStats;
-
-  ModificationExecutorBase(Fetcher&, Infos&);
-
- protected:
-  ModificationExecutorInfos& _infos;
-  Fetcher& _fetcher;
-  bool _prepared = false;
-};
-
 template <typename Modifier, typename FetcherType>
-class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
+class ModificationExecutor {
   friend struct Insert;
   friend struct Remove;
   friend struct Upsert;
@@ -213,12 +192,16 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
   friend struct UpdateReplace<Replace>;
 
  public:
-  using Modification = Modifier;
-
-  // pull in types from template base
-  using Fetcher = typename ModificationExecutorBase<FetcherType>::Fetcher;
-  using Infos = typename ModificationExecutorBase<FetcherType>::Infos;
-  using Stats = typename ModificationExecutorBase<FetcherType>::Stats;
+  struct Properties {
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize =
+        false;  // Disabled because prefetch does not work in the Cluster
+    // Maybe This should ask for a 1:1 relation.
+  };
+  using Infos = ModificationExecutorInfos;
+  using Fetcher = FetcherType;  // SingleBlockFetcher<Properties::allowsBlockPassthrough>;
+  using Stats = ModificationStats;
 
   ModificationExecutor(Fetcher&, Infos&);
   ~ModificationExecutor();
@@ -232,6 +215,9 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  private:
+  ModificationExecutorInfos& _infos;
+  Fetcher& _fetcher;
+  bool _prepared = false;
   Modifier _modifier;
 };
 
