@@ -94,6 +94,10 @@ ContentType RequestHeader::acceptType() const { return _acceptType; }
 
 void RequestHeader::acceptType(ContentType type) { _acceptType = type; }
 
+void RequestHeader::acceptType(std::string const& type) {
+  _acceptType = to_ContentType(type);
+}
+
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
   parameters.emplace(key, value);

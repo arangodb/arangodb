@@ -89,6 +89,7 @@ struct RequestHeader final : public MessageHeader {
   // accept header accessors
   ContentType acceptType() const;
   void acceptType(ContentType type);
+  void acceptType(std::string const& type);
 
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);

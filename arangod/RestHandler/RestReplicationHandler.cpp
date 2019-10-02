@@ -585,6 +585,29 @@ BAD_CALL:
   return RestStatus::DONE;
 }
 
+/// @brief returns the short id of the server which should handle this request
+std::string RestReplicationHandler::forwardingTarget() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return "";
+  }
+
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    auto const type = _request->requestType();
+    std::string const& command = suffixes[0];
+    if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
+        (command == Dump && type == rest::RequestType::GET)) {
+      ServerID DBserver = _request->value("DBserver");
+      if (!DBserver.empty()) {
+        return DBserver;
+      }
+    }
+  }
+
+  return "";
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_put_api_replication_makeSlave
 ////////////////////////////////////////////////////////////////////////////////
@@ -641,14 +664,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward a command in the coordinator case
+/// @brief deprecated: forward a command in the coordinator case
+/// If the request is well-formed and has the DBserver set, then the request
+/// should already be forwarded by other means. We should only get here if
+/// the request is null or the DBserver parameter is missing. This method
+/// now just does a bit of error handling.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleTrampolineCoordinator() {
-  bool useVst = false;
-  if (_request->transportType() == Endpoint::TransportType::VST) {
-    useVst = true;
-  }
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
@@ -662,69 +685,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     return;
   }
 
-  std::string const& dbname = _request->databaseName();
-
-  auto headers = arangodb::getForwardableRequestHeaders(_request.get());
-  std::unordered_map<std::string, std::string> values = _request->values();
-  std::string params;
-
-  for (auto const& i : values) {
-    if (i.first != "DBserver") {
-      if (params.empty()) {
-        params.push_back('?');
-      } else {
-        params.push_back('&');
-      }
-      params.append(StringUtils::urlEncode(i.first));
-      params.push_back('=');
-      params.append(StringUtils::urlEncode(i.second));
-    }
-  }
-
-  // Set a few variables needed for our work:
-  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
-  if (pool == nullptr) {
-    // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return;
-  }
-
-  auto requestType =
-      fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
-  auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  network::Response res =
-      network::sendRequest(pool, "server:" + DBserver, requestType,
-                           "/_db/" + StringUtils::urlEncode(dbname) +
-                               _request->requestPath() + params,
-                           std::move(*payload), network::Timeout(300.0), headers)
-          .get();
-
-  int code = network::fuerteToArangoErrorCode(res);
-  if (code != TRI_ERROR_NO_ERROR) {
-    generateError(code);
-    return;
-  }
-
-  resetResponse(static_cast<rest::ResponseCode>(res.response->statusCode()));
-  _response->setContentType(fuerte::v1::to_string(res.response->contentType()));
-
-  if (!useVst) {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-    if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
-    httpResponse->body() = res.response->payloadAsString();
-  } else {
-    _response->setPayload(std::move(*res.response->stealPayload()), true);
-  }
-
-  auto const& resultHeaders = res.response->messageHeader().meta();
-  for (auto const& it : resultHeaders) {
-    _response->setHeader(it.first, it.second);
-  }
+  TRI_ASSERT(false);  // should only get here if request is not well-formed
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -106,6 +106,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const HoldReadLockCollection;
 
  protected:
+  std::string forwardingTarget() override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
