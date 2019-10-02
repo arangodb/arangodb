@@ -40,7 +40,7 @@ class InputAqlItemRow;
 class NoStats;
 class ExecutorInfos;
 class OutputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class CountCollectExecutorInfos : public ExecutorInfos {
@@ -69,9 +69,9 @@ class CountCollectExecutorInfos : public ExecutorInfos {
 class CountCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CountCollectExecutorInfos;

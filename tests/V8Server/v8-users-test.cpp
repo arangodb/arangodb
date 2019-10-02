@@ -61,9 +61,15 @@ constexpr arangodb::auth::Level RW = arangodb::auth::Level::RW;
 constexpr arangodb::auth::Level RO = arangodb::auth::Level::RO;
 }  // namespace
 
-class V8UsersTest : public ::testing::Test {
+class V8UsersTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  public:
   static arangodb::tests::TestHelper helper;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 setup / tear-down
+  // -----------------------------------------------------------------------------
 
  protected:
   arangodb::ExecContext* exec;
@@ -87,11 +93,6 @@ class V8UsersTest : public ::testing::Test {
   static void SetUpTestCase() { SetUpTestSuite(); }
 
   static void SetUpTestSuite() {
-    // suppress: INFO {authentication} Authentication is turned on ...
-    // suppress: WARNING {authentication} --server.jwt-secret is ...
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
     auto server = helper.mockAqlServerInit();
     helper.viewFactoryInit(server);
 
@@ -134,12 +135,7 @@ class V8UsersTest : public ::testing::Test {
   // name changed between gtest versions
   static void TearDownTestCase() { TearDownTestSuite(); }
 
-  static void TearDownTestSuite() {
-    helper.v8Teardown();
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-  }
+  static void TearDownTestSuite() { helper.v8Teardown(); }
 };
 
 arangodb::tests::TestHelper V8UsersTest::helper;

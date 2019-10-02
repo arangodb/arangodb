@@ -71,16 +71,16 @@ class IdExecutorInfos : public ExecutorInfos {
 };
 
 // forward declaration
-template <bool usePassThrough, class T>
+template <BlockPassthrough usePassThrough, class T>
 class IdExecutor;
 
 // (empty) implementation of IdExecutor<void>
 template <>
-class IdExecutor<true, void> {};
+class IdExecutor<BlockPassthrough::Enable, void> {};
 
 // implementation of ExecutionBlockImpl<IdExecutor<void>>
 template <>
-class ExecutionBlockImpl<IdExecutor<true, void>> : public ExecutionBlock {
+class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public ExecutionBlock {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      RegisterId outputRegister, bool doCount);
@@ -110,14 +110,14 @@ class ExecutionBlockImpl<IdExecutor<true, void>> : public ExecutionBlock {
   bool const _doCount;
 };
 
-template <bool usePassThrough, class UsedFetcher>
+template <BlockPassthrough usePassThrough, class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = usePassThrough;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = usePassThrough;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
   using Fetcher = UsedFetcher;
@@ -135,10 +135,10 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  template <bool allowPass = usePassThrough, typename = std::enable_if_t<allowPass>>
+  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
-  template <bool allowPass = usePassThrough, typename = std::enable_if_t<!allowPass>>
+  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Disable>>
   std::tuple<ExecutionState, NoStats, size_t> skipRows(size_t atMost);
 
  private:

@@ -45,7 +45,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class NoStats;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class DistinctCollectExecutorInfos : public ExecutorInfos {
@@ -82,9 +82,9 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
 class DistinctCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = DistinctCollectExecutorInfos;
@@ -95,7 +95,7 @@ class DistinctCollectExecutor {
   DistinctCollectExecutor(DistinctCollectExecutor const&) = delete;
   DistinctCollectExecutor(Fetcher& fetcher, Infos&);
   ~DistinctCollectExecutor();
-  
+
   void initializeCursor();
 
   /**

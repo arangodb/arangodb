@@ -33,7 +33,6 @@ const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 const _ = require('lodash');
-const isCluster = require('@arangodb/cluster').isCluster();
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,20 +162,6 @@ function ahuacatlProfilerTestSuite () {
 
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test {profile: 0}
@@ -665,11 +650,6 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortLimitBlock2 : function () {
-      // TODO re-enable this again, after the SortingGather block is fixed for cluster & fullCount,
-      //      and sort-limit is re-enabled.
-      if (isCluster) {
-        return;
-      }
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
       const remainder = rows => rows - limit(rows);
       const remainderBatches = rows => remainder(rows) === 0 ? 0 : 1;

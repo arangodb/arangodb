@@ -92,9 +92,16 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // It might in fact be empty, if we only have edge collections in a graph.
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
-    _vertexCollections.emplace(col->name(),
-                               getAllLocalShards(shardMapping, server,
-                                                 col->shardIds(restrictToShards)));
+    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
+#ifdef USE_ENTERPRISE
+    for (auto const& s : shards) {
+      if (query.trx()->isInaccessibleCollectionId(col->getPlanId())) {
+        _inaccessibleShards.insert(s);
+        _inaccessibleShards.insert(std::to_string(col->id()));
+      }
+    }
+#endif
+    _vertexCollections.emplace(col->name(), std::move(shards));
   }
 }
 

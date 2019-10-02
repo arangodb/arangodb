@@ -46,7 +46,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
 
-
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -843,6 +842,8 @@ class ClusterInfo final {
     }
     return timeout;
   }
+
+  application_features::ApplicationServer& server() const;
 
  private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,

@@ -34,6 +34,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -964,7 +965,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto builder = collection->figures();
+  auto builder = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
 
@@ -1842,16 +1843,16 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_voc_rid_t revisionId;
-
   methods::Collections::Context ctxt(collection->vocbase(), *collection);
-  auto res = methods::Collections::revisionId(collection->vocbase().server(), ctxt, revisionId);
+  auto res = methods::Collections::revisionId(ctxt).get();
 
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+    TRI_V8_THROW_EXCEPTION(res.result);
   }
 
-  std::string ridString = TRI_RidToString(revisionId);
+  TRI_voc_rid_t rid =
+      res.slice().isNumber() ? res.slice().getNumber<TRI_voc_rid_t>() : 0;
+  std::string ridString = TRI_RidToString(rid);
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }
@@ -2517,7 +2518,8 @@ static void JS_WarmupVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = arangodb::methods::Collections::warmup(collection->vocbase(), *collection);
+  auto res =
+      arangodb::methods::Collections::warmup(collection->vocbase(), *collection).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

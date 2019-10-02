@@ -823,3 +823,21 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniffProgram c:/Programm Files/wireshark/tshark.exe
 
 You can later on use Wireshark to inpsect the capture files.
+
+
+### Evaluating json test reports from previous testruns
+
+All test results of testruns are dumped to a json file named `UNITTEST_RESULT.json` which can be used 
+for later analyzing of timings etc. 
+
+Currently available analyzers are: 
+
+  - unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
+  - saveToJunitXML - saves jUnit compatible XML files
+  - locateLongRunning - searches the 10 longest running tests from a testsuite
+  - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
+  - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
+  - yaml - dumps the json file as a yaml file
+
+
+    ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json

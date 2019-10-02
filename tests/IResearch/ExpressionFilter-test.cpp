@@ -21,14 +21,26 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
+#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "analysis/token_attributes.hpp"
+#include "index/directory_reader.hpp"
+#include "search/all_filter.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "search/scorers.hpp"
+#include "store/memory_directory.hpp"
+#include "store/store_utils.hpp"
+#include "utils/type_limits.hpp"
+#include "utils/utf8_path.hpp"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include "velocypack/Iterator.h"
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -61,21 +73,9 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include "ExpressionContextMock.h"
-#include "utils/utf8_path.hpp"
-#include "velocypack/Iterator.h"
-
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "IResearch/ExpressionFilter.h"
-#include "analysis/token_attributes.hpp"
-#include "index/directory_reader.hpp"
-#include "search/all_filter.hpp"
-#include "search/cost.hpp"
-#include "search/score.hpp"
-#include "search/scorers.hpp"
-#include "store/memory_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/type_limits.hpp"
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -237,7 +237,11 @@ DEFINE_FACTORY_DEFAULT(custom_sort)
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchExpressionFilterTest : public ::testing::Test {
+struct IResearchExpressionFilterTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::IResearchLogSuppressor {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
@@ -247,16 +251,6 @@ struct IResearchExpressionFilterTest : public ::testing::Test {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), true);
@@ -312,8 +306,6 @@ struct IResearchExpressionFilterTest : public ::testing::Test {
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
@@ -326,9 +318,6 @@ struct IResearchExpressionFilterTest : public ::testing::Test {
     for (auto& f : features) {
       f.first.unprepare();
     }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };  // TestSetup
 }  // namespace

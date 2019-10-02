@@ -517,14 +517,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief wait for index selectivity estimate sync
-  // //////////////////////////////////////////////////////////////////////////////
-  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
-    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
-    delete global.WAIT_FOR_ESTIMATOR_SYNC;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief importCsvFile
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -560,6 +552,14 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_PROCESS_JSON_FILE;
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief statisticsExternal
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS_EXTERNAL) {
+    exports.statisticsExternal = global.SYS_PROCESS_STATISTICS_EXTERNAL;
+    delete global.SYS_PROCESS_STATISTICS_EXTERNAL;
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief executeExternal
   // //////////////////////////////////////////////////////////////////////////////
@@ -756,7 +756,18 @@ global.DEFINE_MODULE('internal', (function () {
       } else if (!isNaN(argv[i + 1])) {
         ret[option] = parseInt(argv[i + 1]);
       } else {
-        ret[option] = argv[i + 1];
+        if (ret.hasOwnProperty(option)) {
+          if (Array.isArray(ret[option])) {
+            ret[option].push(argv[i + 1]);
+          } else {
+            ret[option] = [
+              ret[option],
+              argv[i + 1]
+            ];
+          }
+        } else {
+          ret[option] = argv[i + 1];
+        }
       }
     }
 

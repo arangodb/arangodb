@@ -43,7 +43,7 @@ function optimizerKeepTestSuite () {
   var c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -52,7 +52,7 @@ function optimizerKeepTestSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

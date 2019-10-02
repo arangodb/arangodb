@@ -20,8 +20,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Aql/RowFetcherHelper.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
@@ -38,13 +46,6 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
-
-#include "Mocks/Servers.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -174,7 +175,9 @@ struct TestShortestPathOptions : public ShortestPathOptions {
   }
 };
 
-class ShortestPathExecutorTest : public ::testing::Test {
+class ShortestPathExecutorTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::ERR> {
  protected:
   RegisterId sourceIn;
   RegisterId targetIn;
@@ -193,16 +196,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
         regSource(sourceIn),
         regTarget(targetIn),
         brokenSource{"IwillBreakYourSearch"},
-        brokenTarget{"I will also break your search"} {
-    // suppress INFO {cluster} Starting up with role SINGLE
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::ERR);
-  }
-
-  ~ShortestPathExecutorTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-  }
+        brokenTarget{"I will also break your search"} {}
 
   void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& result,
                       std::vector<std::pair<std::string, std::string>> const& resultPaths) {
@@ -266,7 +260,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
@@ -314,7 +308,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);

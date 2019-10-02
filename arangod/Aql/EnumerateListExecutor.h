@@ -44,7 +44,7 @@ namespace aql {
 class ExecutorInfos;
 class OutputAqlItemRow;
 class NoStats;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
@@ -77,9 +77,9 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
 class EnumerateListExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateListExecutorInfos;

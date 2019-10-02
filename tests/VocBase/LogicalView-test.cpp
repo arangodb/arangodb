@@ -25,6 +25,7 @@
 
 #include "../IResearch/common.h"
 #include "../Mocks/StorageEngineMock.h"
+#include "../Mocks/LogLevels.h"
 
 #include <velocypack/Parser.h>
 
@@ -98,7 +99,9 @@ struct ViewFactory : public arangodb::ViewFactory {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class LogicalViewTest : public ::testing::Test {
+class LogicalViewTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
@@ -107,11 +110,6 @@ class LogicalViewTest : public ::testing::Test {
 
   LogicalViewTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
 
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
@@ -150,9 +148,6 @@ class LogicalViewTest : public ::testing::Test {
     for (auto& f : features) {
       f.first.unprepare();
     }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 

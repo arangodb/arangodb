@@ -27,17 +27,17 @@
 
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
+#include "Rest/HttpResponse.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -161,8 +161,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
   auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  NetworkFeature& feature = server().getFeature<NetworkFeature>();
-  auto future = network::sendRequest(feature, "server:" + serverId, requestType,
+  auto* pool = server().getFeature<NetworkFeature>().pool();
+  auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      "/_db/" + StringUtils::urlEncode(dbname) +
                                          _request->requestPath() + params,
                                      std::move(*payload), network::Timeout(300), headers);

@@ -42,6 +42,8 @@
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Aql/types.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 
 #include "Transaction/Methods.h"
@@ -391,7 +393,10 @@ CostEstimate DistributeNode::estimateCost() const {
 /// @brief construct a gather node
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
-    : ExecutionNode(plan, base), _elements(elements), _sortmode(SortMode::MinElement) {
+    : ExecutionNode(plan, base),
+      _elements(elements),
+      _sortmode(SortMode::MinElement),
+      _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
 
@@ -400,11 +405,15 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
           << "invalid sort mode detected while "
              "creating 'GatherNode' from vpack";
     }
+
+    _limit =
+        basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
+                                                                    "limit", 0);
   }
 }
 
 GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept
-    : ExecutionNode(plan, id), _sortmode(sortMode) {}
+    : ExecutionNode(plan, id), _sortmode(sortMode), _limit(0) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -416,6 +425,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add("sortmode", VPackValue(SortModeUnset.data()));
   } else {
     nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
+    nodes.add("limit", VPackValue(_limit));
   }
 
   nodes.add(VPackValue("elements"));
@@ -453,13 +463,13 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     if (ServerState::instance()->isCoordinator()) {
       // In the coordinator case the GatherBlock will fetch from RemoteBlocks.
       // We want to immediately move the block on and not wait for additional requests here (hence passthrough)
-      return std::make_unique<ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>>(
+      return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>>(
           &engine, this, std::move(infos));
     } else {
       // In the DBServer case the GatherBlock will merge local results and then expose them (directly or indirectly)
       // To the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
       // memory inefficiency that we have here in favor of a better grouping of requests.
-      return std::make_unique<ExecutionBlockImpl<IdExecutor<false, SingleRowFetcher<false>>>>(
+      return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>>(
           &engine, this, std::move(infos));
     }
   }
@@ -470,7 +480,8 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->trx(), sortMode());
+                                   _plan->getAst()->query()->trx(), sortMode(),
+                                   constrainedSortLimit());
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
                                                                      std::move(infos));
@@ -481,6 +492,16 @@ CostEstimate GatherNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+void GatherNode::setConstrainedSortLimit(size_t limit) noexcept {
+  _limit = limit;
+}
+
+size_t GatherNode::constrainedSortLimit() const noexcept { return _limit; }
+
+bool GatherNode::isSortingGather() const noexcept {
+  return !elements().empty();
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(

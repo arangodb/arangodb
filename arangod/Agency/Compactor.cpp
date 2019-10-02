@@ -25,6 +25,7 @@
 
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
 

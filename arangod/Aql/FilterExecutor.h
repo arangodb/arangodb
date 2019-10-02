@@ -39,7 +39,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class ExecutorInfos;
 class FilterStats;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class FilterExecutorInfos : public ExecutorInfos {
@@ -68,9 +68,9 @@ class FilterExecutorInfos : public ExecutorInfos {
 class FilterExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = FilterExecutorInfos;

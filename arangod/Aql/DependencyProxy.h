@@ -42,7 +42,7 @@ class AqlItemBlockManager;
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
-template <bool allowBlockPassthrough>
+template <BlockPassthrough allowBlockPassthrough>
 class DependencyProxy {
  public:
   /**
@@ -85,6 +85,9 @@ class DependencyProxy {
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+
+  // See comment on fetchBlockForDependency().
+  std::pair<ExecutionState, size_t> skipSomeForDependency(size_t dependency, size_t atMost);
 
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);

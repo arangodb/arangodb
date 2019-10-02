@@ -334,14 +334,15 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryExecutor.cpp
+  Aql/SubqueryEndExecutor.cpp
   Aql/SubqueryStartExecutionNode.cpp
+  Aql/SubqueryStartExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
-  Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )
@@ -450,7 +451,6 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 set(LIB_ARANGO_AGENCY_SOURCES
   Agency/AgentConfiguration.cpp
   Agency/ResignLeadership.cpp
-  Agency/StoreCallback.cpp
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
@@ -463,7 +463,6 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
-  Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
   Agency/JobContext.cpp
@@ -501,6 +500,14 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
+)
+
+set(LIB_ARANGO_NETWORK_SOURCES
+  Network/ClusterUtils.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
 )
 
 set(LIB_ARANGOSERVER_SOURCES
@@ -577,10 +584,6 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/SslServerFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
-  Network/ConnectionPool.cpp
-  Network/Methods.cpp
-  Network/NetworkFeature.cpp
-  Network/Utils.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -754,6 +757,10 @@ add_library(arangoserver STATIC
   ${ProductVersionFiles}
 )
 
+add_library(arango_network STATIC
+  ${LIB_ARANGO_NETWORK_SOURCES}
+)
+
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES} 
 )
@@ -802,6 +809,7 @@ target_link_libraries(arango_aql arango_geo)
 target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_aql arango_iresearch)
+target_link_libraries(arango_aql arango_network)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
@@ -810,6 +818,7 @@ target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
 
 target_link_libraries(arango_cluster_methods arango)
+target_link_libraries(arango_cluster_methods arango_network)
 
 target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
@@ -831,6 +840,10 @@ target_link_libraries(arango_mmfiles arango_utils)
 target_link_libraries(arango_mmfiles boost_boost)
 target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_mmfiles llhttp)
+
+target_link_libraries(arango_network boost_boost)
+target_link_libraries(arango_network fuerte)
+target_link_libraries(arango_network llhttp)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
@@ -874,6 +887,7 @@ target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
 target_link_libraries(arangoserver arango_indexes)
 target_link_libraries(arangoserver arango_iresearch)
+target_link_libraries(arangoserver arango_network)
 target_link_libraries(arangoserver arango_pregel)
 target_link_libraries(arangoserver arango_replication)
 target_link_libraries(arangoserver arango_storage_engine)
@@ -881,8 +895,6 @@ target_link_libraries(arangoserver arango_utils)
 target_link_libraries(arangoserver arango_v8server)
 target_link_libraries(arangoserver arango_vocbase)
 target_link_libraries(arangoserver boost_boost)
-target_link_libraries(arangoserver fuerte)
-target_link_libraries(arangoserver llhttp)
 
 target_link_libraries(arangoserver
   ${LINENOISE_LIBS} # Is this ever anything but empty?

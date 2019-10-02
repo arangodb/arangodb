@@ -109,7 +109,7 @@ class CalculationExecutorTest : public ::testing::Test {
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -119,14 +119,14 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 }
 
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -136,18 +136,18 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 }
 
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -156,24 +156,24 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 
   // 1
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // 2
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // 3
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!row.produced());
 
   // verify calculation
@@ -191,7 +191,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -200,39 +200,39 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
 
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
   // 1
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
   // 2
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
   // 3
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(!row.produced());
 }
 

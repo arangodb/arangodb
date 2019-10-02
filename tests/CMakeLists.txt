@@ -54,6 +54,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
+  Aql/SubqueryEndExecutorTest.cpp
+  Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
@@ -180,6 +182,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
+  Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Network/ConnectionPoolTest.cpp
@@ -250,6 +253,10 @@ target_link_libraries(arangodbtests
   snappy
   gtest
 )
+
+if (USE_ENTERPRISE)
+  target_link_libraries(arangodbtests arango_rclone)
+endif()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}

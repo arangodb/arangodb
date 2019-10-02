@@ -23,36 +23,33 @@
 
 #include "gtest/gtest.h"
 
-#include "common.h"
-#include "ExpressionContextMock.h"
-
-#include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
-
 #include "analysis/token_attributes.hpp"
 #include "search/scorers.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/QueryRegistry.h"
-#include "Aql/AstNode.h"
-#include "Aql/Function.h"
-#include "Aql/SortCondition.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "Basics/error.h"
-#include "Basics/files.h"
-#include "Basics/LocalTaskQueue.h"
-#include "Utils/ExecContext.h"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
 
-#if USE_ENTERPRISE
-  #include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/AstNode.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Function.h"
+#include "Aql/QueryRegistry.h"
+#include "Aql/SortCondition.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/LocalTaskQueue.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -82,6 +79,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8DealerFeature.h"
@@ -89,8 +87,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 
@@ -138,8 +138,12 @@ REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchViewTest : public ::testing::Test {
-protected:
+class IResearchViewTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::FATAL> {
+ protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() {
       arangodb::ClusterComm::_theInstanceInit.store(0);
@@ -152,16 +156,6 @@ protected:
 
   IResearchViewTest() : server(false) {
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     server.addFeature<arangodb::FlushFeature>(false);
     server.startFeatures();
@@ -181,12 +175,7 @@ protected:
 
   ~IResearchViewTest() {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT); // suppress ERROR recovery failure due to error from callback
-
     ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
 

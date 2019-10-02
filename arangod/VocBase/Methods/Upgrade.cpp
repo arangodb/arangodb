@@ -23,11 +23,11 @@
 #include "Upgrade.h"
 #include "Basics/Common.h"
 
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"

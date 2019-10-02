@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_AGENCY_PRIV_HANDLER_H 1
 
 #include "Agency/Agent.h"
+#include "Logger/LogMacros.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {

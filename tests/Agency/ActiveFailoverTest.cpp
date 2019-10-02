@@ -24,21 +24,24 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
+
+#include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/ActiveFailoverJob.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -95,7 +98,8 @@ inline static std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-class ActiveFailover : public ::testing::Test {
+class ActiveFailover : public ::testing::Test,
+                       public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Builder base;
   std::string jobId;
@@ -108,13 +112,6 @@ class ActiveFailover : public ::testing::Test {
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     base = createBuilder(agency);
     jobId = "1";
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
-                                    arangodb::LogLevel::FATAL);
-  }
-
-  ~ActiveFailover() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::SUPERVISION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };
 
