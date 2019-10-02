@@ -60,7 +60,7 @@ class CountCollectExecutorTest : public ::testing::Test {
 TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_wait) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -81,7 +81,7 @@ TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_
 TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -106,7 +106,7 @@ TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits)
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doesnt_wait) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -127,7 +127,7 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doe
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
   OutputAqlItemRow result{std::move(block), outputRegisters,

@@ -43,7 +43,7 @@ namespace aql {
 class Expression;
 class OutputAqlItemRow;
 class Query;
-template<bool passBlocksThrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
@@ -86,7 +86,7 @@ class CalculationExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
     /* This could be set to true after some investigation/fixes */
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };

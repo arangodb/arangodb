@@ -260,7 +260,7 @@ class ShortestPathExecutorTest
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
@@ -308,7 +308,7 @@ class ShortestPathExecutorTest
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);

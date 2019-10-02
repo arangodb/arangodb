@@ -36,7 +36,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
@@ -79,7 +79,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:

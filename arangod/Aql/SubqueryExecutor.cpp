@@ -33,7 +33,7 @@ using namespace arangodb::aql;
 template <bool isModificationSubquery>
 constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::preservesOrder;
 template <bool isModificationSubquery>
-constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough SubqueryExecutor<isModificationSubquery>::Properties::allowsBlockPassthrough;
 template <bool isModificationSubquery>
 constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::inputSizeRestrictsOutputSize;
 

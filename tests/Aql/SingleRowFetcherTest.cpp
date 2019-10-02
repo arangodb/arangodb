@@ -58,7 +58,8 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
-  static constexpr bool passBlocksThrough = true;
+  static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
+      ::arangodb::aql::BlockPassthrough::Enable;
   SingleRowFetcherTestPassBlocks()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
@@ -68,7 +69,8 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
-  static constexpr bool passBlocksThrough = false;
+  static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
+      ::arangodb::aql::BlockPassthrough::Disable;
   SingleRowFetcherTestDoNotPassBlocks()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };

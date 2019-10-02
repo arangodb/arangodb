@@ -45,6 +45,10 @@ typedef uint64_t QueryId;
 
 // Map RemoteID->ServerID->[SnippetId]
 typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
+
+// Enable/Disable block passthrough in fetchers
+enum class BlockPassthrough { Disable, Enable };
+
 }  // namespace aql
 }  // namespace arangodb
 
