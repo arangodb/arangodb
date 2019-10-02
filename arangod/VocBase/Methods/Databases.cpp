@@ -37,6 +37,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
@@ -304,7 +305,12 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       createInfo.setId(clusterInfo.uniqid());
     }
-    res = createCoordinator(createInfo);
+
+    res = ShardingInfo::validateShardsAndReplicationFactor(options, server);
+    if (res.ok()) {
+      res = createCoordinator(createInfo);
+    }
+
   } else {  // Single, DBServer, Agency
     if (!createInfo.validId()) {
       createInfo.setId(TRI_NewTickServer());
