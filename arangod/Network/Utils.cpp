@@ -273,5 +273,14 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
       << "cluster error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
 }
+
+std::string fuerteToArangoErrorMessage(network::Response const& res) {
+  return TRI_errno_string(fuerteToArangoErrorCode(res));
+}
+
+std::string fuerteToArangoErrorMessage(fuerte::Error err) {
+  return TRI_errno_string(fuerteToArangoErrorCode(err));
+}
+
 }  // namespace network
 }  // namespace arangodb

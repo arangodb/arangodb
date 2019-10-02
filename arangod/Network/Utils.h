@@ -68,6 +68,8 @@ void errorCodesFromHeaders(network::Headers headers,
 /// @brief transform response into arango error code
 int fuerteToArangoErrorCode(network::Response const& res);
 int fuerteToArangoErrorCode(fuerte::Error err);
+std::string fuerteToArangoErrorMessage(network::Response const& res);
+std::string fuerteToArangoErrorMessage(fuerte::Error err);
 
 /// @brief convert between arango and fuerte rest methods
 fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
