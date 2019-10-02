@@ -131,7 +131,7 @@ class Condition {
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 
   /// @brief create a condition from VPack
-  static Condition* fromVPack(ExecutionPlan*, arangodb::velocypack::Slice const&);
+  static std::unique_ptr<Condition> fromVPack(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
   /// @brief clone the condition
   Condition* clone() const;
