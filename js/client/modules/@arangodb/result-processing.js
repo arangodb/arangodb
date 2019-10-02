@@ -662,8 +662,8 @@ function locateLongSetupTeardown(options, results) {
             !testSuite.hasOwnProperty('skipped') &&
             !testSuite.skipped) {
           let details = "";
-          if (options.extremeVerbosity == true) {
-            details = "\n" + JSON.stringify(testSuite)
+          if (options.extremeVerbosity === true) {
+            details = "\n" + JSON.stringify(testSuite);
           }
           print(RED + "This test doesn't have setup a duration: " + currentTestrun + "." + testSuiteName + details + RESET);
         }
@@ -693,7 +693,7 @@ function locateLongSetupTeardown(options, results) {
           print(RED + "no results for: " + currentTestrun + RESET);
         }
       } else {
-        testRunStatistics += currentTestrun + "\n"
+        testRunStatistics += currentTestrun + "\n";
         testRunStatistics +=  yaml.safeDump(results);
         sortedByDuration = [];
       }
