@@ -31,6 +31,7 @@
 #include "Cluster/ClusterMethods.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -40,7 +41,12 @@
 #include <random>
 #include <typeinfo>
 
+#if USE_ENTERPRISE
+#include "Enterprise/RClone/RClone.h"
+#endif
+
 using namespace arangodb;
+using namespace arangodb::basics;
 
 #ifndef _WIN32
 
@@ -335,4 +341,127 @@ TEST_F(HotBackupOnCoordinators, test_irrelevance_of_string_size_for_dbserver_id)
 
 }
 
+#ifdef USE_ENTERPRISE
+
+class HotBackupTest : public ::testing::Test {
+protected:
+  HotBackupTest () {
+  }
+};
+
+
+
+const char* configStr =
+#include "HotBackupTest.json"
+    ;
+
+VPackBuilder builderFromStr(std::string const& s) {
+  VPackOptions options;
+  VPackBuilder builder;
+
+  options.checkAttributeUniqueness = true;
+  VPackParser parser(&options);
+  parser.parse(s);
+  builder.add(parser.steal()->slice());
+
+  return builder;
+}
+
+
+TEST_F(HotBackupTest, test_repository_normalization) {
+
+  VPackBuilder builder = builderFromStr(configStr);
+  VPackSlice config = builder.slice();
+  Result result;
+  std::string repo;
+  std::string prefix;
+
+  repo = "";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+
+  repo = ":";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+
+  repo = "noob:";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+  ASSERT_EQ(repo, "noob:");
+
+  repo = "S3:////////////";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:");
+
+  repo = "S3:////////////a";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a");
+
+  repo = "S3:////////////a////////////////";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a");
+
+  repo = "S3:////////////a////////////////a";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a/a");
+
+  repo = "S3:////////////a/.///////////////";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:a");
+
+  repo = "S3:/.";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:");
+
+  repo = "S3:/..";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "S3:");
+
+  repo = "local:/a";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/a");
+
+  repo = "local:/a/";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/a");
+
+  repo = "local:/a//";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/a");
+
+  repo = "local:/a/../";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/");
+
+  repo = "local:/../a/.././";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/");
+
+  repo = "local:/";
+  prefix = "/";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_NO_ERROR);
+  ASSERT_EQ(repo, "local:/");
+
+  repo = "local:/a/b/c";
+  prefix = "/b";
+  result = RClone::normalizeRepositoryString(config, prefix, repo);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD);
+  ASSERT_EQ(repo, "local:/a/b/c");
+
+}
+
+#endif
 #endif

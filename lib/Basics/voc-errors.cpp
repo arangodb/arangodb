@@ -131,6 +131,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
   REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
+  REG_ERROR(ERROR_CLUSTER_TOO_MANY_SHARDS, "too many shards");
   REG_ERROR(ERROR_CLUSTER_COLLECTION_ID_EXISTS, "collection ID already exists");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, "could not create collection in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, "could not create collection");
