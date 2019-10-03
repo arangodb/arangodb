@@ -400,9 +400,13 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
   if (result.ok()) {
     auto response = result.response;
     if (response == nullptr || (response->statusCode() != fuerte::StatusOK &&
-                                response->statusCode() != fuerte::StatusAccepted)) {
-      std::string errorMessage = network::fuerteToArangoErrorMessage(result);
-      LOG_TOPIC("f5733", ERR, Logger::MAINTENANCE) << "CancelBarrier: error" << errorMessage;
+                                response->statusCode() != fuerte::StatusNoContent)) {
+      std::string errorMessage =
+          response == nullptr
+              ? "no response"
+              : ("got status " + std::to_string(response->statusCode()));
+      LOG_TOPIC("f5733", ERR, Logger::MAINTENANCE)
+          << "CancelBarrier: error '" << errorMessage << "'";
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
   } else {
