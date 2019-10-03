@@ -267,6 +267,34 @@
     "section" : "audit",
     "type" : "string..."
   },
+  "backup.api-enabled" : {
+    "category" : "option",
+    "default" : "true",
+    "deprecatedIn" : null,
+    "description" : "whether the backup api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "backup",
+    "type" : "string"
+  },
+  "backup.local-path-prefix" : {
+    "category" : "option",
+    "default" : "/",
+    "deprecatedIn" : null,
+    "description" : "this option restricts any backup target to a given path prefix",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "backup",
+    "type" : "string"
+  },
   "cache.rebalancing-interval" : {
     "category" : "option",
     "default" : 2000000,
@@ -283,7 +311,7 @@
   },
   "cache.size" : {
     "category" : "option",
-    "default" : 3637388288,
+    "default" : 16341606400,
     "deprecatedIn" : null,
     "description" : "size of cache in bytes",
     "dynamic" : true,
@@ -352,6 +380,22 @@
     "section" : "cluster",
     "type" : "boolean"
   },
+  "cluster.default-replication-factor" : {
+    "category" : "option",
+    "default" : 0,
+    "deprecatedIn" : null,
+    "description" : "default replication factor for new collections",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.1"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "cluster",
+    "type" : "uint32"
+  },
   "cluster.index-create-timeout" : {
     "category" : "option",
     "default" : 3600,
@@ -365,6 +409,54 @@
     "requiresValue" : true,
     "section" : "cluster",
     "type" : "double"
+  },
+  "cluster.max-number-of-shards" : {
+    "category" : "option",
+    "default" : 1000,
+    "deprecatedIn" : null,
+    "description" : "maximum number of shards when creating new collections (0 = unrestricted)",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.1"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "cluster",
+    "type" : "uint32"
+  },
+  "cluster.max-replication-factor" : {
+    "category" : "option",
+    "default" : 10,
+    "deprecatedIn" : null,
+    "description" : "maximum replication factor for new collections (0 = unrestricted)",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.1"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "cluster",
+    "type" : "uint32"
+  },
+  "cluster.min-replication-factor" : {
+    "category" : "option",
+    "default" : 1,
+    "deprecatedIn" : null,
+    "description" : "minimum replication factor for new collections",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.1"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "cluster",
+    "type" : "uint32"
   },
   "cluster.my-address" : {
     "category" : "option",
@@ -422,6 +514,20 @@
     "section" : "cluster",
     "type" : "boolean"
   },
+  "cluster.resign-leadership-on-shutdown" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "create resign leader ship job for this dbsever on shutdown",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "cluster",
+    "type" : "boolean"
+  },
   "cluster.synchronous-replication-timeout-factor" : {
     "category" : "option",
     "default" : 1,
@@ -431,6 +537,23 @@
     "enterpriseOnly" : false,
     "hidden" : false,
     "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "cluster",
+    "type" : "double"
+  },
+  "cluster.synchronous-replication-timeout-minimum" : {
+    "category" : "option",
+    "default" : 30,
+    "deprecatedIn" : null,
+    "description" : "all synchronous replication timeouts will be at least this value (in seconds)",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.1",
+      "v3.4.8"
+    ],
     "obsolete" : false,
     "requiresValue" : true,
     "section" : "cluster",
@@ -900,6 +1023,22 @@
     "section" : "",
     "type" : "boolean"
   },
+  "foxx.api" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "enables Foxx management REST APIs",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "foxx",
+    "type" : "boolean"
+  },
   "foxx.queues" : {
     "category" : "option",
     "default" : true,
@@ -927,6 +1066,22 @@
     "requiresValue" : true,
     "section" : "foxx",
     "type" : "double"
+  },
+  "foxx.store" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "enables Foxx store in web interface",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "foxx",
+    "type" : "boolean"
   },
   "frontend.proxy-request-check" : {
     "category" : "option",
@@ -1070,6 +1225,38 @@
     "section" : "javascript",
     "type" : "boolean"
   },
+  "javascript.allow-external-process-control" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "allow execution and control of external processes from within JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.allow-port-testing" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "allow testing of ports from within JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
   "javascript.app-path" : {
     "category" : "option",
     "default" : "./js/apps",
@@ -1112,6 +1299,91 @@
     "section" : "javascript",
     "type" : "boolean"
   },
+  "javascript.endpoints-blacklist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "endpoints that cannot be connected to via @arangodb/request module in JavaScript actions if not whitelisted",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.endpoints-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "endpoints that can be connected to via @arangodb/request module in JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.environment-variables-blacklist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "environment variables that will be inaccessible in JavaScript if not whitelisted",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.environment-variables-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "environment variables that will be accessible in JavaScript",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.files-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "filesystem paths that will be accessible from within JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
   "javascript.gc-frequency" : {
     "category" : "option",
     "default" : 60,
@@ -1139,6 +1411,22 @@
     "requiresValue" : true,
     "section" : "javascript",
     "type" : "uint64"
+  },
+  "javascript.harden" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "disables access to JavaScript functions in the internal module: getPid() and logLevel()",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "javascript",
+    "type" : "boolean"
   },
   "javascript.module-directory" : {
     "category" : "option",
@@ -1199,6 +1487,40 @@
     "requiresValue" : true,
     "section" : "javascript",
     "type" : "string"
+  },
+  "javascript.startup-options-blacklist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "startup options whose names match this regular expression will not be exposed (if not whitelisted) to JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.startup-options-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "startup options whose names match this regular expression will be whitelisted and exposed to JavaScript",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
   },
   "javascript.v8-contexts" : {
     "category" : "option",
@@ -2062,7 +2384,7 @@
     "requiresValue" : true,
     "section" : "log",
     "type" : "string",
-    "values" : "Possible values: \"local-datestring\", \"timestamp\", \"timestamp-micros\", \"timestamp-millis\", \"uptime\", \"uptime-micros\", \"uptime-millis\", \"utc-datestring\""
+    "values" : "Possible values: \"local-datestring\", \"timestamp\", \"timestamp-micros\", \"timestamp-millis\", \"uptime\", \"uptime-micros\", \"uptime-millis\", \"utc-datestring\", \"utc-datestring-millis\""
   },
   "log.use-local-time" : {
     "category" : "option",
@@ -2338,6 +2660,20 @@
     "type" : "uint32",
     "values" : "Possible values: 1, 2, 3, 4"
   },
+  "rclone.executable" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "rclone executable used for up and download of backups",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "rclone",
+    "type" : "string"
+  },
   "replication.active-failover" : {
     "category" : "option",
     "default" : false,
@@ -2379,6 +2715,22 @@
     "requiresValue" : false,
     "section" : "replication",
     "type" : "boolean"
+  },
+  "replication.max-parallel-tailing-invocations" : {
+    "category" : "option",
+    "default" : 0,
+    "deprecatedIn" : null,
+    "description" : "Maximum number of concurrently allowed WAL tailing invocations (0 = unlimited)",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "replication",
+    "type" : "uint64"
   },
   "rocksdb.allow-fallocate" : {
     "category" : "option",
@@ -2427,7 +2779,7 @@
   },
   "rocksdb.block-cache-size" : {
     "category" : "option",
-    "default" : 4364865945,
+    "default" : 19609927680,
     "deprecatedIn" : null,
     "description" : "size of block cache in bytes",
     "dynamic" : true,
@@ -2452,6 +2804,20 @@
     "requiresValue" : true,
     "section" : "rocksdb",
     "type" : "uint64"
+  },
+  "rocksdb.create-sha-files" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "enable generation of sha256 files for each .sst file",
+    "dynamic" : false,
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
   },
   "rocksdb.debug-logging" : {
     "category" : "option",
@@ -2738,7 +3104,7 @@
   },
   "rocksdb.max-write-buffer-number" : {
     "category" : "option",
-    "default" : 2,
+    "default" : 9,
     "deprecatedIn" : null,
     "description" : "maximum number of write buffers that built up in memory",
     "dynamic" : false,
@@ -2892,7 +3258,7 @@
   },
   "rocksdb.total-write-buffer-size" : {
     "category" : "option",
-    "default" : 5819821260,
+    "default" : 26146570240,
     "deprecatedIn" : null,
     "description" : "maximum total size of in-memory write buffers (0 = unbounded)",
     "dynamic" : true,
@@ -3200,9 +3566,25 @@
     "section" : "server",
     "type" : "string"
   },
+  "server.harden" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "lock down REST APIs that reveal version information or server internals for non-admin users",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
   "server.io-threads" : {
     "category" : "option",
-    "default" : 2,
+    "default" : 8,
     "deprecatedIn" : null,
     "description" : "Number of threads used to handle IO",
     "dynamic" : true,
@@ -3289,7 +3671,7 @@
   },
   "server.maintenance-threads" : {
     "category" : "option",
-    "default" : 3,
+    "default" : 9,
     "deprecatedIn" : null,
     "description" : "maximum number of threads available for maintenance actions",
     "dynamic" : true,
@@ -3399,6 +3781,23 @@
     "section" : "server",
     "type" : "boolean"
   },
+  "server.statistics-history" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "turn storing statistics in database on or off",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.4.9",
+      "v3.5.1"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
   "server.storage-engine" : {
     "category" : "option",
     "default" : "auto",
@@ -3502,7 +3901,7 @@
     "category" : "option",
     "default" : 5,
     "deprecatedIn" : null,
-    "description" : "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "description" : "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2, 6 = TLSv1.3)",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -3511,7 +3910,7 @@
     "requiresValue" : true,
     "section" : "ssl",
     "type" : "uint64",
-    "values" : "Possible values: 1, 2, 3, 4, 5"
+    "values" : "Possible values: 1, 2, 3, 4, 5, 6"
   },
   "ssl.require-peer-certificate" : {
     "category" : "option",

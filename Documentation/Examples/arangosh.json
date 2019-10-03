@@ -71,7 +71,7 @@
   },
   "console.colors" : {
     "category" : "option",
-    "default" : true,
+    "default" : false,
     "deprecatedIn" : null,
     "description" : "enable color support",
     "dynamic" : false,
@@ -213,6 +213,66 @@
     "section" : "",
     "type" : "boolean"
   },
+  "encryption.key-generator" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
+    "dynamic" : false,
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "encryption",
+    "type" : "string"
+  },
+  "encryption.keyfile" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "file containing the encryption key. If set, encryption will be enabled.",
+    "dynamic" : false,
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "encryption",
+    "type" : "string"
+  },
+  "javascript.allow-external-process-control" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "allow execution and control of external processes from within JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.allow-port-testing" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "allow testing of ports from within JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
   "javascript.check-syntax" : {
     "category" : "option",
     "default" : [
@@ -246,7 +306,7 @@
     "category" : "option",
     "default" : "",
     "deprecatedIn" : null,
-    "description" : "target directory to copy files from 'javascript.startup-directory' into(only used when `--javascript.copy-installation` is enabled)",
+    "description" : "target directory to copy files from 'javascript.startup-directory' into (only used when `--javascript.copy-installation` is enabled)",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -284,6 +344,74 @@
     "section" : "javascript",
     "type" : "boolean"
   },
+  "javascript.endpoints-blacklist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "endpoints that cannot be connected to via @arangodb/request module in JavaScript actions if not whitelisted",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.endpoints-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "endpoints that can be connected to via @arangodb/request module in JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.environment-variables-blacklist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "environment variables that will be inaccessible in JavaScript if not whitelisted",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.environment-variables-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "environment variables that will be accessible in JavaScript",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
   "javascript.execute" : {
     "category" : "option",
     "default" : [
@@ -314,6 +442,23 @@
     "section" : "javascript",
     "type" : "string..."
   },
+  "javascript.files-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "filesystem paths that will be accessible from within JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
   "javascript.gc-interval" : {
     "category" : "option",
     "default" : 50,
@@ -327,6 +472,22 @@
     "requiresValue" : true,
     "section" : "javascript",
     "type" : "uint64"
+  },
+  "javascript.harden" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : null,
+    "description" : "disables access to JavaScript functions in the internal module: getPid() and logLevel()",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "javascript",
+    "type" : "boolean"
   },
   "javascript.module-directory" : {
     "category" : "option",
@@ -357,6 +518,40 @@
     "requiresValue" : true,
     "section" : "javascript",
     "type" : "string"
+  },
+  "javascript.startup-options-blacklist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "startup options whose names match this regular expression will not be exposed (if not whitelisted) to JavaScript actions",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.startup-options-whitelist" : {
+    "category" : "option",
+    "default" : [
+    ],
+    "deprecatedIn" : null,
+    "description" : "startup options whose names match this regular expression will be whitelisted and exposed to JavaScript",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "javascript",
+    "type" : "string..."
   },
   "javascript.unit-test-filter" : {
     "category" : "option",
@@ -743,7 +938,7 @@
     "requiresValue" : true,
     "section" : "log",
     "type" : "string",
-    "values" : "Possible values: \"local-datestring\", \"timestamp\", \"timestamp-micros\", \"timestamp-millis\", \"uptime\", \"uptime-micros\", \"uptime-millis\", \"utc-datestring\""
+    "values" : "Possible values: \"local-datestring\", \"timestamp\", \"timestamp-micros\", \"timestamp-millis\", \"uptime\", \"uptime-micros\", \"uptime-millis\", \"utc-datestring\", \"utc-datestring-millis\""
   },
   "log.use-local-time" : {
     "category" : "option",
@@ -866,10 +1061,24 @@
     "category" : "option",
     "default" : "http+tcp://127.0.0.1:8529",
     "deprecatedIn" : null,
-    "description" : "endpoint to connect to, use 'none' to start without a server. Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
+    "description" : "endpoint to connect to. Use 'none' to start without a server. Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
+    "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.jwt-secret-keyfile" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "if this option is specified, the jwt secret will be loaded from the given file. This option is not compatible with --server.ask-jwt-secret, --server.username or --server.password. If specified, it will be used for all connections - even when a new connection to another server is created",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
     "introducedIn" : null,
     "obsolete" : false,
     "requiresValue" : true,
@@ -936,7 +1145,7 @@
     "category" : "option",
     "default" : 5,
     "deprecatedIn" : null,
-    "description" : "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "description" : "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2, 6 = TLSv1.3)",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -945,7 +1154,7 @@
     "requiresValue" : true,
     "section" : "ssl",
     "type" : "uint64",
-    "values" : "Possible values: 1, 2, 3, 4, 5"
+    "values" : "Possible values: 1, 2, 3, 4, 5, 6"
   },
   "temp.path" : {
     "category" : "option",
