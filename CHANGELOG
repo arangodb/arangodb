@@ -1,4 +1,4 @@
-v3.5.1 (XXXX-XX-XX)
+v3.5.1 (2019-10-07)
 -------------------
 
 * Properly report parse errors for extraneous unterminated string literals
