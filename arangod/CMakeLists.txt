@@ -273,6 +273,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
   Aql/HashedCollectExecutor.cpp
+  Aql/InsertExecutor.cpp
   Aql/IResearchViewExecutor.cpp
   Aql/IResearchViewNode.cpp
   Aql/IResearchViewOptimizerRules.cpp
