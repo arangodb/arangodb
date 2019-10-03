@@ -42,8 +42,10 @@ class Builder;
 class Slice;
 }
 namespace aql {
+class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
+class Query;
 
 using DocumentProducingFunction =
     std::function<void(LocalDocumentId const&, velocypack::Slice slice)>;
@@ -56,8 +58,8 @@ struct DocumentProducingFunctionContext {
  public:
   DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
                                    RegisterId outputRegister, bool produceResult,
+                                   Query* query, Expression* filter,
                                    std::vector<std::string> const& projections,
-                                   transaction::Methods* trxPtr,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
                                    bool useRawDocumentPointers, bool checkUniqueness);
@@ -84,7 +86,11 @@ struct DocumentProducingFunctionContext {
 
   void incrScanned() noexcept;
 
+  void incrFiltered() noexcept;
+
   size_t getAndResetNumScanned() noexcept;
+  
+  size_t getAndResetNumFiltered() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 
@@ -93,18 +99,24 @@ struct DocumentProducingFunctionContext {
   RegisterId getOutputRegister() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
+  
+  bool checkFilter(velocypack::Slice slice);
 
   void reset();
 
   void setIsLastIndex(bool val);
+  
+  bool hasFilter() const noexcept;
 
  private:
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
-  transaction::Methods* const _trxPtr;
+  Query* const _query;
+  Expression* _filter;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
+  size_t _numFiltered;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;

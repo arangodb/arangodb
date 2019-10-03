@@ -48,19 +48,14 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 BaseOptions::LookupInfo::LookupInfo()
-    : expression(nullptr),
-      indexCondition(nullptr),
+    : indexCondition(nullptr),
       conditionNeedUpdate(false),
       conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
-};
-
-BaseOptions::LookupInfo::~LookupInfo() {
-  if (expression != nullptr) {
-    delete expression;
-  }
 }
+
+BaseOptions::LookupInfo::~LookupInfo() {}
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
                                     VPackSlice const& info, VPackSlice const& shards) {
@@ -96,9 +91,9 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
 
   read = info.get("expression");
   if (read.isObject()) {
-    expression = new aql::Expression(query->plan(), query->ast(), read);
+    expression = std::make_unique<aql::Expression>(query->plan(), query->ast(), read);
   } else {
-    expression = nullptr;
+    expression.reset();
   }
 
   read = info.get("condition");
@@ -112,7 +107,6 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
 
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
     : idxHandles(other.idxHandles),
-      expression(nullptr),
       indexCondition(other.indexCondition),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
@@ -304,7 +298,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
         condition->removeMemberUnchecked(n - 1);
       }
     }
-    info.expression = new aql::Expression(plan, plan->getAst(), condition);
+    info.expression = std::make_unique<aql::Expression>(plan, plan->getAst(), condition);
   }
   list.emplace_back(std::move(info));
 }
@@ -366,7 +360,7 @@ arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
   TRI_ASSERT(!_baseLookupInfos.empty());
   TRI_ASSERT(_baseLookupInfos.size() > cursorId);
   needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;
-  return _baseLookupInfos[cursorId].expression;
+  return _baseLookupInfos[cursorId].expression.get();
 }
 
 bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,

@@ -106,7 +106,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
         useRawPointers(false),
         random(false),
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
-              &engine, &abc, &outVariable, varUsedLater, projections, &trx,
+              &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     // fake indexScan

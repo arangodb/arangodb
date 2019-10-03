@@ -23,7 +23,10 @@
 #include "DocumentProducingHelper.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/DocumentExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -83,6 +86,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -115,6 +125,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -140,6 +157,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -191,12 +215,15 @@ DocumentProducingFunction aql::buildCallback(DocumentProducingFunctionContext& c
 template <bool checkUniqueness>
 std::function<void(LocalDocumentId const& token)> aql::getNullCallback(DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token) {
+    TRI_ASSERT(!context.hasFilter());
+
     if (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return;
       }
     }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -212,15 +239,18 @@ std::function<void(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Query* query, Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
-      _trxPtr(trxPtr),
+      _query(query),
+      _filter(filter),
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _numScanned(0),
+      _numFiltered(0),
       _outputRegister(outputRegister),
       _produceResult(produceResult),
       _useRawDocumentPointers(useRawDocumentPointers),
@@ -241,7 +271,7 @@ std::vector<std::string> const& DocumentProducingFunctionContext::getProjections
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexcept {
-  return _trxPtr;
+  return _query->trx();
 }
 
 std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const
@@ -263,10 +293,18 @@ void DocumentProducingFunctionContext::setAllowCoveringIndexOptimization(bool al
 
 void DocumentProducingFunctionContext::incrScanned() noexcept { ++_numScanned; }
 
+void DocumentProducingFunctionContext::incrFiltered() noexcept { ++_numFiltered; }
+
 size_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
   size_t const numScanned = _numScanned;
   _numScanned = 0;
   return numScanned;
+}
+
+size_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
+  size_t const numFiltered = _numFiltered;
+  _numFiltered = 0;
+  return numFiltered;
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow() const noexcept {
@@ -300,6 +338,16 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
   return true;
 }
 
+bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
+  DocumentExpressionContext ctx(_query, slice);
+
+  bool mustDestroy;  // will get filled by execution
+  AqlValue a = _filter->execute(getTrxPtr(), &ctx, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  return a.toBoolean();
+}
+
 void DocumentProducingFunctionContext::reset() {
   if (_checkUniqueness) {
     _alreadyReturned.clear();
@@ -309,6 +357,10 @@ void DocumentProducingFunctionContext::reset() {
 
 void DocumentProducingFunctionContext::setIsLastIndex(bool val) {
   _isLastIndex = val;
+}
+
+bool DocumentProducingFunctionContext::hasFilter() const noexcept {
+  return _filter != nullptr;
 }
 
 template <bool checkUniqueness>

@@ -179,10 +179,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add outvariable and projections
-  DocumentProducingNode::toVelocyPack(builder);
+  DocumentProducingNode::toVelocyPack(builder, flags);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(builder);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
 
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
@@ -384,8 +384,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                            calcRegsToKeep(), &engine, this->_collection, _outVariable,
-                           this->isVarUsedLater(_outVariable), this->projections(),
-                           trxPtr, this->coveringIndexAttributePositions(),
+                           this->isVarUsedLater(_outVariable), nullptr, this->projections(),
+                           this->coveringIndexAttributePositions(),
                            EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
                            std::move(nonConstExpressions), std::move(inVars),
                            std::move(inRegs), hasV8Expression, _condition->root(),

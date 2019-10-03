@@ -103,7 +103,8 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
   _collection = collection;
 }
 
-void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                           unsigned /*flags*/) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
   if (!_usedShard.empty()) {
     builder.add("collection", VPackValue(_usedShard));

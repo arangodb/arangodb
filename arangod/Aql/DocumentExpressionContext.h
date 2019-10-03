@@ -21,26 +21,22 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BASE_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_BASE_EXPRESSION_CONTEXT_H 1
+#ifndef ARANGOD_AQL_DOCUMENT_EXPRESSION_CONTEXT_H
+#define ARANGOD_AQL_DOCUMENT_EXPRESSION_CONTEXT_H 1
 
 #include "Aql/QueryExpressionContext.h"
-#include "Aql/types.h"
 
-#include <vector>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
-class AqlItemBlock;
 class Query;
 
-class BaseExpressionContext final : public QueryExpressionContext {
+class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  BaseExpressionContext(Query* query, size_t startPos, AqlItemBlock const* argv,
-                        std::vector<Variable const*> const& vars,
-                        std::vector<RegisterId> const& regs);
+  DocumentExpressionContext(Query* query, velocypack::Slice document);
 
-  ~BaseExpressionContext() override = default;
+  ~DocumentExpressionContext() = default;
 
   size_t numRegisters() const override;
 
@@ -49,10 +45,7 @@ class BaseExpressionContext final : public QueryExpressionContext {
 
  private:
   /// @brief temporary storage for expression data context
-  size_t _startPos;
-  AqlItemBlock const* _argv;
-  std::vector<Variable const*> const* _vars;
-  std::vector<RegisterId> const* _regs;
+  velocypack::Slice _document;
 };
 }  // namespace aql
 }  // namespace arangodb

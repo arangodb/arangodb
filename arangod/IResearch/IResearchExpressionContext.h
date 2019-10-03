@@ -71,14 +71,6 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
   virtual size_t numRegisters() const override;
 
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;
 

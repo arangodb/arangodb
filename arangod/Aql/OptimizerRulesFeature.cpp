@@ -127,7 +127,7 @@ void OptimizerRulesFeature::addRules() {
 
   // note that levels must be unique
 
-  registerRule("replace-function-with-index", replaceNearWithinFulltext,
+  registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
                OptimizerRule::replaceNearWithinFulltext, OptimizerRule::makeFlags());
 
   // inline subqueries one level higher
@@ -376,6 +376,10 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::restrictToSingleShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
+  
+  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, OptimizerRule::moveFiltersIntoEnumerateCollection,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault));
 
   // Splice subqueries
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,

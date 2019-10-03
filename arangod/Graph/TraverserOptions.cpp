@@ -424,7 +424,7 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
   if (specific != _depthLookupInfo.end()) {
     TRI_ASSERT(!specific->second.empty());
     TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression;
+    expression = specific->second[cursorId].expression.get();
   } else {
     bool unused;
     expression = getEdgeExpression(cursorId, unused);
@@ -443,7 +443,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
   if (specific != _depthLookupInfo.end()) {
     TRI_ASSERT(!specific->second.empty());
     TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression;
+    expression = specific->second[cursorId].expression.get();
     needToInjectVertex = !specific->second[cursorId].conditionNeedUpdate;
   } else {
     expression = getEdgeExpression(cursorId, needToInjectVertex);
