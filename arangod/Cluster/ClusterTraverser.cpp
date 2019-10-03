@@ -184,9 +184,7 @@ void ClusterTraverser::destroyEngines() {
         // Note If there was an error on server side we do not have ok()
         std::string message("Could not destroy all traversal engines");
         if (res.hasValue()) {
-          int code = network::fuerteToArangoErrorCode(res.get());
-          message += ": ";
-          message += TRI_errno_string(code);
+          message += ": " + network::fuerteToArangoErrorMessage(res.get());
         }
         LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
       }
