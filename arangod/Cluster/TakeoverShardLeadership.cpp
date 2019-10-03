@@ -57,6 +57,15 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
+namespace {
+std::string stripServerPrefix(std::string const& destination) {
+  static std::string prefix("server:");
+  TRI_ASSERT(destination.size() >= prefix.size() &&
+             destination.substr(0, prefix.size()) == prefix);
+  return destination.substr(prefix.size());
+}
+}  // namespace
+
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
                                              ActionDescription const& desc)
     : ActionBase(feature, desc) {
@@ -147,7 +156,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
     if (res.hasValue() && res.get().ok()) {
       auto& result = res.get();
       if (result.response && result.response->statusCode() == fuerte::StatusOK) {
-        realInsyncFollowers->push_back(result.destination);
+        realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }
     }
   }
