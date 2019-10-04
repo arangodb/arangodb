@@ -259,7 +259,7 @@ InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t base
   TRI_ASSERT(_block != nullptr);
 }
 
-InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
 }

@@ -69,7 +69,7 @@ class InputAqlItemRow {
 
   InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex);
 
-  InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex);
+  InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept;
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
