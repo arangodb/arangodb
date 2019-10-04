@@ -48,7 +48,7 @@ namespace auth_info_test {
 class TestQueryRegistry : public QueryRegistry {
  public:
   TestQueryRegistry() : QueryRegistry(1.0){};
-  virtual ~TestQueryRegistry() {}
+  virtual ~TestQueryRegistry() = default;
 };
 
 class UserManagerTest : public ::testing::Test {

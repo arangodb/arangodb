@@ -61,7 +61,7 @@ class Cursor {
         _isDeleted(false),
         _isUsed(false) {}
 
-  virtual ~Cursor() {}
+  virtual ~Cursor() = default;
 
  public:
   CursorId id() const { return _id; }

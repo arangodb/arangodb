@@ -44,7 +44,7 @@ RestBatchHandler::RestBatchHandler(application_features::ApplicationServer& serv
                                    GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _errors(0) {}
 
-RestBatchHandler::~RestBatchHandler() {}
+RestBatchHandler::~RestBatchHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing

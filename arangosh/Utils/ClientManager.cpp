@@ -74,7 +74,7 @@ namespace arangodb {
 ClientManager::ClientManager(application_features::ApplicationServer& server, LogTopic& topic)
     : _server(server), _topic{topic} {}
 
-ClientManager::~ClientManager() {}
+ClientManager::~ClientManager() = default;
 
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,

@@ -2410,7 +2410,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   Shower() : indent(0) {}
 
-  ~Shower() {}
+  ~Shower() = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     indent++;

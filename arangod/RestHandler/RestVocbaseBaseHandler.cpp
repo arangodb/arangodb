@@ -258,7 +258,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::Application
   TRI_ASSERT(request->requestContext());
 }
 
-RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
+RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string

@@ -61,7 +61,7 @@ class TokenTranslator : public TraverserCache {
       : TraverserCache(query, opts),
         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
-  ~TokenTranslator() {}
+  ~TokenTranslator() = default;
 
   arangodb::velocypack::StringRef makeVertex(std::string const& id) {
     VPackBuilder vertex;

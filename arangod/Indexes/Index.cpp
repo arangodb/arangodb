@@ -248,7 +248,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSl
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, arangodb::StaticStrings::IndexSparse,
                                                                   false)) {}
 
-Index::~Index() {}
+Index::~Index() = default;
 
 void Index::name(std::string const& newName) {
   if (_name.empty()) {

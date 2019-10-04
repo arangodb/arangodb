@@ -44,7 +44,7 @@ struct OperationCursor {
   /// @brief creates a cursor using an IndexIterator (which must be valid)
   explicit OperationCursor(std::unique_ptr<IndexIterator> iterator);
 
-  TEST_VIRTUAL ~OperationCursor() {}
+  TEST_VIRTUAL ~OperationCursor() = default;
 
   /// @brief return a pointer to the cursor's current index iterator
   /// (note: this may be a nullptr in the beginning)

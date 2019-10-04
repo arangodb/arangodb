@@ -778,8 +778,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     : indent(0) {
   }
 
-  ~RegisterPlanningDebugger () {
-  }
+  ~RegisterPlanningDebugger () = default;
 
   int indent;
 
@@ -1007,7 +1006,7 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, size_t id)
     : _id(id), _depth(0), _varUsageValid(false), _plan(plan) {}
 
-ExecutionNode::~ExecutionNode() {}
+ExecutionNode::~ExecutionNode() = default;
 
 size_t ExecutionNode::id() const { return _id; }
 
@@ -1865,7 +1864,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   SubqueryVarUsageFinder() {}
 
-  ~SubqueryVarUsageFinder() {}
+  ~SubqueryVarUsageFinder() = default;
 
   bool before(ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
@@ -1916,7 +1915,7 @@ struct DeterministicFinder final : public WalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}
-  ~DeterministicFinder() {}
+  ~DeterministicFinder() = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
