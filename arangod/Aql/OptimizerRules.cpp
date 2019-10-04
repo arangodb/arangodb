@@ -7177,7 +7177,11 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
   arangodb::HashSet<Variable const*> found;
 
   for (auto const& n : nodes) {
-    auto en = ExecutionNode::castTo<DocumentProducingNode*>(n);
+    auto en = dynamic_cast<DocumentProducingNode*>(n);
+    if (en == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
+    }
+
     Variable const* outVariable = en->outVariable();
         
     if (!n->isVarUsedLater(outVariable)) {
