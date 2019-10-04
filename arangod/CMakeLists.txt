@@ -317,6 +317,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/RegexCache.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
+  Aql/RemoveExecutor.cpp
   Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
