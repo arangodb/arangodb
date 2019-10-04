@@ -82,8 +82,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     }
     }
 
-  ~IResearchLinkHelperTestSingle() {
-  }
+  ~IResearchLinkHelperTestSingle() = default;
 };
 
 // -----------------------------------------------------------------------------

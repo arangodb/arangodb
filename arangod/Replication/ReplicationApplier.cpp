@@ -54,7 +54,7 @@ struct ApplierThread : public Thread {
     TRI_ASSERT(_syncer);
   }
 
-  ~ApplierThread() {} // shutdown is called by derived implementations!
+  ~ApplierThread() = default; // shutdown is called by derived implementations!
 
   void run() override {
     TRI_ASSERT(_syncer != nullptr);

@@ -71,7 +71,7 @@ State::State()
       _cur(0) {}
 
 /// Default dtor
-State::~State() {}
+State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 

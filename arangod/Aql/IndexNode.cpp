@@ -107,7 +107,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
   }
 
-  _condition.reset(Condition::fromVPack(plan, condition));
+  _condition = Condition::fromVPack(plan, condition);
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -415,7 +415,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief destroy the IndexNode
-IndexNode::~IndexNode() {}
+IndexNode::~IndexNode() = default;
 
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency

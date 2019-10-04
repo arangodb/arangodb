@@ -64,7 +64,7 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-RemoveFollower::~RemoveFollower() {}
+RemoveFollower::~RemoveFollower() = default;
 
 void RemoveFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 

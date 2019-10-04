@@ -86,7 +86,7 @@ class TestActionBasic : public ActionBase {
     }  // if
   };
 
-  virtual ~TestActionBasic(){};
+  virtual ~TestActionBasic() = default;
 
   bool first() override {
     // a pre action needs to push before setting _result
