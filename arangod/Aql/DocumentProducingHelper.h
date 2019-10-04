@@ -47,7 +47,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
 
-enum ProjectionType : uint32_t {
+enum class ProjectionType : uint32_t {
   IdAttribute,
   KeyAttribute,
   OtherAttribute

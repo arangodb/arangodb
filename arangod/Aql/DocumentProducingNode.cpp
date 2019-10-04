@@ -70,7 +70,8 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 
   if (slice.hasKey("filter")) {
     Ast* ast = plan->getAst();
-    _filter.reset(new Expression(plan, ast, new AstNode(ast, slice.get("filter"))));
+    // new AstNode is memory-managed by the Ast
+    setFilter(std::make_unique<Expression>(plan, ast, new AstNode(ast, slice.get("filter"))));
   }
 }
   
