@@ -24,6 +24,8 @@
 #define ARANGOD_FUTURES_FUTURE_H 1
 
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include "Basics/debugging.h"
@@ -126,6 +128,27 @@ template <class T>
 using decay_t = typename decay<T>::type;
 
 struct EmptyConstructor {};
+
+// uses a condition_variable to wait
+template <typename T>
+void waitImpl(Future<T>& f) {
+  if (f.isReady()) {
+    return;  // short-circuit
+  }
+
+  std::mutex m;
+  std::condition_variable cv;
+
+  std::unique_lock<std::mutex> lock(m);
+
+  Promise<T> p;
+  f.thenFinal([&p, &cv](Try<T>&& t) {
+    p.setTry(std::move(t));
+    cv.notify_one();
+  });
+  f = std::move(p.getFuture());
+  cv.wait(lock, [&f] { return f.isReady(); });
+}
 }  // namespace detail
 
 /// @brief Specifies state of a future as returned by wait_for and wait_until
@@ -189,6 +212,9 @@ class Future {
 
   // True when the result (or exception) is ready
   bool isReady() const { return getState().hasResult(); }
+
+  /// True if the future already has a callback set
+  bool hasCallback() const { return getState().hasCallback(); }
 
   /// True if the result is a value (not an exception)
   bool hasValue() const {
@@ -255,10 +281,15 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() const {
+  void wait() {
     while (!isReady()) {
-      std::this_thread::yield();
+      unsigned i = 8;
+      while (!isReady() && i--) {
+        std::this_thread::yield();
+        std::this_thread::yield();
+      }
     }
+    detail::waitImpl(*this);
   }
 
   /// waits for the result, returns if it is not available
