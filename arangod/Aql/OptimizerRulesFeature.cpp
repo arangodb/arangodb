@@ -376,10 +376,14 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::restrictToSingleShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
-  
+
+#if 0
+  // not yet enabled - we need to adjust a lot of tests in order to turn
+  // on this rule
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, OptimizerRule::moveFiltersIntoEnumerateCollection,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
+#endif
 
   // Splice subqueries
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
