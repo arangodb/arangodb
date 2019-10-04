@@ -52,7 +52,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
   // _fixedSource XOR _inputRegister
-  TRI_ASSERT((_fixedSource.empty() /*&& _inputRegister != ExecutionNode::MaxRegisterId*/) ||
+  TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
 }
 
