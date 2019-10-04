@@ -191,7 +191,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert<irs::Action::INDEX_AND_STORE>(field);
+      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
     }
 
     ++body;
@@ -221,7 +221,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
-  doc.insert<irs::Action::INDEX_AND_STORE>(field);
+  doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (!doc) {
     return {
