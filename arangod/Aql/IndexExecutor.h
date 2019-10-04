@@ -181,13 +181,11 @@ class IndexExecutor {
     std::unique_ptr<OperationCursor> _cursor;
     Type const _type;
 
-    union CallbackMethod {
-      IndexIterator::LocalDocumentIdCallback noProduce;
-      DocumentProducingFunction produce;
-
-      CallbackMethod() : noProduce(nullptr) {}
-      ~CallbackMethod() {}
-    } _callback;
+    // Only one of _produce and _noProduce is set at a time, depending on _type.
+    // As std::function is not trivially destructible, it's safer not to use a
+    // union.
+    IndexIterator::LocalDocumentIdCallback _noProduce;
+    DocumentProducingFunction _produce;
   };
 
  public:

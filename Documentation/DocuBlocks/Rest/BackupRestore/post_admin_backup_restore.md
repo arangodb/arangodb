@@ -53,13 +53,17 @@ are detailed in the returned error document.
     var startTime = require("internal").time();
     var failureSeen = false;
     while (require("internal").time() - startTime < 10) {
-      var r = internal.arango.GET("/_api/version");
-      if (r.error === true) {
-        failureSeen = true;
-      } else {
-        if (failureSeen) {
-          break;
+      try {
+        // GET can throw exceptions
+        var r = internal.arango.GET("/_api/version");
+        if (r.error === true) {
+          failureSeen = true;
+        } else {
+          if (failureSeen) {
+            break;
+          }
         }
+      } catch(err) {
       }
       require("internal").wait(0.1);
     }

@@ -275,19 +275,16 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
                       : Type::Document),
-      _callback() {
-  if (checkUniqueness) {
-    if (_type == Type::NoResult) {
-      _callback.noProduce = getNullCallback<true>(context);
-    } else {
-      _callback.produce = buildCallback<true>(context);
-    }
+      _noProduce(nullptr),
+      _produce(nullptr) {
+  auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
+  auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
+  if (_type == Type::NoResult) {
+    _noProduce = getNullCallback_(context);
+    _produce = nullptr;
   } else {
-    if (_type == Type::NoResult) {
-      _callback.noProduce = getNullCallback<false>(context);
-    } else {
-      _callback.produce = buildCallback<false>(context);
-    }
+    _produce = buildCallback_(context);
+    _noProduce = nullptr;
   }
 }
 
@@ -297,19 +294,11 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _index(other._index),
       _cursor(std::move(other._cursor)),
       _type(other._type),
-      _callback() {
-  if (other._type == Type::NoResult) {
-    _callback.noProduce = other._callback.noProduce;
-  } else {
-    _callback.produce = other._callback.produce;
-  }
-}
+      _noProduce(std::move(other._noProduce)),
+      _produce(std::move(other._produce)) {}
 
 bool IndexExecutor::CursorReader::hasMore() const {
-  if (_cursor != nullptr && _cursor->hasMore()) {
-    return true;
-  }
-  return false;
+  return _cursor != nullptr && _cursor->hasMore();
 }
 
 bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
@@ -328,14 +317,14 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   }
   switch (_type) {
     case Type::NoResult:
-      TRI_ASSERT(_callback.noProduce != nullptr);
-      return _cursor->next(_callback.noProduce, output.numRowsLeft());
+      TRI_ASSERT(_noProduce != nullptr);
+      return _cursor->next(_noProduce, output.numRowsLeft());
     case Type::Covering:
-      TRI_ASSERT(_callback.produce != nullptr);
-      return _cursor->nextCovering(_callback.produce, output.numRowsLeft());
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextCovering(_produce, output.numRowsLeft());
     case Type::Document:
-      TRI_ASSERT(_callback.produce != nullptr);
-      return _cursor->nextDocument(_callback.produce, output.numRowsLeft());
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextDocument(_produce, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached
