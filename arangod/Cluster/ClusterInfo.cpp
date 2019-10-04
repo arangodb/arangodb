@@ -516,7 +516,7 @@ void ClusterInfo::loadPlan() {
     LOG_TOPIC("989d5", DEBUG, Logger::CLUSTER)
         << "Error while loading " << prefixPlan
         << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+        << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 
     return;
   }
@@ -527,7 +527,7 @@ void ClusterInfo::loadPlan() {
     LOG_TOPIC("e089b", DEBUG, Logger::CLUSTER)
         << "Error while loading " << prefixPlan << " response structure is not an array of size 1"
         << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+        << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 
     return;
   }
@@ -617,7 +617,7 @@ void ClusterInfo::loadPlan() {
         TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
         if (vocbase == nullptr) {
           // database does not yet exist, create it now
-          
+
           // create a local database object...
           arangodb::CreateDatabaseInfo info(_server);
           Result res = info.load(database.value, VPackSlice::emptyArraySlice());
@@ -1066,7 +1066,7 @@ void ClusterInfo::loadCurrent() {
     LOG_TOPIC("5d4e4", DEBUG, Logger::CLUSTER)
         << "Error while loading " << prefixCurrent
         << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+        << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 
     return;
   }
@@ -1077,7 +1077,7 @@ void ClusterInfo::loadCurrent() {
     LOG_TOPIC("b020c", DEBUG, Logger::CLUSTER)
         << "Error while loading " << prefixCurrent << " response structure is not an array of size 1"
         << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+        << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 
     return;
   }
@@ -2162,7 +2162,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
         errorMsg += " error message: " + res.errorMessage();
         errorMsg += " error details: " + res.errorDetails();
-        errorMsg += " body: " + res.body();
+        errorMsg += " body: " + res.slice().toJson();
         for (auto const& info : infos) {
           events::CreateCollection(databaseName, info.name,
                                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
@@ -2636,7 +2636,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
             " HTTP code: " + std::to_string(res.httpCode()) +
             " error message: " + res.errorMessage() +
-            " error details: " + res.errorDetails() + " body: " + res.body());
+            " error details: " + res.errorDetails() + " body: " + res.slice().toJson());
   }
 
   // Update our cache:
@@ -2687,7 +2687,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
           std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
               " HTTP code: " + std::to_string(res.httpCode()) +
               " error message: " + res.errorMessage() +
-              " error details: " + res.errorDetails() + " body: " + res.body());
+              " error details: " + res.errorDetails() + " body: " + res.slice().toJson());
     }
   }
 
@@ -3543,7 +3543,7 @@ void ClusterInfo::loadServers() {
   LOG_TOPIC("449e0", DEBUG, Logger::CLUSTER)
       << "Error while loading " << prefixServersRegistered
       << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+      << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -3738,7 +3738,7 @@ void ClusterInfo::loadCurrentCoordinators() {
   LOG_TOPIC("5ee6d", DEBUG, Logger::CLUSTER)
       << "Error while loading " << prefixCurrentCoordinators
       << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+      << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 }
 
 static std::string const prefixMappings = "Target/MapUniqueToShortID";
@@ -3795,7 +3795,7 @@ void ClusterInfo::loadCurrentMappings() {
   LOG_TOPIC("36f2e", DEBUG, Logger::CLUSTER)
       << "Error while loading " << prefixMappings
       << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+      << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3900,7 +3900,7 @@ void ClusterInfo::loadCurrentDBServers() {
   LOG_TOPIC("5a7e1", DEBUG, Logger::CLUSTER)
       << "Error while loading " << prefixCurrentDBServers
       << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+      << " errorMessage: " << result.errorMessage() << " body: " << result.slice().toJson();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4398,7 +4398,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
   }
 
   // Try to establish hot backup lock in agency.
-  auto result = _agency.sendWithFailover(arangodb::rest::RequestType::POST,
+  auto result = _agency.sendWithFailover(fuerte::RestVerb::Post,
                                          timeout, writeURL, builder.slice());
 
   LOG_TOPIC("53a93", DEBUG, Logger::BACKUP)
@@ -4413,18 +4413,18 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
                             "failed to acquire backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
+  auto rv = result.slice();
 
   LOG_TOPIC("a94d5", DEBUG, Logger::BACKUP)
-      << "agency lock response for backup id " << backupId << ": " << rv->toJson();
+      << "agency lock response for backup id " << backupId << ": " << rv.toJson();
 
-  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 2) {
+  if (!rv.isObject() || !rv.hasKey("results") ||
+      !rv.get("results").isArray() || rv.get("results").length() != 2) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       "invalid agency result while acquiring backup lock");
   }
-  auto ar = rv->slice().get("results");
+  auto ar = rv.get("results");
 
   uint64_t first = ar[0].getNumber<uint64_t>();
   uint64_t second = ar[1].getNumber<uint64_t>();
@@ -4516,7 +4516,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
   // Try to establish hot backup lock in agency. Result will always be 412.
   // Question is: How 412?
-  auto result = _agency.sendWithFailover(arangodb::rest::RequestType::POST,
+  auto result = _agency.sendWithFailover(fuerte::RestVerb::Post,
                                          timeout, writeURL, builder.slice());
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -4524,16 +4524,16 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                             "failed to release backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
+  auto rv = result.slice();
 
-  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray()) {
+  if (!rv.isObject() || !rv.hasKey("results") ||
+      !rv.get("results").isArray()) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         "invalid agency result while releasing backup lock");
   }
 
-  auto ar = rv->slice().get("results");
+  auto ar = rv.get("results");
   if (!ar[0].isNumber()) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,

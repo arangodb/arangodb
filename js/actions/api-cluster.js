@@ -1415,6 +1415,7 @@ actions.defineHttp({
 // / @end Docu Block
 // //////////////////////////////////////////////////////////////////////////////
 
+/*
 actions.defineHttp({
   url: '_admin/cluster/supervisionState',
   allowUseDatabase: false,
@@ -1440,4 +1441,4 @@ actions.defineHttp({
     }
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
-});
+});*/

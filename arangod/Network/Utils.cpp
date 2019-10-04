@@ -40,7 +40,7 @@ namespace network {
 
 int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
                        network::EndpointSpec& spec) {
-  
+
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -56,6 +56,11 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
+  }
+
+  if (dest.find("http+tcp://") == 0) {
+    spec.endpoint = dest.substr(5);
+    return TRI_ERROR_NO_ERROR;
   }
 
   // This sets result.shardId, result.serverId and result.endpoint,

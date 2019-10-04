@@ -598,7 +598,7 @@ void HeartbeatThread::runSingleServer() {
         if (!_server.isStopping()) {
           LOG_TOPIC("229fd", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
-              << result._statusCode << ", incriminating body: " << result.bodyRef()
+              << result._statusCode << ", incriminating body: " << result.slice().toJson()
               << ", timeout: " << timeout;
         }
 
@@ -876,7 +876,7 @@ void HeartbeatThread::runCoordinator() {
         if (!_server.isStopping()) {
           LOG_TOPIC("539fc", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
-              << result._statusCode << ", incriminating body: " << result.bodyRef()
+              << result._statusCode << ", incriminating body: " << result.slice().toJson()
               << ", timeout: " << timeout;
         }
       } else {
@@ -1280,7 +1280,7 @@ bool HeartbeatThread::sendServerState() {
 
     LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
         << "heartbeat could not be sent to agency endpoints (" << endpoints
-        << "): http code: " << result.httpCode() << ", body: " << result.body();
+        << "): http code: " << result.httpCode() << ", body: " << result.slice().toJson();
     _numFails = 0;
   }
 

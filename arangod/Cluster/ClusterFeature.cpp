@@ -24,10 +24,10 @@
 #include "ClusterFeature.h"
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
@@ -35,6 +35,7 @@
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
@@ -311,6 +312,18 @@ void ClusterFeature::prepare() {
   AgencyCommManager::initialize(_agencyPrefix);
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
+  network::ConnectionPool::Config config;
+  config.numIOThreads = static_cast<unsigned>(2);
+  config.maxOpenConnections = 2;
+  config.connectionTtlMilli = 1000;
+  config.verifyHosts = false;
+  config.clusterInfo = &clusterInfo();
+
+  _pool = std::make_unique<network::ConnectionPool>(config);
+  AgencyCommManager::MANAGER->pool(_pool.get());
+
+
+
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
     std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
 
@@ -522,7 +535,7 @@ void ClusterFeature::unprepare() {
                                              AgencySimpleOperationType::DELETE_OP));
   unreg.operations.push_back(
       AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
- 
+
   constexpr int maxTries = 10;
   int tries = 0;
   while (true) {
@@ -533,22 +546,22 @@ void ClusterFeature::unprepare() {
 
     if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE ||
         !res.connected()) {
-      LOG_TOPIC("1776b", INFO, Logger::CLUSTER) << 
+      LOG_TOPIC("1776b", INFO, Logger::CLUSTER) <<
         "unable to unregister server from agency, because agency is in shutdown";
       break;
     }
-    
+
     if (++tries < maxTries) {
       // try again
-      LOG_TOPIC("c7af5", ERR, Logger::CLUSTER) 
-        << "unable to unregister server from agency " 
+      LOG_TOPIC("c7af5", ERR, Logger::CLUSTER)
+        << "unable to unregister server from agency "
         << "(attempt " << tries << " of " << maxTries << "): "
         << res.errorMessage();
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } else {
       // give up
-      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER) << 
-        "giving up unregistering server from agency: " 
+      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER) <<
+        "giving up unregistering server from agency: "
         << res.errorMessage();
       break;
     }

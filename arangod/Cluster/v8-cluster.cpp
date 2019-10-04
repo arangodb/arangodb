@@ -58,11 +58,11 @@ using namespace arangodb::basics;
   return;
 
 static void onlyInCluster() {
-  if (ServerState::instance()->isRunningInCluster()) { 
+  if (ServerState::instance()->isRunningInCluster()) {
     return;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");     
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");
 }
 
 static void onlyInClusterOrActiveFailover() {
@@ -309,24 +309,12 @@ static void JS_APIAgency(std::string const& envelope,
 
   AgencyComm comm;
   AgencyCommResult result =
-      comm.sendWithFailover(arangodb::rest::RequestType::POST,
+      comm.sendWithFailover(fuerte::RestVerb::Post,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
                             std::string("/_api/agency/") + envelope, builder.slice());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
-  }
-
-  try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
-    result._body.clear();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("57115", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
-    result.clear();
-  } catch (...) {
-    LOG_TOPIC("ec86e", ERR, Logger::AGENCYCOMM)
-        << "Error transforming result: out of memory";
-    result.clear();
   }
 
   auto l = TRI_VPackToV8(isolate, result.slice());
@@ -440,24 +428,12 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   AgencyComm comm;
   AgencyCommResult result =
-      comm.sendWithFailover(arangodb::rest::RequestType::GET,
+      comm.sendWithFailover(fuerte::RestVerb::Get,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
                             std::string("/_api/agency/config"), builder.slice());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
-  }
-
-  try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
-    result._body.clear();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("d8594", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
-    result.clear();
-  } catch (...) {
-    LOG_TOPIC("0ba23", ERR, Logger::AGENCYCOMM)
-        << "Error transforming result: out of memory";
-    result.clear();
   }
 
   auto l = TRI_VPackToV8(isolate, result.slice());
@@ -600,7 +576,7 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() != 0) {
@@ -629,7 +605,7 @@ static void JS_FlushClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("flush()");
   }
@@ -651,7 +627,7 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getCollectionInfo(<database-id>, <collection-id>)");
@@ -724,7 +700,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getCollectionInfoCurrent(<database-id>, <collection-id>, <shardID>)");
@@ -802,7 +778,7 @@ static void JS_GetResponsibleServerClusterInfo(v8::FunctionCallbackInfo<v8::Valu
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
@@ -829,11 +805,11 @@ static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Val
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1 || !args[0]->IsArray()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
-    
+
   std::unordered_set<std::string> shardIds;
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
 
@@ -868,7 +844,7 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() < 2 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getResponsibleShard(<collection-id>, <document>, "
@@ -933,7 +909,7 @@ static void JS_GetServerEndpointClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getServerEndpoint(<server-id>)");
   }
@@ -955,7 +931,7 @@ static void JS_GetServerNameClusterInfo(v8::FunctionCallbackInfo<v8::Value> cons
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
   }
@@ -977,7 +953,7 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
@@ -1104,7 +1080,7 @@ static void JS_IdServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover();
-  
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("id()");
   }
@@ -1542,7 +1518,7 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
 static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInClusterOrActiveFailover();
 
   if (args.Length() < 4 || args.Length() > 7) {
@@ -1600,7 +1576,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() < 4 || args.Length() > 7) {
@@ -1662,7 +1638,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() != 1) {
@@ -1695,7 +1671,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  
+
   onlyInClusterOrActiveFailover();
 
   if (args.Length() != 1) {
@@ -1761,7 +1737,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  
+
   onlyInCluster();
 
   if (args.Length() != 1) {
@@ -1863,7 +1839,7 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
 static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  
+
   onlyInCluster();
 
   v8::HandleScope scope(isolate);
@@ -1883,7 +1859,7 @@ static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& a
 
 static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() != 1) {

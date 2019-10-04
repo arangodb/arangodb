@@ -72,6 +72,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // default minimum replication factor
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
+  std::unique_ptr<network::ConnectionPool> _pool;
 
   void reportRole(ServerState::RoleEnum);
 
