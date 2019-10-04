@@ -294,7 +294,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
 #endif
 }
 
-ManagedDirectory::~ManagedDirectory() {}
+ManagedDirectory::~ManagedDirectory() = default;
 
 Result const& ManagedDirectory::status() const { return _status; }
 

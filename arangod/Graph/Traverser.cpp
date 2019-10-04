@@ -158,7 +158,7 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::M
   }
 }
 
-Traverser::~Traverser() {}
+Traverser::~Traverser() = default;
 
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            arangodb::velocypack::StringRef vid,

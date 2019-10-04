@@ -103,7 +103,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-CreateCollection::~CreateCollection() {}
+CreateCollection::~CreateCollection() = default;
 
 bool CreateCollection::first() {
   auto const& database = _description.get(DATABASE);

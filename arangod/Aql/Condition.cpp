@@ -324,7 +324,7 @@ ConditionPart::ConditionPart(Variable const* variable,
   isExpanded = (attributeName.find("[*]") != std::string::npos);
 }
 
-ConditionPart::~ConditionPart() {}
+ConditionPart::~ConditionPart() = default;
 
 /// @brief true if the condition is completely covered by the other condition
 bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) const {

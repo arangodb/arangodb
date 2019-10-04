@@ -252,7 +252,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   return category;
 }
 
-LogicalCollection::~LogicalCollection() {}
+LogicalCollection::~LogicalCollection() = default;
 
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {

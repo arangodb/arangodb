@@ -190,7 +190,7 @@ Ast::Ast(Query* query)
 }
 
 /// @brief destroy the AST
-Ast::~Ast() {}
+Ast::~Ast() = default;
 
 /// @brief convert the AST into VelocyPack
 std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {

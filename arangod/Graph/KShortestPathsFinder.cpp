@@ -45,7 +45,7 @@ using namespace arangodb::graph;
 //
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options), _pathAvailable(false) {}
-KShortestPathsFinder::~KShortestPathsFinder() {}
+KShortestPathsFinder::~KShortestPathsFinder() = default;
 
 // Sets up k-shortest-paths traversal from start to end
 bool KShortestPathsFinder::startKShortestPathsTraversal(

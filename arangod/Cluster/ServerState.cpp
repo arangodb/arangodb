@@ -146,7 +146,7 @@ void ServerState::findHost(std::string const& fallback) {
   _host = fallback;
 }
 
-ServerState::~ServerState() {}
+ServerState::~ServerState() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance

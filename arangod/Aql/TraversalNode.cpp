@@ -270,7 +270,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 #endif
 }
 
-TraversalNode::~TraversalNode() {}
+TraversalNode::~TraversalNode() = default;
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
