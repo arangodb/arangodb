@@ -142,7 +142,8 @@ class V8ViewsTest
 TEST_F(V8ViewsTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -212,7 +213,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -241,7 +243,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -266,7 +269,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -335,7 +339,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -365,7 +370,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
@@ -384,7 +390,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -457,7 +464,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -488,7 +496,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
@@ -508,7 +517,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -585,7 +595,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -617,7 +628,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
@@ -656,7 +668,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
@@ -678,7 +691,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -759,7 +773,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -789,7 +804,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
@@ -828,7 +844,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
@@ -865,7 +882,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -935,7 +953,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -973,7 +992,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -1000,7 +1020,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -1077,7 +1098,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -1114,7 +1136,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -1145,7 +1168,8 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView1 = vocbase.createView(createView1Json->slice());
     ASSERT_TRUE((false == !logicalView1));
     auto logicalView2 = vocbase.createView(createView2Json->slice());
@@ -1217,7 +1241,8 @@ TEST_F(V8ViewsTest, test_auth) {
       auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "",
+                                                               arangodb::auth::Source::LDAP))
               .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(vocbase.name(), "testView1", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -1247,36 +1272,33 @@ TEST_F(V8ViewsTest, test_auth) {
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_TRUE((false == !view1));
     }
-
-    // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
-    {
-      arangodb::auth::UserMap userMap;
-      auto username = arangodb::ExecContext::current().user();
-      auto& user =
-          userMap
-              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
-              .first->second;
-      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
-      user.grantCollection(vocbase.name(), "testView1", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-
-      vocbase.dropView(logicalView2->id(), true);  // remove second view to make test result deterministic
-      auto result =
-          v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views,
-                                                        static_cast<int>(args.size()),
-                                                        args.data());
-      EXPECT_TRUE((!result.IsEmpty()));
-      EXPECT_TRUE((result.ToLocalChecked()->IsArray()));
-      auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
-      EXPECT_TRUE((1U == resultArray->Length()));
-      auto* v8View =
-          TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(),
-                                                 WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
-      EXPECT_TRUE((false == !v8View));
-      EXPECT_TRUE((std::string("testView1") == v8View->name()));
-      EXPECT_TRUE((std::string("testViewType") == v8View->type().name()));
-      auto view1 = vocbase.lookupView("testView1");
-      EXPECT_TRUE((false == !view1));
-    }
   }
+}
+
+// -----------------------------------------------------------------------------
+// authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
+// -----------------------------------------------------------------------------
+
+TEST_F(V8ViewTest, v8_view_authorized_none_view) {
+  helper.createUser(USERNAME, [](arangodb::auth::User* user) {
+    user->grantDatabase(DB_NAME, RO);
+    user->grantCollection(VIEW1_RESOURCE, NONE);
+  });
+
+  helper.dropView(vocbase, VIEW2_RESOURCE);
+
+  helper.callFunction(objUsers, fnViews, argsViews, [](v8::Handle<v8::Value>& vresult) {
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
+    auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
+    ASSERT_EQ(1, resultArray->Length());
+    auto* v8View =
+        TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(),
+                                               WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
+    ASSERT_NE(null, v8View);
+    ASSERT_EQ("testView1", v8View->name());
+    ASSERT_EQ("testViewType", v8View->type().name());
+  });
+
+  auto view1 = vocbase.lookupView(VIEW1_RESOURCE);
+  ASSERT_NEW(nullptr, view1);
 }

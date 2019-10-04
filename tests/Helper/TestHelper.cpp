@@ -190,6 +190,38 @@ void arangodb::tests::TestHelper::callFunction(v8::Persistent<v8::Object>& obj,
   ASSERT_FALSE(tryCatch.HasCaught());
 }
 
+void arangodb::tests::TestHelper::callFunction(v8::Persistent<v8::Object>& obj,
+                                               v8::Persistent<v8::Value>& func,
+                                               std::vector<std::string> const& args,
+					       std::function<void(v8::Handle<v8::Value>>&)>& verify {
+  ASSERT_NE(nullptr, _v8Isolate);
+
+  v8::HandleScope handleScope(_v8Isolate);
+
+  auto context = v8Context();
+  v8::Context::Scope contextScope(context);
+
+  auto f = v8::Local<v8::Value>::New(_v8Isolate, func);
+  std::vector<v8::Local<v8::Value>> arguments;
+
+  for (auto a : args) {
+    arguments.push_back(TRI_V8_STD_STRING(_v8Isolate, a));
+  }
+
+  v8::TryCatch tryCatch(_v8Isolate);
+
+  auto result =
+      v8::Function::Cast(*f)->CallAsFunction(context,
+                                             v8::Local<v8::Object>::New(_v8Isolate, obj),
+                                             static_cast<int>(arguments.size()),
+                                             arguments.data());
+
+  ASSERT_FALSE(result.IsEmpty());
+  ASSERT_FALSE(tryCatch.HasCaught());
+
+  verify(result);
+}
+
 void arangodb::tests::TestHelper::callFunctionThrow(v8::Persistent<v8::Object>& obj,
                                                     v8::Persistent<v8::Value>& func,
                                                     std::vector<std::string> const& args,
