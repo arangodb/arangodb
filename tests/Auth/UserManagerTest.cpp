@@ -80,7 +80,7 @@ TEST_F(UserManagerTest, unknown_user_will_have_no_access) {
   auth::UserMap userEntryMap;
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.databaseAuthLevel("test", "test");
-  ASSERT_TRUE(authLevel == auth::Level::NONE);
+  ASSERT_EQ(authLevel, auth::Level::NONE);
 }
 
 TEST_F(UserManagerTest, granting_rw_access_on_database_star_will_grant_to_all_databases) {
@@ -91,7 +91,7 @@ TEST_F(UserManagerTest, granting_rw_access_on_database_star_will_grant_to_all_da
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.databaseAuthLevel("test", "test");
-  ASSERT_TRUE(authLevel == auth::Level::RW);
+  ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
 TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effectively_ro_users) {
@@ -104,7 +104,7 @@ TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effe
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.databaseAuthLevel("test", "test");
-  ASSERT_TRUE(authLevel == auth::Level::RO);
+  ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
 TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_be_accessible) {
@@ -117,7 +117,7 @@ TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
-  ASSERT_TRUE(authLevel == auth::Level::RW);
+  ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
 TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effective_ro_users_collection_level) {
@@ -131,7 +131,7 @@ TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effe
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
-  ASSERT_TRUE(authLevel == auth::Level::RO);
+  ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
 TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_be_accessible_collection_level) {
@@ -146,7 +146,7 @@ TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel =
       um.collectionAuthLevel("test", "test", "test", /*configured*/ true);
-  ASSERT_TRUE(authLevel == auth::Level::RW);
+  ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
 }  // namespace auth_info_test

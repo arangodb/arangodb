@@ -69,8 +69,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
   fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
   fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
       .Do([&](int code, char const* message) {
-        ASSERT_TRUE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        ASSERT_TRUE(strcmp(message, expectedMessage.c_str()) == 0);
+        ASSERT_EQ(code, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        ASSERT_EQ(strcmp(message, expectedMessage.c_str()), 0);
       });
 
   traverser::TraverserOptions opts{&query};
@@ -96,8 +96,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
   fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
   fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
       .Do([&](int code, char const* message) {
-        ASSERT_TRUE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        ASSERT_TRUE(strcmp(message, expectedMessage.c_str()) == 0);
+        ASSERT_EQ(code, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        ASSERT_EQ(strcmp(message, expectedMessage.c_str()), 0);
       });
 
   VPackBuilder result;

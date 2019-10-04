@@ -1312,7 +1312,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -1391,7 +1391,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -1467,7 +1467,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -1545,7 +1545,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
       assertFilterBoost(expected, actual);
     }
   }
@@ -1623,7 +1623,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -1701,7 +1701,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
       assertFilterBoost(expected, actual);
     }
   }
@@ -1778,7 +1778,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -2596,7 +2596,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -2679,7 +2679,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
       assertFilterBoost(expected, actual);
     }
   }
@@ -2971,7 +2971,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -3317,7 +3317,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -3402,7 +3402,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
       assertFilterBoost(expected, actual);
     }
   }
@@ -3726,7 +3726,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -3887,7 +3887,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 
@@ -5669,7 +5669,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
                                                   &ExpressionContextMock::EMPTY, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-      EXPECT_TRUE((expected == actual));
+      EXPECT_EQ(expected, actual);
     }
   }
 }

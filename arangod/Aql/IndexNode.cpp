@@ -108,7 +108,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
   }
 
-  _condition.reset(Condition::fromVPack(plan, condition));
+  _condition = Condition::fromVPack(plan, condition);
 
   TRI_ASSERT(_condition != nullptr);
 

@@ -101,7 +101,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
-      _condition(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _pruneExpression(std::move(pruneExpression)) {
@@ -170,7 +169,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
-      _condition(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
@@ -178,7 +176,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     : GraphNode(plan, base),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
-      _condition(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
   // In Vertex
@@ -274,11 +271,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 #endif
 }
 
-TraversalNode::~TraversalNode() {
-  if (_condition != nullptr) {
-    delete _condition;
-  }
-}
+TraversalNode::~TraversalNode() {}
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
@@ -700,7 +693,7 @@ void TraversalNode::prepareOptions() {
 }
 
 /// @brief remember the condition to execute for early traversal abortion.
-void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
+void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
   arangodb::HashSet<Variable const*> varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
@@ -714,7 +707,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
     }
   }
 
-  _condition = condition;
+  _condition = std::move(condition);
 }
 
 void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t conditionLevel,

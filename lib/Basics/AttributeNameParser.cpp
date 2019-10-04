@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stddef.h>
+#include <algorithm>
 #include <memory>
 #include <ostream>
 
@@ -166,7 +167,7 @@ void arangodb::basics::TRI_AttributeNamesToString(std::vector<AttributeName> con
   TRI_ASSERT(result.empty());
 
   bool isFirst = true;
-  for (auto& it : input) {
+  for (auto const& it : input) {
     if (!isFirst) {
       result += ".";
     }
@@ -179,12 +180,9 @@ void arangodb::basics::TRI_AttributeNamesToString(std::vector<AttributeName> con
 }
 
 bool arangodb::basics::TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input) {
-  for (auto& it : input) {
-    if (it.shouldExpand) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(input.begin(), input.end(), [](AttributeName const& value) {
+    return value.shouldExpand; 
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

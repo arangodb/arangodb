@@ -110,8 +110,8 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_doesnt_wait) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_waits) {
@@ -121,12 +121,12 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_waits) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
@@ -194,18 +194,18 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
 
@@ -214,11 +214,11 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait) {
   // First group
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 1);
+  ASSERT_EQ(x.slice().getInt(), 1);
   // check for collect
   x = block->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 2);
+  ASSERT_EQ(x.slice().getInt(), 2);
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_2) {
@@ -230,38 +230,38 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_2) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
 
   // check for collects
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 1);
+  ASSERT_EQ(x.slice().getInt(), 1);
 
   x = block->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 2);
+  ASSERT_EQ(x.slice().getInt(), 2);
 
   x = block->getValue(2, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 3);
+  ASSERT_EQ(x.slice().getInt(), 3);
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_3) {
@@ -274,39 +274,39 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_3) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   // After done return done
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
 
   // check for types
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 1);
+  ASSERT_EQ(x.slice().getInt(), 1);
 
   x = block->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 2);
+  ASSERT_EQ(x.slice().getInt(), 2);
 
   x = block->getValue(2, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 3);
+  ASSERT_EQ(x.slice().getInt(), 3);
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_4) {
@@ -318,30 +318,30 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_4) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   // After DONE return DONE
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
 
   // check for types
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 1);
+  ASSERT_EQ(x.slice().getInt(), 1);
 
   x = block->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 2);
+  ASSERT_EQ(x.slice().getInt(), 2);
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_waits) {
@@ -353,37 +353,37 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_waits) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
 
   // check for types
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 1);
+  ASSERT_EQ(x.slice().getInt(), 1);
 
   x = block->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.slice().getInt() == 2);
+  ASSERT_EQ(x.slice().getInt(), 2);
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
@@ -441,40 +441,40 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto newBlock = result.stealBlock();
 
   // check for types
   AqlValue x = newBlock->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  EXPECT_TRUE(x.slice().getInt() == 1);
+  EXPECT_EQ(x.slice().getInt(), 1);
 
   // Check the SUM register
   AqlValue counter = newBlock->getValue(0, 2);
   ASSERT_TRUE(counter.isNumber());
-  EXPECT_TRUE(counter.slice().getDouble() == 1);
+  EXPECT_EQ(counter.slice().getDouble(), 1);
 
   // check for types
   x = newBlock->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  EXPECT_TRUE(x.slice().getInt() == 2);
+  EXPECT_EQ(x.slice().getInt(), 2);
 
   // Check the SUM register
   counter = newBlock->getValue(1, 2);
   ASSERT_TRUE(counter.isNumber());
-  EXPECT_TRUE(counter.slice().getDouble() == 2);
+  EXPECT_EQ(counter.slice().getDouble(), 2);
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
@@ -532,55 +532,55 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto newBlock = result.stealBlock();
 
   // check for types
   AqlValue x = newBlock->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  EXPECT_TRUE(x.slice().getInt() == 1);
+  EXPECT_EQ(x.slice().getInt(), 1);
 
   // Check the LENGTH register
   AqlValue xx = newBlock->getValue(0, 2);
   ASSERT_TRUE(xx.isNumber());
-  EXPECT_TRUE(xx.slice().getInt() == 1);
+  EXPECT_EQ(xx.slice().getInt(), 1);
 
   // check for types
   x = newBlock->getValue(1, 1);
   ASSERT_TRUE(x.isNumber());
-  EXPECT_TRUE(x.slice().getInt() == 2);
+  EXPECT_EQ(x.slice().getInt(), 2);
 
   // Check the LENGTH register
   xx = newBlock->getValue(1, 2);
   ASSERT_TRUE(xx.isNumber());
-  EXPECT_TRUE(xx.slice().getInt() == 1);
+  EXPECT_EQ(xx.slice().getInt(), 1);
 
   // check for types
   x = newBlock->getValue(2, 1);
   ASSERT_TRUE(x.isNumber());
-  EXPECT_TRUE(x.slice().getInt() == 3);
+  EXPECT_EQ(x.slice().getInt(), 3);
 
   // Check the LENGTH register
   xx = newBlock->getValue(2, 2);
   ASSERT_TRUE(xx.isNumber());
-  EXPECT_TRUE(xx.slice().getInt() == 1);
+  EXPECT_EQ(xx.slice().getInt(), 1);
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
@@ -638,23 +638,23 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::vector<std::string> myStrings;
   std::vector<int> myCountNumbers;
@@ -663,32 +663,32 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   // check for types
   AqlValue x = newBlock->getValue(0, 1);
   ASSERT_TRUE(x.isString());
-  EXPECT_TRUE(x.slice().copyString() == "a");
+  EXPECT_EQ(x.slice().copyString(), "a");
 
   // Check the count register
   AqlValue c = newBlock->getValue(0, 2);
   ASSERT_TRUE(c.isNumber());
-  EXPECT_TRUE(c.slice().getInt() == 1);
+  EXPECT_EQ(c.slice().getInt(), 1);
 
   // check for types
   x = newBlock->getValue(1, 1);
   ASSERT_TRUE(x.isString());
-  EXPECT_TRUE(x.slice().copyString() == "aa");
+  EXPECT_EQ(x.slice().copyString(), "aa");
 
   // Check the count register
   c = newBlock->getValue(1, 2);
   ASSERT_TRUE(c.isNumber());
-  EXPECT_TRUE(c.slice().getInt() == 1);
+  EXPECT_EQ(c.slice().getInt(), 1);
 
   // check for types
   x = newBlock->getValue(2, 1);
   ASSERT_TRUE(x.isString());
-  EXPECT_TRUE(x.slice().copyString() == "aaa");
+  EXPECT_EQ(x.slice().copyString(), "aaa");
 
   // Check the count register
   c = newBlock->getValue(2, 2);
   ASSERT_TRUE(c.isNumber());
-  EXPECT_TRUE(c.slice().getInt() == 1);
+  EXPECT_EQ(c.slice().getInt(), 1);
 }
 
 }  // namespace aql

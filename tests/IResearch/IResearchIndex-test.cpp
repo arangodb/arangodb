@@ -224,11 +224,11 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto collection0 = vocbase().createCollection(createCollection0->slice());
-  ASSERT_TRUE((nullptr != collection0));
+  ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase().createCollection(createCollection1->slice());
-  ASSERT_TRUE((nullptr != collection1));
+  ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase().createView(createView->slice());
-  ASSERT_TRUE((nullptr != viewImpl));
+  ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
   {
@@ -283,10 +283,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -306,10 +306,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -329,10 +329,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -351,10 +351,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -373,10 +373,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -395,10 +395,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -417,10 +417,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -439,10 +439,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -461,10 +461,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 }
 
@@ -478,11 +478,11 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
-  ASSERT_TRUE((nullptr != collection0));
+  ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
-  ASSERT_TRUE((nullptr != collection1));
+  ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice());
-  ASSERT_TRUE((nullptr != viewImpl));
+  ASSERT_NE(nullptr, viewImpl);
 
   // link collections with view
   {
@@ -616,10 +616,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -644,10 +644,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -672,10 +672,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -696,10 +696,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -720,10 +720,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -744,10 +744,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -766,10 +766,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -788,10 +788,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -810,10 +810,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 }
 
@@ -827,11 +827,11 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
-  ASSERT_TRUE((nullptr != collection0));
+  ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
-  ASSERT_TRUE((nullptr != collection1));
+  ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice());
-  ASSERT_TRUE((nullptr != viewImpl));
+  ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
   {
@@ -885,10 +885,10 @@ TEST_F(IResearchIndexTest, test_fields) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0
@@ -905,9 +905,9 @@ TEST_F(IResearchIndexTest, test_fields) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 }

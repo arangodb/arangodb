@@ -26,6 +26,7 @@
 
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
@@ -38,8 +39,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
@@ -69,7 +68,6 @@ namespace aql {
 struct AstNode;
 class Ast;
 class ExecutionEngine;
-class ExecutionPlan;
 class Query;
 struct QueryCacheResultEntry;
 struct QueryProfile;
@@ -309,7 +307,7 @@ class Query {
   CollectionNameResolver const& resolver();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  ExecutionPlan* stealPlan() { return std::move(preparePlan()); }
+  std::unique_ptr<ExecutionPlan> stealPlan() { return preparePlan(); }
 #endif
 
  private:
@@ -323,7 +321,7 @@ class Query {
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in
   /// the QueryRegistry.
-  ExecutionPlan* preparePlan();
+  std::unique_ptr<ExecutionPlan> preparePlan();
 
   /// @brief log a query
   void log();
@@ -401,10 +399,6 @@ class Query {
   /// @brief query execution profile
   std::unique_ptr<QueryProfile> _profile;
 
-  /// @brief current state the query is in (used for profiling and error
-  /// messages)
-  QueryExecutionState::ValueType _state;
-
   /// @brief the ExecutionPlan object, if the query is prepared
   std::shared_ptr<ExecutionPlan> _plan;
 
@@ -426,8 +420,8 @@ class Query {
   /// @brief query start time
   double _startTime;
 
-  /// @brief the query part
-  QueryPart const _part;
+  /// @brief hash for this query. will be calculated only once when needed
+  mutable uint64_t _queryHash = DontCache;
 
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
@@ -442,6 +436,9 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
+  
+  /// @brief whether or not the hash was already calculated
+  mutable bool _queryHashCalculated;
 
   /// Create the result in this builder. It is also used to determine
   /// if we are continuing the query or of we called
@@ -450,6 +447,13 @@ class Query {
   /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
   std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+  
+  /// @brief current state the query is in (used for profiling and error
+  /// messages)
+  QueryExecutionState::ValueType _state;
+  
+  /// @brief the query part
+  QueryPart const _part;
 
   /// Track in which phase of execution we are, in order to implement
   /// repeatability.
@@ -462,12 +466,6 @@ class Query {
   /// only populated when the query has generated its result(s) and before
   /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
-
-  /// @brief hash for this query. will be calculated only once when needed
-  mutable uint64_t _queryHash = DontCache;
-
-  /// @brief whether or not the hash was already calculated
-  mutable bool _queryHashCalculated = false;
 };
 
 }  // namespace aql
