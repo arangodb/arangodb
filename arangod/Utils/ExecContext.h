@@ -51,7 +51,7 @@ class ExecContext : public RequestContext {
   ExecContext(ExecContext&&) = delete;
 
  public:
-  virtual ~ExecContext() {}
+  virtual ~ExecContext() = default;
 
   /// shortcut helper to check the AuthenticationFeature
   static bool isAuthEnabled();

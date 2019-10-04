@@ -34,7 +34,7 @@ namespace arangodb {
 
 class RocksDBRecoveryHelper {
  public:
-  virtual ~RocksDBRecoveryHelper() {}
+  virtual ~RocksDBRecoveryHelper() = default;
 
   virtual void prepare() {}
 

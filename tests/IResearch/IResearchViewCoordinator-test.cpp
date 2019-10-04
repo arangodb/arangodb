@@ -107,8 +107,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
     }
 
-  ~IResearchViewCoordinatorTest() {
-  }
+  ~IResearchViewCoordinatorTest() = default;
 };
 
 // -----------------------------------------------------------------------------

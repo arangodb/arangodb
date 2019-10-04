@@ -119,7 +119,7 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-SynchronizeShard::~SynchronizeShard() {}
+SynchronizeShard::~SynchronizeShard() = default;
 
 class SynchronizeShardCallback : public arangodb::ClusterCommCallback {
  public:

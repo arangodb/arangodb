@@ -415,7 +415,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief destroy the IndexNode
-IndexNode::~IndexNode() {}
+IndexNode::~IndexNode() = default;
 
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency

@@ -66,7 +66,7 @@ class TraversalNode : public GraphNode {
 
     TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
 
-    ~TraversalEdgeConditionBuilder() {}
+    ~TraversalEdgeConditionBuilder() = default;
 
     void toVelocyPack(arangodb::velocypack::Builder&, bool);
   };

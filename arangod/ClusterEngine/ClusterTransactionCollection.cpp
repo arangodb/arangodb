@@ -40,7 +40,7 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            int nestingLevel)
     : TransactionCollection(trx, cid, accessType, nestingLevel) {}
 
-ClusterTransactionCollection::~ClusterTransactionCollection() {}
+ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool ClusterTransactionCollection::hasOperations() const {

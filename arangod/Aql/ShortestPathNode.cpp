@@ -153,7 +153,7 @@ ShortestPathNode::ShortestPathNode(
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
-ShortestPathNode::~ShortestPathNode() {}
+ShortestPathNode::~ShortestPathNode() = default;
 
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),

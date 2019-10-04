@@ -145,7 +145,7 @@ Store& Store::operator=(Store&& rhs) {
 }
 
 /// Default dtor
-Store::~Store() {}
+Store::~Store() = default;
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success

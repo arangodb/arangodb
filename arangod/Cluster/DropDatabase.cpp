@@ -56,7 +56,7 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
   }
 }
 
-DropDatabase::~DropDatabase() {}
+DropDatabase::~DropDatabase() = default;
 
 bool DropDatabase::first() {
   std::string const database = _description.get(DATABASE);

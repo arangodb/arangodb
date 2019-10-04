@@ -137,7 +137,7 @@ class GraphEnumerator : public PathEnumerator {
         _currentDepth{},
         _nextDepth{arangodb::velocypack::StringRef(startVertex)} {}
 
-  ~GraphEnumerator() {}
+  ~GraphEnumerator() = default;
 
   bool next() override {
     ++_idx;

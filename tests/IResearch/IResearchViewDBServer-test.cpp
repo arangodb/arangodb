@@ -76,8 +76,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
     }
 
-  ~IResearchViewDBServerTest() {
-  }
+  ~IResearchViewDBServerTest() = default;
 };
 
 // -----------------------------------------------------------------------------

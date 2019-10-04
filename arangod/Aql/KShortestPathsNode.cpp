@@ -155,7 +155,7 @@ KShortestPathsNode::KShortestPathsNode(
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
-KShortestPathsNode::~KShortestPathsNode() {}
+KShortestPathsNode::~KShortestPathsNode() = default;
 
 KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
                                        arangodb::velocypack::Slice const& base)

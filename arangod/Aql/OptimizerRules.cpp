@@ -4849,7 +4849,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         _variable(nullptr),
         _lastNode(nullptr) {}
 
-  ~RemoveToEnumCollFinder() {}
+  ~RemoveToEnumCollFinder() = default;
 
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
