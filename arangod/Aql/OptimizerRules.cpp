@@ -598,6 +598,9 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateStatementsN
 std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+    arangodb::aql::ExecutionNode::INDEX};
 
 /// @brief find the single shard id for the node to restrict an operation to
 /// this will check the conditions of an IndexNode or a data-modification node
@@ -7169,15 +7172,15 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
+  plan->findNodesOfType(nodes, ::moveFilterIntoEnumerateTypes, true);
 
   arangodb::HashSet<Variable const*> found;
 
   for (auto const& n : nodes) {
-    auto en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
+    auto en = ExecutionNode::castTo<DocumentProducingNode*>(n);
     Variable const* outVariable = en->outVariable();
         
-    if (!en->isVarUsedLater(outVariable)) {
+    if (!n->isVarUsedLater(outVariable)) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
     }

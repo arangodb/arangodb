@@ -31,6 +31,9 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -42,35 +45,41 @@ void aql::handleProjections(std::vector<std::string> const& projections,
                             transaction::Methods const* trxPtr, VPackSlice slice,
                             VPackBuilder& b, bool useRawDocumentPointers) {
   for (auto const& it : projections) {
-    if (it == StaticStrings::IdString) {
-      VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
-      if (found.isCustom()) {
-        // _id as a custom type needs special treatment
-        b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
-                                                                   found, slice)));
-      } else {
-        b.add(it, found);
+    if (it[0] == '_') {
+      if (it == StaticStrings::IdString) {
+        VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
+        if (found.isCustom()) {
+          // _id as a custom type needs special treatment
+          b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
+                                                                     found, slice)));
+        } else {
+          b.add(it, found);
+        }
+        return;
       }
-    } else if (it == StaticStrings::KeyString) {
-      VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-      if (useRawDocumentPointers) {
-        b.add(VPackValue(it));
-        b.addExternal(found.begin());
-      } else {
-        b.add(it, found);
-      }
-    } else {
-      VPackSlice found = slice.get(it);
-      if (found.isNone()) {
-        // attribute not found
-        b.add(it, VPackValue(VPackValueType::Null));
-      } else {
+
+      if (it == StaticStrings::KeyString) {
+        VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
         if (useRawDocumentPointers) {
           b.add(VPackValue(it));
           b.addExternal(found.begin());
         } else {
           b.add(it, found);
         }
+        return;
+      }
+    }
+
+    VPackSlice found = slice.get(it);
+    if (found.isNone()) {
+      // attribute not found
+      b.add(it, VPackValue(VPackValueType::Null));
+    } else {
+      if (useRawDocumentPointers) {
+        b.add(VPackValue(it));
+        b.addExternal(found.begin());
+      } else {
+        b.add(it, found);
       }
     }
   }
@@ -189,7 +198,7 @@ DocumentProducingFunction aql::buildCallback(DocumentProducingFunctionContext& c
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     };
   }
-
+    
   if (!context.getProjections().empty()) {
     // return a projection
     if (!context.getCoveringIndexAttributePositions().empty()) {
@@ -365,7 +374,7 @@ bool DocumentProducingFunctionContext::hasFilter() const noexcept {
 
 template <bool checkUniqueness>
 DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
-                                      DocumentProducingFunctionContext& context) {
+                                           DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
     if (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
@@ -373,6 +382,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
