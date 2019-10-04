@@ -25,13 +25,11 @@
 #include <fst/types.h>
 #include <fst/flags.h>
 
-using std::string;
-
 DECLARE_int32(v);
 
 class LogMessage {
  public:
-  LogMessage(const string &type) : fatal_(type == "FATAL") {
+  LogMessage(const std::string &type) : fatal_(type == "FATAL") {
     std::cerr << type << ": ";
   }
   ~LogMessage() {

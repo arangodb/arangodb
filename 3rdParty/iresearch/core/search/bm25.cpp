@@ -29,8 +29,11 @@
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/math_utils.hpp"
 
 NS_LOCAL
+
+const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
 irs::sort::ptr make_from_object(
     const rapidjson::Document& json,
@@ -227,8 +230,8 @@ struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
 
   virtual void collect(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field,
+    const irs::sub_reader& /*segment*/,
+    const irs::term_reader& /*field*/,
     const irs::attribute_view& term_attrs
   ) override {
     auto& meta = term_attrs.get<irs::term_meta>();
@@ -253,15 +256,6 @@ struct term_collector final: public irs::sort::term_collector {
     out.write_vlong(docs_with_term);
   }
 };
-
-FORCE_INLINE float_t tf(float_t freq) noexcept {
-  static_assert(
-    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
-    "float_t expected"
-  );
-
-  return std::sqrt(freq);
-}
 
 NS_END // LOCAL
 
@@ -296,7 +290,7 @@ struct stats final {
 
 typedef bm25_sort::score_t score_t;
 
-struct const_score_ctx final : public irs::sort::score_ctx {
+struct const_score_ctx final : public irs::score_ctx {
  public:
   explicit const_score_ctx(irs::boost_t boost) noexcept
     : boost_(boost) {
@@ -305,7 +299,7 @@ struct const_score_ctx final : public irs::sort::score_ctx {
   const irs::boost_t boost_;
 }; // const_score_ctx
 
-struct score_ctx : public irs::sort::score_ctx {
+struct score_ctx : public irs::score_ctx {
  public:
   score_ctx(
       float_t k, 
@@ -410,7 +404,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
+  virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
@@ -427,7 +421,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return {
         memory::make_unique<bm25::const_score_ctx>(boost),
-        [](const void* ctx, byte_type* score_buf) noexcept {
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
           auto& state = *static_cast<const bm25::const_score_ctx*>(ctx);
           irs::sort::score_cast<score_t>(score_buf) = state.boost_;
         }
@@ -449,10 +443,10 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       if (norm.reset(segment, field.meta().norm, *doc)) {
         return { 
           memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
-          [](const void* ctx, byte_type* score_buf) noexcept {
+          [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
 
-            const float_t tf = ::tf(state.freq_->value);
+            const float_t tf = ::SQRT(state.freq_->value);
             irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
           }
         };
@@ -462,10 +456,10 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     // BM11
     return { 
       memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
-      [](const void* ctx, byte_type* score_buf) noexcept {
+      [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
 
-        const float_t tf = ::tf(state.freq_->value);
+        const float_t tf = ::SQRT(state.freq_->value);
         irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + tf);
       }
     };

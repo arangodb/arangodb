@@ -42,23 +42,23 @@ struct FstRegisterEntry {
 // This class maintains the correspondence between a string describing
 // an FST type, and its reader and converter.
 template <class Arc>
-class FstRegister
-    : public GenericRegister<string, FstRegisterEntry<Arc>, FstRegister<Arc>> {
+class FstRegister : public GenericRegister<std::string, FstRegisterEntry<Arc>,
+                                           FstRegister<Arc>> {
  public:
   using Reader = typename FstRegisterEntry<Arc>::Reader;
   using Converter = typename FstRegisterEntry<Arc>::Converter;
 
-  const Reader GetReader(const string &type) const {
+  const Reader GetReader(const std::string &type) const {
     return this->GetEntry(type).reader;
   }
 
-  const Converter GetConverter(const string &type) const {
+  const Converter GetConverter(const std::string &type) const {
     return this->GetEntry(type).converter;
   }
 
  protected:
-  string ConvertKeyToSoFilename(const string &key) const override {
-    string legal_type(key);
+  std::string ConvertKeyToSoFilename(const std::string &key) const override {
+    std::string legal_type(key);
     ConvertToLegalCSymbol(&legal_type);
     return legal_type + "-fst.so";
   }
@@ -99,7 +99,7 @@ class FstRegisterer : public GenericRegisterer<FstRegister<typename FST::Arc>> {
 
 // Converts an FST to the specified type.
 template <class Arc>
-Fst<Arc> *Convert(const Fst<Arc> &fst, const string &fst_type) {
+Fst<Arc> *Convert(const Fst<Arc> &fst, const std::string &fst_type) {
   auto *reg = FstRegister<Arc>::GetRegister();
   const auto converter = reg->GetConverter(fst_type);
   if (!converter) {

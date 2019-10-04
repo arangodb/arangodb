@@ -61,7 +61,7 @@ struct CompactFstOptions : public CacheOptions {
 //     StateId GetStateId() const;
 //     Weight Final() const;
 //     size_t NumArcs() const;
-//     Arc GetArc(size_t i) const;
+//     Arc GetArc(size_t i, uint32 f) const;
 //   };
 //
 //   // Modifies 'state' accessor to provide access to state id 's'.
@@ -72,7 +72,7 @@ struct CompactFstOptions : public CacheOptions {
 //   // compacted using this compactor
 //   uint64 Properties() const;
 //   // Return a string identifying the type of compactor.
-//   static const string &Type();
+//   static const std::string &Type();
 //   // Return true if an error has occured.
 //   bool Error() const;
 //   // Writes a compactor to a file.
@@ -129,7 +129,7 @@ struct CompactFstOptions : public CacheOptions {
 //   uint64 Properties() const;
 //
 //   // Returns a string identifying the type of compactor.
-//   static const string &Type();
+//   static const std::string &Type();
 //
 //   // Writes a compactor to a file.
 //   bool Write(std::ostream &strm) const;
@@ -219,7 +219,7 @@ class DefaultCompactStore {
   bool Error() const { return error_; }
 
   // Returns a string identifying the type of data storage container.
-  static const string &Type();
+  static const std::string &Type();
 
  private:
   std::unique_ptr<MappedFile> states_region_;
@@ -252,9 +252,7 @@ DefaultCompactStore<Element, Unsigned>::DefaultCompactStore(
   for (StateIterator<Fst<Arc>> siter(fst); !siter.Done(); siter.Next()) {
     ++nstates_;
     const auto s = siter.Value();
-    for (ArcIterator<Fst<Arc>> aiter(fst, s); !aiter.Done(); aiter.Next()) {
-      ++narcs_;
-    }
+    narcs_ += fst.NumArcs(s);
     if (fst.Final(s) != Weight::Zero()) ++nfinals;
   }
   if (compactor.Size() == -1) {
@@ -284,7 +282,7 @@ DefaultCompactStore<Element, Unsigned>::DefaultCompactStore(
     for (ArcIterator<Fst<Arc>> aiter(fst, s); !aiter.Done(); aiter.Next()) {
       compacts_[pos++] = compactor.Compact(s, aiter.Value());
     }
-    if ((compactor.Size() != -1) && ((pos - fpos) != compactor.Size())) {
+    if ((compactor.Size() != -1) && (pos != fpos + compactor.Size())) {
       FSTERROR() << "DefaultCompactStore: Compactor incompatible with FST";
       error_ = true;
       return;
@@ -456,8 +454,8 @@ bool DefaultCompactStore<Element, Unsigned>::Write(
 }
 
 template <class Element, class Unsigned>
-const string &DefaultCompactStore<Element, Unsigned>::Type() {
-  static const string *const type = new string("compact");
+const std::string &DefaultCompactStore<Element, Unsigned>::Type() {
+  static const std::string *const type = new std::string("compact");
   return *type;
 }
 
@@ -549,9 +547,9 @@ class DefaultCompactor {
 
   bool HasFixedOutdegree() const { return arc_compactor_->Size() != -1; }
 
-  static const string &Type() {
-    static const string *const type = [] {
-      string type = "compact";
+  static const std::string &Type() {
+    static const std::string *const type = [] {
+      std::string type = "compact";
       if (sizeof(U) != sizeof(uint32)) type += std::to_string(8 * sizeof(U));
       type += "_";
       type += C::Type();
@@ -559,7 +557,7 @@ class DefaultCompactor {
         type += "_";
         type += CompactStore::Type();
       }
-      return new string(type);
+      return new std::string(type);
     }();
     return *type;
   }
@@ -930,7 +928,7 @@ class CompactFstImpl
   }
 
   // Properties always true of this FST class.
-  static FST_CONSTEXPR const uint64 kStaticProperties = kExpanded;
+  static constexpr uint64 kStaticProperties = kExpanded;
 
  protected:
   template <class OtherArc, class OtherCompactor, class OtherCacheStore>
@@ -950,27 +948,27 @@ class CompactFstImpl
   friend class ::fst::CompactFst;  // allow access during write.
 
   // Current unaligned file format version.
-  static FST_CONSTEXPR const int kFileVersion = 2;
+  static constexpr int kFileVersion = 2;
   // Current aligned file format version.
-  static FST_CONSTEXPR const int kAlignedFileVersion = 1;
+  static constexpr int kAlignedFileVersion = 1;
   // Minimum file format version supported.
-  static FST_CONSTEXPR const int kMinFileVersion = 1;
+  static constexpr int kMinFileVersion = 1;
 
   std::shared_ptr<Compactor> compactor_;
   typename Compactor::State state_;
 };
 
 template <class Arc, class Compactor, class CacheStore>
-FST_CONSTEXPR const uint64 CompactFstImpl<Arc, Compactor, CacheStore>::kStaticProperties;
+constexpr uint64 CompactFstImpl<Arc, Compactor, CacheStore>::kStaticProperties;
 
 template <class Arc, class Compactor, class CacheStore>
-FST_CONSTEXPR const int CompactFstImpl<Arc, Compactor, CacheStore>::kFileVersion;
+constexpr int CompactFstImpl<Arc, Compactor, CacheStore>::kFileVersion;
 
 template <class Arc, class Compactor, class CacheStore>
-FST_CONSTEXPR const int CompactFstImpl<Arc, Compactor, CacheStore>::kAlignedFileVersion;
+constexpr int CompactFstImpl<Arc, Compactor, CacheStore>::kAlignedFileVersion;
 
 template <class Arc, class Compactor, class CacheStore>
-FST_CONSTEXPR const int CompactFstImpl<Arc, Compactor, CacheStore>::kMinFileVersion;
+constexpr int CompactFstImpl<Arc, Compactor, CacheStore>::kMinFileVersion;
 
 }  // namespace internal
 
@@ -1088,7 +1086,7 @@ class CompactFst
   // Read a CompactFst from a file; return nullptr on error
   // Empty filename reads from standard input
   static CompactFst<A, ArcCompactor, Unsigned, CompactStore, CacheStore> *Read(
-      const string &filename) {
+      const std::string &filename) {
     auto *impl = ImplToExpandedFst<Impl>::Read(filename);
     return impl ? new CompactFst<A, ArcCompactor, Unsigned, CompactStore,
                                  CacheStore>(std::shared_ptr<Impl>(impl))
@@ -1099,7 +1097,7 @@ class CompactFst
     return GetImpl()->Write(strm, opts);
   }
 
-  bool Write(const string &filename) const override {
+  bool Write(const std::string &filename) const override {
     return Fst<Arc>::WriteFile(filename);
   }
 
@@ -1194,7 +1192,7 @@ bool CompactFst<A, ArcCompactor, Unsigned, CompactStore, CacheStore>::WriteFst(
   hdr.SetStart(fst.Start());
   hdr.SetNumStates(num_states);
   hdr.SetNumArcs(num_arcs);
-  string type = "compact";
+  std::string type = "compact";
   if (sizeof(Unsigned) != sizeof(uint32)) {
     type += std::to_string(CHAR_BIT * sizeof(Unsigned));
   }
@@ -1248,7 +1246,7 @@ bool CompactFst<A, ArcCompactor, Unsigned, CompactStore, CacheStore>::WriteFst(
   }
   strm.flush();
   if (!strm) {
-    LOG(ERROR) << "CompactFst write failed: " << opts.source;
+    LOG(ERROR) << "CompactFst::WriteFst: Write failed: " << opts.source;
     return false;
   }
   return true;
@@ -1346,19 +1344,17 @@ class StringCompactor {
     return Arc(p, p, Weight::One(), p != kNoLabel ? s + 1 : kNoStateId);
   }
 
-  FST_CONSTEXPR ssize_t Size() const { return 1; }
+  constexpr ssize_t Size() const { return 1; }
 
-  FST_CONSTEXPR uint64 Properties() const {
-    return kString | kAcceptor | kUnweighted;
-  }
+  constexpr uint64 Properties() const { return kCompiledStringProperties; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
     return fst.Properties(props, true) == props;
   }
 
-  static const string &Type() {
-    static const string *const type = new string("string");
+  static const std::string &Type() {
+    static const std::string *const type = new std::string("string");
     return *type;
   }
 
@@ -1389,17 +1385,17 @@ class WeightedStringCompactor {
                p.first != kNoLabel ? s + 1 : kNoStateId);
   }
 
-  FST_CONSTEXPR ssize_t Size() const { return 1; }
+  constexpr ssize_t Size() const { return 1; }
 
-  FST_CONSTEXPR uint64 Properties() const { return kString | kAcceptor; }
+  constexpr uint64 Properties() const { return kString | kAcceptor; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
     return fst.Properties(props, true) == props;
   }
 
-  static const string &Type() {
-    static const string *const type = new string("weighted_string");
+  static const std::string &Type() {
+    static const std::string *const type = new std::string("weighted_string");
     return *type;
   }
 
@@ -1429,17 +1425,18 @@ class UnweightedAcceptorCompactor {
     return Arc(p.first, p.first, Weight::One(), p.second);
   }
 
-  FST_CONSTEXPR ssize_t Size() const { return -1; }
+  constexpr ssize_t Size() const { return -1; }
 
-  FST_CONSTEXPR uint64 Properties() const { return kAcceptor | kUnweighted; }
+  constexpr uint64 Properties() const { return kAcceptor | kUnweighted; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
     return fst.Properties(props, true) == props;
   }
 
-  static const string &Type() {
-    static const string *const type = new string("unweighted_acceptor");
+  static const std::string &Type() {
+    static const std::string *const type =
+        new std::string("unweighted_acceptor");
     return *type;
   }
 
@@ -1470,17 +1467,17 @@ class AcceptorCompactor {
     return Arc(p.first.first, p.first.first, p.first.second, p.second);
   }
 
-  FST_CONSTEXPR ssize_t Size() const { return -1; }
+  constexpr ssize_t Size() const { return -1; }
 
-  FST_CONSTEXPR uint64 Properties() const { return kAcceptor; }
+  constexpr uint64 Properties() const { return kAcceptor; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
     return fst.Properties(props, true) == props;
   }
 
-  static const string &Type() {
-    static const string *const type = new string("acceptor");
+  static const std::string &Type() {
+    static const std::string *const type = new std::string("acceptor");
     return *type;
   }
 
@@ -1511,17 +1508,17 @@ class UnweightedCompactor {
     return Arc(p.first.first, p.first.second, Weight::One(), p.second);
   }
 
-  FST_CONSTEXPR ssize_t Size() const { return -1; }
+  constexpr ssize_t Size() const { return -1; }
 
-  FST_CONSTEXPR uint64 Properties() const { return kUnweighted; }
+  constexpr uint64 Properties() const { return kUnweighted; }
 
   bool Compatible(const Fst<Arc> &fst) const {
     const auto props = Properties();
     return fst.Properties(props, true) == props;
   }
 
-  static const string &Type() {
-    static const string *const type = new string("unweighted");
+  static const std::string &Type() {
+    static const std::string *const type = new std::string("unweighted");
     return *type;
   }
 
@@ -1532,17 +1529,34 @@ class UnweightedCompactor {
   }
 };
 
-// Useful aliases when using StdArc
-typedef CompactFst<StdArc, StringCompactor<StdArc> >
-StdCompactStringFst;
-typedef CompactFst<StdArc, WeightedStringCompactor<StdArc> >
-StdCompactWeightedStringFst;
-typedef CompactFst<StdArc, AcceptorCompactor<StdArc> >
-StdCompactAcceptorFst;
-typedef CompactFst<StdArc, UnweightedCompactor<StdArc> >
-StdCompactUnweightedFst;
-typedef CompactFst<StdArc, UnweightedAcceptorCompactor<StdArc> >
-StdCompactUnweightedAcceptorFst;
+template <class Arc, class Unsigned /* = uint32 */>
+using CompactStringFst = CompactFst<Arc, StringCompactor<Arc>, Unsigned>;
+
+template <class Arc, class Unsigned /* = uint32 */>
+using CompactWeightedStringFst =
+    CompactFst<Arc, WeightedStringCompactor<Arc>, Unsigned>;
+
+template <class Arc, class Unsigned /* = uint32 */>
+using CompactAcceptorFst = CompactFst<Arc, AcceptorCompactor<Arc>, Unsigned>;
+
+template <class Arc, class Unsigned /* = uint32 */>
+using CompactUnweightedFst =
+    CompactFst<Arc, UnweightedCompactor<Arc>, Unsigned>;
+
+template <class Arc, class Unsigned /* = uint32 */>
+using CompactUnweightedAcceptorFst =
+    CompactFst<Arc, UnweightedAcceptorCompactor<Arc>, Unsigned>;
+
+using StdCompactStringFst = CompactStringFst<StdArc, uint32>;
+
+using StdCompactWeightedStringFst = CompactWeightedStringFst<StdArc, uint32>;
+
+using StdCompactAcceptorFst = CompactAcceptorFst<StdArc, uint32>;
+
+using StdCompactUnweightedFst = CompactUnweightedFst<StdArc, uint32>;
+
+using StdCompactUnweightedAcceptorFst =
+    CompactUnweightedAcceptorFst<StdArc, uint32>;
 
 }  // namespace fst
 

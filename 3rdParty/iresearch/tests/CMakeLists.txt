@@ -66,6 +66,7 @@ set(IReSearch_tests_sources
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
+  ./search/wildcard_filter_test.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
   ./search/bitset_doc_iterator_test.cpp
@@ -86,6 +87,7 @@ set(IReSearch_tests_sources
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
+  ./utils/automaton_test.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
   ./utils/compression_test.cpp
@@ -148,6 +150,7 @@ add_executable(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-shared)
 add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
 
 add_executable(${IResearchTests_TARGET_NAME}-static
@@ -160,6 +163,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./iql/parser_test.cpp
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared

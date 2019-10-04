@@ -415,11 +415,11 @@ class IdentityStateMapper {
 
   void Next() { aiter_->Next(); }
 
-  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
+  constexpr MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
+  constexpr MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -479,11 +479,11 @@ class ArcSumMapper {
 
   void Next() { ++i_; }
 
-  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
+  constexpr MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
+  constexpr MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
@@ -561,11 +561,11 @@ class ArcUniqueMapper {
 
   void Next() { ++i_; }
 
-  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
+  constexpr MapSymbolsAction InputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 
-  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
+  constexpr MapSymbolsAction OutputSymbolsAction() const {
     return MAP_COPY_SYMBOLS;
   }
 

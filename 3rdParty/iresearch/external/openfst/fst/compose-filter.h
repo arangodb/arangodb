@@ -443,6 +443,69 @@ class MatchComposeFilter {
   bool noeps2_;     // No epsilons leaving s2?
 };
 
+// This filter disallows matching epsilons on FST1 with epsilons on FST2,
+// but allows all other matches, potentially resulting in redundant
+// epsilon paths. The use of this filter gives correct results iff one of the
+// following conditions hold:
+//
+//  (1) The semiring is idempotent,
+//  (2) the first FST is output-epsilon free, or
+//  (3) the second FST is input-epsilon free.
+//
+// For (1), redundant epsilon paths may be created but won't hurt correctness.
+// For (2) and (3), no redundant paths are created.
+template <class M1, class M2 /* = M1 */>
+class NoMatchComposeFilter {
+ public:
+  using Matcher1 = M1;
+  using Matcher2 = M2;
+  using FST1 = typename M1::FST;
+  using FST2 = typename M2::FST;
+  using FilterState = TrivialFilterState;
+
+  using Arc = typename FST1::Arc;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
+
+  NoMatchComposeFilter(const FST1 &fst1, const FST2 &fst2,
+                       Matcher1 *matcher1 = nullptr,
+                       Matcher2 *matcher2 = nullptr)
+      : matcher1_(matcher1 ? matcher1 : new Matcher1(fst1, MATCH_OUTPUT)),
+        matcher2_(matcher2 ? matcher2 : new Matcher2(fst2, MATCH_INPUT)),
+        fst1_(matcher1_->GetFst()),
+        fst2_(matcher2_->GetFst()) {}
+
+  NoMatchComposeFilter(const NoMatchComposeFilter<Matcher1, Matcher2> &filter,
+                       bool safe = false)
+      : matcher1_(filter.matcher1_->Copy(safe)),
+        matcher2_(filter.matcher2_->Copy(safe)),
+        fst1_(matcher1_->GetFst()),
+        fst2_(matcher2_->GetFst()) {}
+
+  FilterState Start() const { return FilterState(true); }
+
+  void SetState(StateId, StateId, const FilterState &) {}
+
+  FilterState FilterArc(Arc *arc1, Arc *arc2) const {
+    return FilterState(arc1->olabel != 0 || arc2->ilabel != 0);
+  }
+
+  void FilterFinal(Weight *, Weight *) const {}
+
+  Matcher1 *GetMatcher1() { return matcher1_.get(); }
+
+  Matcher2 *GetMatcher2() { return matcher2_.get(); }
+
+  uint64 Properties(uint64 props) const { return props; }
+
+ private:
+  std::unique_ptr<Matcher1> matcher1_;
+  std::unique_ptr<Matcher2> matcher2_;
+  const FST1 &fst1_;
+  const FST2 &fst2_;
+};
+
 // This filter works with the MultiEpsMatcher to determine if multi-epsilons are
 // preserved in the composition output (rather than rewritten as 0) and
 // ensures correct properties.

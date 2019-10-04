@@ -48,8 +48,17 @@ struct index_reader;
 struct sub_reader;
 struct term_reader;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stateful object used for computing the document score based on the
+///        stored state
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API score_ctx {
+  virtual ~score_ctx() = default;
+}; // score_ctx
+
+typedef std::unique_ptr<score_ctx> score_ctx_ptr;
 typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
-typedef void(*score_f)(const void* ctx, byte_type*);
+typedef void(*score_f)(const score_ctx* ctx, byte_type*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -94,17 +103,6 @@ class IRESEARCH_API sort {
      ///////////////////////////////////////////////////////////////////////////
      virtual void write(data_output& out) const = 0;
   };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief stateful object used for computing the document score based on the
-  ///        stored state
-  ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API score_ctx {
-   public:
-    DECLARE_UNIQUE_PTR(score_ctx);
-
-    virtual ~score_ctx() = default;
-  }; // scorer
 
   template<typename T>
   FORCE_INLINE static T& score_cast(byte_type* score_buf) noexcept {
@@ -206,7 +204,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
-    virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
+    virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
@@ -670,13 +668,13 @@ class IRESEARCH_API order final {
     class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
       struct entry {
-        entry(sort::score_ctx::ptr&& ctx, score_f func, size_t offset)
+        entry(score_ctx_ptr&& ctx, score_f func, size_t offset)
           : ctx(std::move(ctx)),
             func(func),
             offset(offset) {
         }
 
-        sort::score_ctx::ptr ctx;
+        score_ctx_ptr ctx;
         score_f func;
         size_t offset;
       };
@@ -697,6 +695,11 @@ class IRESEARCH_API order final {
       void score(byte_type* score) const;
 
       const entry& operator[](size_t i) const noexcept {
+        assert(i < scorers_.size());
+        return scorers_[i];
+      }
+
+      entry& operator[](size_t i) noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }

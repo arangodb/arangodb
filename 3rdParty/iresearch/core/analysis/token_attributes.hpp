@@ -187,8 +187,6 @@ class IRESEARCH_API position
     return value_;
   }
 
-  virtual void clear() = 0;
-
   virtual bool next() = 0;
 
  protected:

@@ -305,24 +305,27 @@ struct managed_deleter {
   T* ptr_;
 }; // managed_deleter
 
+template<typename T>
+using managed_ptr = std::unique_ptr<T, memory::managed_deleter<T>>;
+
 template <typename T, bool Manage = true>
 inline typename std::enable_if<
   !std::is_array<T>::value,
-  std::unique_ptr<T, managed_deleter<T>>
+  managed_ptr<T>
 >::type make_managed(T* ptr) noexcept {
-  return std::unique_ptr<T, managed_deleter<T>>(ptr, Manage ? ptr : nullptr);
+  return managed_ptr<T>(ptr, Manage ? ptr : nullptr);
 }
 
-template <typename T, bool Manage = true>
+template <typename T>
 inline typename std::enable_if<
   !std::is_array<T>::value,
-  std::unique_ptr<T, managed_deleter<T>>
+  managed_ptr<T>
 >::type make_managed(std::unique_ptr<T>&& ptr) noexcept {
-  auto* p = Manage ? ptr.release() : ptr.get();
-  return std::unique_ptr<T, managed_deleter<T>>(p, Manage ? p : nullptr);
+  auto* p = ptr.release();
+  return managed_ptr<T>(p, p);
 }
 
-#define DECLARE_MANAGED_PTR(class_name) typedef std::unique_ptr<class_name, memory::managed_deleter<class_name> > ptr
+#define DECLARE_MANAGED_PTR(class_name) typedef irs::memory::managed_ptr<class_name> ptr
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                      make_shared

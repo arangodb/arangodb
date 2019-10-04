@@ -77,12 +77,6 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
-if (USE_SIMDCOMP)
-  set(IResearch_core_optimized_sources
-    ./store/store_utils_optimized.cpp
-  )
-endif()
-
 set(IResearch_core_sources
   ./utils/string.cpp
   ./analysis/analyzer.cpp
@@ -117,17 +111,17 @@ set(IResearch_core_sources
   ./search/sort.cpp
   ./search/cost.cpp
   ./search/score.cpp
-  ./search/score_doc_iterators.cpp
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
   ./search/prefix_filter.cpp
+  ./search/limited_sample_scorer.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
   ./search/wildcard_filter.cpp
-  ./search/range_query.cpp
+  ./search/multiterm_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./store/data_input.cpp 
@@ -139,6 +133,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
+  ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
   ./utils/automaton_utils.cpp
@@ -208,7 +203,7 @@ set(IResearch_core_headers
   ./search/prefix_filter.hpp
   ./search/range_filter.hpp
   ./search/column_existence_filter.hpp
-  ./search/range_query.hpp
+  ./search/multiterm_query.hpp
   ./search/term_query.hpp
   ./search/boolean_filter.hpp
   ./search/disjunction.hpp
@@ -411,14 +406,17 @@ if(MSVC)
  )
 endif()
 
+
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # setup CRT
@@ -426,11 +424,13 @@ if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
   )
 endif()
 
@@ -500,10 +500,8 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-if (USE_SIMDCOMP)
-  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
-  set(SIMD_LIBRARY_STATIC "simdcomp-static")
-endif()
+set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+set(SIMD_LIBRARY_STATIC "simdcomp-static")
 
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
@@ -592,11 +590,8 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
 )
-
-if (USE_SIMDCOMP)
-  list(APPEND IRESEARCH_STATIC_DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
-endif()
 
 if (MSVC)
   foreach(ELEMENT
@@ -1522,12 +1517,6 @@ endif()
 ################################################################################
 ### format plugin: format-1_0
 ################################################################################
-
-if (USE_SIMDCOMP)
-  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
-else()
-  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")
-endif()
 
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp

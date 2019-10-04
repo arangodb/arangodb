@@ -42,21 +42,22 @@ NS_ROOT
 /// t |  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class min_match_disjunction : public doc_iterator_base {
+template<typename DocIterator>
+class min_match_disjunction : public doc_iterator_base, score_ctx {
  public:
-  struct cost_iterator_adapter : score_iterator_adapter {
+  struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-      : score_iterator_adapter(std::move(it)) {
+      : score_iterator_adapter<DocIterator>(std::move(it)) {
       est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
     cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
-      : score_iterator_adapter(std::move(rhs)), est(rhs.est) {
+      : score_iterator_adapter<DocIterator>(std::move(rhs)), est(rhs.est) {
     }
 
     cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) noexcept {
       if (this != &rhs) {
-        score_iterator_adapter::operator=(std::move(rhs));
+        score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
         est = rhs.est;
       }
       return *this;
@@ -105,7 +106,7 @@ class min_match_disjunction : public doc_iterator_base {
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
     // prepare score
-    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<min_match_disjunction&>(
         *static_cast<const min_match_disjunction*>(ctx)
       );

@@ -25,6 +25,7 @@
 #include <fstream>
 
 #include <fst/flags.h>
+#include <unordered_map>
 
 
 // Utility for error handling.
@@ -55,7 +56,7 @@ inline std::istream &ReadType(std::istream &strm, T *t) {
 }
 
 // String case.
-inline std::istream &ReadType(std::istream &strm, string *s) {  // NOLINT
+inline std::istream &ReadType(std::istream &strm, std::string *s) {  // NOLINT
   s->clear();
   int32 ns = 0;
   strm.read(reinterpret_cast<char *>(&ns), sizeof(ns));
@@ -66,6 +67,20 @@ inline std::istream &ReadType(std::istream &strm, string *s) {  // NOLINT
   }
   return strm;
 }
+
+// Declares types that can be read from an input stream.
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::vector<T...> *c);
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::list<T...> *c);
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::set<T...> *c);
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::map<T...> *c);
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::unordered_map<T...> *c);
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::unordered_set<T...> *c);
 
 // Pair case.
 template <typename S, typename T>
@@ -99,37 +114,37 @@ std::istream &ReadContainerType(std::istream &strm, C *c, ReserveFn reserve) {
 }
 }  // namespace internal
 
-template <typename T, typename A>
-std::istream &ReadType(std::istream &strm, std::vector<T, A> *c) {
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::vector<T...> *c) {
   return internal::ReadContainerType(
-    strm, c, [] (decltype(c) v, int n) { v->reserve(n); });
+      strm, c, [](decltype(c) v, int n) { v->reserve(n); });
 }
 
-template <typename T, typename A>
-std::istream &ReadType(std::istream &strm, std::list<T, A> *c) {
-  return internal::ReadContainerType(strm, c, [] (decltype(c) v, int n) {});
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::list<T...> *c) {
+  return internal::ReadContainerType(strm, c, [](decltype(c) v, int n) {});
 }
 
-template <typename T, typename L, typename A>
-std::istream &ReadType(std::istream &strm, std::set<T, L, A> *c) {
-  return internal::ReadContainerType(strm, c, [] (decltype(c) v, int n) {});
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::set<T...> *c) {
+  return internal::ReadContainerType(strm, c, [](decltype(c) v, int n) {});
 }
 
-template <typename K, typename V, typename L, typename A>
-std::istream &ReadType(std::istream &strm, std::map<K, V, L, A> *c) {
-  return internal::ReadContainerType(strm, c, [] (decltype(c) v, int n) {});
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::map<T...> *c) {
+  return internal::ReadContainerType(strm, c, [](decltype(c) v, int n) {});
 }
 
-template <typename T, typename H, typename E, typename A>
-std::istream &ReadType(std::istream &strm, std::unordered_set<T, H, E, A> *c) {
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::unordered_set<T...> *c) {
   return internal::ReadContainerType(
-    strm, c, [] (decltype(c) v, int n) { v->reserve(n); });
+      strm, c, [](decltype(c) v, int n) { v->reserve(n); });
 }
 
-template <typename K, typename V, typename H, typename E, typename A>
-std::istream &ReadType(std::istream &strm, std::unordered_map<K, V, H, E, A> *c) {
+template <class... T>
+std::istream &ReadType(std::istream &strm, std::unordered_map<T...> *c) {
   return internal::ReadContainerType(
-    strm, c, [] (decltype(c) v, int n) { v->reserve(n); });
+      strm, c, [](decltype(c) v, int n) { v->reserve(n); });
 }
 
 // Writes types to an output stream.
@@ -150,13 +165,27 @@ inline std::ostream &WriteType(std::ostream &strm, const T t) {
 }
 
 // String case.
-inline std::ostream &WriteType(std::ostream &strm, const string &s) {  // NOLINT
+inline std::ostream &WriteType(std::ostream &strm,  // NOLINT
+                               const std::string &s) {
   int32 ns = s.size();
   strm.write(reinterpret_cast<const char *>(&ns), sizeof(ns));
   return strm.write(s.data(), ns);
 }
 
 // Declares types that can be written to an output stream.
+
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::vector<T...> &c);
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::list<T...> &c);
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::set<T...> &c);
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::map<T...> &c);
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::unordered_map<T...> &c);
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::unordered_set<T...> &c);
 
 // Pair case.
 template <typename S, typename T>
@@ -189,23 +218,33 @@ std::ostream &WriteType(std::ostream &strm, const std::list<T...> &c) {
   return internal::WriteContainer(strm, c);
 }
 
-template <typename T, typename H, typename E, typename A>
-std::ostream &WriteType(std::ostream &strm, const std::unordered_set<T, H, E, A> &c) {
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::set<T...> &c) {
   return internal::WriteContainer(strm, c);
 }
 
-template <typename K, typename V, typename H, typename E, typename A>
-std::ostream &WriteType(std::ostream &strm, const std::unordered_map<K, V, H, E, A> &c) {
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::map<T...> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::unordered_map<T...> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename... T>
+std::ostream &WriteType(std::ostream &strm, const std::unordered_set<T...> &c) {
   return internal::WriteContainer(strm, c);
 }
 
 // Utilities for converting between int64 or Weight and string.
 
-int64 StrToInt64(const string &s, const string &src, size_t nline,
+int64 StrToInt64(const std::string &s, const std::string &src, size_t nline,
                  bool allow_negative, bool *error = nullptr);
 
 template <typename Weight>
-Weight StrToWeight(const string &s, const string &src, size_t nline) {
+Weight StrToWeight(const std::string &s, const std::string &src, size_t nline) {
   Weight w;
   std::istringstream strm(s);
   strm >> w;
@@ -218,7 +257,7 @@ Weight StrToWeight(const string &s, const string &src, size_t nline) {
 }
 
 template <typename Weight>
-void WeightToStr(Weight w, string *s) {
+void WeightToStr(Weight w, std::string *s) {
   std::ostringstream strm;
   strm.precision(9);
   strm << w;
@@ -232,7 +271,8 @@ void SplitString(char *line, const char *delim, std::vector<char *> *vec,
                  bool omit_empty_strings);
 
 template <typename I>
-bool ReadIntPairs(const string &filename, std::vector<std::pair<I, I>> *pairs,
+bool ReadIntPairs(const std::string &filename,
+                  std::vector<std::pair<I, I>> *pairs,
                   bool allow_negative = false) {
   std::ifstream strm(filename, std::ios_base::in);
   if (!strm) {
@@ -259,13 +299,13 @@ bool ReadIntPairs(const string &filename, std::vector<std::pair<I, I>> *pairs,
     if (err) return false;
     I i2 = StrToInt64(col[1], filename, nline, allow_negative, &err);
     if (err) return false;
-    pairs->push_back(std::make_pair(i1, i2));
+    pairs->emplace_back(i1, i2);
   }
   return true;
 }
 
 template <typename I>
-bool WriteIntPairs(const string &filename,
+bool WriteIntPairs(const std::string &filename,
                    const std::vector<std::pair<I, I>> &pairs) {
   std::ostream *strm = &std::cout;
   if (!filename.empty()) {
@@ -290,21 +330,21 @@ bool WriteIntPairs(const string &filename,
 // Utilities for reading/writing label pairs.
 
 template <typename Label>
-bool ReadLabelPairs(const string &filename,
+bool ReadLabelPairs(const std::string &filename,
                     std::vector<std::pair<Label, Label>> *pairs,
                     bool allow_negative = false) {
   return ReadIntPairs(filename, pairs, allow_negative);
 }
 
 template <typename Label>
-bool WriteLabelPairs(const string &filename,
+bool WriteLabelPairs(const std::string &filename,
                      const std::vector<std::pair<Label, Label>> &pairs) {
   return WriteIntPairs(filename, pairs);
 }
 
 // Utilities for converting a type name to a legal C symbol.
 
-void ConvertToLegalCSymbol(string *s);
+void ConvertToLegalCSymbol(std::string *s);
 
 // Utilities for stream I/O.
 

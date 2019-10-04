@@ -123,7 +123,7 @@ compressor::ptr lz4::compressor(const options& opts) {
     return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
   }
 
-  return std::make_shared<lz4compressor>(acceleration);
+  return memory::make_shared<lz4compressor>(acceleration);
 }
 
 decompressor::ptr lz4::decompressor() {

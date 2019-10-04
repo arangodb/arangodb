@@ -93,9 +93,6 @@ class IRESEARCH_API filter {
     explicit prepared(boost_t boost = no_boost()) noexcept
       : boost_(boost) {
     }
-    prepared(bstring&& stats, boost_t boost = no_boost()) noexcept
-      : stats_(std::move(stats)), boost_(boost) {
-    }
     virtual ~prepared() = default;
 
     doc_iterator::ptr execute(
@@ -118,11 +115,9 @@ class IRESEARCH_API filter {
     boost_t boost() const noexcept { return boost_; }
 
    protected:
-    const byte_type* stats() const noexcept { return stats_.c_str(); }
     void boost(boost_t boost) noexcept { boost_ *= boost; }
 
    private:
-    bstring stats_;
     boost_t boost_;
   }; // prepared
 

@@ -418,7 +418,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     using irs::buffered_index_output::remain;
 
-    size_t last_written_size() const NOEXCEPT {
+    size_t last_written_size() const noexcept {
       return last_written_size_;
     }
 
@@ -460,7 +460,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     using irs::buffered_index_input::remain;
 
-    size_t last_read_size() const NOEXCEPT {
+    size_t last_read_size() const noexcept {
       return last_read_size_;
     }
 

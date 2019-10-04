@@ -35,12 +35,15 @@ NS_ROOT
 /// @class score_iterator_adapter
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 struct score_iterator_adapter {
-  score_iterator_adapter(doc_iterator::ptr&& it) noexcept
+  typedef DocIterator doc_iterator_t;
+
+  score_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)) {
     auto& attrs = this->it->attributes();
     score = &irs::score::extract(attrs);
-    doc = attrs.get<irs::document>().get();
+    doc = attrs.template get<irs::document>().get();
     assert(doc);
   }
 
@@ -62,11 +65,11 @@ struct score_iterator_adapter {
     return *this;
   }
 
-  doc_iterator* operator->() const noexcept {
+  typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
   }
 
-  operator doc_iterator::ptr&() noexcept {
+  operator doc_iterator_t&() noexcept {
     return it;
   }
 
@@ -75,7 +78,7 @@ struct score_iterator_adapter {
     return doc->value;
   }
 
-  doc_iterator::ptr it;
+  doc_iterator_t it;
   const irs::document* doc;
   const irs::score* score;
 }; // score_iterator_adapter
@@ -90,11 +93,12 @@ struct score_iterator_adapter {
 ///   V  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class conjunction : public doc_iterator_base {
+template<typename DocIterator>
+class conjunction : public doc_iterator_base, score_ctx {
  public:
-  typedef score_iterator_adapter doc_iterator_t;
+  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
-  typedef doc_iterators_t::const_iterator iterator;
+  typedef typename doc_iterators_t::const_iterator iterator;
 
   conjunction(
       doc_iterators_t&& itrs,
@@ -130,10 +134,10 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score(ord, nullptr, [](const void*, byte_type*) { /*NOOP*/});
+      prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
         auto& self = *static_cast<const conjunction*>(ctx);
         self.order_->prepare_score(score);
         for (auto* it_score : self.scores_) {
@@ -164,7 +168,7 @@ class conjunction : public doc_iterator_base {
 
   virtual doc_id_t seek(doc_id_t target) override {
     if (doc_limits::eof(target = front_->seek(target))) {
-      return target;
+      return doc_limits::eof();
     }
 
     return converge(target);
@@ -174,9 +178,13 @@ class conjunction : public doc_iterator_base {
   // tries to converge front_ and other iterators to the specified target.
   // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
-    for (auto rest = seek_rest(target); target != rest;) {
+    assert(!doc_limits::eof(target));
+
+    for (auto rest = seek_rest(target); target != rest; rest = seek_rest(target)) {
       target = front_->seek(rest);
-      rest = seek_rest(target);
+      if (doc_limits::eof(target)) {
+        break;
+      }
     }
 
     return target;
@@ -185,9 +193,7 @@ class conjunction : public doc_iterator_base {
   // seeks all iterators except the
   // first to the specified target
   doc_id_t seek_rest(doc_id_t target) {
-    if (doc_limits::eof(target)) {
-      return target;
-    }
+    assert(!doc_limits::eof(target));
 
     for (auto it = itrs_.begin()+1, end = itrs_.end(); it != end; ++it) {
       const auto doc = (*it)->seek(target);

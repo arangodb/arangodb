@@ -124,7 +124,6 @@ enum class SeekResult {
 
 struct IRESEARCH_API seek_term_iterator : term_iterator {
   DECLARE_MANAGED_PTR(seek_term_iterator);
-  DEFINE_FACTORY_INLINE(seek_term_iterator)
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an empty struct tag type, parent for all seek_term_iterator cookies

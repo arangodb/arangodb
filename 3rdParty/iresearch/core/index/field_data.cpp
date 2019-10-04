@@ -177,7 +177,7 @@ class pos_iterator final: public irs::position {
       prox_in_(EMPTY_POOL) {
   }
 
-  virtual void clear() noexcept override {
+  void clear() noexcept {
     pos_ = 0;
     value_ = pos_limits::invalid();
     offs_.clear();

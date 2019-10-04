@@ -31,7 +31,6 @@
 
 #include "formats.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/automaton.hpp"
 
 NS_LOCAL
 

@@ -75,7 +75,7 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    void clear() override {
+    void clear() {
       pay_.clear();
       offs_.clear();
     }
@@ -134,7 +134,7 @@ class format_test_case : public index_test_base {
       return value();
     }
 
-    const irs::attribute_view& attributes() const NOEXCEPT override {
+    const irs::attribute_view& attributes() const noexcept override {
       return attrs_;
     }
 
@@ -184,7 +184,7 @@ class format_test_case : public index_test_base {
 
     void read() { }
 
-    const irs::attribute_view& attributes() const NOEXCEPT {
+    const irs::attribute_view& attributes() const noexcept {
       return irs::attribute_view::empty_instance();
     }
 

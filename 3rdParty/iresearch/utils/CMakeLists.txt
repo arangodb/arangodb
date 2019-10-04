@@ -26,6 +26,8 @@ add_executable(${IResearchUtil_TARGET_NAME}
   ./main.cpp
 )
 
+set_ipo(${IResearchUtil_TARGET_NAME})
+
 target_include_directories(${IResearchUtil_TARGET_NAME}
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
@@ -78,6 +80,8 @@ add_executable(${IResearchBencmarks_TARGET_NAME}
   ./index-benchmarks.cpp
   ./main.cpp
 )
+
+set_ipo(${IResearchBencmarks_TARGET_NAME})
 
 add_dependencies(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-analyzer-text-static

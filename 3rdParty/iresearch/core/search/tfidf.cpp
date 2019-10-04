@@ -29,8 +29,11 @@
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/math_utils.hpp"
 
 NS_LOCAL
+
+const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
 irs::sort::ptr make_from_bool(
     const rapidjson::Document& json,
@@ -226,13 +229,8 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tfidf(float_t freq, float_t idf) noexcept {
-  static_assert(
-    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
-    "float_t expected"
-  );
-
-  return idf * std::sqrt(freq);
+FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
+  return idf * SQRT(freq);
 }
 
 NS_END // LOCAL
@@ -249,7 +247,7 @@ struct idf final : attribute {
 
 typedef tfidf_sort::score_t score_t;
 
-struct const_score_ctx final : public irs::sort::score_ctx {
+struct const_score_ctx final : public irs::score_ctx {
   explicit const_score_ctx(irs::boost_t boost) noexcept
     : boost_(boost) {
   }
@@ -257,9 +255,8 @@ struct const_score_ctx final : public irs::sort::score_ctx {
   const irs::boost_t boost_;
 }; // const_score_ctx
 
-struct score_ctx : public irs::sort::score_ctx {
-  score_ctx(
-      irs::boost_t boost,
+struct score_ctx : public irs::score_ctx {
+  score_ctx( irs::boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq) noexcept
     : idf_(boost * idf.value),
@@ -332,7 +329,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
+  virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats_buf,
@@ -349,7 +346,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return {
         memory::make_unique<tfidf::const_score_ctx>(boost),
-        [](const void* ctx, byte_type* score_buf) noexcept {
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
           auto& state = *static_cast<const tfidf::const_score_ctx*>(ctx);
           irs::sort::score_cast<tfidf::score_t>(score_buf) = state.boost_;
         }
@@ -372,7 +369,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
       if (norm.reset(segment, field.meta().norm, *doc)) {
         return {
           memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq.get()),
-          [](const void* ctx, byte_type* score_buf) noexcept {
+          [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
             irs::sort::score_cast<tfidf::score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_)*state.norm_.read();
           }
@@ -383,7 +380,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
 
     return {
       memory::make_unique<tfidf::score_ctx>(boost, stats, freq.get()),
-      [](const void* ctx, byte_type* score_buf) noexcept {
+      [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
         irs::sort::score_cast<score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_);
       }

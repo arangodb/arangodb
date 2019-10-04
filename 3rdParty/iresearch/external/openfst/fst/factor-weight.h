@@ -20,8 +20,8 @@
 
 namespace fst {
 
-FST_CONSTEXPR const uint32 kFactorFinalWeights = 0x00000001;
-FST_CONSTEXPR const uint32 kFactorArcWeights = 0x00000002;
+constexpr uint32 kFactorFinalWeights = 0x00000001;
+constexpr uint32 kFactorArcWeights = 0x00000002;
 
 template <class Arc>
 struct FactorWeightOptions : CacheOptions {
@@ -95,6 +95,27 @@ class IdentityFactor {
   void Reset() {}
 };
 
+// Factor the Fst to unfold it as needed so that every two paths leading to the
+// same state have the same weight. Requires applying only to arc weights
+// (FactorWeightOptions::mode == kFactorArcWeights).
+template <class W>
+class OneFactor {
+ public:
+  explicit OneFactor(const W &w) : weight_(w), done_(w == W::One()) {}
+
+  bool Done() const { return done_; }
+
+  void Next() { done_ = true; }
+
+  std::pair<W, W> Value() const { return std::make_pair(W::One(), weight_); }
+
+  void Reset() { done_ = weight_ == W::One(); }
+
+ private:
+  W weight_;
+  bool done_;
+};
+
 // Factors a StringWeight w as 'ab' where 'a' is a label.
 template <typename Label, StringType S = STRING_LEFT>
 class StringFactor {
@@ -136,7 +157,7 @@ class GallicFactor {
   void Next() { done_ = true; }
 
   std::pair<GW, GW> Value() const {
-    StringFactor<Label, GALLIC_STRING_TYPE(G)> siter(weight_.Value1());
+    StringFactor<Label, GallicStringType(G)> siter(weight_.Value1());
     GW w1(siter.Value().first, weight_.Value2());
     GW w2(siter.Value().second, W::One());
     return std::make_pair(w1, w2);
@@ -169,7 +190,7 @@ class GallicFactor<Label, W, GALLIC> {
 
   std::pair<GW, GW> Value() const {
     const auto weight = iter_.Value();
-    StringFactor<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> siter(
+    StringFactor<Label, GallicStringType(GALLIC_RESTRICT)> siter(
         weight.Value1());
     GRW w1(siter.Value().first, weight.Value2());
     GRW w2(siter.Value().second, W::One());
@@ -196,10 +217,10 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
   using FstImpl<Arc>::SetInputSymbols;
   using FstImpl<Arc>::SetOutputSymbols;
 
-  using CacheBaseImpl<CacheState<Arc>>::PushArc;
-  using CacheBaseImpl<CacheState<Arc>>::HasStart;
-  using CacheBaseImpl<CacheState<Arc>>::HasFinal;
+  using CacheBaseImpl<CacheState<Arc>>::EmplaceArc;
   using CacheBaseImpl<CacheState<Arc>>::HasArcs;
+  using CacheBaseImpl<CacheState<Arc>>::HasFinal;
+  using CacheBaseImpl<CacheState<Arc>>::HasStart;
   using CacheBaseImpl<CacheState<Arc>>::SetArcs;
   using CacheBaseImpl<CacheState<Arc>>::SetFinal;
   using CacheBaseImpl<CacheState<Arc>>::SetStart;
@@ -260,11 +281,10 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
   Weight Final(StateId s) {
     if (!HasFinal(s)) {
       const auto &element = elements_[s];
-      // TODO(sorenj): fix so cast is unnecessary
       const auto weight =
           element.state == kNoStateId
               ? element.weight
-              : (Weight)Times(element.weight, fst_->Final(element.state));
+              : Times(element.weight, fst_->Final(element.state));
       FactorIterator siter(weight);
       if (!(mode_ & kFactorFinalWeights) || siter.Done()) {
         SetFinal(s, weight);
@@ -319,7 +339,7 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
       return unfactored_[element.state];
     } else {
       const auto insert_result =
-          element_map_.insert(std::make_pair(element, elements_.size()));
+          element_map_.emplace(element, elements_.size());
       if (insert_result.second) {
         elements_.push_back(element);
       }
@@ -335,17 +355,17 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
       for (ArcIterator<Fst<Arc>> ait(*fst_, element.state); !ait.Done();
            ait.Next()) {
         const auto &arc = ait.Value();
-        const auto weight = Times(element.weight, arc.weight);
+        auto weight = Times(element.weight, arc.weight);
         FactorIterator fiter(weight);
         if (!(mode_ & kFactorArcWeights) || fiter.Done()) {
           const auto dest = FindState(Element(arc.nextstate, Weight::One()));
-          PushArc(s, Arc(arc.ilabel, arc.olabel, weight, dest));
+          EmplaceArc(s, arc.ilabel, arc.olabel, std::move(weight), dest);
         } else {
           for (; !fiter.Done(); fiter.Next()) {
-            const auto &pair = fiter.Value();
+            auto pair = fiter.Value();
             const auto dest =
                 FindState(Element(arc.nextstate, pair.second.Quantize(delta_)));
-            PushArc(s, Arc(arc.ilabel, arc.olabel, pair.first, dest));
+            EmplaceArc(s, arc.ilabel, arc.olabel, std::move(pair.first), dest);
           }
         }
       }
@@ -360,10 +380,10 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
       auto ilabel = final_ilabel_;
       auto olabel = final_olabel_;
       for (FactorIterator fiter(weight); !fiter.Done(); fiter.Next()) {
-        const auto &pair = fiter.Value();
+        auto pair = fiter.Value();
         const auto dest =
             FindState(Element(kNoStateId, pair.second.Quantize(delta_)));
-        PushArc(s, Arc(ilabel, olabel, pair.first, dest));
+        EmplaceArc(s, ilabel, olabel, std::move(pair.first), dest);
         if (increment_final_ilabel_) ++ilabel;
         if (increment_final_olabel_) ++olabel;
       }
@@ -384,7 +404,7 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
   class ElementKey {
    public:
     size_t operator()(const Element &x) const {
-      static FST_CONSTEXPR const auto prime = 7853;
+      static constexpr auto prime = 7853;
       return static_cast<size_t>(x.state * prime + x.weight.Hash());
     }
   };

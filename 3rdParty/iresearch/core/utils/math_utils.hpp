@@ -306,6 +306,37 @@ struct math_traits<T, sizeof(uint64_t)> {
 //  };
 //#endif
 
+template<
+  typename Input, 
+  typename Output, 
+  Input Size,
+  typename = typename std::enable_if<std::is_integral<Input>::value>::type
+> class sqrt {
+ public:
+  typedef Input input_type;
+  typedef Output output_type;
+
+  sqrt() noexcept {
+    for (input_type i = 0, size = Size; i < size; ++i) {
+      table_[i] = std::sqrt(static_cast<output_type>(i));
+    }
+  }
+
+  FORCE_INLINE output_type operator()(input_type value) const noexcept {
+    static_assert(
+      std::is_same<decltype(std::sqrt(static_cast<output_type>(value))), output_type>::value,
+      "invalid overload"
+    );
+
+    return value < Size
+      ? table_[value]
+      : std::sqrt(static_cast<output_type>(value));
+  }
+
+ private:
+  output_type table_[Size];
+}; // sqrt
+
 NS_END // math
 NS_END // root
 

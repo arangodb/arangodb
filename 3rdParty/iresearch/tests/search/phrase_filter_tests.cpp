@@ -690,6 +690,11 @@ class phrase_filter_test_case : public tests::filter_test_case_base {
       ASSERT_TRUE(docs->next());
       ASSERT_TRUE(values(docs->value(), actual_value));
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      // Check repeatable seek to the same document given frequency of the phrase within the document = 2
+      auto v = docs->value();
+      ASSERT_EQ(v, docs->seek(docs->value()));
+      ASSERT_EQ(v, docs->seek(docs->value()));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
       ASSERT_TRUE(values(docs->value(), actual_value));
       ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));

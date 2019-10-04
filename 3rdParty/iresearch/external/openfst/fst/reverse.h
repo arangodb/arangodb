@@ -32,8 +32,7 @@ template <class FromArc, class ToArc>
 void Reverse(const Fst<FromArc> &ifst, MutableFst<ToArc> *ofst,
              bool require_superinitial = true) {
   using StateId = typename FromArc::StateId;
-  using FromWeight = typename FromArc::Weight;
-  using ToWeight = typename ToArc::Weight;
+  using Weight = typename FromArc::Weight;
   ofst->DeleteStates();
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
@@ -48,7 +47,7 @@ void Reverse(const Fst<FromArc> &ifst, MutableFst<ToArc> *ofst,
   if (!require_superinitial) {
     for (StateIterator<Fst<FromArc>> siter(ifst); !siter.Done(); siter.Next()) {
       const auto s = siter.Value();
-      if (ifst.Final(s) == FromWeight::Zero()) continue;
+      if (ifst.Final(s) == Weight::Zero()) continue;
       if (ostart != kNoStateId) {
         ostart = kNoStateId;
         break;
@@ -56,7 +55,7 @@ void Reverse(const Fst<FromArc> &ifst, MutableFst<ToArc> *ofst,
         ostart = s;
       }
     }
-    if (ostart != kNoStateId && ifst.Final(ostart) != FromWeight::One()) {
+    if (ostart != kNoStateId && ifst.Final(ostart) != Weight::One()) {
       std::vector<StateId> scc;
       SccVisitor<FromArc> scc_visitor(&scc, nullptr, nullptr, &dfs_iprops);
       DfsVisit(ifst, &scc_visitor);
@@ -82,9 +81,9 @@ void Reverse(const Fst<FromArc> &ifst, MutableFst<ToArc> *ofst,
     const auto is = siter.Value();
     const auto os = is + offset;
     while (ofst->NumStates() <= os) ofst->AddState();
-    if (is == istart) ofst->SetFinal(os, ToWeight::One());
+    if (is == istart) ofst->SetFinal(os);
     const auto weight = ifst.Final(is);
-    if ((weight != FromWeight::Zero()) && (offset == 1)) {
+    if ((weight != Weight::Zero()) && (offset == 1)) {
       const ToArc oarc(0, 0, weight.Reverse(), os);
       ofst->AddArc(0, oarc);
     }

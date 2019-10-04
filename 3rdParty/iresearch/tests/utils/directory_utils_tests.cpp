@@ -38,62 +38,62 @@ class directory_utils_tests: public ::testing::Test {
  protected:
   class directory_mock: public irs::directory {
    public:
-    directory_mock() NOEXCEPT { }
+    directory_mock() noexcept { }
 
     using directory::attributes;
 
-    virtual irs::attribute_store& attributes() NOEXCEPT override {
+    virtual irs::attribute_store& attributes() noexcept override {
       return attrs_;
     }
 
     virtual irs::index_output::ptr create(
       const std::string& name
-    ) NOEXCEPT override {
+    ) noexcept override {
       return nullptr;
     }
 
     virtual bool exists(
       bool& result, const std::string& name
-    ) const NOEXCEPT override {
+    ) const noexcept override {
       return false;
     }
 
     virtual bool length(
       uint64_t& result, const std::string& name
-    ) const NOEXCEPT override {
+    ) const noexcept override {
       return false;
     }
 
     virtual irs::index_lock::ptr make_lock(
       const std::string& name
-    ) NOEXCEPT override {
+    ) noexcept override {
       return nullptr;
     }
 
     virtual bool mtime(
       std::time_t& result, const std::string& name
-    ) const NOEXCEPT override {
+    ) const noexcept override {
       return false;
     }
 
     virtual irs::index_input::ptr open(
       const std::string& name,
       irs::IOAdvice advice
-    ) const NOEXCEPT override {
+    ) const noexcept override {
       return nullptr;
     }
 
-    virtual bool remove(const std::string& name) NOEXCEPT override {
+    virtual bool remove(const std::string& name) noexcept override {
       return false;
     }
 
     virtual bool rename(
       const std::string& src, const std::string& dst
-    ) NOEXCEPT override {
+    ) noexcept override {
       return false;
     }
 
-    virtual bool sync(const std::string& name) NOEXCEPT override {
+    virtual bool sync(const std::string& name) noexcept override {
       return false;
     }
 
@@ -649,17 +649,17 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
   struct error_directory: public irs::directory {
     irs::attribute_store attrs;
-    virtual irs::attribute_store& attributes() NOEXCEPT override { return attrs; }
-    virtual irs::index_output::ptr create(const std::string&) NOEXCEPT override { return nullptr; }
-    virtual bool exists(bool& result, const std::string&) const NOEXCEPT override { return false; }
-    virtual bool length(uint64_t& result, const std::string&) const NOEXCEPT override { return false; }
+    virtual irs::attribute_store& attributes() noexcept override { return attrs; }
+    virtual irs::index_output::ptr create(const std::string&) noexcept override { return nullptr; }
+    virtual bool exists(bool& result, const std::string&) const noexcept override { return false; }
+    virtual bool length(uint64_t& result, const std::string&) const noexcept override { return false; }
     virtual bool visit(const visitor_f&) const override { return false; }
-    virtual irs::index_lock::ptr make_lock(const std::string&) NOEXCEPT override { return nullptr; }
-    virtual bool mtime(std::time_t& result, const std::string& name) const NOEXCEPT override { return false; }
-    virtual irs::index_input::ptr open(const std::string&, irs::IOAdvice) const NOEXCEPT override { return nullptr; }
-    virtual bool remove(const std::string&) NOEXCEPT override { return false; }
-    virtual bool rename(const std::string&, const std::string&) NOEXCEPT override { return false; }
-    virtual bool sync(const std::string& name) NOEXCEPT override { return false; }
+    virtual irs::index_lock::ptr make_lock(const std::string&) noexcept override { return nullptr; }
+    virtual bool mtime(std::time_t& result, const std::string& name) const noexcept override { return false; }
+    virtual irs::index_input::ptr open(const std::string&, irs::IOAdvice) const noexcept override { return nullptr; }
+    virtual bool remove(const std::string&) noexcept override { return false; }
+    virtual bool rename(const std::string&, const std::string&) noexcept override { return false; }
+    virtual bool sync(const std::string& name) noexcept override { return false; }
   } error_dir;
 
   // test create failure

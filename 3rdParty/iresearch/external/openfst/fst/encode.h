@@ -24,14 +24,14 @@ namespace fst {
 
 enum EncodeType { ENCODE = 1, DECODE = 2 };
 
-static FST_CONSTEXPR const uint32 kEncodeLabels = 0x0001;
-static FST_CONSTEXPR const uint32 kEncodeWeights = 0x0002;
-static FST_CONSTEXPR const uint32 kEncodeFlags = 0x0003;
+static constexpr uint32 kEncodeLabels = 0x0001;
+static constexpr uint32 kEncodeWeights = 0x0002;
+static constexpr uint32 kEncodeFlags = 0x0003;
 
 namespace internal {
 
-static FST_CONSTEXPR const uint32 kEncodeHasISymbols = 0x0004;
-static FST_CONSTEXPR const uint32 kEncodeHasOSymbols = 0x0008;
+static constexpr uint32 kEncodeHasISymbols = 0x0004;
+static constexpr uint32 kEncodeHasOSymbols = 0x0008;
 
 // Identifies stream data as an encode table (and its endianity)
 static const int32 kEncodeMagicNumber = 2129983209;
@@ -84,8 +84,8 @@ class EncodeTable {
 
     size_t operator()(const Tuple *x) const {
       size_t hash = x->ilabel;
-      static FST_CONSTEXPR const int lshift = 5;
-      static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - 5;
+      static constexpr int lshift = 5;
+      static constexpr int rshift = CHAR_BIT * sizeof(size_t) - 5;
       if (encode_flags_ & kEncodeLabels) {
         hash = hash << lshift ^ hash >> rshift ^ x->olabel;
       }
@@ -110,8 +110,8 @@ class EncodeTable {
     std::unique_ptr<Tuple> tuple(
         new Tuple(arc.ilabel, flags_ & kEncodeLabels ? arc.olabel : 0,
                   flags_ & kEncodeWeights ? arc.weight : Weight::One()));
-    auto insert_result = encode_hash_.insert(
-        std::make_pair(tuple.get(), encode_tuples_.size() + 1));
+    auto insert_result =
+        encode_hash_.emplace(tuple.get(), encode_tuples_.size() + 1);
     if (insert_result.second) encode_tuples_.push_back(std::move(tuple));
     return insert_result.first->second;
   }
@@ -135,9 +135,9 @@ class EncodeTable {
 
   size_t Size() const { return encode_tuples_.size(); }
 
-  bool Write(std::ostream &strm, const string &source) const;
+  bool Write(std::ostream &strm, const std::string &source) const;
 
-  static EncodeTable<Arc> *Read(std::istream &strm, const string &source);
+  static EncodeTable<Arc> *Read(std::istream &strm, const std::string &source);
 
   uint32 Flags() const { return flags_ & kEncodeFlags; }
 
@@ -178,7 +178,7 @@ class EncodeTable {
 
 template <class Arc>
 bool EncodeTable<Arc>::Write(std::ostream &strm,
-                                  const string &source) const {
+                             const std::string &source) const {
   WriteType(strm, kEncodeMagicNumber);
   WriteType(strm, flags_);
   const int64 size = encode_tuples_.size();
@@ -200,7 +200,7 @@ bool EncodeTable<Arc>::Write(std::ostream &strm,
 
 template <class Arc>
 EncodeTable<Arc> *EncodeTable<Arc>::Read(std::istream &strm,
-                                         const string &source) {
+                                         const std::string &source) {
   int32 magic_number = 0;
   ReadType(strm, &magic_number);
   if (magic_number != kEncodeMagicNumber) {
@@ -289,11 +289,11 @@ class EncodeMapper {
                : MAP_NO_SUPERFINAL;
   }
 
-  FST_CONSTEXPR MapSymbolsAction InputSymbolsAction() const {
+  constexpr MapSymbolsAction InputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
-  FST_CONSTEXPR MapSymbolsAction OutputSymbolsAction() const {
+  constexpr MapSymbolsAction OutputSymbolsAction() const {
     return MAP_CLEAR_SYMBOLS;
   }
 
@@ -316,11 +316,11 @@ class EncodeMapper {
 
   EncodeType Type() const { return type_; }
 
-  bool Write(std::ostream &strm, const string &source) const {
+  bool Write(std::ostream &strm, const std::string &source) const {
     return table_->Write(strm, source);
   }
 
-  bool Write(const string &filename) const {
+  bool Write(const std::string &filename) const {
     std::ofstream strm(filename,
                              std::ios_base::out | std::ios_base::binary);
     if (!strm) {
@@ -330,13 +330,13 @@ class EncodeMapper {
     return Write(strm, filename);
   }
 
-  static EncodeMapper<Arc> *Read(std::istream &strm, const string &source,
-                               EncodeType type = ENCODE) {
+  static EncodeMapper<Arc> *Read(std::istream &strm, const std::string &source,
+                                 EncodeType type = ENCODE) {
     auto *table = internal::EncodeTable<Arc>::Read(strm, source);
     return table ? new EncodeMapper(table->Flags(), type, table) : nullptr;
   }
 
-  static EncodeMapper<Arc> *Read(const string &filename,
+  static EncodeMapper<Arc> *Read(const std::string &filename,
                                  EncodeType type = ENCODE) {
     std::ifstream strm(filename,
                             std::ios_base::in | std::ios_base::binary);

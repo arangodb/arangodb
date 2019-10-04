@@ -61,7 +61,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
     if (res.second) {
       try {
-        const_cast<ref_t&>(*res.first) = std::make_shared<const Key>(std::forward<Key>(key));
+        const_cast<ref_t&>(*res.first) = memory::make_shared<const Key>(std::forward<Key>(key));
       } catch (...) {
         // rollback
         refs_.erase(res.first);

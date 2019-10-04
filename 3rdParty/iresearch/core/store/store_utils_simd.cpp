@@ -26,7 +26,7 @@
 
 #ifdef IRESEARCH_SSE2
 
-#include "store_utils_optimized.hpp"
+#include "store_utils_simd.hpp"
 
 #include "store_utils.hpp"
 #include "utils/std.hpp"
@@ -97,7 +97,7 @@ NS_ROOT
 NS_BEGIN(encode)
 NS_BEGIN(bitpack)
 
-void read_block_optimized(
+void read_block_simd(
     data_input& in,
     uint32_t size,
     uint32_t* RESTRICT encoded,
@@ -137,7 +137,7 @@ void read_block_optimized(
   }
 }
 
-uint32_t write_block_optimized(
+uint32_t write_block_simd(
     data_output& out,
     const uint32_t* RESTRICT decoded,
     uint32_t size,

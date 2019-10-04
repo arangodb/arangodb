@@ -2110,11 +2110,11 @@ TEST(bitvector_tests, resize) {
   ASSERT_FALSE(bv.any());
   ASSERT_FALSE(bv.all());
   bv.set(42);
-  ASSERT(1, bv.count());
+  ASSERT_EQ(1, bv.count());
   bv.set(42);
-  ASSERT(1, bv.count());
+  ASSERT_EQ(1, bv.count());
   bv.set(73);
-  ASSERT(2, bv.count());
+  ASSERT_EQ(2, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
@@ -2134,11 +2134,11 @@ TEST(bitvector_tests, resize) {
   ASSERT_TRUE(bv.any()); // content not cleared
   ASSERT_FALSE(bv.all()); // content not cleared
   bv.set(43);
-  ASSERT(3, bv.count());
+  ASSERT_EQ(3, bv.count());
   bv.set(43);
-  ASSERT(3, bv.count());
+  ASSERT_EQ(3, bv.count());
   bv.set(74);
-  ASSERT(4, bv.count());
+  ASSERT_EQ(4, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
@@ -2158,11 +2158,11 @@ TEST(bitvector_tests, resize) {
   ASSERT_TRUE(bv.any()); // content not cleared
   ASSERT_FALSE(bv.all()); // content not cleared
   bv.set(44);
-  ASSERT(5, bv.count());
+  ASSERT_EQ(5, bv.count());
   bv.set(44);
-  ASSERT(5, bv.count());
+  ASSERT_EQ(5, bv.count());
   bv.set(75);
-  ASSERT(6, bv.count());
+  ASSERT_EQ(6, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
@@ -2182,11 +2182,11 @@ TEST(bitvector_tests, resize) {
   ASSERT_TRUE(bv.any()); // content not cleared
   ASSERT_FALSE(bv.all()); // content not cleared
   bv.set(45);
-  ASSERT(4, bv.count());
+  ASSERT_EQ(4, bv.count());
   bv.set(45);
-  ASSERT(4, bv.count());
+  ASSERT_EQ(4, bv.count());
   bv.set(72);
-  ASSERT(5, bv.count());
+  ASSERT_EQ(5, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
@@ -2206,11 +2206,11 @@ TEST(bitvector_tests, resize) {
   ASSERT_TRUE(bv.any()); // content not cleared
   ASSERT_FALSE(bv.all()); // content not cleared
   bv.set(46);
-  ASSERT(6, bv.count());
+  ASSERT_EQ(6, bv.count());
   bv.set(46);
-  ASSERT(6, bv.count());
+  ASSERT_EQ(6, bv.count());
   bv.set(71);
-  ASSERT(7, bv.count());
+  ASSERT_EQ(7, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
@@ -2230,11 +2230,11 @@ TEST(bitvector_tests, resize) {
   ASSERT_TRUE(bv.any()); // content not cleared
   ASSERT_FALSE(bv.all()); // content not cleared
   bv.set(47);
-  ASSERT(8, bv.count());
+  ASSERT_EQ(8, bv.count());
   bv.set(47);
-  ASSERT(8, bv.count());
+  ASSERT_EQ(8, bv.count());
   bv.set(76);
-  ASSERT(9, bv.count());
+  ASSERT_EQ(9, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());
@@ -2254,11 +2254,11 @@ TEST(bitvector_tests, clear_count) {
   ASSERT_FALSE(bv.all());
 
   bv.set(42);
-  ASSERT(1, bv.count());
+  ASSERT_EQ(1, bv.count());
   bv.set(42);
-  ASSERT(1, bv.count());
+  ASSERT_EQ(1, bv.count());
   bv.set(73);
-  ASSERT(2, bv.count());
+  ASSERT_EQ(2, bv.count());
   ASSERT_FALSE(bv.none());
   ASSERT_TRUE(bv.any());
   ASSERT_FALSE(bv.all());

@@ -197,7 +197,7 @@ NS_BEGIN(analysis)
 /*static*/ analyzer::ptr ngram_token_stream::make(
     const options_t& options
 ) {
-  return std::make_shared<ngram_token_stream>(options);
+  return memory::make_shared<ngram_token_stream>(options);
 }
 
 /*static*/ void ngram_token_stream::init() {

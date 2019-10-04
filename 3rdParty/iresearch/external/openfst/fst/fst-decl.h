@@ -7,6 +7,7 @@
 #define FST_FST_DECL_H_
 
 #include <sys/types.h>
+
 #include <memory>  // for allocator<>
 
 #include <fst/types.h>
@@ -60,9 +61,9 @@ class DefaultCacheStore;
 
 // FST templates.
 
-template <class A, class ArcCompactor, class Unsigned = uint32,
-    class CompactStore = DefaultCompactStore<typename ArcCompactor::Element, Unsigned>,
-    class CacheStore = DefaultCacheStore<A>>
+template <class Arc, class Compactor, class U = uint32,
+    class CompactStore = DefaultCompactStore<typename Compactor::Element, U>,
+    class CacheStore = DefaultCacheStore<Arc>>
 class CompactFst;
 
 template <class Arc, class U = uint32>
@@ -80,10 +81,10 @@ class Fst;
 template <class Arc>
 class MutableFst;
 
-template <class A, class Allocator = std::allocator<A>>
+template <class Arc, class Allocator = std::allocator<Arc>>
 class VectorState;
 
-template <class A, class State = VectorState<A>>
+template <class Arc, class State = VectorState<Arc>>
 class VectorFst;
 
 template <class Arc, class U = ssize_t>
@@ -127,8 +128,8 @@ class RandGenFst;
 template <class Arc>
 class RelabelFst;
 
-template <class A, class StateTable = DefaultReplaceStateTable<A>,
-          class Store = DefaultCacheStore<A>>
+template <class Arc, class StateTable = DefaultReplaceStateTable<Arc>,
+          class Store = DefaultCacheStore<Arc>>
 class ReplaceFst;
 
 template <class Arc>
@@ -188,13 +189,8 @@ using StdVectorFst = VectorFst<StdArc>;
 
 // StdArc aliases for on-the-fly operations.
 
-#if defined _MSC_VER && _MSC_VER < 1900
-// defined in arcsort.h as class in case of MSVC2013
-template<class Compare> class StdArcSortFst;
-#else
 template <class Compare>
 using StdArcSortFst = ArcSortFst<StdArc, Compare>;
-#endif
 
 using StdClosureFst = ClosureFst<StdArc>;
 
@@ -250,6 +246,9 @@ class AltSequenceComposeFilter;
 
 template <class Matcher1, class Matcher2 = Matcher1>
 class MatchComposeFilter;
+
+template <class Matcher1, class Matcher2 = Matcher1>
+class NoMatchComposeFilter;
 
 }  // namespace fst
 

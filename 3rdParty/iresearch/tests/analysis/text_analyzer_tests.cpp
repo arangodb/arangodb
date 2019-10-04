@@ -796,6 +796,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::csv, config));
 }
 
+TEST_F(TextAnalyzerParserTestSuite, test_deterministic_stopwords_order) {
+  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[ \"ag\",\
+      \"of\", \"plc\", \"the\", \"inc\", \"co\", \"ltd\"], \"accent\":true}";
+  std::string normalized1;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(normalized1, "text", irs::text_format::json, config));
+  std::string normalized2;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(normalized2, "text", irs::text_format::json, normalized1));
+  ASSERT_EQ(normalized1, normalized2);
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

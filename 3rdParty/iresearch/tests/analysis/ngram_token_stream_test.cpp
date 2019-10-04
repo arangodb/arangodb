@@ -178,7 +178,7 @@ TEST(ngram_token_stream_test, reset_too_big) {
 
 TEST(ngram_token_stream_test, next) {
   struct token {
-    token(const irs::string_ref& value, size_t start, size_t end) NOEXCEPT
+    token(const irs::string_ref& value, size_t start, size_t end) noexcept
       : value(value), start(start), end(end) {
     }
 

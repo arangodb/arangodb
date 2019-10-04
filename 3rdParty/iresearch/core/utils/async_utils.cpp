@@ -29,7 +29,7 @@
 
 NS_LOCAL
 
-const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(1000);
+const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(100);
 
 NS_END
 
@@ -334,7 +334,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
   // wait for all threads to terminate
   while(!pool_.empty()) {
     cond_.notify_all(); // wake all threads
-    cond_.wait_for(lock, std::chrono::milliseconds(1000));
+    cond_.wait_for(lock, std::chrono::milliseconds(100));
   }
 }
 

@@ -21,32 +21,35 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "prefix_filter.hpp"
-#include "range_query.hpp"
+
+#include <boost/functional/hash.hpp>
+
+#include "shared.hpp"
+#include "multiterm_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
-#include <boost/functional/hash.hpp>
-
 NS_ROOT
 
-filter::prepared::ptr by_prefix::prepare(
-    const index_reader& rdr,
+DEFINE_FILTER_TYPE(by_prefix)
+DEFINE_FACTORY_DEFAULT(by_prefix)
+
+/*static*/ filter::prepared::ptr by_prefix::prepare(
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(rdr.size());
-
-  auto& prefix = term();
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit) {
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  multiterm_query::states_t states(index.size());
 
   // iterate over the segments
-  const string_ref field = this->field();
-  for (const auto& sr : rdr ) {
+  for (const auto& segment: index) {
     // get term dictionary for field
-    const term_reader* reader = sr.field(field);
+    const term_reader* reader = segment.field(field);
 
     if (!reader) {
       continue;
@@ -70,16 +73,12 @@ filter::prepared::ptr by_prefix::prepare(
       terms->read();
 
       // get state for current segment
-      auto& state = states.insert(sr);
+      auto& state = states.insert(segment);
       state.reader = reader;
-      state.min_term = value;
-      state.min_cookie = terms->cookie();
-      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
 
       do {
         // fill scoring candidates
-        scorer.collect(docs_count, state.count, state, sr, *terms);
-        ++state.count;
+        scorer.collect(docs_count, state.count++, state, segment, *terms);
         state.estimation += docs_count; // collect cost
 
         if (!terms->next()) {
@@ -91,13 +90,11 @@ filter::prepared::ptr by_prefix::prepare(
     }
   }
 
-  scorer.score(rdr, ord);
+  std::vector<bstring> stats;
+  scorer.score(index, ord, stats);
 
-  return memory::make_shared<range_query>(std::move(states), this->boost() * boost);
+  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
 }
-
-DEFINE_FILTER_TYPE(by_prefix)
-DEFINE_FACTORY_DEFAULT(by_prefix)
 
 by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }
 

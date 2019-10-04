@@ -44,6 +44,37 @@ struct wildcard_traits {
   static constexpr Char ESCAPE = Char('\\');
 };
 
+inline automaton match_any_char() {
+ automaton a;
+ const auto start = a.AddState();
+ const auto finish = a.AddState();
+ a.SetStart(start);
+ a.EmplaceArc(start, fst::fsa::kRho, finish);
+ a.SetFinal(finish);
+
+ return a;
+}
+
+inline automaton match_any() {
+ automaton a;
+ const auto start = a.AddState();
+ a.SetStart(start);
+ a.EmplaceArc(start, fst::fsa::kRho, start);
+ a.SetFinal(start);
+
+ return a;
+}
+
+inline automaton match_char(automaton::Arc::Label c) {
+ automaton a;
+ const auto start = a.AddState();
+ a.SetStart(start);
+ a.EmplaceArc(start, c, start);
+ a.SetFinal(start);
+
+ return a;
+}
+
 template<
   typename Char,
   typename Traits = wildcard_traits<Char>,
@@ -57,12 +88,22 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   automaton::StateId to = from;
   a.SetStart(from);
 
+  automaton::StateId match_all_state = fst::kNoStateId;
   bool escaped = false;
-  auto appendChar = [&escaped, &a, &to, &from](Char c) {
+  auto appendChar = [&match_all_state, &escaped, &a, &to, &from](Char c) {
     to = a.AddState();
     a.EmplaceArc(from, c, to);
     from = to;
     escaped = false;
+    if (match_all_state != fst::kNoStateId) {
+      auto state = a.AddState();
+      a.EmplaceArc(match_all_state, fst::fsa::kRho, state);
+      a.EmplaceArc(state, fst::fsa::kRho, state);
+      a.EmplaceArc(state, c, to);
+      a.EmplaceArc(to, c, to);
+      a.EmplaceArc(to, fst::fsa::kRho, state);
+      match_all_state = fst::kNoStateId;
+    }
   };
 
   for (const auto c : expr) {
@@ -71,7 +112,7 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
         if (escaped) {
           appendChar(c);
         } else {
-          a.EmplaceArc(from, fst::fsa::kRho, from);
+          match_all_state = from;
         }
         break;
       }
@@ -104,6 +145,10 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
     appendChar(Traits::ESCAPE);
   }
 
+  if (match_all_state != fst::kNoLabel) {
+    a.EmplaceArc(to, fst::fsa::kRho, to);
+  }
+
   a.SetFinal(to);
 
   fst::ArcSort(&a, fst::ILabelCompare<fst::fsa::Transition>());
@@ -114,36 +159,40 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   return res;
 }
 
-template<typename Char>
-bool accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
-  typedef fst::SortedMatcher<fst::fsa::Automaton> sorted_matcher_t;
-  typedef fst::RhoMatcher<sorted_matcher_t> matcher_t;
-
-  // FIXME optimize rho label lookup (just check last arc)
-  matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
-
+template<typename Char, typename Matcher>
+bool accept(const automaton& a, Matcher& matcher, const irs::basic_string_ref<Char>& target) {
   auto state = a.Start();
   matcher.SetState(state);
 
   auto begin = target.begin();
-  auto end = target.end();
+  const auto end = target.end();
+
   for (; begin < end && matcher.Find(*begin); ++begin) {
     state = matcher.Value().nextstate;
     matcher.SetState(state);
   }
 
-  return begin == end && matcher.Final(state);
+  return begin == end && a.Final(state);
 }
 
-class intersect_term_iterator final : public seek_term_iterator {
+template<typename Char>
+bool accept(const automaton& a, const irs::basic_string_ref<Char>& target) {
+  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+
+  // FIXME optimize rho label lookup (just check last arc)
+  matcher_t matcher(a, fst::MatchType::MATCH_INPUT, fst::fsa::kRho);
+  return accept(a, matcher, target);
+}
+
+class automaton_term_iterator final : public seek_term_iterator {
  public:
-  intersect_term_iterator(const automaton& a, seek_term_iterator::ptr&& it) noexcept
-    : a_(&a), it_(std::move(it)) {
+  automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
+    : a_(&a), matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho), it_(std::move(it)) {
     assert(it_);
     value_ = &it_->value();
   }
 
-  virtual const bytes_ref& value() const override {
+  virtual const bytes_ref& value() const noexcept override {
     return *value_;
   }
 
@@ -158,7 +207,7 @@ class intersect_term_iterator final : public seek_term_iterator {
   virtual bool next() override {
     bool next = it_->next();
 
-    while (next && accept()) {
+    while (next && !accept()) {
       next = it_->next();
     }
 
@@ -192,9 +241,12 @@ class intersect_term_iterator final : public seek_term_iterator {
   }
 
  private:
-  bool accept() { return irs::accept(*a_, *value_); }
+  typedef fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_t;
+
+  bool accept() { return irs::accept(*a_, matcher_, *value_); }
 
   const automaton* a_;
+  matcher_t matcher_;
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
 }; // intersect_term_iterator
