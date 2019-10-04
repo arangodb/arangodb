@@ -254,7 +254,12 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
     : _block(nullptr), _baseIndex(0) {}
 
-InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex) {
+  TRI_ASSERT(_block != nullptr);
+}
+
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
 }

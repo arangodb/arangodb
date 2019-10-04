@@ -67,9 +67,9 @@ class InputAqlItemRow {
   // The default constructor contains an invalid item row
   explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
-  InputAqlItemRow(
-      // cppcheck-suppress passedByValue
-      SharedAqlItemBlockPtr block, size_t baseIndex);
+  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex);
+
+  InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
