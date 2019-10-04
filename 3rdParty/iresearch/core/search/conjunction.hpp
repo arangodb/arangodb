@@ -147,8 +147,8 @@ class conjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (type_limits<type_t::doc_id_t>::eof(target = front_->seek(target))) {
-      return target;
+    if (doc_limits::eof(target = front_->seek(target))) {
+      return doc_limits::eof();
     }
 
     return converge(target);
@@ -158,9 +158,13 @@ class conjunction : public doc_iterator_base {
   // tries to converge front_ and other iterators to the specified target.
   // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
-    for (auto rest = seek_rest(target); target != rest;) {
+    assert(!doc_limits::eof(target));
+
+    for (auto rest = seek_rest(target); target != rest; rest = seek_rest(target)) {
       target = front_->seek(rest);
-      rest = seek_rest(target);
+      if (doc_limits::eof(target)) {
+        break;
+      }
     }
 
     return target;
@@ -169,9 +173,7 @@ class conjunction : public doc_iterator_base {
   // seeks all iterators except the
   // first to the specified target
   doc_id_t seek_rest(doc_id_t target) {
-    if (type_limits<type_t::doc_id_t>::eof(target)) {
-      return target;
-    }
+    assert(!doc_limits::eof(target));
 
     for (auto it = itrs_.begin()+1, end = itrs_.end(); it != end; ++it) {
       const auto doc = (*it)->seek(target);
@@ -190,7 +192,7 @@ class conjunction : public doc_iterator_base {
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////
-/// @returns conjunction iterator created from the specified sub iterators 
+/// @returns conjunction iterator created from the specified sub iterators
 //////////////////////////////////////////////////////////////////////////////
 template<typename Conjunction, typename... Args>
 doc_iterator::ptr make_conjunction(
