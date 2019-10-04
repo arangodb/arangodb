@@ -58,7 +58,7 @@ function runSetup () {
   db._dropDatabase('UnitTestsRecovery2');
 
   internal.wait(1);
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

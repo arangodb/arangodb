@@ -46,10 +46,10 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-ConnectionPool::Ref ConnectionPool::leaseConnection(EndpointSpec const& str) {
+ConnectionPool::Ref ConnectionPool::leaseConnection(std::string const& str) {
   fuerte::ConnectionBuilder builder;
-  builder.protocolType(_config.protocol);
   builder.endpoint(str);
+  builder.protocolType(_config.protocol); // always overwrite protocol
 
   std::string endpoint = builder.normalizedEndpoint();
   
@@ -69,8 +69,8 @@ ConnectionPool::Ref ConnectionPool::leaseConnection(EndpointSpec const& str) {
   return selectConnection(*(it->second), builder);
 }
 
-/// @brief shutdown all connections
-void ConnectionPool::shutdown() {
+/// @brief drain all connections
+void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
     ConnectionList& list = *(pair.second);
@@ -79,6 +79,13 @@ void ConnectionPool::shutdown() {
       c->fuerte->cancel();
     }
   }
+}
+
+
+/// @brief shutdown all connections
+void ConnectionPool::shutdown() {
+  drainConnections();
+  WRITE_LOCKER(guard, _lock);
   _connections.clear();
 }
   
@@ -153,6 +160,7 @@ void ConnectionPool::pruneConnections() {
         if (list.connections.size() <= _config.maxOpenConnections) {
           break;
         }
+        continue;
       }
       it++;
     }
@@ -160,15 +168,15 @@ void ConnectionPool::pruneConnections() {
 }
   
 /// @brief cancel connections to this endpoint
-void ConnectionPool::cancelConnections(EndpointSpec const& str) {
+void ConnectionPool::cancelConnections(std::string const& endpoint) {
   fuerte::ConnectionBuilder builder;
-  builder.protocolType(_config.protocol);
-  builder.endpoint(str);
+  builder.endpoint(endpoint);
+  builder.protocolType(_config.protocol); // always overwrite protocol
   
-  std::string endpoint = builder.normalizedEndpoint();
+  std::string normalized = builder.normalizedEndpoint();
   
   WRITE_LOCKER(guard, _lock);
-  auto const& it = _connections.find(endpoint);
+  auto const& it = _connections.find(normalized);
   if (it != _connections.end()) {
 //    {
 //      ConnectionList& list = *(it->second);
@@ -216,8 +224,7 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
 
   for (auto& c : list.connections) {
     const auto state = c->fuerte->state();
-    if (state == fuerte::Connection::State::Disconnected ||
-        state == fuerte::Connection::State::Failed) {
+    if (state == fuerte::Connection::State::Failed) {
       continue;
     }
 
@@ -225,7 +232,6 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
     // TODO: make configurable ?
     if ((builder.protocolType() == fuerte::ProtocolType::Http && num == 0) ||
         (builder.protocolType() == fuerte::ProtocolType::Vst && num < 4)) {
-      c->numLeased.fetch_add(1);
       return Ref(c.get());
     }
   }
@@ -234,6 +240,8 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
       std::make_unique<ConnectionPool::Connection>(createConnection(builder)));
   return Ref(list.connections.back().get());
 }
+
+ConnectionPool::Config const& ConnectionPool::config() const { return _config; }
 
 // =============== stupid reference counter ===============
 
@@ -251,8 +259,7 @@ ConnectionPool::Ref& ConnectionPool::Ref::operator=(Ref&& other) {
   if (_conn) {
     _conn->numLeased.fetch_sub(1);
   }
-  _conn = other._conn;
-  other._conn = nullptr;
+  _conn = std::move(other._conn);
   return *this;
 }
 

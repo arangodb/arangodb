@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -68,11 +69,12 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
   fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
   fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
       .Do([&](int code, char const* message) {
-        ASSERT_TRUE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        ASSERT_TRUE(strcmp(message, expectedMessage.c_str()) == 0);
+        ASSERT_EQ(code, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        ASSERT_EQ(strcmp(message, expectedMessage.c_str()), 0);
       });
 
-  ClusterTraverserCache testee(&query, &engines);
+  traverser::TraverserOptions opts{&query};
+  ClusterTraverserCache testee(&query, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
   AqlValue val = testee.fetchVertexAqlResult(arangodb::velocypack::StringRef(vertexId));
@@ -94,13 +96,13 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
   fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
   fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
       .Do([&](int code, char const* message) {
-        ASSERT_TRUE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        ASSERT_TRUE(strcmp(message, expectedMessage.c_str()) == 0);
+        ASSERT_EQ(code, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        ASSERT_EQ(strcmp(message, expectedMessage.c_str()), 0);
       });
 
   VPackBuilder result;
-
-  ClusterTraverserCache testee(&query, &engines);
+  traverser::TraverserOptions opts{&query};
+  ClusterTraverserCache testee(&query, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
   testee.insertVertexIntoResult(arangodb::velocypack::StringRef(vertexId), result);

@@ -260,10 +260,10 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
   // we may need to block intermediate commits
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (!isReadOnlyTransaction() && exe != nullptr) {
-    bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
-    if (exe->isCanceled() || cancelRW) {
+  ExecContext const& exec = ExecContext::current();
+  if (!isReadOnlyTransaction()) {
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    if (exec.isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
@@ -586,7 +586,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultBeforeIntermediateCommit") {
-    TRI_SegfaultDebugging("SegfaultBeforeIntermediateCommit");
+    TRI_TerminateDebugging("SegfaultBeforeIntermediateCommit");
   }
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
@@ -607,7 +607,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterIntermediateCommit") {
-    TRI_SegfaultDebugging("SegfaultAfterIntermediateCommit");
+    TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
   _numInserts = 0;

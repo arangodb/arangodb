@@ -500,7 +500,7 @@ int MMFilesTransactionState::writeCommitMarker() {
               .errorCode;
 
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") {
-      TRI_SegfaultDebugging("crashing on commit");
+      TRI_TerminateDebugging("crashing on commit");
     }
 
     TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") {

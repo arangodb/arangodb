@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -251,7 +252,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   return category;
 }
 
-LogicalCollection::~LogicalCollection() {}
+LogicalCollection::~LogicalCollection() = default;
 
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
@@ -324,7 +325,7 @@ int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID,
                                            bool& usesDefaultShardKeys,
-                                           std::string const& key) {
+                                           VPackStringRef const& key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);
@@ -479,15 +480,13 @@ Result LogicalCollection::rename(std::string&& newName) {
   // Should only be called from inside vocbase.
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
-  auto* databaseFeature =
-      application_features::ApplicationServer::lookupFeature<DatabaseFeature>(
-          "Database");
 
-  if (!databaseFeature) {
+  if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while renaming collection");
   }
+  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   // Check for illegal states.
   switch (_status) {
@@ -512,16 +511,15 @@ Result LogicalCollection::rename(std::string&& newName) {
       return TRI_ERROR_INTERNAL;
   }
 
-  auto doSync = databaseFeature->forceSyncProperties();
+  auto doSync = databaseFeature.forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
   try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine != nullptr);
-
+    StorageEngine& engine =
+        vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine->changeCollection(vocbase(), *this, doSync);
+    engine.changeCollection(vocbase(), *this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -726,22 +724,19 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
   // - _isVolatile
   // ... probably a few others missing here ...
 
-  auto* databaseFeature =
-      application_features::ApplicationServer::lookupFeature<DatabaseFeature>(
-          "Database");
-
-  if (!databaseFeature) {
+  if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while updating collection");
   }
+  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
+  if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
+      !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
     return Result(TRI_ERROR_INTERNAL,
                   "failed to find a storage engine while updating collection");
   }
+  auto& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultanious updates
 
@@ -769,21 +764,18 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
           rf != _sharding->replicationFactor()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change replicationFactor, "
-                        "please change " +
-                            _sharding->distributeShardsLike());
+                        "cannot change replicationFactor for a collection using 'distributeShardsLike'");
         } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                        "Changing replicationFactor "
+                        "changing replicationFactor is "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Satellite collection, "
-                        "cannot change replicationFactor");
+                        "cannot change replicationFactor of a satellite collection");
         }
       }
     } else if (rfSl.isString()) {
-      if (rfSl.compareString("satellite") != 0) {
+      if (rfSl.compareString(StaticStrings::Satellite) != 0) {
         // only the string "satellite" is allowed here
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
       }
@@ -845,7 +837,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
     TRI_ASSERT((minrf <= rf && !isSatellite()) || (minrf == 0 && isSatellite()));
   }
 
-  auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
+  auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
@@ -860,11 +852,12 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
-    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
-        vocbase().name(), std::to_string(id()), this);
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    return ci.setCollectionPropertiesCoordinator(vocbase().name(),
+                                                 std::to_string(id()), this);
   }
 
-  engine->changeCollection(vocbase(), *this, doSync);
+  engine.changeCollection(vocbase(), *this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -875,7 +868,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
+futures::Future<std::shared_ptr<arangodb::velocypack::Builder>> LogicalCollection::figures() const {
   return getPhysical()->figures();
 }
 

@@ -41,9 +41,7 @@ namespace {
 /// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  auto* execCtx = arangodb::ExecContext::CURRENT;
-
-  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
+  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
 }
 
 }  // namespace
@@ -52,8 +50,9 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-RestViewHandler::RestViewHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestViewHandler::RestViewHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   auto view = CollectionNameResolver(_vocbase).getView(nameOrId);

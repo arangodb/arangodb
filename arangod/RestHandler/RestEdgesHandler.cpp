@@ -22,15 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Variable.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,8 +41,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
@@ -64,7 +68,7 @@ RestStatus RestEdgesHandler::execute() {
 
 void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* var,
                                   std::string const& collectionName,
-                                  SingleCollectionTransaction& trx,
+                                  transaction::Methods& trx,
                                   std::function<void(LocalDocumentId const&)> const& cb) {
   transaction::Methods::IndexHandle indexId;
   bool foundIdx =
@@ -85,10 +89,10 @@ void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* 
 }
 
 bool RestEdgesHandler::getEdgesForVertex(
-    std::string const& id, std::string const& collectionName,
-    TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+    std::string const& id, TRI_voc_cid_t cid, std::string const& collectionName,
+    TRI_edge_direction_e direction, transaction::Methods& trx,
     std::function<void(LocalDocumentId const&)> const& cb) {
-  trx.pinData(trx.cid());  // will throw when it fails
+  trx.pinData(cid);  // will throw when it fails
 
   // Create a conditionBuilder that manages the AstNodes for querying
   aql::EdgeConditionBuilderContainer condBuilder;
@@ -195,8 +199,8 @@ bool RestEdgesHandler::readEdges() {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
-    int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
-                                            responseCode, resultDocument);
+    int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString,
+                                            direction, responseCode, resultDocument);
 
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
@@ -234,7 +238,8 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  auto collection = trx->documentCollection();
+  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  auto collection = trx->documentCollection(cid);
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&](LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
@@ -249,7 +254,7 @@ bool RestEdgesHandler::readEdges() {
   };
 
   // NOTE: collectionName is the shard-name in DBServer case
-  bool ok = getEdgesForVertex(startVertex, collectionName, direction, *(trx.get()), cb);
+  bool ok = getEdgesForVertex(startVertex, cid, collectionName, direction, *(trx.get()), cb);
   resultBuilder.close();
 
   res = trx->finish(res);
@@ -262,7 +267,7 @@ bool RestEdgesHandler::readEdges() {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
-      collectionName = trx->resolver()->getCollectionNameCluster(trx->cid());
+      collectionName = trx->resolver()->getCollectionNameCluster(cid);
     }
     generateTransactionError(collectionName, res, "");
     return false;
@@ -335,8 +340,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
-        int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
-                                                responseCode, resultDocument);
+        int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString,
+                                                direction, responseCode, resultDocument);
 
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);
@@ -373,7 +378,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  auto collection = trx->documentCollection();
+  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  auto collection = trx->documentCollection(cid);
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&](LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
@@ -392,7 +398,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
       std::string startVertex = it.copyString();
 
       // We ignore if this fails
-      getEdgesForVertex(startVertex, collectionName, direction, *(trx.get()), cb);
+      getEdgesForVertex(startVertex, cid, collectionName, direction, *(trx.get()), cb);
     }
   }
   resultBuilder.close();
@@ -402,7 +408,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
-      collectionName = trx->resolver()->getCollectionNameCluster(trx->cid());
+      collectionName = trx->resolver()->getCollectionNameCluster(cid);
     }
     generateTransactionError(collectionName, res, "");
     return false;

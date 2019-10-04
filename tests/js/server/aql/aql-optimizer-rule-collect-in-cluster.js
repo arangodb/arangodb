@@ -44,7 +44,7 @@ function optimizerCollectInClusterSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
@@ -53,7 +53,7 @@ function optimizerCollectInClusterSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
     
@@ -132,7 +132,7 @@ function optimizerCollectInClusterSingleShardSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 1 });
 
@@ -141,7 +141,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
     

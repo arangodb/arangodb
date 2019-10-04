@@ -392,7 +392,7 @@ OperationResult transaction::helpers::buildCountResult(
     }
     resultBuilder.add(VPackValue(result));
   }
-  return OperationResult(Result(), resultBuilder.buffer(), nullptr);
+  return OperationResult(Result(), resultBuilder.buffer());
 }
 
 /// @brief creates an id string from a custom _id value and the _key string

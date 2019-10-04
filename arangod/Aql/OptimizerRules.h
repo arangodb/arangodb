@@ -154,8 +154,7 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
-void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
+void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 
 /// @brief try to restrict fragments to a single shard if possible
@@ -258,6 +257,9 @@ void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimize
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
+
+//// @brief splice in subqueries
+void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

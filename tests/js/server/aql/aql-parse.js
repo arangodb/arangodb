@@ -70,20 +70,6 @@ function ahuacatlParseTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test empty query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -125,6 +111,11 @@ function ahuacatlParseTestSuite () {
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return -");
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return +");
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return ."); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 /* "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 \" foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ' foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 `foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ´foo "); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,8 +419,52 @@ function ahuacatlParseTestSuite () {
       assertEqual(7, sub[1].subNodes[0].value);
       assertEqual("value", sub[1].subNodes[1].type);
       assertEqual(8, sub[1].subNodes[1].value);
-    }
+    },
+    
+    testNotLike : function() {
+      let result = AQL_PARSE("RETURN 'a' NOT LIKE 'b'").ast;
 
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("unary not", result[0].type);
+      let sub = result[0].subNodes[0];
+
+      assertEqual("function call", sub.type);
+      assertEqual("LIKE", sub.name);
+    },
+
+    testNotMatches : function() {
+      let result = AQL_PARSE("RETURN 'a' NOT =~ 'b'").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("unary not", result[0].type);
+      let sub = result[0].subNodes[0];
+
+      assertEqual("function call", sub.type);
+      assertEqual("REGEX_TEST", sub.name);
+    },
+
+    testNotNotMatches : function() {
+      let result = AQL_PARSE("RETURN 'a' NOT !~ 'b'").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("function call", result[0].type);
+      assertEqual("REGEX_TEST", result[0].name);
+    }
   };
 }
 

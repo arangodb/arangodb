@@ -60,10 +60,10 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& server = defaultVocbase.server();
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
   for (auto& entry: meta._analyzers) {
     if (!entry._pool) {
@@ -352,7 +352,7 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result(); // nothing to update
   }
 
-  arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
+  arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -768,8 +768,7 @@ namespace iresearch {
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT // have context
-        && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+    if (!arangodb::ExecContext::current().canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"

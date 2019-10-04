@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {
@@ -97,9 +98,7 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noex
 arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
     : _aqlItemBlock(nullptr) {}
 
-SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept {
-  decrRefCount();
-}
+SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept { decrRefCount(); }
 
 SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {

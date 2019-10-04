@@ -158,7 +158,8 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
   // Step 1: In the shutdown phase we simply return 503:
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_SHUTTING_DOWN);
     return Flow::Abort;
@@ -318,8 +319,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
+  auto& server = _server.server();
   std::shared_ptr<RestHandler> handler(
-      GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
+      GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
                                                            std::move(response)));
 
   // give up, if we cannot find a handler
@@ -332,9 +334,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   // forward to correct server if necessary
-  bool forwarded = handler->forwardRequest();
+  bool forwarded;
+  auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    sendResponse(handler->stealResponse(), handler->stealStatistics());
+    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler)](
+                                 futures::Try<Result> && /*ignored*/) -> void {
+      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+    });
     return;
   }
 
@@ -498,7 +504,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 // handle a request which came in with the x-arango-async header
 bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                   uint64_t* jobId) {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     return false;
   }
 

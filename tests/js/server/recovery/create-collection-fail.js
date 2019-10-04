@@ -62,7 +62,7 @@ function runSetup () {
   db._create('UnitTestsRecovery3'); // must work now
   db._create('UnitTestsRecovery4');
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

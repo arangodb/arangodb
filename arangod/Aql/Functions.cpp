@@ -42,14 +42,15 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/datetime.h"
 #include "Basics/fpconv.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Geo/GeoJson.h"
 #include "Geo/Ellipsoid.h"
-#include "Geo/Utils.h"
+#include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/Utils.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
@@ -1076,7 +1077,7 @@ AqlValue dateFromParameters(
     months m{extractFunctionParameterValue(parameters, 1).toInt64()};
     days d{extractFunctionParameterValue(parameters, 2).toInt64()};
 
-    if ((y < years{0}) || (m < months{0}) || (d < days{0})) {
+    if ((y < years{0} || y > years{9999}) || (m < months{0}) || (d < days{0})) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
@@ -1120,7 +1121,6 @@ AqlValue dateFromParameters(
   }
 
   if (asTimestamp) {
-    // TODO: validate
     return AqlValue(AqlValueHintInt(time.count()));
   }
   return ::timeAqlValue(expressionContext, AFN, tp);
@@ -4185,16 +4185,21 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  double const until = TRI_microtime() + value.toDouble();
+  auto& server = application_features::ApplicationServer::server();
+  
+  double const sleepValue = value.toDouble();
+  auto now = std::chrono::steady_clock::now();
+  auto const endTime = now + std::chrono::milliseconds(static_cast<int64_t>(sleepValue * 1000.0));
 
-  while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  while (now < endTime) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    if (expressionContext->killed()) {
+    if (expressionContext->query()->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    } else if (application_features::ApplicationServer::isStopping()) {
+    } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    now = std::chrono::steady_clock::now();
   }
   return AqlValue(AqlValueHintNull());
 }
@@ -4218,11 +4223,11 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
 
   size_t const n = colls.size();
 
+  auto const& exec = ExecContext::current();
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(),
+    if (!exec.canUseCollection(vocbase.name(), coll->name(),
                                                 auth::Level::RO)) {
       continue;
     }
@@ -6146,8 +6151,9 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
-      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual(options));
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -6425,16 +6431,10 @@ AqlValue Functions::CurrentDatabase(ExpressionContext* expressionContext,
 /// @brief function CURRENT_USER
 AqlValue Functions::CurrentUser(ExpressionContext*, transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  if (ExecContext::CURRENT == nullptr) {
-    return AqlValue(AqlValueHintNull());
-  }
-
-  std::string const& username = ExecContext::CURRENT->user();
-
+  std::string const& username = ExecContext::current().user();
   if (username.empty()) {
     return AqlValue(AqlValueHintNull());
   }
-
   return AqlValue(username);
 }
 

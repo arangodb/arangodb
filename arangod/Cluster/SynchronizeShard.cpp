@@ -119,7 +119,7 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-SynchronizeShard::~SynchronizeShard() {}
+SynchronizeShard::~SynchronizeShard() = default;
 
 class SynchronizeShardCallback : public arangodb::ClusterCommCallback {
  public:
@@ -409,7 +409,8 @@ static arangodb::Result cancelBarrier(std::string const& endpoint,
 }
 
 static inline bool isStopping() {
-  return application_features::ApplicationServer::isStopping();
+  auto& server = application_features::ApplicationServer::server();
+  return server.isStopping();
 }
 
 arangodb::Result SynchronizeShard::getReadLock(std::string const& endpoint,
@@ -549,7 +550,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(config, database);
+      ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
   configuration.setClientInfo(clientInfoString);
   configuration.validate();
 
@@ -629,8 +630,9 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
   configuration.validate();
 
@@ -666,8 +668,9 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
   configuration.validate();
 
@@ -707,7 +710,7 @@ bool SynchronizeShard::first() {
       << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "'";
 
-  auto* clusterInfo = ClusterInfo::instance();
+  auto& clusterInfo = feature().server().getFeature<ClusterFeature>().clusterInfo();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
@@ -723,7 +726,7 @@ bool SynchronizeShard::first() {
     }
 
     std::vector<std::string> planned;
-    auto result = clusterInfo->getShardServers(shard, planned);
+    auto result = clusterInfo.getShardServers(shard, planned);
 
     if (!result.ok() ||
         std::find(planned.begin(), planned.end(), ourselves) == planned.end() ||
@@ -737,7 +740,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    auto ci = clusterInfo->getCollectionNT(database, planId);
+    auto ci = clusterInfo.getCollectionNT(database, planId);
     if (ci == nullptr) {
       std::stringstream msg;
       msg << "exception in getCollection, ";
@@ -749,7 +752,7 @@ bool SynchronizeShard::first() {
 
     std::string const cid = std::to_string(ci->id());
     std::shared_ptr<CollectionInfoCurrent> cic =
-        ClusterInfo::instance()->getCollectionCurrent(database, cid);
+        clusterInfo.getCollectionCurrent(database, cid);
     std::vector<std::string> current = cic->servers(shard);
 
     if (current.empty()) {
@@ -791,7 +794,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    auto ep = clusterInfo->getServerEndpoint(leader);
+    auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCount;
     if (!collectionCount(collection, docCount).ok()) {
       std::stringstream error;

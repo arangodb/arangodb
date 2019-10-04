@@ -46,7 +46,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   // ShortestPath Variant
   ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions*);
 
-  ~ClusterEdgeCursor() {}
+  ~ClusterEdgeCursor() = default;
 
   bool next(EdgeCursor::Callback const& callback) override;
 

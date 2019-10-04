@@ -110,15 +110,12 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 
 static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
                                     std::string const& claimLeaderId) {
-
-  std::vector<std::string> agencyPath = {
-    "Plan",
-    "Collections",
-    col->vocbase().name(),
-    std::to_string(col->planId()),
-    "shards",
-    col->name()
-  };
+  std::vector<std::string> agencyPath = {"Plan",
+                                         "Collections",
+                                         col->vocbase().name(),
+                                         std::to_string(col->planId()),
+                                         "shards",
+                                         col->name()};
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
@@ -126,7 +123,6 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
   AgencyCommResult res = ac.getValues(shardAgencyPathString);
 
   if (res.successful()) {
-
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
@@ -222,10 +218,12 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return Result{TRI_ERROR_NO_ERROR};
 }
 
-RestReplicationHandler::RestReplicationHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestReplicationHandler::RestReplicationHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
-RestReplicationHandler::~RestReplicationHandler() {}
+RestReplicationHandler::~RestReplicationHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
@@ -314,12 +312,11 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
       // track the number of parallel invocations of the tailing API
-      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>(
-          "Replication");
+      auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
       // this may throw when too many threads are going into tailing
-      rf->trackTailingStart();
+      rf.trackTailingStart();
 
-      auto guard = scopeGuard([rf]() { rf->trackTailingEnd(); });
+      auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
     } else if (command == OpenTransactions) {
@@ -611,14 +608,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
   configuration.validate();
 
   // allow access to _users if appropriate
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -627,7 +624,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   while (applier->isInitializing()) {  // wait for initial sync
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_vocbase.server().isStopping()) {
       generateError(Result(TRI_ERROR_SHUTTING_DOWN));
       return;
     }
@@ -767,8 +764,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::vector<std::shared_ptr<LogicalCollection>> cols = ci->getCollections(dbName);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::vector<std::shared_ptr<LogicalCollection>> cols = ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
@@ -778,7 +775,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
+    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -842,7 +839,6 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
   bool force = _request->parsedValue<bool>("force", false);
-  ;
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
   uint64_t numberOfShards =
@@ -989,7 +985,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1042,13 +1038,12 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
   }
 
   // might be also called on dbservers
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
+  if (name[0] != '_' && !ExecContext::current().isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     TRI_ASSERT(um != nullptr);  // should not get here
     if (um != nullptr) {
-      um->updateUser(exe->user(), [&](auth::User& entry) {
+      um->updateUser(ExecContext::current().user(), [&](auth::User& entry) {
         entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
         return TRI_ERROR_NO_ERROR;
       });
@@ -1095,15 +1090,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   auto& dbName = _vocbase.name();
-  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   try {
     // in a cluster, we only look up by name:
-    std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
+    std::shared_ptr<LogicalCollection> col = ci.getCollection(dbName, name);
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      auto result = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
+      auto result = ci.dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
       if (TRI_ERROR_FORBIDDEN == result.errorNumber()  // forbidden
           || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
@@ -1151,7 +1146,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.openObject();
 
   // We always need a new id
-  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+  TRI_voc_tick_t newIdTick = ci.uniqid(1);
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
@@ -1180,7 +1175,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
                                 (replFactorSlice.isString() &&
-                                 replFactorSlice.isEqualString("satellite"));
+                                 replFactorSlice.isEqualString(StaticStrings::Satellite));
 
   bool isValidMinReplFactorSlice =
       replFactorSlice.isInteger() && minReplFactorSlice.isInteger() &&
@@ -1197,7 +1192,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (!isValidMinReplFactorSlice) {
     if (replFactorSlice.isString() &&
-        replFactorSlice.isEqualString("satellite")) {
+        replFactorSlice.isEqualString(StaticStrings::Satellite)) {
       minReplicationFactor = 0;
     } else if (minReplicationFactor == 0) {
       minReplicationFactor = 1;
@@ -1253,17 +1248,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   s = parameters.get(StaticStrings::ReplicationFactor);
-  if (s.isString() && s.copyString() == "satellite") {
+  if (s.isString() && s.copyString() == StaticStrings::Satellite) {
     // set "satellite" replicationFactor to the default replication factor
-    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>(
-        "Cluster");
+    ClusterFeature& cl = _vocbase.server().getFeature<ClusterFeature>();
 
-    uint32_t replicationFactor = cl->systemReplicationFactor();
+    uint32_t replicationFactor = cl.systemReplicationFactor();
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
     changes.push_back(
         std::string("changed 'replicationFactor' attribute value to ") +
         std::to_string(replicationFactor));
-    ;
   }
 
   if (!changes.empty()) {
@@ -1296,21 +1289,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   try {
     bool createWaitsForSyncReplication =
-        application_features::ApplicationServer::getFeature<ClusterFeature>(
-            "Cluster")
-            ->createWaitsForSyncReplication();
+        _vocbase.server().getFeature<ClusterFeature>().createWaitsForSyncReplication();
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
     auto cols =
         ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                      createWaitsForSyncReplication, false);
-    ExecContext const* exe = ExecContext::CURRENT;
+                                                      createWaitsForSyncReplication, false, false, nullptr);
+    ExecContext const& exec = ExecContext::current();
     TRI_ASSERT(cols.size() == 1);
-    if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
+    if (name[0] != '_' && !exec.isSuperuser()) {
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
       TRI_ASSERT(um != nullptr);  // should not get here
       if (um != nullptr) {
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+        um->updateUser(exec.user(), [&](auth::User& entry) {
           for (auto const& col : cols) {
             TRI_ASSERT(col != nullptr);
             entry.grantCollection(dbName, col->name(), auth::Level::RW);
@@ -1341,7 +1332,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1794,7 +1785,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   Result fres;
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection
@@ -1894,8 +1885,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
   auto& dbName = _vocbase.name();
 
   // in a cluster, we only look up by name:
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col = ci->getCollectionNT(dbName, name);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(dbName, name);
   if (col == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             ClusterInfo::getCollectionNotFoundMsg(dbName, name)};
@@ -1903,8 +1894,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
   TRI_ASSERT(col != nullptr);
 
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
 
   Result res;
 
@@ -1918,9 +1908,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(  // result
-        dbName, std::to_string(col->id()), idxDef, true, tmp,
-        cluster->indexCreationTimeout());
+    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
@@ -1966,8 +1954,10 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
     if (view) {
       if (!overwrite) {
-        generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+        generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
 
@@ -1975,7 +1965,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
       if (!res.ok()) {
         generateError(res);
-
         return;
       }
     }
@@ -2053,12 +2042,12 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
+  auto config =
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, dbname);
 
   // will throw if invalid
   config.validate();
 
-  TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
@@ -2235,14 +2224,12 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
         "global inventory can only be fetched from within _system database");
     return;
   }
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2487,9 +2474,9 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update the leader of a shard
-  //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update the leader of a shard
+//////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSetTheLeader() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -2531,20 +2518,19 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   if (leaderId != currentLeader) {
-
     Result res = checkPlanLeaderDirect(col, leaderId);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "old leader not as expected");
       return;
     }
 
     col->followers()->setTheLeader(leaderId);
   }
-
 
   VPackBuilder b;
   {
@@ -2936,18 +2922,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   return chunkSize;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Grant temporary restore rights
-//////////////////////////////////////////////////////////////////////////////
-void RestReplicationHandler::grantTemporaryRights() {
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
-      // If you have administrative access on this database,
-      // we grant you everything for restore.
-      ExecContext::CURRENT = nullptr;
-    }
-  }
-}
 
 ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   global = _request->parsedValue("global", false);
@@ -2960,10 +2934,8 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 
   if (global) {
-    auto replicationFeature =
-        application_features::ApplicationServer::getFeature<ReplicationFeature>(
-            "Replication");
-    return replicationFeature->globalReplicationApplier();
+    auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+    return replicationFeature.globalReplicationApplier();
   } else {
     return _vocbase.replicationApplier();
   }

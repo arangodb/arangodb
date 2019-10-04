@@ -23,6 +23,7 @@
 
 #include "StringUtils.h"
 
+#include <algorithm>
 #include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
@@ -686,9 +687,8 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
 }
 
 void tolowerInPlace(std::string* str) {
-  size_t len = str->length();
 
-  if (len == 0) {
+  if (str->empty()) {
     return;
   }
 
@@ -698,16 +698,15 @@ void tolowerInPlace(std::string* str) {
 }
 
 std::string tolower(std::string&& str) {
-  size_t const len = str.size();
 
-  for (size_t i = 0; i < len; ++i) {
-    str[i] = static_cast<char>(::tolower(str[i]));
-  }
+  std::transform(
+    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
 
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
+
   size_t len = str.length();
 
   if (len == 0) {
@@ -1452,7 +1451,7 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int64_t int64(std::string const& value) {
   try {
     return std::stoll(value, nullptr, 10);
@@ -1538,7 +1537,7 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;

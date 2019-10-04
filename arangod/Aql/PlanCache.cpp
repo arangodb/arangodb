@@ -41,7 +41,7 @@ static arangodb::aql::PlanCache Instance;
 PlanCache::PlanCache() : _lock(), _plans() {}
 
 /// @brief destroy the plan cache
-PlanCache::~PlanCache() {}
+PlanCache::~PlanCache() = default;
 
 /// @brief lookup a plan in the cache
 std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64_t queryHash,

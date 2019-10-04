@@ -44,6 +44,8 @@ enum class Flags : uint8_t {
                    // --check-configuration, --dump-options
   Dynamic = 16,    // the option's default value is dynamic and depends on the
                    // target host configuration
+  FlushOnFirst = 32,// when we first see this parameter, we will flush the contents
+                    // of its value before setting it.
 };
 
 static constexpr inline std::underlying_type<Flags>::type makeFlags() {

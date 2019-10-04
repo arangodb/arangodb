@@ -23,19 +23,20 @@
 #ifndef ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 #define ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <queue>
 
 namespace arangodb {
 namespace tests {
 namespace aql {
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
@@ -78,7 +79,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:

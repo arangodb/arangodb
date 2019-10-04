@@ -212,7 +212,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
     _vertexExpressions.reserve(read.length());
     for (auto const& info : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
-#ifdef ARANGODB_ENABLE_MAINAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto it = _vertexExpressions.emplace(d, new aql::Expression(query->plan(),
                                                                   query->ast(), info.value));
       TRI_ASSERT(it.second);
@@ -503,7 +503,7 @@ EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
     return nextCursorLocal(vid, specific->second);
-  } 
+  }
   return nextCursorLocal(vid, _baseLookupInfos);
 }
 

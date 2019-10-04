@@ -36,6 +36,9 @@
 #include "Pregel/WorkerContext.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace pregel {
 
 template <typename V, typename E, typename M>
@@ -49,7 +52,7 @@ class WorkerConfig;
 class MasterContext;
 
 struct IAlgorithm {
-  virtual ~IAlgorithm() {}
+  virtual ~IAlgorithm() = default;
 
   // virtual bool isFixpointAlgorithm() const {return false;}
 
@@ -109,7 +112,9 @@ struct Algorithm : IAlgorithm {
   }
 
  protected:
-  Algorithm(std::string const& name) : IAlgorithm(name) {}
+  Algorithm(application_features::ApplicationServer& server, std::string const& name)
+      : IAlgorithm(name), _server(server) {}
+  application_features::ApplicationServer& _server;
 };
 
 template <typename V, typename E, typename M>
@@ -117,8 +122,9 @@ class SimpleAlgorithm : public Algorithm<V, E, M> {
  protected:
   std::string _sourceField, _resultField;
 
-  SimpleAlgorithm(std::string const& name, VPackSlice userParams)
-      : Algorithm<V, E, M>(name) {
+  SimpleAlgorithm(application_features::ApplicationServer& server,
+                  std::string const& name, VPackSlice userParams)
+      : Algorithm<V, E, M>(server, name) {
     arangodb::velocypack::Slice field = userParams.get("sourceField");
     _sourceField = field.isString() ? field.copyString() : "value";
     field = userParams.get("resultField");
