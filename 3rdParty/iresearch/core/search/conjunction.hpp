@@ -178,7 +178,7 @@ class conjunction : public doc_iterator_base {
 
     for (auto rest = seek_rest(target); target != rest; rest = seek_rest(target)) {
       target = front_->seek(rest);
-      if (target == rest || doc_limits::eof(target)) {
+      if (doc_limits::eof(target)) {
         break;
       }
     }
