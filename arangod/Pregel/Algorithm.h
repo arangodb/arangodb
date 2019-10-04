@@ -52,7 +52,7 @@ class WorkerConfig;
 class MasterContext;
 
 struct IAlgorithm {
-  virtual ~IAlgorithm() {}
+  virtual ~IAlgorithm() = default;
 
   // virtual bool isFixpointAlgorithm() const {return false;}
 

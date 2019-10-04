@@ -224,7 +224,7 @@ RestReplicationHandler::RestReplicationHandler(application_features::Application
                                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestReplicationHandler::~RestReplicationHandler() {}
+RestReplicationHandler::~RestReplicationHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server

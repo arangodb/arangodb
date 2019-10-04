@@ -73,7 +73,7 @@ class MMFilesBaseSkiplistLookupBuilder {
     _upperBuilder->clear();
   }
 
-  virtual ~MMFilesBaseSkiplistLookupBuilder() {}
+  virtual ~MMFilesBaseSkiplistLookupBuilder() = default;
 
   /// @brief Compute the next lookup values
   ///        If returns false there is no further lookup
@@ -112,7 +112,7 @@ class MMFilesSkiplistLookupBuilder final : public MMFilesBaseSkiplistLookupBuild
                                std::vector<std::vector<arangodb::aql::AstNode const*>>&,
                                arangodb::aql::Variable const*, bool);
 
-  ~MMFilesSkiplistLookupBuilder() {}
+  ~MMFilesSkiplistLookupBuilder() = default;
 
   /// @brief Compute the next lookup values
   ///        If returns false there is no further lookup
@@ -141,7 +141,7 @@ class MMFilesSkiplistInLookupBuilder final : public MMFilesBaseSkiplistLookupBui
                                  std::vector<std::vector<arangodb::aql::AstNode const*>>&,
                                  arangodb::aql::Variable const*, bool);
 
-  ~MMFilesSkiplistInLookupBuilder() {}
+  ~MMFilesSkiplistInLookupBuilder() = default;
 
   /// @brief Compute the next lookup values
   /// If returns false there is no further lookup

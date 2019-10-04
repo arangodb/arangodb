@@ -52,7 +52,7 @@ Variable::Variable(arangodb::velocypack::Slice const& slice)
 }
 
 /// @brief destroy the variable
-Variable::~Variable() {}
+Variable::~Variable() = default;
 
 /// @brief return a VelocyPack representation of the variable
 void Variable::toVelocyPack(VPackBuilder& builder) const {

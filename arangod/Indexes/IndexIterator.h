@@ -79,7 +79,7 @@ class IndexIterator {
 
   IndexIterator(LogicalCollection*, transaction::Methods*);
 
-  virtual ~IndexIterator() {}
+  virtual ~IndexIterator() = default;
 
   virtual char const* typeName() const = 0;
 
@@ -137,7 +137,7 @@ class EmptyIndexIterator final : public IndexIterator {
   EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx)
       : IndexIterator(collection, trx) {}
 
-  ~EmptyIndexIterator() {}
+  ~EmptyIndexIterator() = default;
 
   char const* typeName() const override { return "empty-index-iterator"; }
 

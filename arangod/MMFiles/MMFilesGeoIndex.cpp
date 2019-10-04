@@ -49,7 +49,7 @@ struct NearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  ~NearIterator() {}
+  ~NearIterator() = default;
 
   char const* typeName() const override { return "s2-index-iterator"; }
 
