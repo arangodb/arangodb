@@ -128,7 +128,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
     _attrs.emplace(_attr);
   }
 
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
 
@@ -189,7 +189,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     _attrs.emplace(_increment);  // required by field_data::invert(...)
   }
 
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
 

@@ -112,7 +112,7 @@ struct custom_sort : public irs::sort {
       const custom_sort& sort_;
     };
 
-    struct scorer : public irs::sort::score_ctx {
+    struct scorer : public irs::score_ctx {
       scorer(const custom_sort& sort,
              const irs::sub_reader& segment_reader,
              const irs::term_reader& term_reader,
@@ -156,7 +156,7 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const& segment_reader,
         irs::term_reader const& term_reader,
         irs::byte_type const* filter_node_attrs,
@@ -172,7 +172,7 @@ struct custom_sort : public irs::sort {
         std::make_unique<custom_sort::prepared::scorer>(
           sort_, segment_reader, term_reader,
           filter_node_attrs, document_attrs),
-        [](const void* ctx, irs::byte_type* score_buf) {
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           auto& ctxImpl = *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
           EXPECT_TRUE(score_buf);
@@ -217,7 +217,7 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<std::pair<score_ctx::ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&, irs::boost_t)> prepare_scorer;
+  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&, irs::boost_t)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
