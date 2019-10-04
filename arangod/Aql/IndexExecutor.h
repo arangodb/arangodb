@@ -181,7 +181,7 @@ class IndexExecutor {
       DocumentProducingFunction produce;
 
       CallbackMethod() : noProduce(nullptr) {}
-      ~CallbackMethod() = default;
+      ~CallbackMethod() {}
     } _callback;
   };
 
