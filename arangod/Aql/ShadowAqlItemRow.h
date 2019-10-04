@@ -106,7 +106,6 @@ class ShadowAqlItemRow {
 
   bool operator!=(ShadowAqlItemRow const& other) const noexcept;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal,
   // plus their shadow-depth is the same.
@@ -115,7 +114,6 @@ class ShadowAqlItemRow {
   // does not make sense.
   // Invalid rows are considered equivalent.
   bool equates(ShadowAqlItemRow const& other) const noexcept;
-#endif // ARANGODB_USE_GOOGLE_TESTS
 
  private:
   AqlItemBlock& block() noexcept;

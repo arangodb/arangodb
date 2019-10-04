@@ -92,14 +92,11 @@ bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept 
   return !(*this == other);
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
-#endif
   if (getNrRegisters() != other.getNrRegisters()) {
     return false;
   }
@@ -116,4 +113,3 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other) const noexcept {
 
   return true;
 }
-#endif // ARANGODB_USE_GOOGLE_TESTS
