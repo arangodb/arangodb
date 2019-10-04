@@ -61,7 +61,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
-             (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
+             (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
 }
 
 TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
@@ -130,7 +130,7 @@ RegisterId TraversalExecutorInfos::pathRegister() const {
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {
-  return _inputRegister == ExecutionNode::MaxRegisterId;
+  return _inputRegister == RegisterPlan::MaxRegisterId;
 }
 
 std::string const& TraversalExecutorInfos::getFixedSource() const {
