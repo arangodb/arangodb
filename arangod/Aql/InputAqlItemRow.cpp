@@ -286,18 +286,15 @@ bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   return !(*this == other);
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
-#endif
   if (getNrRegisters() != other.getNrRegisters()) {
     return false;
   }
-// NOLINTNEXTLINE(modernize-use-transparent-functors)
+  // NOLINTNEXTLINE(modernize-use-transparent-functors)
   auto const eq = std::equal_to<AqlValue>{};
   for (RegisterId i = 0; i < getNrRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
@@ -307,7 +304,6 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
 
   return true;
 }
-#endif // ARANGODB_USE_GOOGLE_TESTS
 
 bool InputAqlItemRow::isInitialized() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

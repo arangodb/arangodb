@@ -97,7 +97,6 @@ class InputAqlItemRow {
 
   bool operator!=(InputAqlItemRow const& other) const noexcept;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal.
   // In maintainer mode, it also asserts that the number of registers of the
@@ -105,7 +104,6 @@ class InputAqlItemRow {
   // does not make sense.
   // Invalid rows are considered equivalent.
   bool equates(InputAqlItemRow const& other) const noexcept;
-#endif // ARANGODB_USE_GOOGLE_TESTS
 
   bool isInitialized() const noexcept;
 
