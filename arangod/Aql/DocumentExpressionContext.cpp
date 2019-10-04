@@ -27,7 +27,7 @@
 using namespace arangodb::aql;
 
 DocumentExpressionContext::DocumentExpressionContext(Query* query,
-                                                     velocypack::Slice document)
+                                                     arangodb::velocypack::Slice document)
     : QueryExpressionContext(query), _document(document) {}
 
 size_t DocumentExpressionContext::numRegisters() const {

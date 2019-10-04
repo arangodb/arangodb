@@ -34,7 +34,7 @@ class Query;
 
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentExpressionContext(Query* query, velocypack::Slice document);
+  DocumentExpressionContext(Query* query, arangodb::velocypack::Slice document);
 
   ~DocumentExpressionContext() = default;
 
@@ -45,7 +45,7 @@ class DocumentExpressionContext final : public QueryExpressionContext {
 
  private:
   /// @brief temporary storage for expression data context
-  velocypack::Slice _document;
+  arangodb::velocypack::Slice _document;
 };
 }  // namespace aql
 }  // namespace arangodb
