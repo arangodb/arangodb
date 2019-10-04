@@ -82,7 +82,9 @@ class phrase_iterator final : public basic_doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    approx_.seek(target);
+    if (approx_.seek(target) == target) {
+      return target;
+    }
 
     if (doc_limits::eof(value()) || (phrase_freq_.value = phrase_freq())) {
       return value();
