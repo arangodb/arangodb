@@ -31,9 +31,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,45 +38,34 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void aql::handleProjections(std::vector<std::string> const& projections,
+void aql::handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                             transaction::Methods const* trxPtr, VPackSlice slice,
                             VPackBuilder& b, bool useRawDocumentPointers) {
   for (auto const& it : projections) {
-    if (it[0] == '_') {
-      if (it == StaticStrings::IdString) {
-        VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
-        if (found.isCustom()) {
-          // _id as a custom type needs special treatment
-          b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
-                                                                     found, slice)));
-        } else {
-          b.add(it, found);
-        }
-        return;
-      }
-
-      if (it == StaticStrings::KeyString) {
-        VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-        if (useRawDocumentPointers) {
-          b.add(VPackValue(it));
-          b.addExternal(found.begin());
-        } else {
-          b.add(it, found);
-        }
-        return;
-      }
-    }
-
-    VPackSlice found = slice.get(it);
-    if (found.isNone()) {
-      // attribute not found
-      b.add(it, VPackValue(VPackValueType::Null));
-    } else {
+    if (it.first == ProjectionType::IdAttribute) {
+      b.add(it.second, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
+      continue;
+    } else if (it.first == ProjectionType::KeyAttribute) {
+      VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
       if (useRawDocumentPointers) {
-        b.add(VPackValue(it));
+        b.add(VPackValue(it.second));
         b.addExternal(found.begin());
       } else {
-        b.add(it, found);
+        b.add(it.second, found);
+      }
+      continue;
+    }
+
+    VPackSlice found = slice.get(it.second);
+    if (found.isNone()) {
+      // attribute not found
+      b.add(it.second, VPackValue(VPackValueType::Null));
+    } else {
+      if (useRawDocumentPointers) {
+        b.add(VPackValue(it.second));
+        b.addExternal(found.begin());
+      } else {
+        b.add(it.second, found);
       }
     }
   }
@@ -256,7 +242,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _outputRow(outputRow),
       _query(query),
       _filter(filter),
-      _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _numScanned(0),
       _numFiltered(0),
@@ -265,7 +250,19 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _useRawDocumentPointers(useRawDocumentPointers),
       _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _isLastIndex(false),
-      _checkUniqueness(checkUniqueness) {}
+      _checkUniqueness(checkUniqueness) {
+
+  _projections.reserve(projections.size());
+  for (auto const& it : projections) {
+    ProjectionType type = ProjectionType::OtherAttribute;
+    if (it == StaticStrings::IdString) {
+      type = ProjectionType::IdAttribute;
+    } else if (it == StaticStrings::KeyString) {
+      type = ProjectionType::KeyAttribute;
+    }
+    _projections.emplace_back(type, it);
+  }
+}
 
 void DocumentProducingFunctionContext::setOutputRow(OutputAqlItemRow* outputRow) {
   _outputRow = outputRow;
@@ -275,7 +272,7 @@ bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-std::vector<std::string> const& DocumentProducingFunctionContext::getProjections() const noexcept {
+std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunctionContext::getProjections() const noexcept {
   return _projections;
 }
 
@@ -418,13 +415,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         }
         if (found.isNone()) {
           // attribute not found
-          b->add(it, VPackValue(VPackValueType::Null));
+          b->add(it.second, VPackValue(VPackValueType::Null));
         } else {
           if (context.getUseRawDocumentPointers()) {
-            b->add(VPackValue(it));
+            b->add(VPackValue(it.second));
             b->addExternal(found.begin());
           } else {
-            b->add(it, found);
+            b->add(it.second, found);
           }
         }
       }

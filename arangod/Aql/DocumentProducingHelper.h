@@ -47,10 +47,16 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
 
+enum ProjectionType : uint32_t {
+  IdAttribute,
+  KeyAttribute,
+  OtherAttribute
+};
+
 using DocumentProducingFunction =
     std::function<void(LocalDocumentId const&, velocypack::Slice slice)>;
 
-void handleProjections(std::vector<std::string> const& projections,
+void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                        transaction::Methods const* trxPtr, velocypack::Slice slice,
                        velocypack::Builder& b, bool useRawDocumentPointers);
 
@@ -72,7 +78,7 @@ struct DocumentProducingFunctionContext {
 
   bool getProduceResult() const noexcept;
 
-  std::vector<std::string> const& getProjections() const noexcept;
+  std::vector<std::pair<ProjectionType, std::string>> const& getProjections() const noexcept;
 
   transaction::Methods* getTrxPtr() const noexcept;
 
@@ -113,7 +119,7 @@ struct DocumentProducingFunctionContext {
   OutputAqlItemRow* _outputRow;
   Query* const _query;
   Expression* _filter;
-  std::vector<std::string> const& _projections;
+  std::vector<std::pair<ProjectionType, std::string>> _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
   size_t _numFiltered;
