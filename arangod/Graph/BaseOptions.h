@@ -57,7 +57,7 @@ struct BaseOptions {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
     std::vector<transaction::Methods::IndexHandle> idxHandles;
-    aql::Expression* expression;
+    std::unique_ptr<aql::Expression> expression;
     aql::AstNode* indexCondition;
     // Flag if we have to update _from / _to in the index search condition
     bool conditionNeedUpdate;
