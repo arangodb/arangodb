@@ -1182,11 +1182,12 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
     futures.emplace_back(
         network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                                   requestsUrl, VPackBufferUInt8(),
-                                  network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  network::Timeout(CL_DEFAULT_TIMEOUT),
+                                  std::move(headers), /*retryNotFound*/ true));
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) {
         // format of expected answer:
         // in `indexes` is a map that has keys in the format
         // s<shardid>/<indexid> and index information as value
@@ -1202,7 +1203,7 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
           network::Response const& r = tryRes.get();
 
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
 
           VPackSlice answer = r.slice();
@@ -1826,12 +1827,12 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
 
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
 
           auto payload = r.response->stealPayload();
@@ -1922,11 +1923,11 @@ int fetchEdgesFromEngines(
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
 
           auto payload = r.response->stealPayload();
@@ -2012,12 +2013,12 @@ void fetchVerticesFromEngines(
   }
 
   futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
 
           if (r.fail()) {
-            THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r.error));
+            THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
           }
 
           auto payload = r.response->stealPayload();
@@ -2057,7 +2058,7 @@ void fetchVerticesFromEngines(
 
   // Fill everything we did not find with NULL
   for (auto const& v : vertexIds) {
-    result.emplace(v, VPackSlice::noneSlice());
+    result.emplace(v, VPackSlice::nullSlice());
   }
   vertexIds.clear();
 }
@@ -2307,11 +2308,11 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
           if (r.response->statusCode() != fuerte::StatusOK) {
             int code = network::errorCodeFromBody(r.slice());

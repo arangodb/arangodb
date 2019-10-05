@@ -64,11 +64,11 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
           if (r.response->statusCode() == fuerte::StatusOK) {
             out += r.slice().get("result");
@@ -101,11 +101,11 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
           if (r.response->statusCode() == fuerte::StatusOK) {
             out.add(r.slice().get("result"));
@@ -143,11 +143,11 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> results) -> int {
+      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();
           if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r.error);
+            return network::fuerteToArangoErrorCode(r);
           }
 
           if (r.response->statusCode() == fuerte::StatusOK) {

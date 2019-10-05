@@ -4083,7 +4083,7 @@ function transactionTTLStreamSuite () {
 
     testAbortIdleTrx: function () {
       let trx = db._createTransaction({
-        collections: { read: cn }
+        collections: { write: cn }
       });
 
       let x = 60;
@@ -4091,12 +4091,13 @@ function transactionTTLStreamSuite () {
         internal.sleep(1);
 
         try {
-          trx.collection(cn).save({key:'val'});
+          trx.collection(cn).save({value:'val'});
         } catch (err) {
-          assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+          assertTrue(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code == err.errorNum ||
+                     internal.errors.ERROR_TRANSACTION_ABORTED.code == err.errorNum);
           return;
         }
-
+        
       } while(!done && x-- > 0);
       fail(); // should not be reached
     }
