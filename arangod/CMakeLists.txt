@@ -449,17 +449,18 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 )
 
 set(LIB_ARANGO_AGENCY_SOURCES
-  Agency/AgentConfiguration.cpp
-  Agency/ResignLeadership.cpp
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
+  Agency/AgentConfiguration.cpp
+  Agency/AsyncAgencyComm.cpp
   Agency/CleanOutServer.cpp
   Agency/Compactor.cpp
   Agency/Constituent.cpp
+  Agency/ResignLeadership.cpp
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp

@@ -22,7 +22,9 @@
 
 #include "RestSupervisionStateHandler.h"
 
-#include "Agency/AgencyComm.h"
+#include <chrono>
+
+#include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -54,6 +56,40 @@ RestStatus RestSupervisionStateHandler::execute() {
     return RestStatus::DONE;
   }
 
+  VPackBuffer<uint8_t> bodyBuffer;
+  VPackBuilder bodyBuilder(bodyBuffer);
+  {
+    VPackArrayBuilder env(&bodyBuilder);
+    {
+      VPackArrayBuilder trx(&bodyBuilder);
+      bodyBuilder.add(VPackValue("/arango/Target"));
+    }
+  }
+
+  auto self(shared_from_this());
+
+  using namespace std::chrono_literals;
+
+  AsyncAgencyComm().sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 1s, std::move(bodyBuffer))
+    .then([this, self](arangodb::futures::Try<AgencyAsyncResult> &&out) {
+      if (out.hasValue()) {
+        auto &result = out.get();
+
+        if (result.ok()) {
+          auto &response = result.response;
+
+          resetResponse(rest::ResponseCode::OK);
+          _response->setPayload(response->slice(), true);
+
+        } else {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+        }
+      } else {
+        generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+      }
+      continueHandlerExecution();
+    });
+#if 0
   AgencyCommResult const& result = AgencyComm().getValues("Target");
   if (result.successful()) {
 
@@ -79,7 +115,8 @@ RestStatus RestSupervisionStateHandler::execute() {
   } else {
     LOG_DEVEL << "failed to get agency value";
   }
+#endif
 
-  generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
-  return RestStatus::DONE;
+
+  return RestStatus::WAITING;
 }

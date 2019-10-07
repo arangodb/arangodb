@@ -23,11 +23,11 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
-  Aql/AllRowsFetcherTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
@@ -50,9 +50,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
+  Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
-  Aql/SortedCollectExecutorTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
@@ -61,9 +61,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
+  AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
-  Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/associative-multi-pointer-test.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp

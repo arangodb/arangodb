@@ -102,14 +102,14 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
   if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
     return futures::makeFuture(
-        Response{destination, Error::Canceled, nullptr});
+        Response{destination, Error::Canceled, nullptr, nullptr});
   }
 
   arangodb::network::EndpointSpec spec;
   int res = resolveDestination(*pool->config().clusterInfo, destination, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
     return futures::makeFuture(
-        Response{destination, Error::Canceled, nullptr});
+        Response{destination, Error::Canceled, nullptr, nullptr});
   }
   TRI_ASSERT(!spec.endpoint.empty());
 
@@ -131,7 +131,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
   conn->sendRequest(std::move(req), [p = std::move(p)](fuerte::Error err,
                                                        std::unique_ptr<fuerte::Request> req,
                                                        std::unique_ptr<fuerte::Response> res) {
-    p->promise.setValue(network::Response{p->destination, err, std::move(res)});
+    p->promise.setValue(network::Response{p->destination, err, std::move(res), std::move(req)});
   });
   return f;
 }
@@ -168,38 +168,39 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   std::shared_ptr<arangodb::Scheduler::WorkItem> _workItem;
   futures::Promise<network::Response> _promise;  /// promise called
   std::unique_ptr<fuerte::Response> _response;   /// temporary response
+  std::unique_ptr<fuerte::Request> _request;
 
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
   const bool _retryOnCollNotFound;
 
  public:
-  
+
   FutureRes future() {
     return _promise.getFuture();
   }
-  
+
   // scheduler requests that are due
   void startRequest() {
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
-      callResponse(Error::Timeout, nullptr);
+      callResponse(Error::Timeout, nullptr, nullptr);
       return;  // we are done
     }
 
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      callResponse(Error::Canceled, nullptr);
+      callResponse(Error::Canceled, nullptr, nullptr);
       return;
     }
 
     if (!_pool) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION) << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr);
+      callResponse(Error::Canceled, nullptr, nullptr);
       return;
     }
-    
+
     auto localTO = std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
     TRI_ASSERT(localTO.count() > 0);
 
@@ -224,7 +225,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
             res->statusCode() == fuerte::StatusCreated ||
             res->statusCode() == fuerte::StatusAccepted ||
             res->statusCode() == fuerte::StatusNoContent) {
-          callResponse(Error::NoError, std::move(res));
+          callResponse(Error::NoError, std::move(res), std::move(req));
           break;
         } else if (res->statusCode() == fuerte::StatusNotFound && _retryOnCollNotFound &&
                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
@@ -232,7 +233,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           LOG_TOPIC("5a8e9", DEBUG, Logger::COMMUNICATION) << "retrying request";
         } else { // a "proper error" which has to be returned to the client
           LOG_TOPIC("5a8d9", DEBUG, Logger::COMMUNICATION) << "canceling request";
-          callResponse(err, std::move(res));
+          callResponse(err, std::move(res), std::move(req));
           break;
         }
 #ifndef _MSC_VER
@@ -255,7 +256,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         }
 
         if ((now + tryAgainAfter) >= _endTime) { // cancel out
-          callResponse(err, std::move(res));
+          callResponse(err, std::move(res), std::move(req));
         } else {
           retryLater(tryAgainAfter);
         }
@@ -263,27 +264,29 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        callResponse(err, std::move(res));
+        callResponse(err, std::move(res), std::move(req));
         break;
     }
   }
 
   /// @broef schedule calling the response promise
-  void callResponse(Error err, std::unique_ptr<fuerte::Response> res) {
+  void callResponse(Error err, std::unique_ptr<fuerte::Response> res, std::unique_ptr<fuerte::Request> req) {
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {  // mostly relevant for testing
-      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
+      _promise.setValue(Response{std::move(_destination), err, std::move(res), std::move(req)});
       return;
     }
 
     _response = std::move(res);
+    _request = std::move(req);
     bool queued =
         sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
           self->_promise.setValue(Response{std::move(self->_destination), err,
-                                           std::move(self->_response)});
+                                           std::move(self->_response),
+                                           std::move(self->_request)});
         });
     if (ADB_UNLIKELY(!queued)) {
-      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
+      _promise.setValue(Response{std::move(_destination), err, std::move(_response), std::move(_request)});
     }
   }
 
@@ -292,7 +295,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     auto self = RequestsState::shared_from_this();
     auto cb = [self](bool canceled) {
       if (canceled) {
-        self->_promise.setValue(Response{self->_destination, Error::Canceled, nullptr});
+        self->_promise.setValue(Response{self->_destination, Error::Canceled, nullptr, nullptr});
       } else {
         self->startRequest();
       }
@@ -302,7 +305,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter, std::move(cb));
     if (!queued) {
       // scheduler queue is full, cannot requeue
-      _promise.setValue(Response{_destination, Error::QueueCapacityExceeded, nullptr});
+      _promise.setValue(Response{_destination, Error::QueueCapacityExceeded, nullptr, nullptr});
     }
   }
 };
@@ -315,7 +318,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destinatio
   if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-    return futures::makeFuture(Response{destination, Error::Canceled, nullptr});
+    return futures::makeFuture(Response{destination, Error::Canceled, nullptr, nullptr});
   }
 
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);

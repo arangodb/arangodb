@@ -43,13 +43,14 @@ struct Response {
   DestinationId destination;
   fuerte::Error error;  /// connectivity error
   std::unique_ptr<arangodb::fuerte::Response> response;
-  
+  std::unique_ptr<arangodb::fuerte::Request> request;
+
   bool ok() const {
     return fuerte::Error::NoError == this->error;
   }
-  
+
   bool fail() const { return !ok(); }
-    
+
   // returns a slice of the payload if there was no error
   velocypack::Slice slice() const {
     if (error == fuerte::Error::NoError && response) {
@@ -57,7 +58,7 @@ struct Response {
     }
     return velocypack::Slice(); // none slice
   }
-  
+
  public:
   std::string destinationShard() const; /// @brief shardId or empty
   std::string serverId() const;         /// @brief server ID
@@ -71,8 +72,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination,
                       Headers headers = {});
 
 /// @brief send a request to a given destination, retry under certain conditions
-/// a retry will be triggered if the connection was lost our could not be established
-/// optionally a retry will be performed in the case of until timeout is exceeded
+/// a retry will be triggered if the connection was lost or could not be established.
+/// optionally a retry will be performed in the case of 404 until total timeout is exceeded.
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
