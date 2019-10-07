@@ -114,7 +114,7 @@ EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   _engineStack.emplace(0);
 }
 
-EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
+EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&

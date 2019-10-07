@@ -75,7 +75,7 @@ ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection,
   }
 }
 
-ClusterIndex::~ClusterIndex() {}
+ClusterIndex::~ClusterIndex() = default;
 
 void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());

@@ -58,7 +58,7 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
       _status(status),
       _handler(std::move(handler)) {}
 
-AsyncJobResult::~AsyncJobResult() {}
+AsyncJobResult::~AsyncJobResult() = default;
 
 AsyncJobManager::AsyncJobManager() : _lock(), _jobs() {}
 

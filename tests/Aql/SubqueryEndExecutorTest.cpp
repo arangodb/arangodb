@@ -75,11 +75,11 @@ class SubqueryEndExecutorTest : public ::testing::Test {
 
         InputAqlItemRow input{block, rowIdx};
         for (unsigned int colIdx = 0; colIdx < block->getNrRegs(); colIdx++) {
-          auto const expected =
-              VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx))->slice();
+          auto expected =
+              VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
           auto value = input.getValue(RegisterId{colIdx}).slice();
-          EXPECT_TRUE(VelocyPackHelper::equal(value, expected, false))
-              << value.toJson() << " != " << expected.toJson();
+          EXPECT_TRUE(VelocyPackHelper::equal(value, expected->slice(), false))
+              << value.toJson() << " != " << expected->toJson();
         }
       }
     }

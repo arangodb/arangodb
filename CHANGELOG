@@ -1,6 +1,11 @@
 devel
 -----
 
+* RCLone URL normalization
+
+* Fixed Unintended multiple unlock commands from coordinator to
+  transaction locked db servers
+
 * Disallow using `_id` or `_rev` as shard keys in clustered collections.
 
   Using these attributes for sharding was not supported before, but didn't trigger

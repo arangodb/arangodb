@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable) {
+static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -59,7 +59,7 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                       "invalid start vertex. Must either be "
+                                       std::string("invalid ") + part + " vertex. Must either be "
                                        "an _id string or an object with _id.");
       }
       variable = nullptr;
@@ -67,7 +67,7 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid start vertex. Must either be an "
+                                     std::string("invalid ") + part + " vertex. Must either be an "
                                      "_id string or an object with _id.");
   }
 }
@@ -134,8 +134,8 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocba
   }
   TRI_ASSERT(_toCondition != nullptr);
 
-  parseNodeInput(start, _startVertexId, _inStartVariable);
-  parseNodeInput(target, _targetVertexId, _inTargetVariable);
+  parseNodeInput(start, _startVertexId, _inStartVariable, "start");
+  parseNodeInput(target, _targetVertexId, _inTargetVariable, "target");
 }
 
 /// @brief Internal constructor to clone the node.
@@ -155,7 +155,7 @@ KShortestPathsNode::KShortestPathsNode(
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
-KShortestPathsNode::~KShortestPathsNode() {}
+KShortestPathsNode::~KShortestPathsNode() = default;
 
 KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
                                        arangodb::velocypack::Slice const& base)

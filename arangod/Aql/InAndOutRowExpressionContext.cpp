@@ -60,24 +60,6 @@ void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
-AqlValue const& InAndOutRowExpressionContext::getRegisterValue(size_t i) const {
-  TRI_ASSERT(_input.isInitialized());
-  TRI_ASSERT(i < _regs.size());
-  if (i == _vertexVarIdx) {
-    return _vertexValue;
-  }
-  if (i == _edgeVarIdx) {
-    return _edgeValue;
-  }
-  if (i == _pathVarIdx) {
-    return _pathValue;
-  }
-  // Search InputRow
-  RegisterId const& regId = _regs[i];
-  TRI_ASSERT(regId < _input.getNrRegisters());
-  return _input.getValue(regId);
-}
-
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                         bool& mustDestroy) const {
   TRI_ASSERT(_input.isInitialized());
@@ -128,10 +110,6 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
 
 size_t InAndOutRowExpressionContext::numRegisters() const {
   return _regs.size();
-}
-
-Variable const* InAndOutRowExpressionContext::getVariable(size_t i) const {
-  return _vars[i];
 }
 
 bool InAndOutRowExpressionContext::needsVertexValue() const {

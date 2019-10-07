@@ -188,7 +188,8 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr);
 
 inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
-  VPackBuilder builder;
+  VPackOptions options;
+  VPackBuilder builder(&options);
   builder.openObject();
   builder.add("name", VPackValue(name));
   builder.add("sharding", VPackValue(std::string{}));

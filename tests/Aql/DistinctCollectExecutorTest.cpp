@@ -90,8 +90,8 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_doesnt_w
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_waits) {
@@ -108,12 +108,12 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_waits) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(DistinctCollectExecutorTest,
@@ -137,27 +137,27 @@ TEST_F(DistinctCollectExecutorTest,
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 1);
+  ASSERT_EQ(x.toInt64(), 1);
 
   AqlValue z = block->getValue(1, 1);
   ASSERT_TRUE(z.isNumber());
-  ASSERT_TRUE(z.toInt64() == 2);
+  ASSERT_EQ(z.toInt64(), 2);
 }
 
 TEST_F(DistinctCollectExecutorTest,
@@ -181,35 +181,35 @@ TEST_F(DistinctCollectExecutorTest,
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 1);
+  ASSERT_EQ(x.toInt64(), 1);
 
   AqlValue z = block->getValue(1, 1);
   ASSERT_TRUE(z.isNumber());
-  ASSERT_TRUE(z.toInt64() == 2);
+  ASSERT_EQ(z.toInt64(), 2);
 }
 
 TEST_F(DistinctCollectExecutorTest,
@@ -233,44 +233,44 @@ TEST_F(DistinctCollectExecutorTest,
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 1);
+  ASSERT_EQ(x.toInt64(), 1);
 
   AqlValue z = block->getValue(1, 1);
   ASSERT_TRUE(z.isNumber());
-  ASSERT_TRUE(z.toInt64() == 2);
+  ASSERT_EQ(z.toInt64(), 2);
 
   AqlValue y = block->getValue(2, 1);
   ASSERT_TRUE(y.isNumber());
-  ASSERT_TRUE(y.toInt64() == 3);
+  ASSERT_EQ(y.toInt64(), 3);
 }
 
 TEST_F(DistinctCollectExecutorTest,
@@ -294,64 +294,64 @@ TEST_F(DistinctCollectExecutorTest,
                           infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::HASMORE);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 1);
+  ASSERT_EQ(x.toInt64(), 1);
 
   AqlValue z = block->getValue(1, 1);
   ASSERT_TRUE(z.isNumber());
-  ASSERT_TRUE(z.toInt64() == 2);
+  ASSERT_EQ(z.toInt64(), 2);
 
   AqlValue y = block->getValue(2, 1);
   ASSERT_TRUE(y.isNumber());
-  ASSERT_TRUE(y.toInt64() == 3);
+  ASSERT_EQ(y.toInt64(), 3);
 }
 
 }  // namespace aql

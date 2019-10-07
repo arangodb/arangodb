@@ -292,6 +292,10 @@ struct OptimizerRule {
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
 
+    // moves filters on collection data into EnumerateCollection to
+    // avoid copying large amounts of unneeded documents
+    moveFiltersIntoEnumerateCollection,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.

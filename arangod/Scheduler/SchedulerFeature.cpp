@@ -81,7 +81,7 @@ SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& serv
   startsAfter<FileDescriptorsFeature>();
 }
 
-SchedulerFeature::~SchedulerFeature() {}
+SchedulerFeature::~SchedulerFeature() = default;
 
 void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   // Different implementations of the Scheduler may require different

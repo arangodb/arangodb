@@ -66,14 +66,14 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
   {
     auto json = VPackParser::fromJson("{ \"name\": \"entities\" }");
     entities = vocbase.createCollection(json->slice());
-    ASSERT_TRUE((nullptr != entities));
+    ASSERT_NE(nullptr, entities);
   }
 
   // links collection
   {
     auto json = VPackParser::fromJson("{ \"name\": \"links\", \"type\": 3 }");
     links = vocbase.createCollection(json->slice());
-    ASSERT_TRUE((nullptr != links));
+    ASSERT_NE(nullptr, links);
   }
 
   // entities view
@@ -90,7 +90,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
         "\"writebufferIdle\": 64 }");
     ASSERT_TRUE(
         arangodb::LogicalView::create(entities_view, vocbase, json->slice()).ok());
-    ASSERT_TRUE((nullptr != entities_view));
+    ASSERT_NE(nullptr, entities_view);
   }
 
   // links view
@@ -107,7 +107,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
         "\"writebufferIdle\": 64 }");
     ASSERT_TRUE(
         arangodb::LogicalView::create(links_view, vocbase, json->slice()).ok());
-    ASSERT_TRUE((nullptr != links_view));
+    ASSERT_NE(nullptr, links_view);
   }
 
   std::vector<std::string> const collections{"entities", "links"};
@@ -119,7 +119,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        collections, collections, collections,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into entities collection
     {
@@ -171,7 +171,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*entities, *entities_view)
                      ->commit()
                      .ok()));
@@ -214,7 +214,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
     arangodb::velocypack::ArrayIterator expectedResultIt(expectedResult);
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedResultIt.size() == resultIt.size());
+    ASSERT_EQ(expectedResultIt.size(), resultIt.size());
 
     // Check documents
     for (; resultIt.valid(); resultIt.next(), expectedResultIt.next()) {
@@ -226,7 +226,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(!expectedResultIt.valid());
+    EXPECT_FALSE(expectedResultIt.valid());
   }
 }
 
@@ -250,7 +250,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
     auto collectionJson =
         VPackParser::fromJson("{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
+    ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
@@ -258,7 +258,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
     auto collectionJson =
         VPackParser::fromJson("{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection2));
+    ASSERT_NE(nullptr, logicalCollection2);
   }
 
   // add collection_3
@@ -266,13 +266,13 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
     auto collectionJson =
         VPackParser::fromJson("{ \"name\": \"collection_3\" }");
     logicalCollection3 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection3));
+    ASSERT_NE(nullptr, logicalCollection3);
   }
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase.createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
+  ASSERT_FALSE(!view);
 
   // add logical collection with the same name as view
   {
@@ -290,7 +290,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
         "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -301,12 +301,12 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
@@ -318,7 +318,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
@@ -366,7 +366,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
@@ -416,7 +416,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     auto collectionJson =
         VPackParser::fromJson("{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection1));
+    ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
@@ -424,7 +424,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     auto collectionJson =
         VPackParser::fromJson("{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection2));
+    ASSERT_NE(nullptr, logicalCollection2);
   }
 
   // add collection_3
@@ -432,13 +432,13 @@ TEST_F(IResearchQueryJoinTest, test) {
     auto collectionJson =
         VPackParser::fromJson("{ \"name\": \"collection_3\" }");
     logicalCollection3 = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((nullptr != logicalCollection3));
+    ASSERT_NE(nullptr, logicalCollection3);
   }
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase.createView(createJson->slice()));
-  ASSERT_TRUE((false == !view));
+  ASSERT_FALSE(!view);
 
   // add link to collection
   {
@@ -449,7 +449,7 @@ TEST_F(IResearchQueryJoinTest, test) {
         "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -460,12 +460,12 @@ TEST_F(IResearchQueryJoinTest, test) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
+    EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
@@ -477,7 +477,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
@@ -525,7 +525,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       }
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
@@ -567,7 +567,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -578,7 +578,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // non deterministic filter condition in a loop
@@ -614,7 +614,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -625,7 +625,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // non deterministic filter condition with self-reference in a loop
@@ -662,7 +662,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     //    EXPECT_TRUE(result.isArray());
     //
     //    arangodb::velocypack::ArrayIterator resultIt(result);
-    //    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    //    ASSERT_EQ(expectedDocs.size(), resultIt.size());
     //
     //    // Check documents
     //    auto expectedDoc = expectedDocs.begin();
@@ -670,9 +670,9 @@ TEST_F(IResearchQueryJoinTest, test) {
     //      auto const actualDoc = resultIt.value();
     //      auto const resolved = actualDoc.resolveExternals();
     //
-    //      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    //      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true));
     //    }
-    //    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    //    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // nondeterministic filter condition in a loop
@@ -710,7 +710,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -721,7 +721,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // nondeterministic range
@@ -759,7 +759,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -770,7 +770,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR x IN collection_3
@@ -804,7 +804,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -815,7 +815,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR x IN collection_3
@@ -850,7 +850,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -861,7 +861,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR x IN collection_3
@@ -892,7 +892,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -903,7 +903,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR x IN collection_3
@@ -933,7 +933,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -944,7 +944,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR x IN collection_3
@@ -973,7 +973,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -984,7 +984,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Note: unable to push condition to the `View` now
@@ -1016,7 +1016,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1027,7 +1027,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Note: unable to push condition to the `View` now
@@ -1052,7 +1052,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1063,7 +1063,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Note: unable to push condition to the `View` now
@@ -1094,7 +1094,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1105,7 +1105,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Note: unable to push condition to the `View` now
@@ -1137,7 +1137,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1148,7 +1148,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Note: unable to push condition to the `View` now
@@ -1180,7 +1180,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1191,7 +1191,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Note: unable to push condition to the `View` now
@@ -1220,7 +1220,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1231,7 +1231,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // Invalid bound collection name
@@ -1281,7 +1281,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1292,7 +1292,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // invalid reference in scorer
@@ -1331,7 +1331,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1342,7 +1342,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR i IN 1..5
@@ -1372,7 +1372,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1383,7 +1383,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   {
@@ -1412,7 +1412,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1423,7 +1423,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR i IN 1..5
@@ -1453,7 +1453,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1464,7 +1464,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // unable to retrieve `d.seq` from self-referenced variable
@@ -1535,7 +1535,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1546,7 +1546,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // dedicated to https://github.com/arangodb/planning/issues/3065$
@@ -1571,7 +1571,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1582,7 +1582,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // FOR i IN 1..5
@@ -1613,7 +1613,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1624,7 +1624,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   {
@@ -1652,7 +1652,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1663,7 +1663,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // multiple sorts
@@ -1691,7 +1691,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();
@@ -1702,7 +1702,7 @@ TEST_F(IResearchQueryJoinTest, test) {
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // x.seq is used before being assigned

@@ -67,13 +67,13 @@ TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_
   OutputAqlItemRow result{std::move(block), outputRegisters,
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 0);
+  ASSERT_EQ(x.toInt64(), 0);
 
   ASSERT_EQ(0, fetcher.totalSkipped());
 }
@@ -88,17 +88,17 @@ TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits)
   OutputAqlItemRow result{std::move(block), outputRegisters,
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 0);
+  ASSERT_EQ(x.toInt64(), 0);
 
   ASSERT_EQ(0, fetcher.totalSkipped());
 }
@@ -113,13 +113,13 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doe
   OutputAqlItemRow result{std::move(block), outputRegisters,
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 3);
+  ASSERT_EQ(x.toInt64(), 3);
 
   ASSERT_EQ(3, fetcher.totalSkipped());
 }
@@ -134,25 +134,25 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_wai
                           infos.registersToKeep(), infos.registersToClear()};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   auto block = result.stealBlock();
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
-  ASSERT_TRUE(x.toInt64() == 3);
+  ASSERT_EQ(x.toInt64(), 3);
 
   ASSERT_EQ(3, fetcher.totalSkipped());
 }

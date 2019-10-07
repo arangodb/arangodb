@@ -71,7 +71,7 @@ class SupervisedScheduler final : public Scheduler {
         : _handler(handler) {}
     explicit WorkItem(std::function<void()>&& handler)
         : _handler(std::move(handler)) {}
-    ~WorkItem() {}
+    ~WorkItem() = default;
 
     void operator()() { _handler(); }
   };

@@ -172,7 +172,7 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 /// @brief destroys a collection info object
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfoCurrent::~CollectionInfoCurrent() {}
+CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
@@ -199,7 +199,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() {}
+ClusterInfo::~ClusterInfo() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown

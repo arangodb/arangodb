@@ -91,7 +91,7 @@ class PathEnumerator {
   PathEnumerator(Traverser* traverser, std::string const& startVertex,
                  TraverserOptions* opts);
 
-  virtual ~PathEnumerator() {}
+  virtual ~PathEnumerator() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compute the next Path element from the traversal.

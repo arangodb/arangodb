@@ -57,7 +57,7 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedServer::~FailedServer() {}
+FailedServer::~FailedServer() = default;
 
 void FailedServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 

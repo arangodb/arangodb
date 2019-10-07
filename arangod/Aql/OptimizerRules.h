@@ -255,8 +255,12 @@ void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRul
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 /// @brief replace legacy JS functions in the plan.
-void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                               OptimizerRule const&);
+void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
+/// @brief move filters into EnumerateCollection nodes
+void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                  OptimizerRule const&);
 
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

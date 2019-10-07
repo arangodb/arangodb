@@ -54,7 +54,8 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
@@ -64,7 +65,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
-      _trxPtr(trxPtr),
+      _filter(filter),
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
@@ -84,12 +85,20 @@ Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
-  return _projections;
+Query* EnumerateCollectionExecutorInfos::getQuery() const {
+  return _engine->getQuery();
 }
 
 transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
-  return _trxPtr;
+  return _engine->getQuery()->trx();
+}
+
+Expression* EnumerateCollectionExecutorInfos::getFilter() const {
+  return _filter;
+}
+
+std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
+  return _projections;
 }
 
 std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAttributePositions() const
@@ -116,7 +125,8 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(),
-                                        _infos.getProjections(), _infos.getTrxPtr(),
+                                        _infos.getQuery(), _infos.getFilter(),
+                                        _infos.getProjections(), 
                                         _infos.getCoveringIndexAttributePositions(),
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
@@ -182,12 +192,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
+      TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
       _cursorHasMore =
           _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
                         output.numRowsLeft() /*atMost*/);
     }
 
     stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
       return {_state, stats};
