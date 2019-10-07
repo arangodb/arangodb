@@ -76,7 +76,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedFollower::~FailedFollower() {}
+FailedFollower::~FailedFollower() = default;
 
 void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 

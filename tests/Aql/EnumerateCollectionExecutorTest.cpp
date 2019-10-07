@@ -73,6 +73,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   arangodb::LogicalCollection collection;
   fakeit::Mock<ExecutionEngine> mockEngine;
   fakeit::Mock<transaction::Methods> mockTrx;  // fake transaction::Methods
+  fakeit::Mock<Query> mockQuery;
 
   Variable outVariable;
   bool varUsedLater;
@@ -106,7 +107,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
         useRawPointers(false),
         random(false),
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
-              &engine, &abc, &outVariable, varUsedLater, projections, &trx,
+              &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     // fake indexScan
@@ -115,6 +116,10 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
             [this](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
               return std::make_unique<EmptyIndexIterator>(&collection, &(mockTrx.get()));
             }));
+    
+    Query& query = mockQuery.get();
+    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&(mockTrx.get()));
+    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
   }
 };
 
@@ -129,8 +134,8 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
@@ -144,12 +149,12 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 }  // namespace aql

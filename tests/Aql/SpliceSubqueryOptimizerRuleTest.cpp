@@ -87,7 +87,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
   void after(ExecutionNode* en) override final {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
-    EXPECT_TRUE(false) << "Optimised plan must not contain SUBQUERY nodes";
+    EXPECT_TRUE(false) << "Optimized plan must not contain SUBQUERY nodes";
     return false;
   }
   ExecutionPlan* _other;
@@ -230,7 +230,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
   }
 
  public:
-  SpliceSubqueryNodeOptimizerRuleTest(){};
+  SpliceSubqueryNodeOptimizerRuleTest() {}
 };
 
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_no_subquery_plan) {

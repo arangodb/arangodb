@@ -120,7 +120,7 @@ Action::Action(MaintenanceFeature& feature, std::shared_ptr<ActionDescription> c
 Action::Action(std::unique_ptr<ActionBase> action)
     : _action(std::move(action)) {}
 
-Action::~Action() {}
+Action::~Action() = default;
 
 void Action::create(MaintenanceFeature& feature, ActionDescription const& description) {
   auto factory = factories.find(description.name());

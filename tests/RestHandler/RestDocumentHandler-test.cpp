@@ -40,14 +40,14 @@ class RestDocumentHandlerTestBase
 
   RestDocumentHandlerTestBase() : server{} {}
 
-  ~RestDocumentHandlerTestBase() {}
+  ~RestDocumentHandlerTestBase() = default;
 };
 
 class RestDocumentHandlerTest : public RestDocumentHandlerTestBase, public ::testing::Test {
  protected:
   RestDocumentHandlerTest() : RestDocumentHandlerTestBase{} {}
 
-  ~RestDocumentHandlerTest() {}
+  ~RestDocumentHandlerTest() = default;
 };
 
 class RestDocumentHandlerLaneTest
@@ -57,7 +57,7 @@ class RestDocumentHandlerLaneTest
   RestDocumentHandlerLaneTest()
       : RestDocumentHandlerTestBase{}, _type(GetParam()) {}
 
-  ~RestDocumentHandlerLaneTest() {}
+  ~RestDocumentHandlerLaneTest() = default;
 
   arangodb::rest::RequestType _type;
 };

@@ -75,9 +75,9 @@ TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_waits) {
@@ -87,14 +87,14 @@ TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_waits) {
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_doesnt_wait) {
@@ -104,14 +104,14 @@ TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_doesnt_wait) {
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_waits) {
@@ -121,14 +121,14 @@ TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_waits) {
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 }  // namespace aql

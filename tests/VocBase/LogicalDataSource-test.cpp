@@ -88,7 +88,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_TRUE((arangodb::LogicalCollection::category() == instance.category()));
+    EXPECT_EQ(arangodb::LogicalCollection::category(), instance.category());
   }
 
   // LogicalView
@@ -123,7 +123,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_TRUE((arangodb::LogicalView::category() == instance.category()));
+    EXPECT_EQ(arangodb::LogicalView::category(), instance.category());
   }
 }
 
@@ -136,9 +136,9 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "\"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_TRUE((1 == instance.id()));
-    EXPECT_TRUE((2 == instance.planId()));
-    EXPECT_TRUE((std::string("abc") == instance.guid()));
+    EXPECT_EQ(1, instance.id());
+    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(std::string("abc"), instance.guid());
   }
 
   // LogicalView
@@ -174,9 +174,9 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "\"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_TRUE((1 == instance.id()));
-    EXPECT_TRUE((2 == instance.planId()));
-    EXPECT_TRUE((std::string("abc") == instance.guid()));
+    EXPECT_EQ(1, instance.id());
+    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(std::string("abc"), instance.guid());
   }
 }
 
@@ -188,9 +188,9 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_TRUE((0 != instance.id()));
-    EXPECT_TRUE((0 != instance.planId()));
-    EXPECT_TRUE((false == instance.guid().empty()));
+    EXPECT_NE(0, instance.id());
+    EXPECT_NE(0, instance.planId());
+    EXPECT_FALSE(instance.guid().empty());
   }
 
   // LogicalView
@@ -225,9 +225,9 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_TRUE((0 != instance.id()));
-    EXPECT_TRUE((0 != instance.planId()));
-    EXPECT_TRUE((instance.id() == instance.planId()));
-    EXPECT_TRUE((false == instance.guid().empty()));
+    EXPECT_NE(0, instance.id());
+    EXPECT_NE(0, instance.planId());
+    EXPECT_EQ(instance.id(), instance.planId());
+    EXPECT_FALSE(instance.guid().empty());
   }
 }

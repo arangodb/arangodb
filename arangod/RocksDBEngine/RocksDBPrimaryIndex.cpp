@@ -459,7 +459,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection
   TRI_ASSERT(_objectId != 0);
 }
 
-RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
+RocksDBPrimaryIndex::~RocksDBPrimaryIndex() = default;
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();

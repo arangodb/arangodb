@@ -69,7 +69,7 @@ class GeoPointTest : public GeoConstructorTest {
  protected:
   GeoPointTest() : GeoConstructorTest() {
     fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-      ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     });
   }
 };
@@ -85,11 +85,11 @@ TEST_F(GeoPointTest, checking_two_positive_integer_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == 1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == 2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), 1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), 2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -108,11 +108,11 @@ TEST_F(GeoPointTest, checking_two_negative_integer_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == -1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == -2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), -1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), -2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -131,11 +131,11 @@ TEST_F(GeoPointTest, checking_two_positive_double_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == 1.1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == 2.2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), 1.1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), 2.2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -154,11 +154,11 @@ TEST_F(GeoPointTest, checking_two_negative_double_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == -1.1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == -2.2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), -1.1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), -2.2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -177,11 +177,11 @@ TEST_F(GeoPointTest, checking_two_postive_integer_and_positive_double_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == 1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == 2.2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), 1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), 2.2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -200,11 +200,11 @@ TEST_F(GeoPointTest, checking_two_negative_integer_and_positive_double_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == -1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == 2.2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), -1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), 2.2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -223,11 +223,11 @@ TEST_F(GeoPointTest, checking_two_positive_integer_and_negative_double_values) {
   AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).getDouble() == 1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).getDouble() == -2.2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).getDouble(), 1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).getDouble(), -2.2);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Point");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Point");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -531,15 +531,15 @@ TEST_F(GeoMultipointTest, checking_multipoint_with_2_positions) {
   AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).getDouble() == 1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).getDouble() == 2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(0).getDouble() == 3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).getDouble(), 1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).getDouble(), 2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(0).getDouble(), 3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(1).getDouble(), 4.0);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "MultiPoint");
+  EXPECT_EQ(res.slice().get("type").copyString(), "MultiPoint");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -564,9 +564,9 @@ TEST_F(GeoMultipointTest, checking_points_representing_points_in_cologne) {
   AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 10);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 10);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "MultiPoint");
+  EXPECT_EQ(res.slice().get("type").copyString(), "MultiPoint");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -575,7 +575,7 @@ TEST_F(GeoMultipointTest, checking_points_representing_points_in_cologne) {
 }
 TEST_F(GeoMultipointTest, checking_array_with_1_position) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[1.0, 2.0]]";
@@ -596,7 +596,7 @@ TEST_F(GeoMultipointTest, checking_array_with_1_position) {
 
 TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], false]";
@@ -617,7 +617,7 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
 
 TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[true, [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0]]";
@@ -638,7 +638,7 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
 
 TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[]]";
@@ -659,7 +659,7 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
 
 TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[]";
@@ -680,7 +680,7 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
 
 TEST_F(GeoMultipointTest, checking_bool) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "true";
@@ -701,7 +701,7 @@ TEST_F(GeoMultipointTest, checking_bool) {
 
 TEST_F(GeoMultipointTest, checking_number) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "123";
@@ -726,7 +726,7 @@ TEST_F(GeoMultipointTest, checking_number) {
 
 TEST_F(GeoMultipointTest, checking_object) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
@@ -764,18 +764,18 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
   AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).length() == 3);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == 1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == 2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == 3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == 4.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).at(0).getDouble() == 5.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == 6.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), 1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), 2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), 3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), 4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), 5.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), 6.0);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Polygon");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -801,10 +801,10 @@ TEST_F(GeoPolygonTest, checking_polygon_representing_cologne) {
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).length() == 10);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 10);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Polygon");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -824,21 +824,21 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).length() == 3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).length() == 2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).length() == 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).length(), 2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).length(), 2);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == -1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == -2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == -3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == -4.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).at(0).getDouble() == -5.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == -6.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), -5.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), -6.0);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Polygon");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -861,20 +861,20 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).length() == 3);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
   EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).length() == 3);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).length(), 3);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == -1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == -2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == -3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == -4.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).at(0).getDouble() == -5.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == -6.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(0).getDouble(), -5.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(2).at(1).getDouble(), -6.0);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "Polygon");
+  EXPECT_EQ(res.slice().get("type").copyString(), "Polygon");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -884,7 +884,7 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[1.0, 2.0]]";
@@ -905,7 +905,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[-1.0, -2.0]]";
@@ -926,7 +926,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
@@ -947,7 +947,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[-1.0, -2.0], [-3.0, -4.0]]";
@@ -968,7 +968,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "\"\"";
@@ -989,7 +989,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[true]";
@@ -1010,7 +1010,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[true, false]";
@@ -1031,7 +1031,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
 
 TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[true], [false], [true], [false]]";
@@ -1052,7 +1052,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
 
 TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "true";
@@ -1073,7 +1073,7 @@ TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
 
 TEST_F(GeoPolygonTest, checking_object_with_single_number) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "123";
@@ -1094,7 +1094,7 @@ TEST_F(GeoPolygonTest, checking_object_with_single_number) {
 
 TEST_F(GeoPolygonTest, checking_object_with_string) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "\"hallowelt\"";
@@ -1115,7 +1115,7 @@ TEST_F(GeoPolygonTest, checking_object_with_string) {
 
 TEST_F(GeoPolygonTest, checking_object_with_null) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "null";
@@ -1136,7 +1136,7 @@ TEST_F(GeoPolygonTest, checking_object_with_null) {
 
 TEST_F(GeoPolygonTest, checking_object_with_some_data) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
@@ -1170,15 +1170,15 @@ TEST_F(GeoLinestringTest, checking_polygon_with_2_positions) {
   AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).getDouble() == 1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).getDouble() == 2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(0).getDouble() == 3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).getDouble(), 1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).getDouble(), 2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(0).getDouble(), 3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(1).getDouble(), 4.0);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "LineString");
+  EXPECT_EQ(res.slice().get("type").copyString(), "LineString");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -1203,9 +1203,9 @@ TEST_F(GeoLinestringTest, checking_linestring_representing_cologne) {
   AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 10);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 10);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "LineString");
+  EXPECT_EQ(res.slice().get("type").copyString(), "LineString");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -1215,7 +1215,7 @@ TEST_F(GeoLinestringTest, checking_linestring_representing_cologne) {
 
 TEST_F(GeoLinestringTest, checking_array_with_1_position) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[1.0, 2.0]]";
@@ -1236,7 +1236,7 @@ TEST_F(GeoLinestringTest, checking_array_with_1_position) {
 
 TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], false]";
@@ -1257,7 +1257,7 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
 
 TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[true, [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0]]";
@@ -1278,7 +1278,7 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
 
 TEST_F(GeoLinestringTest, checking_empty_nested_array) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[]]";
@@ -1299,7 +1299,7 @@ TEST_F(GeoLinestringTest, checking_empty_nested_array) {
 
 TEST_F(GeoLinestringTest, checking_empty_array) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[]";
@@ -1320,7 +1320,7 @@ TEST_F(GeoLinestringTest, checking_empty_array) {
 
 TEST_F(GeoLinestringTest, checking_bool) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "true";
@@ -1341,7 +1341,7 @@ TEST_F(GeoLinestringTest, checking_bool) {
 
 TEST_F(GeoLinestringTest, checking_number) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "123";
@@ -1362,7 +1362,7 @@ TEST_F(GeoLinestringTest, checking_number) {
 
 TEST_F(GeoLinestringTest, checking_object) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
@@ -1396,21 +1396,21 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions) {
   AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == 1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == 2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == 3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == 4.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(0).at(0).getDouble() == 1.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(0).at(1).getDouble() == 2.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(1).at(0).getDouble() == 3.0);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(1).at(1).getDouble() == 4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), 1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), 2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), 3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), 4.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(0).at(0).getDouble(), 1.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(0).at(1).getDouble(), 2.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(1).at(0).getDouble(), 3.0);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(1).at(1).getDouble(), 4.0);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "MultiLineString");
+  EXPECT_EQ(res.slice().get("type").copyString(), "MultiLineString");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -1430,21 +1430,21 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions_2) {
   AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").length() == 2);
+  EXPECT_EQ(res.slice().get("coordinates").length(), 2);
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(1).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).isArray());
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == -1.1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == -2.2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == -3.3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == -4.4);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(0).at(0).getDouble() == -1.1);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(0).at(1).getDouble() == -2.2);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(1).at(0).getDouble() == -3.3);
-  EXPECT_TRUE(res.slice().get("coordinates").at(1).at(1).at(1).getDouble() == -4.4);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(0).getDouble(), -1.1);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(0).at(1).getDouble(), -2.2);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(0).getDouble(), -3.3);
+  EXPECT_EQ(res.slice().get("coordinates").at(0).at(1).at(1).getDouble(), -4.4);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(0).at(0).getDouble(), -1.1);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(0).at(1).getDouble(), -2.2);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(1).at(0).getDouble(), -3.3);
+  EXPECT_EQ(res.slice().get("coordinates").at(1).at(1).at(1).getDouble(), -4.4);
   EXPECT_TRUE(res.slice().get("type").isString());
-  EXPECT_TRUE(res.slice().get("type").copyString() == "MultiLineString");
+  EXPECT_EQ(res.slice().get("type").copyString(), "MultiLineString");
   res.destroy();
   // Free input parameters
   for (auto& it : params) {
@@ -1454,7 +1454,7 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions_2) {
 
 TEST_F(GeoMultilinestringTest, checking_object) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "{\"Hello\": true, \"Hellox\": 123}";
@@ -1475,7 +1475,7 @@ TEST_F(GeoMultilinestringTest, checking_object) {
 
 TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[[]]";
@@ -1496,7 +1496,7 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
 
 TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
   char const* p = "[]";
@@ -1517,7 +1517,7 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
 
 TEST_F(GeoMultilinestringTest, checking_bool) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "true";
@@ -1538,7 +1538,7 @@ TEST_F(GeoMultilinestringTest, checking_bool) {
 
 TEST_F(GeoMultilinestringTest, checking_number) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-    ASSERT_TRUE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
   char const* p = "123";

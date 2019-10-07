@@ -81,7 +81,6 @@ class Index;
 namespace aql {
 class Ast;
 struct Collection;
-class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
@@ -557,7 +556,7 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
-
+  
  private:
   /// @brief whether or not we want random iteration
   bool _random;
@@ -674,10 +673,7 @@ class CalculationNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
-                  Variable const* conditionVariable, Variable const* outVariable);
-
-  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr, Variable const* outVariable);
+  CalculationNode(ExecutionPlan* plan, size_t id, std::unique_ptr<Expression> expr, Variable const* outVariable);
 
   CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -717,14 +713,11 @@ class CalculationNode : public ExecutionNode {
   bool isDeterministic() override final;
 
  private:
-  /// @brief an optional condition variable for the calculation
-  Variable const* _conditionVariable;
-
   /// @brief output variable to write to
   Variable const* _outVariable;
 
   /// @brief we need to have an expression and where to write the result
-  Expression* _expression;
+  std::unique_ptr<Expression> _expression;
 };
 
 /// @brief class SubqueryNode

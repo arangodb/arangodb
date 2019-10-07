@@ -245,7 +245,7 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
-ShardingInfo::~ShardingInfo() {}
+ShardingInfo::~ShardingInfo() = default;
 
 bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
   return _shardingStrategy->isCompatible(other->_shardingStrategy.get());

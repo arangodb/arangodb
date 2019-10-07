@@ -72,7 +72,7 @@ class CCsvTest : public ::testing::Test {
  protected:
   CCsvTest() { column = 0; }
 
-  ~CCsvTest() {}
+  ~CCsvTest() = default;
 
   static void ProcessCsvBegin(TRI_csv_parser_t* parser, size_t row) {
     CCsvTest* me = reinterpret_cast<CCsvTest*>(parser->_dataAdd);
@@ -119,7 +119,7 @@ TEST_F(CCsvTest, tst_csv_simple) {
   const char* csv = "a,b,c,d,e," LF "f,g,h" LF ",,i,j,," LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0:a,b,c,d,e,\n1:f,g,h\n2:,,i,j,,\n" == out.str());
+  EXPECT_EQ("0:a,b,c,d,e,\n1:f,g,h\n2:,,i,j,,\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -136,7 +136,7 @@ TEST_F(CCsvTest, tst_csv_crlf) {
   const char* csv = "a,b,c,d,e" CR LF "f,g,h" CR LF "i,j" CR LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0:a,b,c,d,e\n1:f,g,h\n2:i,j\n" == out.str());
+  EXPECT_EQ("0:a,b,c,d,e\n1:f,g,h\n2:i,j\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -153,7 +153,7 @@ TEST_F(CCsvTest, tst_csv_whitespace) {
   const char* csv = " a , \"b \" , c , d , e " LF LF LF "   x   x  " LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0: a , \"b \" , c , d , e \n1:\n2:\n3:   x   x  \n" == out.str());
+  EXPECT_EQ("0: a , \"b \" , c , d , e \n1:\n2:\n3:   x   x  \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -170,7 +170,7 @@ TEST_F(CCsvTest, tst_csv_quotes1) {
   const char* csv = "\"a\",\"b\"" LF "a,b" LF "\"a,b\",\"c,d\"" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0:ESCaESC,ESCbESC\n1:a,b\n2:ESCa,bESC,ESCc,dESC\n" == out.str());
+  EXPECT_EQ("0:ESCaESC,ESCbESC\n1:a,b\n2:ESCa,bESC,ESCc,dESC\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -188,7 +188,7 @@ TEST_F(CCsvTest, tst_csv_quotes2) {
       "\"x\"\"y\",\"a\"\"\"" LF "\"\",\"\"\"ab\",\"\"\"\"\"ab\"" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n" == out.str());
+  EXPECT_EQ("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -225,7 +225,7 @@ TEST_F(CCsvTest, tst_tsv_simple) {
                     "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_TRUE("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n" == out.str());
+  EXPECT_EQ("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -243,7 +243,7 @@ TEST_F(CCsvTest, tst_tsv_whitespace) {
       "a " TAB " b" TAB " c " LF "  " LF "" LF "something else" LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_TRUE("0:a , b, c \n1:  \n2:\n3:something else\n" == out.str());
+  EXPECT_EQ("0:a , b, c \n1:  \n2:\n3:something else\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -260,7 +260,7 @@ TEST_F(CCsvTest, tst_tsv_quotes) {
   const char* tsv = "\"a\"" TAB "\"b\"" TAB "\"c" LF " \"" LF "\" fox " LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_TRUE("0:\"a\",\"b\",\"c\n1: \"\n2:\" fox \n" == out.str());
+  EXPECT_EQ("0:\"a\",\"b\",\"c\n1: \"\n2:\" fox \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -278,7 +278,7 @@ TEST_F(CCsvTest, tst_tsv_separator) {
       "\"a,,\"" TAB "\",,b\"" TAB "\",c," LF " , ,\", " LF ",\", fox,, " LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_TRUE("0:\"a,,\",\",,b\",\",c,\n1: , ,\", \n2:,\", fox,, \n" == out.str());
+  EXPECT_EQ("0:\"a,,\",\",,b\",\",c,\n1: , ,\", \n2:,\", fox,, \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -296,7 +296,7 @@ TEST_F(CCsvTest, tst_tsv_crlf) {
                     "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" CR LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  EXPECT_TRUE("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n" == out.str());
+  EXPECT_EQ("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -313,7 +313,7 @@ TEST_F(CCsvTest, tst_csv_semicolon) {
   const char* csv = "a;b,c;d;e;" LF "f;g;;\"h,;\"" LF ";" LF ";;i; ;j; ;" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0:a,b,c,d,e,\n1:f,g,,ESCh,;ESC\n2:,\n3:,,i, ,j, ,\n" == out.str());
+  EXPECT_EQ("0:a,b,c,d,e,\n1:f,g,,ESCh,;ESC\n2:,\n3:,,i, ,j, ,\n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -331,7 +331,7 @@ TEST_F(CCsvTest, tst_csv_semicolon_noquote) {
       "a; b; c; d  ;" CR LF CR LF " ;" CR LF " " CR LF "\" abc \" " CR LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  EXPECT_TRUE("0:a, b, c, d  ,\n1:\n2: ,\n3: \n4:\" abc \" \n" == out.str());
+  EXPECT_EQ("0:a, b, c, d  ,\n1:\n2: ,\n3: \n4:\" abc \" \n", out.str());
 
   TRI_DestroyCsvParser(&parser);
 }

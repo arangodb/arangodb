@@ -61,7 +61,7 @@ CollectNode::CollectNode(
       _isDistinctCommand(isDistinctCommand),
       _specialized(false) {}
 
-CollectNode::~CollectNode() {}
+CollectNode::~CollectNode() = default;
 
 /// @brief toVelocyPack, for CollectNode
 void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -440,7 +440,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
   explicit UserVarFinder(int mindepth) : mindepth(mindepth), depth(-1) {}
 
-  ~UserVarFinder() {}
+  ~UserVarFinder() = default;
 
   std::vector<Variable const*> userVars;
   int mindepth;  // minimal depth to consider

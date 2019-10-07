@@ -61,7 +61,7 @@ TEST_F(IResearchQueryAggregateTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
         arangodb::velocypack::Parser::fromJson(
@@ -83,15 +83,15 @@ TEST_F(IResearchQueryAggregateTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create collection1
@@ -99,7 +99,7 @@ TEST_F(IResearchQueryAggregateTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
     resource /= irs::string_ref(arangodb::tests::testResourceDir);
@@ -115,15 +115,15 @@ TEST_F(IResearchQueryAggregateTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create view
@@ -131,11 +131,11 @@ TEST_F(IResearchQueryAggregateTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_TRUE((false == !impl));
+    ASSERT_FALSE(!impl);
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": {"
@@ -143,13 +143,13 @@ TEST_F(IResearchQueryAggregateTest, test) {
         "\"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
       cids.emplace(cid);
       return true;
     });
-    EXPECT_TRUE((2 == cids.size()));
+    EXPECT_EQ(2, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
@@ -173,16 +173,16 @@ TEST_F(IResearchQueryAggregateTest, test) {
     EXPECT_TRUE(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
-    ASSERT_TRUE(expected.size() == itr.size());
+    ASSERT_EQ(expected.size(), itr.size());
 
     for (; itr.valid(); itr.next()) {
       auto const value = itr.value();
       auto const key = value.get("value").getNumber<double_t>();
 
       auto expectedValue = expected.find(key);
-      ASSERT_TRUE(expectedValue != expected.end());
-      ASSERT_TRUE(expectedValue->second == value.get("names").getNumber<size_t>());
-      ASSERT_TRUE(1 == expected.erase(key));
+      ASSERT_NE(expectedValue, expected.end());
+      ASSERT_EQ(expectedValue->second, value.get("names").getNumber<size_t>());
+      ASSERT_EQ(1, expected.erase(key));
     }
     ASSERT_TRUE(expected.empty());
   }
@@ -210,38 +210,38 @@ TEST_F(IResearchQueryAggregateTest, test) {
     EXPECT_TRUE(slice.isArray());
 
     arangodb::velocypack::ArrayIterator itr(slice);
-    ASSERT_TRUE(expected.size() == itr.size());
+    ASSERT_EQ(expected.size(), itr.size());
 
     for (; itr.valid(); itr.next()) {
       auto const value = itr.value();
       auto const key = value.get("value").getNumber<double_t>();
 
       auto expectedValue = expected.find(key);
-      ASSERT_TRUE(expectedValue != expected.end());
+      ASSERT_NE(expectedValue, expected.end());
 
       arangodb::velocypack::ArrayIterator name(value.get("names"));
       auto& expectedNames = expectedValue->second;
 
       if (expectedNames.empty()) {
         // array must contain singe 'null' value
-        ASSERT_TRUE(1 == name.size());
+        ASSERT_EQ(1, name.size());
         ASSERT_TRUE(name.valid());
         ASSERT_TRUE(name.value().isNull());
         name.next();
-        ASSERT_TRUE(!name.valid());
+        ASSERT_FALSE(name.valid());
       } else {
-        ASSERT_TRUE(expectedNames.size() == name.size());
+        ASSERT_EQ(expectedNames.size(), name.size());
 
         for (; name.valid(); name.next()) {
           auto const actualName = arangodb::iresearch::getStringRef(name.value());
           auto expectedName = expectedNames.find(actualName);
-          ASSERT_TRUE(expectedName != expectedNames.end());
+          ASSERT_NE(expectedName, expectedNames.end());
           expectedNames.erase(expectedName);
         }
       }
 
       ASSERT_TRUE(expectedNames.empty());
-      ASSERT_TRUE(1 == expected.erase(key));
+      ASSERT_EQ(1, expected.erase(key));
     }
     ASSERT_TRUE(expected.empty());
   }
@@ -258,9 +258,9 @@ TEST_F(IResearchQueryAggregateTest, test) {
 
     arangodb::velocypack::ArrayIterator itr(slice);
     ASSERT_TRUE(itr.valid());
-    EXPECT_TRUE(0 == itr.value().getNumber<size_t>());
+    EXPECT_EQ(0, itr.value().getNumber<size_t>());
     itr.next();
-    EXPECT_TRUE(!itr.valid());
+    EXPECT_FALSE(itr.valid());
   }
 
   // test aggregation without filter condition
@@ -275,9 +275,9 @@ TEST_F(IResearchQueryAggregateTest, test) {
 
     arangodb::velocypack::ArrayIterator itr(slice);
     ASSERT_TRUE(itr.valid());
-    EXPECT_TRUE(475 == itr.value().getNumber<size_t>());
+    EXPECT_EQ(475, itr.value().getNumber<size_t>());
     itr.next();
-    EXPECT_TRUE(!itr.valid());
+    EXPECT_FALSE(itr.valid());
   }
 
   // total number of documents in a view
@@ -291,8 +291,8 @@ TEST_F(IResearchQueryAggregateTest, test) {
 
     arangodb::velocypack::ArrayIterator itr(slice);
     ASSERT_TRUE(itr.valid());
-    EXPECT_TRUE(38 == itr.value().getNumber<size_t>());
+    EXPECT_EQ(38, itr.value().getNumber<size_t>());
     itr.next();
-    EXPECT_TRUE(!itr.valid());
+    EXPECT_FALSE(itr.valid());
   }
 }

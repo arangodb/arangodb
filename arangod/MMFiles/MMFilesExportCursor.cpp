@@ -45,7 +45,7 @@ MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t& vocbase, CursorId id,
       _position(0),
       _size(_ex->_vpack.size()) {}
 
-MMFilesExportCursor::~MMFilesExportCursor() {}
+MMFilesExportCursor::~MMFilesExportCursor() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data

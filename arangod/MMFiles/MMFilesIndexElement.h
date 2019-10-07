@@ -46,7 +46,7 @@ struct MMFilesIndexElementValue {
 
  public:
   MMFilesIndexElementValue() {}
-  ~MMFilesIndexElementValue() {}
+  ~MMFilesIndexElementValue() = default;
 
   /// @brief fill an MMFilesIndexElementValue structure with a subvalue
   void fill(velocypack::Slice const value, uint32_t offset) {

@@ -79,21 +79,21 @@ TEST_F(LoggerTest, test_fds) {
   LogAppenderFile logger2(logfile2, "");
 
   auto fds = LogAppenderFile::getFds();
-  EXPECT_TRUE(fds.size() == 2);
+  EXPECT_EQ(fds.size(), 2);
 
-  EXPECT_TRUE(std::get<1>(fds[0]) == logfile1);
-  EXPECT_TRUE(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
+  EXPECT_EQ(std::get<1>(fds[0]), logfile1);
+  EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
   logger1.logMessage(LogLevel::ERR, "some error message", 0);
   logger2.logMessage(LogLevel::WARN, "some warning message", 0);
 
   std::string content = FileUtils::slurp(logfile1);
-  EXPECT_TRUE(content.find("some error message") != std::string::npos);
-  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
+  EXPECT_NE(content.find("some error message"), std::string::npos);
+  EXPECT_EQ(content.find("some warning message"), std::string::npos);
 
   content = FileUtils::slurp(logfile2);
-  EXPECT_TRUE(content.find("some error message") == std::string::npos);
-  EXPECT_TRUE(content.find("some warning message") != std::string::npos);
+  EXPECT_EQ(content.find("some error message"), std::string::npos);
+  EXPECT_NE(content.find("some warning message"), std::string::npos);
 
   LogAppenderFile::clear();
 }
@@ -103,43 +103,43 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   LogAppenderFile logger2(logfile2, "");
 
   auto fds = LogAppenderFile::getFds();
-  EXPECT_TRUE(fds.size() == 2);
+  EXPECT_EQ(fds.size(), 2);
 
-  EXPECT_TRUE(std::get<1>(fds[0]) == logfile1);
-  EXPECT_TRUE(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
+  EXPECT_EQ(std::get<1>(fds[0]), logfile1);
+  EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
   logger1.logMessage(LogLevel::ERR, "some error message", 0);
   logger2.logMessage(LogLevel::WARN, "some warning message", 0);
 
   std::string content = FileUtils::slurp(logfile1);
-  EXPECT_TRUE(content.find("some error message") != std::string::npos);
-  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
+  EXPECT_NE(content.find("some error message"), std::string::npos);
+  EXPECT_EQ(content.find("some warning message"), std::string::npos);
 
   content = FileUtils::slurp(logfile2);
-  EXPECT_TRUE(content.find("some error message") == std::string::npos);
-  EXPECT_TRUE(content.find("some warning message") != std::string::npos);
+  EXPECT_EQ(content.find("some error message"), std::string::npos);
+  EXPECT_NE(content.find("some warning message"), std::string::npos);
 
   LogAppenderFile::reopenAll();
 
   fds = LogAppenderFile::getFds();
-  EXPECT_TRUE(fds.size() == 2);
+  EXPECT_EQ(fds.size(), 2);
 
   EXPECT_TRUE(std::get<0>(fds[0]) > STDERR_FILENO);
-  EXPECT_TRUE(std::get<1>(fds[0]) == logfile1);
-  EXPECT_TRUE(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
+  EXPECT_EQ(std::get<1>(fds[0]), logfile1);
+  EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
   logger1.logMessage(LogLevel::ERR, "some other error message", 0);
   logger2.logMessage(LogLevel::WARN, "some other warning message", 0);
 
   content = FileUtils::slurp(logfile1);
-  EXPECT_TRUE(content.find("some error message") == std::string::npos);
-  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
-  EXPECT_TRUE(content.find("some other error message") != std::string::npos);
+  EXPECT_EQ(content.find("some error message"), std::string::npos);
+  EXPECT_EQ(content.find("some warning message"), std::string::npos);
+  EXPECT_NE(content.find("some other error message"), std::string::npos);
 
   content = FileUtils::slurp(logfile2);
-  EXPECT_TRUE(content.find("some error message") == std::string::npos);
-  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
-  EXPECT_TRUE(content.find("some other warning message") != std::string::npos);
+  EXPECT_EQ(content.find("some error message"), std::string::npos);
+  EXPECT_EQ(content.find("some warning message"), std::string::npos);
+  EXPECT_NE(content.find("some other warning message"), std::string::npos);
 
   LogAppenderFile::clear();
 }
