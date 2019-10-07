@@ -353,7 +353,7 @@ struct ClusterCommResult {
 
 struct ClusterCommCallback {
   ClusterCommCallback() {}
-  virtual ~ClusterCommCallback() {}
+  virtual ~ClusterCommCallback() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual callback function

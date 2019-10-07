@@ -45,9 +45,9 @@ TEST(AttributeNameParserTest, test_simpleString) {
 
   TRI_ParseAttributeString(input, result, false);
 
-  EXPECT_TRUE(result.size() == static_cast<size_t>(1));
-  EXPECT_TRUE(result[0].name == input);
-  EXPECT_TRUE(result[0].shouldExpand == false);
+  EXPECT_EQ(result.size(), static_cast<size_t>(1));
+  EXPECT_EQ(result[0].name, input);
+  EXPECT_FALSE(result[0].shouldExpand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,11 +60,11 @@ TEST(AttributeNameParserTest, test_subAttribute) {
 
   TRI_ParseAttributeString(input, result, false);
 
-  EXPECT_TRUE(result.size() == static_cast<size_t>(2));
-  EXPECT_TRUE(result[0].name == "foo");
-  EXPECT_TRUE(result[0].shouldExpand == false);
-  EXPECT_TRUE(result[1].name == "bar");
-  EXPECT_TRUE(result[1].shouldExpand == false);
+  EXPECT_EQ(result.size(), static_cast<size_t>(2));
+  EXPECT_EQ(result[0].name, "foo");
+  EXPECT_FALSE(result[0].shouldExpand);
+  EXPECT_EQ(result[1].name, "bar");
+  EXPECT_FALSE(result[1].shouldExpand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,13 +77,13 @@ TEST(AttributeNameParserTest, test_subsubAttribute) {
 
   TRI_ParseAttributeString(input, result, false);
 
-  EXPECT_TRUE(result.size() == static_cast<size_t>(3));
-  EXPECT_TRUE(result[0].name == "foo");
-  EXPECT_TRUE(result[0].shouldExpand == false);
-  EXPECT_TRUE(result[1].name == "bar");
-  EXPECT_TRUE(result[1].shouldExpand == false);
-  EXPECT_TRUE(result[2].name == "baz");
-  EXPECT_TRUE(result[2].shouldExpand == false);
+  EXPECT_EQ(result.size(), static_cast<size_t>(3));
+  EXPECT_EQ(result[0].name, "foo");
+  EXPECT_FALSE(result[0].shouldExpand);
+  EXPECT_EQ(result[1].name, "bar");
+  EXPECT_FALSE(result[1].shouldExpand);
+  EXPECT_EQ(result[2].name, "baz");
+  EXPECT_FALSE(result[2].shouldExpand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,9 +96,9 @@ TEST(AttributeNameParserTest, test_expandAttribute) {
 
   TRI_ParseAttributeString(input, result, true);
 
-  EXPECT_TRUE(result.size() == static_cast<size_t>(1));
-  EXPECT_TRUE(result[0].name == "foo");
-  EXPECT_TRUE(result[0].shouldExpand == true);
+  EXPECT_EQ(result.size(), static_cast<size_t>(1));
+  EXPECT_EQ(result[0].name, "foo");
+  EXPECT_TRUE(result[0].shouldExpand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,11 +111,11 @@ TEST(AttributeNameParserTest, test_expandSubAttribute) {
 
   TRI_ParseAttributeString(input, result, true);
 
-  EXPECT_TRUE(result.size() == static_cast<size_t>(2));
-  EXPECT_TRUE(result[0].name == "foo");
-  EXPECT_TRUE(result[0].shouldExpand == false);
-  EXPECT_TRUE(result[1].name == "bar");
-  EXPECT_TRUE(result[1].shouldExpand == true);
+  EXPECT_EQ(result.size(), static_cast<size_t>(2));
+  EXPECT_EQ(result[0].name, "foo");
+  EXPECT_FALSE(result[0].shouldExpand);
+  EXPECT_EQ(result[1].name, "bar");
+  EXPECT_TRUE(result[1].shouldExpand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,11 +128,11 @@ TEST(AttributeNameParserTest, test_expandedSubAttribute) {
 
   TRI_ParseAttributeString(input, result, true);
 
-  EXPECT_TRUE(result.size() == static_cast<size_t>(2));
-  EXPECT_TRUE(result[0].name == "foo");
-  EXPECT_TRUE(result[0].shouldExpand == true);
-  EXPECT_TRUE(result[1].name == "bar");
-  EXPECT_TRUE(result[1].shouldExpand == false);
+  EXPECT_EQ(result.size(), static_cast<size_t>(2));
+  EXPECT_EQ(result[0].name, "foo");
+  EXPECT_TRUE(result[0].shouldExpand);
+  EXPECT_EQ(result[1].name, "bar");
+  EXPECT_FALSE(result[1].shouldExpand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,14 +147,14 @@ TEST(AttributeNameParserTest, test_invalidAttributeAfterExpand) {
     TRI_ParseAttributeString(input, result, false);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_EQ(e.code(), TRI_ERROR_BAD_PARAMETER);
   }
 
   try {
     TRI_ParseAttributeString(input, result, true);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_EQ(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -170,14 +170,14 @@ TEST(AttributeNameParserTest, test_nonClosingBracket) {
     TRI_ParseAttributeString(input, result, false);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_EQ(e.code(), TRI_ERROR_BAD_PARAMETER);
   }
 
   try {
     TRI_ParseAttributeString(input, result, true);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_EQ(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -193,14 +193,14 @@ TEST(AttributeNameParserTest, test_nonClosingBracket2) {
     TRI_ParseAttributeString(input, result, false);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_EQ(e.code(), TRI_ERROR_BAD_PARAMETER);
   }
 
   try {
     TRI_ParseAttributeString(input, result, true);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_EQ(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -216,14 +216,14 @@ TEST(AttributeNameParserTest, test_nonAsterisk) {
     TRI_ParseAttributeString(input, result, false);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_EQ(e.code(), TRI_ERROR_BAD_PARAMETER);
   }
 
   try {
     TRI_ParseAttributeString(input, result, true);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_EQ(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -239,14 +239,14 @@ TEST(AttributeNameParserTest, test_nonAsterisk2) {
     TRI_ParseAttributeString(input, result, false);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_EQ(e.code(), TRI_ERROR_BAD_PARAMETER);
   }
 
   try {
     TRI_ParseAttributeString(input, result, true);
     EXPECT_TRUE(false);
   } catch (Exception& e) {
-    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_EQ(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -261,7 +261,7 @@ TEST(AttributeNameParserTest, test_reverseTransform) {
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  EXPECT_TRUE(output == input);
+  EXPECT_EQ(output, input);
 }
 */
 
@@ -276,7 +276,7 @@ TEST(AttributeNameParserTest, test_reverseTransformSimple) {
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  EXPECT_TRUE(output == input);
+  EXPECT_EQ(output, input);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,5 +290,5 @@ TEST(AttributeNameParserTest, test_reverseTransformSimpleMultiAttributes) {
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  EXPECT_TRUE(output == input);
+  EXPECT_EQ(output, input);
 }

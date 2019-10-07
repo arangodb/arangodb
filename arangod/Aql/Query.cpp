@@ -83,19 +83,19 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _vocbase(vocbase),
       _context(nullptr),
       _queryString(queryString),
-      _queryBuilder(),
       _bindParameters(bindParameters),
       _options(options),
       _collections(&vocbase),
-      _state(QueryExecutionState::ValueType::INVALID_STATE),
       _trx(nullptr),
-      _warnings(),
       _startTime(TRI_microtime()),
-      _part(part),
+      _queryHash(DontCache),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false),
       _preparedV8Context(false),
+      _queryHashCalculated(false),
+      _state(QueryExecutionState::ValueType::INVALID_STATE),
+      _part(part),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _sharedState(std::make_shared<SharedQueryState>()) {
   if (_contextOwnedByExterior) {
@@ -163,15 +163,16 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _queryBuilder(queryStruct),
       _options(options),
       _collections(&vocbase),
-      _state(QueryExecutionState::ValueType::INVALID_STATE),
       _trx(nullptr),
-      _warnings(),
       _startTime(TRI_microtime()),
-      _part(part),
+      _queryHash(DontCache),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false),
       _preparedV8Context(false),
+      _queryHashCalculated(false),
+      _state(QueryExecutionState::ValueType::INVALID_STATE),
+      _part(part),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _sharedState(std::make_shared<SharedQueryState>()) {
   // populate query options
@@ -408,7 +409,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
 #endif
 
   if (plan == nullptr) {
-    plan.reset(preparePlan());
+    plan = preparePlan();
 
     TRI_ASSERT(plan != nullptr);
 
@@ -450,7 +451,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
 /// execute calls it internally. The purpose of this separate method is
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
-ExecutionPlan* Query::preparePlan() {
+std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                              << "Query::prepare"
                                              << " this: " << (uintptr_t)this;
@@ -561,7 +562,7 @@ ExecutionPlan* Query::preparePlan() {
   // return the V8 context if we are in one
   exitContext();
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief execute an AQL query

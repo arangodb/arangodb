@@ -52,12 +52,12 @@ using namespace std;
 
 #define CHECK_ENDPOINT_FEATURE(type, specification, feature, expected) \
   e = FACTORY(type, specification); \
-  EXPECT_TRUE((expected) == (e->feature())); \
+  EXPECT_EQ((expected), (e->feature())); \
   delete e;
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
   e = arangodb::Endpoint::serverFactory(specification, 1, true); \
-  EXPECT_TRUE((expected) == (e->feature())); \
+  EXPECT_EQ((expected), (e->feature())); \
   delete e;
 
 TEST(EndpointTest, EndpointInvalid) {

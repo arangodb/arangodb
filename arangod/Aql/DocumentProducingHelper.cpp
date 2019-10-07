@@ -23,7 +23,10 @@
 #include "DocumentProducingHelper.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/DocumentExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -35,39 +38,34 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void aql::handleProjections(std::vector<std::string> const& projections,
+void aql::handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                             transaction::Methods const* trxPtr, VPackSlice slice,
                             VPackBuilder& b, bool useRawDocumentPointers) {
   for (auto const& it : projections) {
-    if (it == StaticStrings::IdString) {
-      VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
-      if (found.isCustom()) {
-        // _id as a custom type needs special treatment
-        b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
-                                                                   found, slice)));
-      } else {
-        b.add(it, found);
-      }
-    } else if (it == StaticStrings::KeyString) {
+    if (it.first == ProjectionType::IdAttribute) {
+      b.add(it.second, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
+      continue;
+    } else if (it.first == ProjectionType::KeyAttribute) {
       VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
       if (useRawDocumentPointers) {
-        b.add(VPackValue(it));
+        b.add(VPackValue(it.second));
         b.addExternal(found.begin());
       } else {
-        b.add(it, found);
+        b.add(it.second, found);
       }
+      continue;
+    }
+
+    VPackSlice found = slice.get(it.second);
+    if (found.isNone()) {
+      // attribute not found
+      b.add(it.second, VPackValue(VPackValueType::Null));
     } else {
-      VPackSlice found = slice.get(it);
-      if (found.isNone()) {
-        // attribute not found
-        b.add(it, VPackValue(VPackValueType::Null));
+      if (useRawDocumentPointers) {
+        b.add(VPackValue(it.second));
+        b.addExternal(found.begin());
       } else {
-        if (useRawDocumentPointers) {
-          b.add(VPackValue(it));
-          b.addExternal(found.begin());
-        } else {
-          b.add(it, found);
-        }
+        b.add(it.second, found);
       }
     }
   }
@@ -83,6 +81,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -115,6 +120,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -140,6 +152,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -165,7 +184,7 @@ DocumentProducingFunction aql::buildCallback(DocumentProducingFunctionContext& c
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     };
   }
-
+    
   if (!context.getProjections().empty()) {
     // return a projection
     if (!context.getCoveringIndexAttributePositions().empty()) {
@@ -191,12 +210,15 @@ DocumentProducingFunction aql::buildCallback(DocumentProducingFunctionContext& c
 template <bool checkUniqueness>
 std::function<void(LocalDocumentId const& token)> aql::getNullCallback(DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token) {
+    TRI_ASSERT(!context.hasFilter());
+
     if (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return;
       }
     }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -212,21 +234,35 @@ std::function<void(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Query* query, Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
-      _trxPtr(trxPtr),
-      _projections(projections),
+      _query(query),
+      _filter(filter),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _numScanned(0),
+      _numFiltered(0),
       _outputRegister(outputRegister),
       _produceResult(produceResult),
       _useRawDocumentPointers(useRawDocumentPointers),
       _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _isLastIndex(false),
-      _checkUniqueness(checkUniqueness) {}
+      _checkUniqueness(checkUniqueness) {
+
+  _projections.reserve(projections.size());
+  for (auto const& it : projections) {
+    ProjectionType type = ProjectionType::OtherAttribute;
+    if (it == StaticStrings::IdString) {
+      type = ProjectionType::IdAttribute;
+    } else if (it == StaticStrings::KeyString) {
+      type = ProjectionType::KeyAttribute;
+    }
+    _projections.emplace_back(type, it);
+  }
+}
 
 void DocumentProducingFunctionContext::setOutputRow(OutputAqlItemRow* outputRow) {
   _outputRow = outputRow;
@@ -236,12 +272,12 @@ bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-std::vector<std::string> const& DocumentProducingFunctionContext::getProjections() const noexcept {
+std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunctionContext::getProjections() const noexcept {
   return _projections;
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexcept {
-  return _trxPtr;
+  return _query->trx();
 }
 
 std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const
@@ -263,10 +299,18 @@ void DocumentProducingFunctionContext::setAllowCoveringIndexOptimization(bool al
 
 void DocumentProducingFunctionContext::incrScanned() noexcept { ++_numScanned; }
 
+void DocumentProducingFunctionContext::incrFiltered() noexcept { ++_numFiltered; }
+
 size_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
   size_t const numScanned = _numScanned;
   _numScanned = 0;
   return numScanned;
+}
+
+size_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
+  size_t const numFiltered = _numFiltered;
+  _numFiltered = 0;
+  return numFiltered;
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow() const noexcept {
@@ -300,6 +344,16 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
   return true;
 }
 
+bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
+  DocumentExpressionContext ctx(_query, slice);
+
+  bool mustDestroy;  // will get filled by execution
+  AqlValue a = _filter->execute(getTrxPtr(), &ctx, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  return a.toBoolean();
+}
+
 void DocumentProducingFunctionContext::reset() {
   if (_checkUniqueness) {
     _alreadyReturned.clear();
@@ -311,9 +365,13 @@ void DocumentProducingFunctionContext::setIsLastIndex(bool val) {
   _isLastIndex = val;
 }
 
+bool DocumentProducingFunctionContext::hasFilter() const noexcept {
+  return _filter != nullptr;
+}
+
 template <bool checkUniqueness>
 DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
-                                      DocumentProducingFunctionContext& context) {
+                                           DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
     if (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
@@ -321,6 +379,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         return;
       }
     }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -350,13 +415,13 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         }
         if (found.isNone()) {
           // attribute not found
-          b->add(it, VPackValue(VPackValueType::Null));
+          b->add(it.second, VPackValue(VPackValueType::Null));
         } else {
           if (context.getUseRawDocumentPointers()) {
-            b->add(VPackValue(it));
+            b->add(VPackValue(it.second));
             b->addExternal(found.begin());
           } else {
-            b->add(it, found);
+            b->add(it.second, found);
           }
         }
       }

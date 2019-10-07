@@ -40,7 +40,7 @@ RestTestHandler::RestTestHandler(application_features::ApplicationServer& server
                                  GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestTestHandler::~RestTestHandler() {}
+RestTestHandler::~RestTestHandler() = default;
 
 namespace {
 #define LANE_ENTRY(s) {#s, RequestLane::s},

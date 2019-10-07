@@ -778,8 +778,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     : indent(0) {
   }
 
-  ~RegisterPlanningDebugger () {
-  }
+  ~RegisterPlanningDebugger () = default;
 
   int indent;
 
@@ -1007,7 +1006,7 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, size_t id)
     : _id(id), _depth(0), _varUsageValid(false), _plan(plan) {}
 
-ExecutionNode::~ExecutionNode() {}
+ExecutionNode::~ExecutionNode() = default;
 
 size_t ExecutionNode::id() const { return _id; }
 
@@ -1242,10 +1241,10 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
   _hint.toVelocyPack(builder);
 
   // add outvariable and projection
-  DocumentProducingNode::toVelocyPack(builder);
+  DocumentProducingNode::toVelocyPack(builder, flags);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(builder);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
 
   // And close it:
   builder.close();
@@ -1257,14 +1256,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-
   EnumerateCollectionExecutorInfos infos(
       variableToRegisterId(_outVariable),
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      &engine, this->_collection, _outVariable, this->isVarUsedLater(_outVariable),
-      this->projections(), trxPtr, this->coveringIndexAttributePositions(),
+      &engine, this->_collection, _outVariable, (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
+      this->_filter.get(),
+      this->projections(), this->coveringIndexAttributePositions(),
       EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
@@ -1284,7 +1282,17 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
 
   c->projections(_projections);
   CollectionAccessingNode::cloneInto(*c);
+  DocumentProducingNode::cloneInto(plan, *c);
+
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void EnumerateCollectionNode::setRandom() { _random = true; }
+
+bool EnumerateCollectionNode::isDeterministic() { return !_random; }
+
+std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
+  return std::vector<Variable const*>{_outVariable};
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1305,7 +1313,7 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
   return estimate;
 }
-
+  
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1503,8 +1511,6 @@ size_t LimitNode::limit() const { return _limit; }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _conditionVariable(Variable::varFromVPack(plan->getAst(), base,
-                                                "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan, plan->getAst(), base)) {}
 
@@ -1520,11 +1526,6 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   _outVariable->toVelocyPack(nodes);
 
   nodes.add("canThrow", VPackValue(false));
-
-  if (_conditionVariable != nullptr) {
-    nodes.add(VPackValue("conditionVariable"));
-    _conditionVariable->toVelocyPack(nodes);
-  }
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
 
@@ -1625,19 +1626,15 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,
                                       bool withProperties) const {
-  auto conditionVariable = _conditionVariable;
   auto outVariable = _outVariable;
 
   if (withProperties) {
-    if (_conditionVariable != nullptr) {
-      conditionVariable = plan->getAst()->variables()->createVariable(conditionVariable);
-    }
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
   auto c = std::make_unique<CalculationNode>(plan, _id,
                                              _expression->clone(plan, plan->getAst()),
-                                             conditionVariable, outVariable);
+                                             outVariable);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1650,34 +1647,25 @@ CostEstimate CalculationNode::estimateCost() const {
   return estimate;
 }
 
-CalculationNode::CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
-                                 Variable const* conditionVariable, Variable const* outVariable)
+CalculationNode::CalculationNode(ExecutionPlan* plan, size_t id,
+                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
     : ExecutionNode(plan, id),
-      _conditionVariable(conditionVariable),
       _outVariable(outVariable),
-      _expression(expr) {
+      _expression(std::move(expr)) {
   TRI_ASSERT(_expression != nullptr);
   TRI_ASSERT(_outVariable != nullptr);
 }
 
-CalculationNode::CalculationNode(ExecutionPlan* plan, size_t id,
-                                 Expression* expr, Variable const* outVariable)
-    : CalculationNode(plan, id, expr, nullptr, outVariable) {}
-
-CalculationNode::~CalculationNode() { delete _expression; }
+CalculationNode::~CalculationNode() {}
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
-Expression* CalculationNode::expression() const { return _expression; }
+Expression* CalculationNode::expression() const { return _expression.get(); }
 
 void CalculationNode::getVariablesUsedHere(arangodb::HashSet<const Variable*>& vars) const {
   _expression->variables(vars);
-
-  if (_conditionVariable != nullptr) {
-    vars.emplace(_conditionVariable);
-  }
 }
 
 std::vector<Variable const*> CalculationNode::getVariablesSetHere() const {
@@ -1876,7 +1864,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   SubqueryVarUsageFinder() {}
 
-  ~SubqueryVarUsageFinder() {}
+  ~SubqueryVarUsageFinder() = default;
 
   bool before(ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
@@ -1927,7 +1915,7 @@ struct DeterministicFinder final : public WalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}
-  ~DeterministicFinder() {}
+  ~DeterministicFinder() = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
@@ -2222,14 +2210,6 @@ ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
 }
 
 IndexHint const& EnumerateCollectionNode::hint() const { return _hint; }
-
-void EnumerateCollectionNode::setRandom() { _random = true; }
-
-bool EnumerateCollectionNode::isDeterministic() { return !_random; }
-
-std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
-  return std::vector<Variable const*>{_outVariable};
-}
 
 SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other) {
   if (!isValid || !other.isValid) {

@@ -40,7 +40,7 @@ RestUploadHandler::RestUploadHandler(application_features::ApplicationServer& se
                                      GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestUploadHandler::~RestUploadHandler() {}
+RestUploadHandler::~RestUploadHandler() = default;
 
 RestStatus RestUploadHandler::execute() {
   // extract the request type

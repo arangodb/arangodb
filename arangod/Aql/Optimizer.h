@@ -114,7 +114,7 @@ class Optimizer {
   /// and add all methods there to the rules database
   explicit Optimizer(size_t maxNumberOfPlans);
 
-  ~Optimizer() {}
+  ~Optimizer() = default;
 
   /// @brief disable rules in the given plan, using the predicate function
   void disableRules(ExecutionPlan* plan,

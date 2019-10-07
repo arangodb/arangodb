@@ -256,7 +256,7 @@ class ExecutionPlan {
 
  private:
   /// @brief creates a calculation node
-  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*, ExecutionNode*);
+  ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 
   /// @brief get the subquery node from an expression
   /// this will return a nullptr if the expression does not refer to a subquery

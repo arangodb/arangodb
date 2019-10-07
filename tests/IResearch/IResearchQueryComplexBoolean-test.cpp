@@ -59,7 +59,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
         VPackParser::fromJson(
@@ -81,15 +81,15 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create collection1
@@ -97,7 +97,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
     resource /= irs::string_ref(arangodb::tests::testResourceDir);
@@ -113,15 +113,15 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create view
@@ -129,11 +129,11 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_TRUE((false == !impl));
+    ASSERT_FALSE(!impl);
 
     auto updateJson = VPackParser::fromJson(
         "{ \"links\": {"
@@ -142,13 +142,13 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
         "\"testCollection1\": { \"includeAllFields\": true, \"analyzers\": [ "
         "\"test_analyzer\", \"identity\" ], \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
       cids.emplace(cid);
       return true;
     });
-    EXPECT_TRUE((2 == cids.size()));
+    EXPECT_EQ(2, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
@@ -199,12 +199,12 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      ASSERT_TRUE((i < expected.size()));
+      ASSERT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // (A && B && !C)
@@ -228,12 +228,12 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // (A && B) || (C && D)
@@ -264,12 +264,12 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // (A && B) || (C && D)
@@ -295,12 +295,12 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // (A || B) && (C || D || E)
@@ -345,11 +345,11 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
                                                                     resolved, true)));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 }
