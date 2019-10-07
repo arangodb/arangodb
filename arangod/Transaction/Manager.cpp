@@ -803,9 +803,8 @@ bool Manager::garbageCollect(bool abortAll) {
   }
 
   for (TRI_voc_tid_t tid : toAbort) {
-    LOG_TOPIC("6fbaf", DEBUG, Logger::TRANSACTIONS) << "garbage collecting "
-                                                       "transaction: '"
-                                                    << tid << "'";
+    LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
+                                                   << "transaction: '" << tid << "'";
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
     // successfully aborts, so ignore this error.

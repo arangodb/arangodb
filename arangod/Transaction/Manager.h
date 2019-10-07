@@ -57,11 +57,7 @@ struct Options;
 /// @brief Tracks TransasctionState instances
 class Manager final {
   static constexpr size_t numBuckets = 16;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  static constexpr double idleTTL = 30.0;                          // 30 seconds
-#else
   static constexpr double idleTTL = 10.0;                          // 10 seconds
-#endif
   static constexpr double idleTTLDBServer = 3 * 60.0;              //  3 minutes
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB

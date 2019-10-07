@@ -2054,11 +2054,13 @@ void fetchVerticesFromEngines(
       })
       .get();
 
-  // Fill everything we did not find with NULL
-  for (auto const& v : vertexIds) {
-    result.emplace(v, VPackSlice::nullSlice());
+  if (!forShortestPath) {
+    // Fill everything we did not find with NULL
+    for (auto const& v : vertexIds) {
+      result.emplace(v, VPackSlice::nullSlice());
+    }
+    vertexIds.clear();
   }
-  vertexIds.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

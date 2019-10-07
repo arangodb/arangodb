@@ -4086,20 +4086,20 @@ function transactionTTLStreamSuite () {
         collections: { write: cn }
       });
 
+      trx.collection(cn).save({value:'val'});
+
       let x = 60;
       do {
         internal.sleep(1);
 
-        try {
-          trx.collection(cn).save({value:'val'});
-        } catch (err) {
-          assertTrue(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code == err.errorNum ||
-                     internal.errors.ERROR_TRANSACTION_ABORTED.code == err.errorNum);
+        if (trx.status().status === "aborted") {
           return;
         }
-        
-      } while(x-- > 0);
-      fail(); // should not be reached
+
+      } while(--x > 0);
+      if (x <= 0) {
+        fail(); // should not be reached
+      }
     }
   };
 }

@@ -48,6 +48,11 @@ RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& serv
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
+  
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    generateNotImplemented("ILLEGAL " + EDGES_PATH);
+    return RestStatus::DONE;
+  }
 
   // execute one of the CRUD methods
   switch (type) {
