@@ -102,7 +102,7 @@ class AqlItemMatrix {
 
   size_t _nrRegs;
 
-  uint32_t _lastShadowRow;
+  size_t _lastShadowRow;
 };
 
 }  // namespace aql

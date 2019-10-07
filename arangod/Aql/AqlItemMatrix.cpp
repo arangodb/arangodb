@@ -31,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-static constexpr uint32_t InvalidRowIndex{UINT32_MAX};
+static constexpr size_t InvalidRowIndex{SIZE_T_MAX};
 
 namespace {
 static uint32_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
@@ -64,7 +64,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
       // Default case, 0 -> end
       uint32_t startRow = 0;
       // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
-      uint32_t endRow = static_cast<uint32_t>(block->size());
+      uint32_t endRow = block->size();
 
       if (block->hasShadowRows()) {
         // We have one (or more) shadowRow(s) with this block.
@@ -82,7 +82,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
             // Pick the shadowRow before the lastShadowRow
             // And start from the line AFTER.
             // NOTE: This could already be the next shadowRow. in this case we return an empty list
-            startRow = static_cast<uint32_t>(*before) + 1;
+            startRow = *before + 1;
           }
         } else {
           // We need to start after the last shadowRow
@@ -99,14 +99,14 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
         // Default case, 0 -> end
         uint32_t startRow = 0;
         // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
-        uint32_t endRow = static_cast<uint32_t>(block->size());
+        uint32_t endRow = block->size();
 
         if (block == _blocks.front() && block->hasShadowRows()) {
           // The first block was sliced by a ShadowRow, we need to pick everything after the last:
           startRow = FirstReleveantDataRowInBlock(block);
         } else if (block == _blocks.back() && block->hasShadowRows()) {
           // The last Block is sliced by a shadowRow. We can only use data up to this shadow row
-          endRow = _lastShadowRow;
+          endRow = static_cast<uint32_t>(_lastShadowRow);
         } else {
           // Intermediate blocks cannot have shadow rows.
           // Go from 0 -> end
@@ -155,7 +155,7 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   if (blockPtr->hasShadowRows()) {
     TRI_ASSERT(!blockPtr->getShadowRowIndexes().empty());
     // Let us stop on the first
-    _lastShadowRow = static_cast<uint32_t>(*blockPtr->getShadowRowIndexes().begin());
+    _lastShadowRow = *blockPtr->getShadowRowIndexes().begin();
     _size += _lastShadowRow;
   } else {
     _size += blockPtr->size();
