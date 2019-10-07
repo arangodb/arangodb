@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -102,6 +103,7 @@ namespace aql {
 class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
  protected:
   mocks::MockAqlServer server;
+  QueryRegistry* queryRegistry{QueryRegistryFeature::registry()};
 
   std::string const enableRuleOptions() const {
     return R"({"optimizer": { "rules": [ "+splice-subqueries" ] } })";
@@ -112,27 +114,18 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
   }
 
   void verifySubquerySplicing(std::string const& querystring, size_t expectedNumberOfNodes) {
+    ASSERT_NE(queryRegistry, nullptr);
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0);
+
     auto const bindParameters = VPackParser::fromJson("{ }");
-    /*
-    {
-      arangodb::aql::Query hund(false, server.getSystemDatabase(),
-                                arangodb::aql::QueryString(querystring),
-    nullptr, disableRuleOptions(), arangodb::aql::PART_MAIN); auto res =
-    hund.explain(); LOG_DEVEL << res.data->toJson();
-    }
-
     arangodb::aql::Query notSplicedQuery(false, server.getSystemDatabase(),
-                                         arangodb::aql::QueryString(querystring),
-                                         nullptr, disableRuleOptions(),
+                                         arangodb::aql::QueryString(querystring), nullptr,
+                                         VPackParser::fromJson(disableRuleOptions()),
                                          arangodb::aql::PART_MAIN);
-    auto explainResult = notSplicedQuery.explain();
-    ASSERT_TRUE(explainResult.ok()) << "unable to parse the given plan";
-    auto notSplicedPlan = notSplicedQuery.plan();
-*/
-    auto notSplicedPlan =
-        arangodb::tests::planFromQuery(server.getSystemDatabase(), querystring,
-                                       bindParameters, disableRuleOptions());
+    notSplicedQuery.prepare(queryRegistry, SerializationFormat::SHADOWROWS);
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0);
 
+    auto notSplicedPlan = notSplicedQuery.plan();
     ASSERT_NE(notSplicedPlan, nullptr);
 
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -144,17 +137,15 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
                                     ExecutionNode::SUBQUERY_START, true);
     notSplicedPlan->findNodesOfType(notSplicedSubqueryEndNodes,
                                     ExecutionNode::SUBQUERY_END, true);
-    /*
-    arangodb::aql::Query splicedQuery(false, server.getSystemDatabase(),
-                                      arangodb::aql::QueryString(querystring),
-    nullptr, enableRuleOptions(), arangodb::aql::PART_MAIN);
-    splicedQuery.parse();
-        auto splicedPlan = std::move(splicedQuery.stealPlan());
-    */
 
-    auto splicedPlan =
-        arangodb::tests::planFromQuery(server.getSystemDatabase(), querystring,
-                                       bindParameters, disableRuleOptions());
+    arangodb::aql::Query splicedQuery(false, server.getSystemDatabase(),
+                                      arangodb::aql::QueryString(querystring), nullptr,
+                                      VPackParser::fromJson(enableRuleOptions()),
+                                      arangodb::aql::PART_MAIN);
+    splicedQuery.prepare(queryRegistry, SerializationFormat::SHADOWROWS);
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0);
+
+    auto splicedPlan = splicedQuery.plan();
     ASSERT_NE(splicedPlan, nullptr);
 
     SmallVector<ExecutionNode*> splicedSubqueryNodes{a}, splicedSubqueryStartNodes{a},
@@ -174,19 +165,12 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     EXPECT_EQ(notSplicedSubqueryNodes.size(), splicedSubqueryStartNodes.size());
     EXPECT_EQ(notSplicedSubqueryNodes.size(), splicedSubqueryEndNodes.size());
     EXPECT_EQ(notSplicedSubqueryNodes.size(), expectedNumberOfNodes);
-    {
-      LOG_DEVEL << "Check nodes";
-      for (auto const& it : notSplicedSubqueryNodes) {
-        LOG_DEVEL << "Found node: " << it->id() << " of type " << it->getTypeString();
-      }
-      LOG_DEVEL << notSplicedPlan->toVelocyPack(notSplicedPlan->getAst(), false)->toJson();
-    }
 
     EXPECT_EQ(splicedSubquerySingletonNodes.size(), 1);
 
     // Make sure no nodes got lost (currently does not check SubqueryNodes,
     // SubqueryStartNode, SubqueryEndNode correctness)
-    Comparator compare(notSplicedPlan.get());
+    Comparator compare(notSplicedPlan);
     splicedPlan->root()->walk(compare);
   }
 
@@ -203,8 +187,8 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     for (VPackValueLength i = 0; i < expected.length(); ++i) {
       EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
           << "Line " << i << ": " << resultSlice.at(i).toJson()
-          << " != " << expected.at(i).toJson()
-          << " rule was on: " << std::boolalpha << ruleEnabled;
+          << " (found) != " << expected.at(i).toJson()
+          << " (expected) rule was on: " << std::boolalpha << ruleEnabled;
     }
   }
 
@@ -219,14 +203,13 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
       compareQueryResultToSlice(queryResult, false, expected);
     }
     // Second test optimized Query (rule-enabled)
-    /*
+
     {
       auto queryResult =
-          arangodb::tests::executeQuery(server.getSystemDatabase(), query, bindParameters,
-                                        enableRuleOptions());
+          arangodb::tests::executeQuery(server.getSystemDatabase(), query,
+                                        bindParameters, enableRuleOptions());
       compareQueryResultToSlice(queryResult, true, expected);
     }
-    */
   }
 
  public:
@@ -285,7 +268,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_after_subqu
                         RETURN [first, second])aql";
   verifySubquerySplicing(query, 2);
 
-  auto expected = arangodb::velocypack::Parser::fromJson(R"([[1,2],[2,1]])");
+  auto expected = arangodb::velocypack::Parser::fromJson(R"([[[1],[2]],[[2],[1]]])");
   verifyQueryResult(query, expected->slice());
 }
 
