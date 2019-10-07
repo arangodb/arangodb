@@ -4098,7 +4098,7 @@ function transactionTTLStreamSuite () {
           return;
         }
         
-      } while(!done && x-- > 0);
+      } while(x-- > 0);
       fail(); // should not be reached
     }
   };

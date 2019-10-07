@@ -191,7 +191,8 @@ void fetchVerticesFromEngines(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
     std::unordered_set<arangodb::velocypack::StringRef>&,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
-    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake);
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake,
+    bool forShortestPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator

@@ -1804,12 +1804,11 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
   // This function works for one specific vertex
   // or for a list of vertices.
   TRI_ASSERT(vertexId.isString() || vertexId.isArray());
-  VPackBufferUInt8 buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject();
-  builder.add("depth", VPackValue(depth));
-  builder.add("keys", vertexId);
-  builder.close();
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add("depth", VPackValue(depth));
+  leased->add("keys", vertexId);
+  leased->close();
 
   std::string const url = "/_db/" + StringUtils::urlEncode(trx.vocbase().name()) +
                           "/_internal/traverser/edge/";
@@ -1823,7 +1822,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  buffer, network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   return futures::collectAll(std::move(futures))
@@ -1899,13 +1898,11 @@ int fetchEdgesFromEngines(
   // This function works for one specific vertex
   // or for a list of vertices.
   TRI_ASSERT(vertexId.isString() || vertexId.isArray());
-  VPackBufferUInt8 buffer;
-  VPackBuilder builder(buffer);
-  builder.clear();
-  builder.openObject();
-  builder.add("backward", VPackValue(backward));
-  builder.add("keys", vertexId);
-  builder.close();
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add("backward", VPackValue(backward));
+  leased->add("keys", vertexId);
+  leased->close();
 
   std::string const url = "/_db/" + StringUtils::urlEncode(trx.vocbase().name()) +
                           "/_internal/traverser/edge/";
@@ -1919,7 +1916,7 @@ int fetchEdgesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  buffer, network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   return futures::collectAll(std::move(futures))
@@ -1982,7 +1979,8 @@ void fetchVerticesFromEngines(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
-    std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake) {
+    std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
+    bool forShortestPath) {
   // TODO map id => ServerID if possible
   // And go fast-path
 

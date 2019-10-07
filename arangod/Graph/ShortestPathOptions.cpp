@@ -224,7 +224,8 @@ void ShortestPathOptions::fetchVerticesCoordinator(
     }
   }
   if (!fetch.empty()) {
-    fetchVerticesFromEngines(*_trx, ch->engines(), fetch, cache, ch->datalake());
+    fetchVerticesFromEngines(*_trx, ch->engines(), fetch, cache, ch->datalake(),
+                             /*forShortestPath*/ false);
   }
 }
 

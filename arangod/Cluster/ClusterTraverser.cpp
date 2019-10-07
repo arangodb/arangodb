@@ -110,7 +110,8 @@ bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
 void ClusterTraverser::fetchVertices() {
   auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
   ch->insertedDocuments() += _verticesToFetch.size();
-  fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake());
+  fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake(),
+                           /*forShortestPath*/ false);
   _verticesToFetch.clear();
   if (_enumerator != nullptr) {
     _enumerator->incHttpRequests(_engines->size()); 
