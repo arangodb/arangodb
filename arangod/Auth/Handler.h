@@ -73,7 +73,7 @@ class Handler {
                                      std::string const& password) = 0;
   /// Read user permissions assuming he was already authenticated once
   virtual HandlerResult readPermissions(std::string const& username) = 0;
-  virtual ~Handler() {}
+  virtual ~Handler() = default;
 };
 
 }  // namespace auth

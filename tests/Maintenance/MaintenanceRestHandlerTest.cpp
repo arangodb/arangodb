@@ -88,15 +88,15 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
   arangodb::application_features::ApplicationServer dummyServer{nullptr, nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
 
-  ASSERT_TRUE(true == dummyHandler.test_parsePutBody(body.slice()));
+  ASSERT_TRUE(dummyHandler.test_parsePutBody(body.slice()));
   ASSERT_TRUE(dummyHandler.getActionDesc().has("name"));
-  ASSERT_TRUE(dummyHandler.getActionDesc().get("name") == "CreateCollection");
+  ASSERT_EQ(dummyHandler.getActionDesc().get("name"), "CreateCollection");
   ASSERT_TRUE(dummyHandler.getActionDesc().has("collection"));
-  ASSERT_TRUE(dummyHandler.getActionDesc().get("collection") == "a");
+  ASSERT_EQ(dummyHandler.getActionDesc().get("collection"), "a");
   ASSERT_TRUE(dummyHandler.getActionDesc().has("database"));
-  ASSERT_TRUE(dummyHandler.getActionDesc().get("database") == "test");
+  ASSERT_EQ(dummyHandler.getActionDesc().get("database"), "test");
 
   VPackObjectIterator it(dummyHandler.getActionProp().slice(), true);
-  ASSERT_TRUE(it.key().copyString() == "journalSize");
-  ASSERT_TRUE(it.value().getInt() == 1111);
+  ASSERT_EQ(it.key().copyString(), "journalSize");
+  ASSERT_EQ(it.value().getInt(), 1111);
 }

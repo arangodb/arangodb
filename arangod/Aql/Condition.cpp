@@ -324,7 +324,7 @@ ConditionPart::ConditionPart(Variable const* variable,
   isExpanded = (attributeName.find("[*]") != std::string::npos);
 }
 
-ConditionPart::~ConditionPart() {}
+ConditionPart::~ConditionPart() = default;
 
 /// @brief true if the condition is completely covered by the other condition
 bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) const {
@@ -556,7 +556,7 @@ void Condition::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbos
 }
 
 /// @brief create a condition from VPack
-Condition* Condition::fromVPack(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice) {
+std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice) {
   auto condition = std::make_unique<Condition>(plan->getAst());
 
   if (slice.isObject() && slice.length() != 0) {
@@ -568,11 +568,11 @@ Condition* Condition::fromVPack(ExecutionPlan* plan, arangodb::velocypack::Slice
   condition->_isNormalized = true;
   condition->_isSorted = false;
 
-  return condition.release();
+  return condition;
 }
 
 /// @brief clone the condition
-Condition* Condition::clone() const {
+std::unique_ptr<Condition> Condition::clone() const {
   auto copy = std::make_unique<Condition>(_ast);
 
   if (_root != nullptr) {
@@ -581,7 +581,7 @@ Condition* Condition::clone() const {
 
   copy->_isNormalized = _isNormalized;
 
-  return copy.release();
+  return copy;
 }
 
 /// @brief add a sub-condition to the condition

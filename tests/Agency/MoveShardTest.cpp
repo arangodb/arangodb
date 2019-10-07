@@ -83,16 +83,16 @@ Node createAgencyFromBuilder(VPackBuilder const& builder) {
   std::string sourceKey = "/arango/Target/";                                   \
   sourceKey += source;                                                         \
   sourceKey += "/1";                                                           \
-  EXPECT_TRUE(std::string(q->slice().typeName()) == "array");                  \
-  EXPECT_TRUE(q->slice().length() == 1);                                       \
-  EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");               \
-  EXPECT_TRUE(q->slice()[0].length() == 1);                                    \
-  EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");           \
+  EXPECT_EQ(std::string(q->slice().typeName()), "array");                  \
+  EXPECT_EQ(q->slice().length(), 1);                                       \
+  EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");               \
+  EXPECT_EQ(q->slice()[0].length(), 1);                                    \
+  EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");           \
   auto writes = q->slice()[0][0];                                              \
-  EXPECT_TRUE(std::string(writes.get(sourceKey).typeName()) == "object");      \
+  EXPECT_EQ(std::string(writes.get(sourceKey).typeName()), "object");      \
   EXPECT_TRUE(std::string(writes.get(sourceKey).get("op").typeName()) ==       \
               "string");                                                       \
-  EXPECT_TRUE(writes.get(sourceKey).get("op").copyString() == "delete");       \
+  EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");       \
   EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1").typeName()) == \
               "object");
 
@@ -341,11 +341,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
@@ -657,18 +657,18 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     std::string sourceKey = "/arango/Target/ToDo/1";
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 2);
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
-    EXPECT_TRUE(std::string(q->slice()[0][1].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 2);
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+    EXPECT_EQ(std::string(q->slice()[0][1].typeName()), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(std::string(writes.get(sourceKey).typeName()) == "object");
+    EXPECT_EQ(std::string(writes.get(sourceKey).typeName()), "object");
     EXPECT_TRUE(std::string(writes.get(sourceKey).get("op").typeName()) ==
                 "string");
-    EXPECT_TRUE(writes.get(sourceKey).get("op").copyString() == "delete");
+    EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).copyString() ==
                 "1");
     EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).copyString() ==
@@ -697,7 +697,7 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
         found = true;
       }
     }
-    EXPECT_TRUE(found == true);
+    EXPECT_TRUE(found);
 
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(preconditions.get("/arango/Target/CleanedServers").get("old").toJson() ==
@@ -781,7 +781,7 @@ TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
         found = true;
       }
     }
-    EXPECT_TRUE(found == true);
+    EXPECT_TRUE(found);
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
@@ -1661,7 +1661,7 @@ TEST_F(MoveShardTest, a_moveshard_job_that_just_made_it_to_todo_can_simply_be_ab
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(q->slice()[0].length() == 2);  // we always simply override! no preconditions...
+    EXPECT_EQ(q->slice()[0].length(), 2);  // we always simply override! no preconditions...
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
@@ -1734,7 +1734,7 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(q->slice()[0].length() == 2);  // Precondition: to Server not leader yet
+    EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
     EXPECT_TRUE(
         writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
         "delete");
@@ -1852,7 +1852,7 @@ TEST_F(MoveShardTest, after_the_new_leader_has_synchronized_the_new_leader_shoul
                          COLLECTION + "/shards/" + SHARD)[2]
                     .copyString() == FREE_SERVER);
 
-    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_EQ(q->slice()[0].length(), 2);
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(std::string(preconditions
                                 .get("/arango/Plan/Collections/" + DATABASE +
@@ -2021,7 +2021,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(q->slice()[0].length() == 2);  // Precondition: to Server not leader yet
+    EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
     EXPECT_TRUE(
         writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
         "delete");
@@ -2113,17 +2113,17 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    EXPECT_TRUE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
-    EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
-    EXPECT_TRUE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
+    EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(), "delete");
+    EXPECT_EQ(q->slice()[0].length(), 2); // Precondition: to Server not leader yet
+    EXPECT_EQ(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString(), "delete");
+    EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(), "delete");
+    EXPECT_EQ(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()), "array");
     // well apparently this job is not responsible to cleanup its mess
     EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() >= 3);
-    EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString() == SHARD_LEADER);
-    EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString() == SHARD_FOLLOWER1);
-    EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString() == FREE_SERVER);
-    EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString(), SHARD_LEADER);
+    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString(), SHARD_FOLLOWER1);
+    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString(), FREE_SERVER);
+    EXPECT_EQ(std::string(writes.get("/arango/Target/Failed/1").typeName()), "object");
 
     return fakeWriteResult;
   });
@@ -2213,7 +2213,7 @@ TEST_F(MoveShardTest, if_we_are_ready_to_resign_the_old_server_then_finally_move
                          COLLECTION + "/shards/" + SHARD)[1]
                     .copyString() == SHARD_FOLLOWER1);
 
-    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_EQ(q->slice()[0].length(), 2);
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(std::string(preconditions
                                 .get("/arango/Plan/Collections/" + DATABASE +
@@ -2311,7 +2311,7 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(writes.length() == 4);
+    EXPECT_EQ(writes.length(), 4);
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
@@ -2322,7 +2322,7 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
 
-    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_EQ(q->slice()[0].length(), 2);
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(std::string(preconditions
                                 .get("/arango/Plan/Collections/" + DATABASE +
@@ -2371,17 +2371,17 @@ TEST_F(MoveShardTest, it_should_be_possible_to_create_a_new_moveshard_job) {
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(q->slice()[0].length() == 1);
+    EXPECT_EQ(q->slice()[0].length(), 1);
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(writes.length() == 1);
+    EXPECT_EQ(writes.length(), 1);
     EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
                 "object");
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("database").copyString() == DATABASE);
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("collection").copyString() == COLLECTION);
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("shard").copyString() == SHARD);
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("fromServer").copyString() == SHARD_LEADER);
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("toServer").copyString() == SHARD_FOLLOWER1);
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("database").copyString(), DATABASE);
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("collection").copyString(), COLLECTION);
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("shard").copyString(), SHARD);
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("fromServer").copyString(), SHARD_LEADER);
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("toServer").copyString(), SHARD_FOLLOWER1);
     EXPECT_TRUE(
         std::string(writes.get("/arango/Target/ToDo/1").get("timeCreated").typeName()) ==
         "string");
@@ -2484,7 +2484,7 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_EQ(q->slice()[0].length(), 2);
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
                                      "/" + COLLECTION).get("oldEmpty").isFalse());
@@ -2586,7 +2586,7 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
-  EXPECT_TRUE(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
 
 TEST_F(MoveShardTest, if_aborting_failed_due_to_a_precondition_report_it_properly) {
@@ -2649,7 +2649,7 @@ TEST_F(MoveShardTest, if_aborting_failed_due_to_a_precondition_report_it_properl
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
-  EXPECT_TRUE(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
 
 TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
@@ -2712,7 +2712,7 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
   auto moveShard = MoveShard(agency, &agent, FINISHED, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
-  EXPECT_TRUE(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
 
 TEST_F(MoveShardTest, if_the_job_fails_while_trying_to_switch_over_leadership_it_should_be_aborted) {
@@ -2890,7 +2890,7 @@ TEST_F(MoveShardTest, when_promoting_the_new_leader_the_old_one_should_become_a_
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_EQ(q->slice()[0].length(), 2);
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(std::string(writes

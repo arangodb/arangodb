@@ -61,7 +61,7 @@ class TokenTranslator : public TraverserCache {
       : TraverserCache(query, opts),
         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
-  ~TokenTranslator() {}
+  ~TokenTranslator() = default;
 
   arangodb::velocypack::StringRef makeVertex(std::string const& id) {
     VPackBuilder vertex;
@@ -204,7 +204,7 @@ class ShortestPathExecutorTest
       FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
       TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
       auto block = result.stealBlock();
-      ASSERT_TRUE(block != nullptr);
+      ASSERT_NE(block, nullptr);
       size_t index = 0;
       for (size_t i = 0; i < resultPaths.size(); ++i) {
         auto path = finder.findPath(resultPaths[i]);
@@ -260,40 +260,40 @@ class ShortestPathExecutorTest
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
     // Fetch fullPath
     for (size_t i = 0; i < resultPaths.size(); ++i) {
-      EXPECT_TRUE(state == ExecutionState::HASMORE);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
       // if we pull, we always wait
       std::tie(state, stats) = testee.produceRows(result);
-      EXPECT_TRUE(state == ExecutionState::WAITING);
-      EXPECT_TRUE(!result.produced());
+      EXPECT_EQ(state, ExecutionState::WAITING);
+      EXPECT_FALSE(result.produced());
       state = ExecutionState::HASMORE;  // For simplicity on path fetching.
       auto path = finder.findPath(resultPaths[i]);
       for (ADB_IGNORE_UNUSED auto const& v : path) {
-        ASSERT_TRUE(state == ExecutionState::HASMORE);
+        ASSERT_EQ(state, ExecutionState::HASMORE);
         std::tie(state, stats) = testee.produceRows(result);
         EXPECT_TRUE(result.produced());
         result.advanceRow();
       }
       auto gotCalledWith = finder.calledAt(i);
-      EXPECT_TRUE(gotCalledWith.first == resultPaths[i].first);
-      EXPECT_TRUE(gotCalledWith.second == resultPaths[i].second);
+      EXPECT_EQ(gotCalledWith.first, resultPaths[i].first);
+      EXPECT_EQ(gotCalledWith.second, resultPaths[i].second);
     }
     if (resultPaths.empty()) {
       // Fetch at least twice, one waiting
       std::tie(state, stats) = testee.produceRows(result);
-      EXPECT_TRUE(state == ExecutionState::WAITING);
-      EXPECT_TRUE(!result.produced());
+      EXPECT_EQ(state, ExecutionState::WAITING);
+      EXPECT_FALSE(result.produced());
       // One no findings
       std::tie(state, stats) = testee.produceRows(result);
     }
 
-    EXPECT_TRUE(state == ExecutionState::DONE);
-    EXPECT_TRUE(!result.produced());
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(result.produced());
     ValidateResult(infos, result, resultPaths);
   }
 
@@ -308,30 +308,30 @@ class ShortestPathExecutorTest
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
     // Fetch fullPath
     for (size_t i = 0; i < resultPaths.size(); ++i) {
-      EXPECT_TRUE(state == ExecutionState::HASMORE);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
       auto path = finder.findPath(resultPaths[i]);
       for (ADB_IGNORE_UNUSED auto const& v : path) {
-        ASSERT_TRUE(state == ExecutionState::HASMORE);
+        ASSERT_EQ(state, ExecutionState::HASMORE);
         std::tie(state, stats) = testee.produceRows(result);
         EXPECT_TRUE(result.produced());
         result.advanceRow();
       }
       auto gotCalledWith = finder.calledAt(i);
-      EXPECT_TRUE(gotCalledWith.first == resultPaths[i].first);
-      EXPECT_TRUE(gotCalledWith.second == resultPaths[i].second);
+      EXPECT_EQ(gotCalledWith.first, resultPaths[i].first);
+      EXPECT_EQ(gotCalledWith.second, resultPaths[i].second);
     }
     if (resultPaths.empty()) {
       // We need to fetch once
       std::tie(state, stats) = testee.produceRows(result);
     }
-    EXPECT_TRUE(!result.produced());
-    EXPECT_TRUE(state == ExecutionState::DONE);
+    EXPECT_FALSE(result.produced());
+    EXPECT_EQ(state, ExecutionState::DONE);
     ValidateResult(infos, result, resultPaths);
   }
 

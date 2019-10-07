@@ -40,7 +40,7 @@ class CriticalThread : public Thread {
                           std::string const& name, bool deleteOnExit = false)
       : Thread(server, name, deleteOnExit) {}
 
-  virtual ~CriticalThread() {}
+  virtual ~CriticalThread() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Notification of when thread crashes via uncaught throw ... log it

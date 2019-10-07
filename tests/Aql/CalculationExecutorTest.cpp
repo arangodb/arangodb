@@ -109,7 +109,7 @@ class CalculationExecutorTest : public ::testing::Test {
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -120,13 +120,13 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
   ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -137,17 +137,17 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
   ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
   ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -174,7 +174,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   // verify calculation
   {
@@ -183,7 +183,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
     for (std::size_t index = 0; index < 3; index++) {
       value = block->getValue(index, outRegID);
       ASSERT_TRUE(value.isNumber());
-      ASSERT_TRUE(value.toInt64() == static_cast<int64_t>(index + 1));
+      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
     }
   }
 }
@@ -191,7 +191,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -201,7 +201,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   // 1
   std::tie(state, stats) = testee.produceRows(row);
@@ -212,7 +212,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   // 2
   std::tie(state, stats) = testee.produceRows(row);
@@ -223,7 +223,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
   // waiting
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 
   // 3
   std::tie(state, stats) = testee.produceRows(row);
@@ -233,7 +233,7 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_FALSE(row.produced());
 }
 
 }  // namespace aql

@@ -43,12 +43,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool KShortestPathsExecutor::Properties::preservesOrder;
-constexpr bool KShortestPathsExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough KShortestPathsExecutor::Properties::allowsBlockPassthrough;
 constexpr bool KShortestPathsExecutor::Properties::inputSizeRestrictsOutputSize;
 using namespace arangodb::graph;
 
 namespace {
 static bool isValidId(VPackSlice id) {
+  if (!id.isString()) {
+    return false;
+  }
   TRI_ASSERT(id.isString());
   arangodb::velocypack::StringRef tester(id);
   return tester.find('/') != std::string::npos;
@@ -168,7 +171,7 @@ std::pair<ExecutionState, NoStats> KShortestPathsExecutor::produceRows(OutputAql
 bool KShortestPathsExecutor::fetchPaths() {
   VPackSlice start;
   VPackSlice end;
-  do {
+  while (true) {
     // Fetch a row from upstream
     std::tie(_rowState, _input) = _fetcher.fetchRow();
     if (!_input.isInitialized()) {
@@ -183,7 +186,10 @@ bool KShortestPathsExecutor::fetchPaths() {
     }
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
-  } while (!_finder.startKShortestPathsTraversal(start, end));
+    if (_finder.startKShortestPathsTraversal(start, end)) {
+      break;
+    }
+  } 
   return true;
 }
 

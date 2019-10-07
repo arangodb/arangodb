@@ -48,7 +48,7 @@ class ClusterTraverser final : public Traverser {
                    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                    std::string const& dbname, transaction::Methods* trx);
 
-  ~ClusterTraverser() {}
+  ~ClusterTraverser() = default;
 
   void setStartVertex(std::string const& id) override;
   

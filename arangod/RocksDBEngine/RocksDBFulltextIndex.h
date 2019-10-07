@@ -59,7 +59,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   RocksDBFulltextIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
                        arangodb::velocypack::Slice const& info);
 
-  ~RocksDBFulltextIndex() {}
+  ~RocksDBFulltextIndex() = default;
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
 

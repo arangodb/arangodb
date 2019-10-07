@@ -283,7 +283,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          VPackSlice info, bool needToLock)
     : BaseEngine(vocbase, ctx, info, needToLock), _opts(nullptr) {}
 
-BaseTraverserEngine::~BaseTraverserEngine() {}
+BaseTraverserEngine::~BaseTraverserEngine() = default;
 
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
@@ -427,7 +427,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   _opts->activateCache(false, nullptr);
 }
 
-ShortestPathEngine::~ShortestPathEngine() {}
+ShortestPathEngine::~ShortestPathEngine() = default;
 
 void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
@@ -514,7 +514,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   _opts->activateCache(false, nullptr);
 }
 
-TraverserEngine::~TraverserEngine() {}
+TraverserEngine::~TraverserEngine() = default;
 
 void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);

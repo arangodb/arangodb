@@ -53,7 +53,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(builder);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));
@@ -139,7 +139,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<false>>>>(
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
         &engine, this, std::move(infos));
   }
 }
@@ -212,7 +212,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false>>>>(
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
         &engine, this, std::move(infos));
   }
 }
@@ -304,7 +304,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<false>>>>(
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
         &engine, this, std::move(infos));
   }
 }
@@ -379,7 +379,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<false>>>>(
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
         &engine, this, std::move(infos));
   }
 }
@@ -472,7 +472,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>>(
         &engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<false>>>>(
+    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
         &engine, this, std::move(infos));
   }
 }

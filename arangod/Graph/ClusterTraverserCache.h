@@ -51,7 +51,7 @@ class ClusterTraverserCache : public TraverserCache {
   ClusterTraverserCache(aql::Query* query,
                         std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const*);
 
-  ~ClusterTraverserCache() {}
+  ~ClusterTraverserCache() = default;
 
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;

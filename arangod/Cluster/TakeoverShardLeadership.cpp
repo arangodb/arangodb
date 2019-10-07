@@ -95,7 +95,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   }
 }
 
-TakeoverShardLeadership::~TakeoverShardLeadership() {}
+TakeoverShardLeadership::~TakeoverShardLeadership() = default;
 
 static void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
                               std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,

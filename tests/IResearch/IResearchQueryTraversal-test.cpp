@@ -61,7 +61,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
         arangodb::velocypack::Parser::fromJson(
@@ -92,15 +92,15 @@ TEST_F(IResearchQueryTraversalTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create collection1
@@ -108,7 +108,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
     resource /= irs::string_ref(arangodb::tests::testResourceDir);
@@ -124,15 +124,15 @@ TEST_F(IResearchQueryTraversalTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create edge collection
@@ -140,7 +140,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"edges\", \"type\": 3 }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     auto createIndexJson =
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
@@ -152,7 +152,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *collection,
                                               arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
         arangodb::velocypack::Parser::fromJson(
@@ -180,11 +180,11 @@ TEST_F(IResearchQueryTraversalTest, test) {
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create view
@@ -192,11 +192,11 @@ TEST_F(IResearchQueryTraversalTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_TRUE((false == !impl));
+    ASSERT_FALSE(!impl);
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": {"
@@ -204,13 +204,13 @@ TEST_F(IResearchQueryTraversalTest, test) {
         "\"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
       cids.emplace(cid);
       return true;
     });
-    EXPECT_TRUE((2 == cids.size()));
+    EXPECT_EQ(2, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
@@ -223,23 +223,23 @@ TEST_F(IResearchQueryTraversalTest, test) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testViewEdge\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_TRUE((false == !impl));
+    ASSERT_FALSE(!impl);
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": {"
         "\"edges\": { \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
       cids.emplace(cid);
       return true;
     });
-    EXPECT_TRUE((1 == cids.size()));
+    EXPECT_EQ(1, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
                                        "FOR d IN testViewEdge SEARCH 1 ==1 "
@@ -259,7 +259,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     EXPECT_TRUE(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (; resultIt.valid(); resultIt.next()) {
@@ -270,8 +270,8 @@ TEST_F(IResearchQueryTraversalTest, test) {
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
-    EXPECT_TRUE(!resultIt.valid());
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_FALSE(resultIt.valid());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // check system attribute _to
@@ -286,7 +286,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     EXPECT_TRUE(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (; resultIt.valid(); resultIt.next()) {
@@ -297,8 +297,8 @@ TEST_F(IResearchQueryTraversalTest, test) {
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
-    EXPECT_TRUE(!resultIt.valid());
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_FALSE(resultIt.valid());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // shortest path traversal
@@ -320,7 +320,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     EXPECT_TRUE(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (; resultIt.valid(); resultIt.next()) {
@@ -331,8 +331,8 @@ TEST_F(IResearchQueryTraversalTest, test) {
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
-    EXPECT_TRUE(!resultIt.valid());
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_FALSE(resultIt.valid());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 
   // simple traversal
@@ -353,7 +353,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
     EXPECT_TRUE(slice.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(slice);
-    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
 
     auto expectedDoc = expectedDocs.begin();
     for (; resultIt.valid(); resultIt.next()) {
@@ -364,7 +364,7 @@ TEST_F(IResearchQueryTraversalTest, test) {
                             arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
       ++expectedDoc;
     }
-    EXPECT_TRUE(!resultIt.valid());
-    EXPECT_TRUE(expectedDoc == expectedDocs.end());
+    EXPECT_FALSE(resultIt.valid());
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }

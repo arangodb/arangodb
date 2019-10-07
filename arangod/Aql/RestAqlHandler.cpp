@@ -270,7 +270,7 @@ void RestAqlHandler::setupClusterQuery() {
 
 bool RestAqlHandler::registerSnippets(
     VPackSlice const snippetsSlice, VPackSlice const collectionSlice,
-    VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> options,
+    VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> const& options,
     std::shared_ptr<transaction::Context> const& ctx, double const ttl,
     SerializationFormat format, bool& needToLock, VPackBuilder& answerBuilder) {
   TRI_ASSERT(answerBuilder.isOpenObject());

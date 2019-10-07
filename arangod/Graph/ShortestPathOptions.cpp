@@ -98,7 +98,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info, VPa
   }
 }
 
-ShortestPathOptions::~ShortestPathOptions() {}
+ShortestPathOptions::~ShortestPathOptions() = default;
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();

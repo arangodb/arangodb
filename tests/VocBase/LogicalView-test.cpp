@@ -162,7 +162,7 @@ TEST_F(LogicalViewTest, test_auth) {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto logicalView = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((true == logicalView->canUse(arangodb::auth::Level::RW)));
+    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
   // no read access
@@ -180,7 +180,7 @@ TEST_F(LogicalViewTest, test_auth) {
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
     userManager->setQueryRegistry(&queryRegistry);
-    EXPECT_TRUE((false == logicalView->canUse(arangodb::auth::Level::RO)));
+    EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
   // no write access
@@ -198,8 +198,8 @@ TEST_F(LogicalViewTest, test_auth) {
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
     userManager->setQueryRegistry(&queryRegistry);
-    EXPECT_TRUE((true == logicalView->canUse(arangodb::auth::Level::RO)));
-    EXPECT_TRUE((false == logicalView->canUse(arangodb::auth::Level::RW)));
+    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
+    EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
   // write access (view access is db access as per https://github.com/arangodb/backlog/issues/459)
@@ -217,7 +217,7 @@ TEST_F(LogicalViewTest, test_auth) {
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
     userManager->setQueryRegistry(&queryRegistry);
-    EXPECT_TRUE((true == logicalView->canUse(arangodb::auth::Level::RO)));
-    EXPECT_TRUE((true == logicalView->canUse(arangodb::auth::Level::RW)));
+    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
+    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 }

@@ -60,38 +60,38 @@ TEST_F(RocksDBKeyTestLittleEndian, test_database) {
   key.constructDatabase(1);
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s2 == std::string("0\1\0\0\0\0\0\0\0", 9));
+  EXPECT_EQ(s2.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s2, std::string("0\1\0\0\0\0\0\0\0", 9));
 
   key.constructDatabase(255);
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s3 == std::string("0\xff\0\0\0\0\0\0\0", 9));
+  EXPECT_EQ(s3.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s3, std::string("0\xff\0\0\0\0\0\0\0", 9));
 
   key.constructDatabase(256);
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s4 == std::string("0\0\x01\0\0\0\0\0\0", 9));
+  EXPECT_EQ(s4.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s4, std::string("0\0\x01\0\0\0\0\0\0", 9));
 
   key.constructDatabase(49152);
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s5 == std::string("0\0\xc0\0\0\0\0\0\0", 9));
+  EXPECT_EQ(s5.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s5, std::string("0\0\xc0\0\0\0\0\0\0", 9));
 
   key.constructDatabase(12345678901);
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s6 == std::string("0\x35\x1c\xdc\xdf\x02\0\0\0", 9));
+  EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s6, std::string("0\x35\x1c\xdc\xdf\x02\0\0\0", 9));
 
   key.constructDatabase(0xf0f1f2f3f4f5f6f7ULL);
   auto const& s7 = key.string();
 
-  EXPECT_TRUE(s7.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s7 == std::string("0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 9));
+  EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s7, std::string("0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 9));
 }
 
 /// @brief test collection
@@ -102,38 +102,38 @@ TEST_F(RocksDBKeyTestLittleEndian, test_collection) {
   key.constructCollection(23, 42);
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s2 == std::string("1\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 17));
+  EXPECT_EQ(s2.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s2, std::string("1\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 17));
 
   key.constructCollection(255, 255);
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s3 == std::string("1\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 17));
+  EXPECT_EQ(s3.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s3, std::string("1\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 17));
 
   key.constructCollection(256, 257);
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s4 == std::string("1\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 17));
+  EXPECT_EQ(s4.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s4, std::string("1\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 17));
 
   key.constructCollection(49152, 16384);
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s5 == std::string("1\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 17));
+  EXPECT_EQ(s5.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s5, std::string("1\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 17));
 
   key.constructCollection(12345678901, 987654321);
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(s6 ==
               std::string("1\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 17));
 
   key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, 0xf0f1f2f3f4f5f6f7ULL);
   auto const& s7 = key.string();
 
-  EXPECT_TRUE(s7.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
@@ -146,44 +146,44 @@ TEST_F(RocksDBKeyTestLittleEndian, test_document) {
   key.constructDocument(1, LocalDocumentId(0));
   auto const& s1 = key.string();
 
-  EXPECT_TRUE(s1.size() == +sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s1 == std::string("\x01\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 16));
+  EXPECT_EQ(s1.size(), +sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s1, std::string("\x01\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 16));
 
   key.constructDocument(23, LocalDocumentId(42));
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == +sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s2 == std::string("\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 16));
+  EXPECT_EQ(s2.size(), +sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s2, std::string("\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 16));
 
   key.constructDocument(255, LocalDocumentId(255));
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s3 == std::string("\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 16));
+  EXPECT_EQ(s3.size(), sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s3, std::string("\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 16));
 
   key.constructDocument(256, LocalDocumentId(257));
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s4 == std::string("\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 16));
+  EXPECT_EQ(s4.size(), sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s4, std::string("\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 16));
 
   key.constructDocument(49152, LocalDocumentId(16384));
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s5 == std::string("\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 16));
+  EXPECT_EQ(s5.size(), sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s5, std::string("\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 16));
 
   key.constructDocument(12345678901, LocalDocumentId(987654321));
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s6.size(), sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(s6 ==
               std::string("\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 16));
 
   key.constructDocument(0xf0f1f2f3f4f5f6f7ULL, LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
   auto const& s7 = key.string();
 
-  EXPECT_TRUE(s7.size() == sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s7.size(), sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
@@ -196,21 +196,21 @@ TEST_F(RocksDBKeyTestLittleEndian, test_primary_index) {
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("abc"));
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == sizeof(uint64_t) + strlen("abc"));
-  EXPECT_TRUE(s2 == std::string("\1\0\0\0\0\0\0\0abc", 11));
+  EXPECT_EQ(s2.size(), sizeof(uint64_t) + strlen("abc"));
+  EXPECT_EQ(s2, std::string("\1\0\0\0\0\0\0\0abc", 11));
 
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(" "));
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(uint64_t) + strlen(" "));
-  EXPECT_TRUE(s3 == std::string("\1\0\0\0\0\0\0\0 ", 9));
+  EXPECT_EQ(s3.size(), sizeof(uint64_t) + strlen(" "));
+  EXPECT_EQ(s3, std::string("\1\0\0\0\0\0\0\0 ", 9));
 
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(
                                         "this is a key"));
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(uint64_t) + strlen("this is a key"));
-  EXPECT_TRUE(s4 == std::string("\1\0\0\0\0\0\0\0this is a key", 21));
+  EXPECT_EQ(s4.size(), sizeof(uint64_t) + strlen("this is a key"));
+  EXPECT_EQ(s4, std::string("\1\0\0\0\0\0\0\0this is a key", 21));
 
   // 254 bytes
   char const* longKey =
@@ -221,15 +221,15 @@ TEST_F(RocksDBKeyTestLittleEndian, test_primary_index) {
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(longKey));
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(uint64_t) + strlen(longKey));
-  EXPECT_TRUE(s5 == std::string("\1\0\0\0\0\0\0\0", 8) + longKey);
+  EXPECT_EQ(s5.size(), sizeof(uint64_t) + strlen(longKey));
+  EXPECT_EQ(s5, std::string("\1\0\0\0\0\0\0\0", 8) + longKey);
 
   key.constructPrimaryIndexValue(123456789, arangodb::velocypack::StringRef(
                                                 "this is a key"));
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(uint64_t) + strlen("this is a key"));
-  EXPECT_TRUE(s6 == std::string("\x15\xcd\x5b\x07\0\0\0\0this is a key", 21));
+  EXPECT_EQ(s6.size(), sizeof(uint64_t) + strlen("this is a key"));
+  EXPECT_EQ(s6, std::string("\x15\xcd\x5b\x07\0\0\0\0this is a key", 21));
 }
 
 /// @brief test edge index
@@ -244,22 +244,22 @@ TEST_F(RocksDBKeyTestLittleEndian, test_edge_index) {
 
   EXPECT_TRUE(s1.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char) +
                                sizeof(uint64_t) + sizeof(char));
-  EXPECT_TRUE(s1 == std::string("\1\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0\xff", 21));
+  EXPECT_EQ(s1, std::string("\1\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0\xff", 21));
   EXPECT_TRUE(key2.string().size() == sizeof(uint64_t) + strlen("b/1") + sizeof(char) +
                                           sizeof(uint64_t) + sizeof(char));
   EXPECT_TRUE(key2.string() ==
               std::string("\1\0\0\0\0\0\0\0b/1\0!\0\0\0\0\0\0\0\xff", 21));
 
-  EXPECT_TRUE(RocksDBKey::vertexId(key1).compare("a/1") == 0);
-  EXPECT_TRUE(RocksDBKey::vertexId(key2).compare("b/1") == 0);
+  EXPECT_EQ(RocksDBKey::vertexId(key1).compare("a/1"), 0);
+  EXPECT_EQ(RocksDBKey::vertexId(key2).compare("b/1"), 0);
 
   // check the variable length edge prefix
   auto pe = std::make_unique<RocksDBPrefixExtractor>();
   EXPECT_TRUE(pe->InDomain(key1.string()));
 
   rocksdb::Slice prefix = pe->Transform(key1.string());
-  EXPECT_TRUE(prefix.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char));
-  EXPECT_TRUE(memcmp(s1.data(), prefix.data(), prefix.size()) == 0);
+  EXPECT_EQ(prefix.size(), sizeof(uint64_t) + strlen("a/1") + sizeof(char));
+  EXPECT_EQ(memcmp(s1.data(), prefix.data(), prefix.size()), 0);
 
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
   EXPECT_TRUE(cmp->Compare(key1.string(), key2.string()) < 0);
@@ -281,38 +281,38 @@ TEST_F(RocksDBKeyTestBigEndian, test_database) {
   key.constructDatabase(1);
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s2 == std::string("0\0\0\0\0\0\0\0\x01", 9));
+  EXPECT_EQ(s2.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s2, std::string("0\0\0\0\0\0\0\0\x01", 9));
 
   key.constructDatabase(255);
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s3 == std::string("0\0\0\0\0\0\0\0\xff", 9));
+  EXPECT_EQ(s3.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s3, std::string("0\0\0\0\0\0\0\0\xff", 9));
 
   key.constructDatabase(256);
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s4 == std::string("0\0\0\0\0\0\0\x01\0", 9));
+  EXPECT_EQ(s4.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s4, std::string("0\0\0\0\0\0\0\x01\0", 9));
 
   key.constructDatabase(49152);
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s5 == std::string("0\0\0\0\0\0\0\xc0\0", 9));
+  EXPECT_EQ(s5.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s5, std::string("0\0\0\0\0\0\0\xc0\0", 9));
 
   key.constructDatabase(12345678901);
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s6 == std::string("0\0\0\0\x02\xdf\xdc\x1c\x35", 9));
+  EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s6, std::string("0\0\0\0\x02\xdf\xdc\x1c\x35", 9));
 
   key.constructDatabase(0xf0f1f2f3f4f5f6f7ULL);
   auto const& s7 = key.string();
 
-  EXPECT_TRUE(s7.size() == sizeof(char) + sizeof(uint64_t));
-  EXPECT_TRUE(s7 == std::string("0\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7", 9));
+  EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t));
+  EXPECT_EQ(s7, std::string("0\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7", 9));
 }
 
 /// @brief test collection
@@ -323,38 +323,38 @@ TEST_F(RocksDBKeyTestBigEndian, test_collection) {
   key.constructCollection(23, 42);
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s2 == std::string("1\0\0\0\0\0\0\0\x17\0\0\0\0\0\0\0\x2a", 17));
+  EXPECT_EQ(s2.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s2, std::string("1\0\0\0\0\0\0\0\x17\0\0\0\0\0\0\0\x2a", 17));
 
   key.constructCollection(255, 255);
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s3 == std::string("1\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0\xff", 17));
+  EXPECT_EQ(s3.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s3, std::string("1\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0\xff", 17));
 
   key.constructCollection(256, 257);
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s4 == std::string("1\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\x01\x01", 17));
+  EXPECT_EQ(s4.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s4, std::string("1\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\x01\x01", 17));
 
   key.constructCollection(49152, 16384);
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s5 == std::string("1\0\0\0\0\0\0\xc0\0\0\0\0\0\0\0\x40\0", 17));
+  EXPECT_EQ(s5.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s5, std::string("1\0\0\0\0\0\0\xc0\0\0\0\0\0\0\0\x40\0", 17));
 
   key.constructCollection(12345678901, 987654321);
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(s6 ==
               std::string("1\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 17));
 
   key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, 0xf0f1f2f3f4f5f6f7ULL);
   auto const& s7 = key.string();
 
-  EXPECT_TRUE(s7.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
@@ -367,44 +367,44 @@ TEST_F(RocksDBKeyTestBigEndian, test_document) {
   key.constructDocument(1, LocalDocumentId(0));
   auto const& s1 = key.string();
 
-  EXPECT_TRUE(s1.size() == +sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s1 == std::string("\0\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\0\0", 16));
+  EXPECT_EQ(s1.size(), +sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s1, std::string("\0\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\0\0", 16));
 
   key.constructDocument(23, LocalDocumentId(42));
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == +sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s2 == std::string("\0\0\0\0\0\0\0\x17\0\0\0\0\0\0\0\x2a", 16));
+  EXPECT_EQ(s2.size(), +sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s2, std::string("\0\0\0\0\0\0\0\x17\0\0\0\0\0\0\0\x2a", 16));
 
   key.constructDocument(255, LocalDocumentId(255));
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s3 == std::string("\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0\xff", 16));
+  EXPECT_EQ(s3.size(), sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s3, std::string("\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0\xff", 16));
 
   key.constructDocument(256, LocalDocumentId(257));
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s4 == std::string("\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\x01\x01", 16));
+  EXPECT_EQ(s4.size(), sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s4, std::string("\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\x01\x01", 16));
 
   key.constructDocument(49152, LocalDocumentId(16384));
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(uint64_t) + sizeof(uint64_t));
-  EXPECT_TRUE(s5 == std::string("\0\0\0\0\0\0\xc0\0\0\0\0\0\0\0\x40\0", 16));
+  EXPECT_EQ(s5.size(), sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s5, std::string("\0\0\0\0\0\0\xc0\0\0\0\0\0\0\0\x40\0", 16));
 
   key.constructDocument(12345678901, LocalDocumentId(987654321));
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s6.size(), sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(s6 ==
               std::string("\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 16));
 
   key.constructDocument(0xf0f1f2f3f4f5f6f7ULL, LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
   auto const& s7 = key.string();
 
-  EXPECT_TRUE(s7.size() == sizeof(uint64_t) + sizeof(uint64_t));
+  EXPECT_EQ(s7.size(), sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(
       s7 ==
       std::string(
@@ -417,21 +417,21 @@ TEST_F(RocksDBKeyTestBigEndian, test_primary_index) {
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("abc"));
   auto const& s2 = key.string();
 
-  EXPECT_TRUE(s2.size() == sizeof(uint64_t) + strlen("abc"));
-  EXPECT_TRUE(s2 == std::string("\0\0\0\0\0\0\0\1abc", 11));
+  EXPECT_EQ(s2.size(), sizeof(uint64_t) + strlen("abc"));
+  EXPECT_EQ(s2, std::string("\0\0\0\0\0\0\0\1abc", 11));
 
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(" "));
   auto const& s3 = key.string();
 
-  EXPECT_TRUE(s3.size() == sizeof(uint64_t) + strlen(" "));
-  EXPECT_TRUE(s3 == std::string("\0\0\0\0\0\0\0\1 ", 9));
+  EXPECT_EQ(s3.size(), sizeof(uint64_t) + strlen(" "));
+  EXPECT_EQ(s3, std::string("\0\0\0\0\0\0\0\1 ", 9));
 
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(
                                         "this is a key"));
   auto const& s4 = key.string();
 
-  EXPECT_TRUE(s4.size() == sizeof(uint64_t) + strlen("this is a key"));
-  EXPECT_TRUE(s4 == std::string("\0\0\0\0\0\0\0\1this is a key", 21));
+  EXPECT_EQ(s4.size(), sizeof(uint64_t) + strlen("this is a key"));
+  EXPECT_EQ(s4, std::string("\0\0\0\0\0\0\0\1this is a key", 21));
 
   // 254 bytes
   char const* longKey =
@@ -442,15 +442,15 @@ TEST_F(RocksDBKeyTestBigEndian, test_primary_index) {
   key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(longKey));
   auto const& s5 = key.string();
 
-  EXPECT_TRUE(s5.size() == sizeof(uint64_t) + strlen(longKey));
-  EXPECT_TRUE(s5 == std::string("\0\0\0\0\0\0\0\1", 8) + longKey);
+  EXPECT_EQ(s5.size(), sizeof(uint64_t) + strlen(longKey));
+  EXPECT_EQ(s5, std::string("\0\0\0\0\0\0\0\1", 8) + longKey);
 
   key.constructPrimaryIndexValue(123456789, arangodb::velocypack::StringRef(
                                                 "this is a key"));
   auto const& s6 = key.string();
 
-  EXPECT_TRUE(s6.size() == sizeof(uint64_t) + strlen("this is a key"));
-  EXPECT_TRUE(s6 == std::string("\0\0\0\0\x07\x5b\xcd\x15this is a key", 21));
+  EXPECT_EQ(s6.size(), sizeof(uint64_t) + strlen("this is a key"));
+  EXPECT_EQ(s6, std::string("\0\0\0\0\x07\x5b\xcd\x15this is a key", 21));
 }
 
 /// @brief test edge index
@@ -465,22 +465,22 @@ TEST_F(RocksDBKeyTestBigEndian, test_edge_index) {
 
   EXPECT_TRUE(s1.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char) +
                                sizeof(uint64_t) + sizeof(char));
-  EXPECT_TRUE(s1 == std::string("\0\0\0\0\0\0\0\1a/1\0\0\0\0\0\0\0\0!\xff", 21));
+  EXPECT_EQ(s1, std::string("\0\0\0\0\0\0\0\1a/1\0\0\0\0\0\0\0\0!\xff", 21));
   EXPECT_TRUE(key2.string().size() == sizeof(uint64_t) + strlen("b/1") + sizeof(char) +
                                           sizeof(uint64_t) + sizeof(char));
   EXPECT_TRUE(key2.string() ==
               std::string("\0\0\0\0\0\0\0\1b/1\0\0\0\0\0\0\0\0!\xff", 21));
 
-  EXPECT_TRUE(RocksDBKey::vertexId(key1).compare("a/1") == 0);
-  EXPECT_TRUE(RocksDBKey::vertexId(key2).compare("b/1") == 0);
+  EXPECT_EQ(RocksDBKey::vertexId(key1).compare("a/1"), 0);
+  EXPECT_EQ(RocksDBKey::vertexId(key2).compare("b/1"), 0);
 
   // check the variable length edge prefix
   auto pe = std::make_unique<RocksDBPrefixExtractor>();
   EXPECT_TRUE(pe->InDomain(key1.string()));
 
   rocksdb::Slice prefix = pe->Transform(key1.string());
-  EXPECT_TRUE(prefix.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char));
-  EXPECT_TRUE(memcmp(s1.data(), prefix.data(), prefix.size()) == 0);
+  EXPECT_EQ(prefix.size(), sizeof(uint64_t) + strlen("a/1") + sizeof(char));
+  EXPECT_EQ(memcmp(s1.data(), prefix.data(), prefix.size()), 0);
 
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
   EXPECT_TRUE(cmp->Compare(key1.string(), key2.string()) < 0);
@@ -511,8 +511,8 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_edge_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   ASSERT_FALSE(pe->InDomain(prefixBegin));
   ASSERT_FALSE(pe->InDomain(prefixEnd));
-  ASSERT_TRUE(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()) == 0);
-  ASSERT_TRUE(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
+  ASSERT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  ASSERT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
 
   // check our assumptions about bound construction
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
@@ -560,14 +560,14 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   EXPECT_TRUE(pe->InDomain(prefixBegin));
   EXPECT_TRUE(pe->InDomain(prefixEnd));
-  EXPECT_TRUE(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()) == 0);
-  EXPECT_TRUE(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
-  EXPECT_TRUE(prefixBegin.data()[prefixBegin.size() - 1] == '\0');
-  EXPECT_TRUE(prefixEnd.data()[prefixBegin.size() - 1] == '\0');
+  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
+  EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\0');
+  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\0');
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
-  EXPECT_TRUE(cmp->Compare(prefixBegin, prefixEnd) == 0);
+  EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
   EXPECT_TRUE(cmp->Compare(prefixBegin, key1.string()) < 0);
   EXPECT_TRUE(cmp->Compare(prefixEnd, key1.string()) < 0);
 
@@ -632,8 +632,8 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_edge_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   ASSERT_FALSE(pe->InDomain(prefixBegin));
   ASSERT_FALSE(pe->InDomain(prefixEnd));
-  ASSERT_TRUE(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()) == 0);
-  ASSERT_TRUE(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
+  ASSERT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  ASSERT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
 
   // check our assumptions about bound construction
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
@@ -681,14 +681,14 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
   EXPECT_TRUE(pe->InDomain(prefixBegin));
   EXPECT_TRUE(pe->InDomain(prefixEnd));
-  EXPECT_TRUE(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()) == 0);
-  EXPECT_TRUE(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
-  EXPECT_TRUE(prefixBegin.data()[0] == '\0');
-  EXPECT_TRUE(prefixEnd.data()[0] == '\0');
-  EXPECT_TRUE(prefixBegin.data()[prefixBegin.size() - 2] == '\x00');
-  EXPECT_TRUE(prefixBegin.data()[prefixBegin.size() - 1] == '\x01');
-  EXPECT_TRUE(prefixEnd.data()[prefixBegin.size() - 2] == '\x00');
-  EXPECT_TRUE(prefixEnd.data()[prefixBegin.size() - 1] == '\x02');
+  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
+  EXPECT_EQ(prefixBegin.data()[0], '\0');
+  EXPECT_EQ(prefixEnd.data()[0], '\0');
+  EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 2], '\x00');
+  EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\x01');
+  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 2], '\x00');
+  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\x02');
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();

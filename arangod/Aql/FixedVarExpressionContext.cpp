@@ -24,25 +24,14 @@
 #include "FixedVarExpressionContext.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
-#include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
-#include "Basics/voc-errors.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 size_t FixedVarExpressionContext::numRegisters() const { return 0; }
-
-AqlValue const& FixedVarExpressionContext::getRegisterValue(size_t i) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-Variable const* FixedVarExpressionContext::getVariable(size_t i) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
@@ -66,7 +55,7 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue c
 }
 
 void FixedVarExpressionContext::serializeAllVariables(transaction::Methods* trx,
-                                                      VPackBuilder& builder) const {
+                                                      velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();

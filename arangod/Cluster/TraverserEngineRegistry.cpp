@@ -50,7 +50,7 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t& vocbase,
       _timeToLive(0),
       _expires(0) {}
 
-TraverserEngineRegistry::EngineInfo::~EngineInfo() {}
+TraverserEngineRegistry::EngineInfo::~EngineInfo() = default;
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   WRITE_LOCKER(writeLocker, _lock);

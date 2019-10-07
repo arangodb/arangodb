@@ -57,7 +57,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-CleanOutServer::~CleanOutServer() {}
+CleanOutServer::~CleanOutServer() = default;
 
 void CleanOutServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 

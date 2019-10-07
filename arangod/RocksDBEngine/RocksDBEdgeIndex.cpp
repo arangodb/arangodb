@@ -416,7 +416,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
   TRI_ASSERT(_objectId != 0);
 }
 
-RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
+RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
 
 std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeIndex::coveredFields() const {
   TRI_ASSERT(_coveredFields.size() == 2);  // _from/_to or _to/_from
