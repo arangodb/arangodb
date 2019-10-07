@@ -49,6 +49,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -845,13 +846,15 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
       _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
   uint64_t replicationFactor =
       _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1);
-  uint64_t minReplicationFactor =
+  // not an error: for historical reasons the write concern is read from the
+  // variable "minReplicationFactor"
+  uint64_t writeConcern =
       _request->parsedValue<uint64_t>(StaticStrings::MinReplicationFactor, 1);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, force, numberOfShards,
-                                              replicationFactor, minReplicationFactor,
+                                              replicationFactor, writeConcern,
                                               ignoreDistributeShardsLikeErrors);
   } else {
     res = processRestoreCollection(slice, overwrite, force);
@@ -1060,7 +1063,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 Result RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool force,
     uint64_t numberOfShards, uint64_t replicationFactor,
-    uint64_t minReplicationFactor, bool ignoreDistributeShardsLikeErrors) {
+    uint64_t writeConcern, bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1087,6 +1090,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
     // we don't care about deleted collections
     return Result();
+  }
+
+  Result res = ShardingInfo::validateShardsAndReplicationFactor(parameters, server());
+  if (res.fail()) {
+    return res;
   }
 
   auto& dbName = _vocbase.name();
@@ -1170,35 +1178,42 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // Replication Factor. Will be overwritten if not existent
-  VPackSlice const replFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
-  VPackSlice const minReplFactorSlice = parameters.get(StaticStrings::MinReplicationFactor);
+  VPackSlice const replicationFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
+  // not an error: for historical reasons the write concern is read from the
+  // variable "minReplicationFactor"
+  VPackSlice const writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
 
-  bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
-                                (replFactorSlice.isString() &&
-                                 replFactorSlice.isEqualString(StaticStrings::Satellite));
+  bool isValidReplicationFactorSlice = replicationFactorSlice.isInteger() ||
+                                       (replicationFactorSlice.isString() &&
+                                        replicationFactorSlice.isEqualString(StaticStrings::Satellite));
 
-  bool isValidMinReplFactorSlice =
-      replFactorSlice.isInteger() && minReplFactorSlice.isInteger() &&
-      (minReplFactorSlice.getInt() <= replFactorSlice.getInt()) &&
-      minReplFactorSlice.getInt() > 0;
+  bool isValidWriteConcernSlice =
+      replicationFactorSlice.isInteger() && writeConcernSlice.isInteger() &&
+      (writeConcernSlice.getInt() <= replicationFactorSlice.getInt()) &&
+      writeConcernSlice.getInt() > 0;
 
-  if (!isValidReplFactorSlice) {
+  if (!isValidReplicationFactorSlice) {
     if (replicationFactor == 0) {
-      replicationFactor = 1;
+      replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
+      if (replicationFactor == 0) {
+        replicationFactor = 1;
+      }
     }
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
 
-  if (!isValidMinReplFactorSlice) {
-    if (replFactorSlice.isString() &&
-        replFactorSlice.isEqualString(StaticStrings::Satellite)) {
-      minReplicationFactor = 0;
-    } else if (minReplicationFactor == 0) {
-      minReplicationFactor = 1;
+  if (!isValidWriteConcernSlice) {
+    if (replicationFactorSlice.isString() &&
+        replicationFactorSlice.isEqualString(StaticStrings::Satellite)) {
+      writeConcern = 0;
+    } else if (writeConcern == 0) {
+      writeConcern = 1;
     }
-    TRI_ASSERT(minReplicationFactor <= replicationFactor);
-    toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
+    TRI_ASSERT(writeConcern <= replicationFactor);
+    // not an error: for historical reasons the write concern is stored in the
+    // variable "minReplicationFactor"
+    toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
   }
 
   // always use current version number when restoring a collection,

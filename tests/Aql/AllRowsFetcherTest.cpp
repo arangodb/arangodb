@@ -67,8 +67,8 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -95,8 +95,8 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -123,8 +123,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -152,8 +152,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -185,8 +185,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -219,8 +219,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -260,8 +260,8 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -312,8 +312,8 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -365,8 +365,8 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, nullptr);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor

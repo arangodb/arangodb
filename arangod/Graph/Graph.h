@@ -168,7 +168,7 @@ class Graph {
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
-  uint64_t minReplicationFactor() const;
+  uint64_t writeConcern() const;
   std::string const id() const;
   std::string const& rev() const;
 
@@ -253,10 +253,10 @@ class Graph {
   void setNumberOfShards(uint64_t numberOfShards);
 
   /// @brief Set replicationFactor to the graph definition
-  void setReplicationFactor(uint64_t setReplicationFactor);
+  void setReplicationFactor(uint64_t replicationFactor);
 
-  /// @brief Set minReplicationFactor to the graph definition
-  void setMinReplicationFactor(uint64_t setMinReplicationFactor);
+  /// @brief Set writeConcern to the graph definition
+  void setWriteConcern(uint64_t writeConcern);
 
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
@@ -289,8 +289,8 @@ class Graph {
   /// @brief replication factor of this graph
   uint64_t _replicationFactor;
 
-  /// @brief minimal replication factor of this graph
-  uint64_t _minReplicationFactor;
+  /// @brief write concern for this graph
+  uint64_t _writeConcern;
 
   /// @brief revision of this graph
   std::string _rev;
