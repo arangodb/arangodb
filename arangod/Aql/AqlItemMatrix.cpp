@@ -34,10 +34,10 @@ using namespace arangodb::aql;
 static constexpr size_t InvalidRowIndex = std::numeric_limits<size_t>::max();
 
 namespace {
-static uint32_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
+static size_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
   auto const& shadowIndexes = block->getShadowRowIndexes();
   TRI_ASSERT(!shadowIndexes.empty());
-  return static_cast<uint32_t>(*shadowIndexes.rbegin()) + 1;
+  return *shadowIndexes.rbegin() + 1;
 }
 }  // namespace
 
@@ -62,9 +62,9 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
       // Special case, we only have a single block
       auto const& block = _blocks.front();
       // Default case, 0 -> end
-      uint32_t startRow = 0;
+      size_t startRow = 0;
       // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
-      uint32_t endRow = block->size();
+      size_t endRow = block->size();
 
       if (block->hasShadowRows()) {
         // We have one (or more) shadowRow(s) with this block.
@@ -92,21 +92,21 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
       }
       for (; startRow < endRow; ++startRow) {
         TRI_ASSERT(!block->isShadowRow(startRow));
-        result.emplace_back(index, startRow);
+        result.emplace_back(index, static_cast<uint32_t>(startRow));
       }
     } else {
       for (auto const& block : _blocks) {
         // Default case, 0 -> end
-        uint32_t startRow = 0;
+        size_t startRow = 0;
         // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
-        uint32_t endRow = block->size();
+        size_t endRow = block->size();
 
         if (block == _blocks.front() && block->hasShadowRows()) {
           // The first block was sliced by a ShadowRow, we need to pick everything after the last:
-          startRow = FirstReleveantDataRowInBlock(block);
+          startRow = ::FirstReleveantDataRowInBlock(block);
         } else if (block == _blocks.back() && block->hasShadowRows()) {
           // The last Block is sliced by a shadowRow. We can only use data up to this shadow row
-          endRow = static_cast<uint32_t>(_lastShadowRow);
+          endRow = _lastShadowRow;
         } else {
           // Intermediate blocks cannot have shadow rows.
           // Go from 0 -> end
@@ -114,7 +114,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
         }
         for (; startRow < endRow; ++startRow) {
           TRI_ASSERT(!block->isShadowRow(startRow));
-          result.emplace_back(index, startRow);
+          result.emplace_back(index, static_cast<uint32_t>(startRow));
         }
         ++index;
       }
