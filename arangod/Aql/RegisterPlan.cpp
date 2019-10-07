@@ -261,7 +261,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       auto vars = ep->getVariablesSetHere();
       nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back
+      // this is required because back returns a reference and emplace/push_back
       // may invalidate all references
       RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
       nrRegs.emplace_back(registerId);
@@ -280,7 +280,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       auto vars = ep->getVariablesSetHere();
       nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back
+      // this is required because back returns a reference and emplace/push_back
       // may invalidate all references
       RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
       nrRegs.emplace_back(registerId);

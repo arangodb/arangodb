@@ -56,7 +56,7 @@ class SharedState {
     Done = 1 << 3,
   };
 
-  /// Allow us to savely pass a core pointer to the Scheduler
+  /// Allow us to safely pass a core pointer to the Scheduler
   struct SharedStateScope {
     explicit SharedStateScope(SharedState* state) noexcept : _state(state) {}
     SharedStateScope(SharedStateScope const&) = delete;
