@@ -202,8 +202,8 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
                                         bindParameters, disableRuleOptions());
       compareQueryResultToSlice(queryResult, false, expected);
     }
-    // Second test optimized Query (rule-enabled)
 
+    // Second test optimized Query (rule-enabled)
     {
       auto queryResult =
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
@@ -214,7 +214,8 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
 
  public:
   SpliceSubqueryNodeOptimizerRuleTest() {}
-};
+
+};  // namespace aql
 
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_no_subquery_plan) {
   auto query = "RETURN 15";
@@ -269,6 +270,52 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_after_subqu
   verifySubquerySplicing(query, 2);
 
   auto expected = arangodb::velocypack::Parser::fromJson(R"([[[1],[2]],[[2],[1]]])");
+  verifyQueryResult(query, expected->slice());
+}
+
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_sort) {
+  auto query = R"aql(
+    FOR i IN 1..2
+      LET sorted = (
+        FOR k IN [1,5,3,2,4,6]
+          LET h = k * i
+          SORT h DESC
+        RETURN h
+      )
+      RETURN sorted)aql";
+  verifySubquerySplicing(query, 1);
+
+  auto expected = arangodb::velocypack::Parser::fromJson(R"([[6,5,4,3,2,1], [12,10,8,6,4,2]])");
+  verifyQueryResult(query, expected->slice());
+}
+
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_limit_and_offset) {
+  auto query = R"aql(
+    FOR i IN 2..4
+        LET a = (FOR j IN [0, i, i+10] LIMIT 1, 1 RETURN j)
+        RETURN FIRST(a))aql";
+  verifySubquerySplicing(query, 1);
+
+  auto expected = arangodb::velocypack::Parser::fromJson(R"([2, 3, 4])");
+  verifyQueryResult(query, expected->slice());
+}
+
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
+       DISABLED_splice_subquery_collect_within_empty_nested_subquery) {
+  auto query = R"aql(
+    FOR k IN 1..2
+      LET sub1 = (
+        FOR x IN []
+          LET sub2 = (
+            COLLECT WITH COUNT INTO q
+            RETURN q
+          )
+        RETURN sub2
+      )
+    RETURN [k, sub1])aql";
+  verifySubquerySplicing(query, 2);
+
+  auto expected = arangodb::velocypack::Parser::fromJson(R"([[1, []], [2, []]])");
   verifyQueryResult(query, expected->slice());
 }
 
