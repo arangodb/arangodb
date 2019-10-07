@@ -299,8 +299,8 @@ class HashSet {
     if (_states[bucket] == State::FILLED) {
       return { iterator(this, bucket), false };
     } else {
-      _states[bucket] = State::FILLED;
       new(_keys + bucket) KeyT(key);
+      _states[bucket] = State::FILLED;
       _num_filled++;
       return { iterator(this, bucket), true };
     }
@@ -318,8 +318,8 @@ class HashSet {
     if (_states[bucket] == State::FILLED) {
       return { iterator(this, bucket), false };
     } else {
-      _states[bucket] = State::FILLED;
       new(_keys + bucket) KeyT(std::move(key));
+      _states[bucket] = State::FILLED;
       _num_filled++;
       return { iterator(this, bucket), true };
     }
