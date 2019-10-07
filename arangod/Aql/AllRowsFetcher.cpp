@@ -82,7 +82,7 @@ std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMos
       }
       _nextReturn = 0;
       _dataFetchedState = DATA_FETCH_ONGOING;
-      // fallthrough intentional
+      // intentionally falls through
     }
     case DATA_FETCH_ONGOING: {
       TRI_ASSERT(_nextReturn < _rowIndexes.size());

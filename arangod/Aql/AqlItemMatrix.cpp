@@ -31,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-static constexpr size_t InvalidRowIndex{SIZE_T_MAX};
+static constexpr size_t InvalidRowIndex = std::numeric_limits<size_t>::max();
 
 namespace {
 static uint32_t FirstReleveantDataRowInBlock(SharedAqlItemBlockPtr const& block) {
