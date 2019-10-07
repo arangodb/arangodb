@@ -33,7 +33,7 @@ function main (argv) {
     argv = argv.slice(1);    // and remove first arg (c++:pop_front/bash:shift)
   }
 
-  if (analyzers.length == 0) {
+  if (analyzers.length === 0) {
     print(RED + "No analyzer specified. Please specify one or more of: \n" +
           yaml.safeDump(Object.keys(rp.analyze)) + "\n" + RESET);
     process.exit(1);
