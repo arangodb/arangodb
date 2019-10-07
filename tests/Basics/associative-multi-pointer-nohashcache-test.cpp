@@ -102,7 +102,7 @@ struct AssocMultiTestHelper {
 TEST(AssociativeMultiPointerNoHashCacheTest, tst_init) {
   INIT_MULTI
 
-  EXPECT_TRUE((uint32_t)0 == a1.size());
+  EXPECT_EQ(0U, a1.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,13 +115,13 @@ TEST(AssociativeMultiPointerNoHashCacheTest, tst_insert_few) {
   void* r = nullptr;
 
   ELEMENT(e1, 1, 123);
-  EXPECT_TRUE(r == a1.insert(nullptr, &e1, true, false));
-  EXPECT_TRUE((uint32_t)1 == a1.size());
-  EXPECT_TRUE(&e1 == a1.lookup(nullptr, &e1));
+  EXPECT_EQ(r, a1.insert(nullptr, &e1, true, false));
+  EXPECT_EQ(1U, a1.size());
+  EXPECT_EQ(&e1, a1.lookup(nullptr, &e1));
 
-  EXPECT_TRUE(&e1 == a1.remove(nullptr, &e1));
-  EXPECT_TRUE((uint32_t)0 == a1.size());
-  EXPECT_TRUE(r == a1.lookup(nullptr, &e1));
+  EXPECT_EQ(&e1, a1.remove(nullptr, &e1));
+  EXPECT_EQ(0U, a1.size());
+  EXPECT_EQ(r, a1.lookup(nullptr, &e1));
 }
 
 // Note MODULUS must be a divisor of NUMBER_OF_ELEMENTS
@@ -144,18 +144,18 @@ TEST(AssociativeMultiPointerNoHashCacheTest, tst_insert_delete_many) {
   for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = new data_container_t(i % MODULUS, i);
     v.push_back(p);
-    EXPECT_TRUE(n == a1.insert(nullptr, p, true, false));
+    EXPECT_EQ(n, a1.insert(nullptr, p, true, false));
   }
   one_more = new data_container_t(NUMBER_OF_ELEMENTS % MODULUS, NUMBER_OF_ELEMENTS);
 
   // Now check it is there (by element):
   for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
-    EXPECT_TRUE(p == v[i]);
+    EXPECT_EQ(p, v[i]);
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  EXPECT_TRUE(n == p);
+  EXPECT_EQ(n, p);
 
   // Now check by key:
   std::vector<void*>* res = nullptr;
@@ -163,12 +163,12 @@ TEST(AssociativeMultiPointerNoHashCacheTest, tst_insert_delete_many) {
   for (i = 0; i < MODULUS; i++) {
     int* space = new int[NUMBER_OF_ELEMENTS / MODULUS]();
     res = a1.lookupByKey(nullptr, &i);
-    EXPECT_TRUE((int)res->size() == (int)(NUMBER_OF_ELEMENTS / MODULUS));
+    EXPECT_EQ(res->size(), (NUMBER_OF_ELEMENTS / MODULUS));
     // Now check its contents:
     for (j = 0; j < res->size(); j++) {
       data_container_t* q = static_cast<data_container_t*>(res->at(j));
-      EXPECT_TRUE((int)(q->value % MODULUS) == (int)i);
-      EXPECT_TRUE(space[(q->value - i) / MODULUS] == 0);
+      EXPECT_EQ((q->value % MODULUS), i);
+      EXPECT_EQ(space[(q->value - i) / MODULUS], 0);
       space[(q->value - i) / MODULUS] = 1;
     }
     delete[] space;
@@ -177,62 +177,62 @@ TEST(AssociativeMultiPointerNoHashCacheTest, tst_insert_delete_many) {
 
   // Delete some data:
   for (i = 0; i < v.size(); i += 3) {
-    EXPECT_TRUE(v[i] == a1.remove(nullptr, v[i]));
+    EXPECT_EQ(v[i], a1.remove(nullptr, v[i]));
   }
   for (i = 0; i < v.size(); i += 3) {
-    EXPECT_TRUE(n == a1.remove(nullptr, v[i]));
+    EXPECT_EQ(n, a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
     if (i % 3 == 0) {
-      EXPECT_TRUE(p == n);
+      EXPECT_EQ(p, n);
     } else {
-      EXPECT_TRUE(p == v[i]);
+      EXPECT_EQ(p, v[i]);
     }
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  EXPECT_TRUE(n == p);
+  EXPECT_EQ(n, p);
 
   // Delete some more:
   for (i = 1; i < v.size(); i += 3) {
-    EXPECT_TRUE(v[i] == a1.remove(nullptr, v[i]));
+    EXPECT_EQ(v[i], a1.remove(nullptr, v[i]));
   }
   for (i = 1; i < v.size(); i += 3) {
-    EXPECT_TRUE(n == a1.remove(nullptr, v[i]));
+    EXPECT_EQ(n, a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
     if (i % 3 == 2) {
-      EXPECT_TRUE(p == v[i]);
+      EXPECT_EQ(p, v[i]);
     } else {
-      EXPECT_TRUE(p == n);
+      EXPECT_EQ(p, n);
     }
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  EXPECT_TRUE(n == p);
+  EXPECT_EQ(n, p);
 
   // Delete the rest:
   for (i = 2; i < v.size(); i += 3) {
-    EXPECT_TRUE(v[i] == a1.remove(nullptr, v[i]));
+    EXPECT_EQ(v[i], a1.remove(nullptr, v[i]));
   }
   for (i = 2; i < v.size(); i += 3) {
-    EXPECT_TRUE(n == a1.remove(nullptr, v[i]));
+    EXPECT_EQ(n, a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
-    EXPECT_TRUE(p == n);
+    EXPECT_EQ(p, n);
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  EXPECT_TRUE(n == p);
+  EXPECT_EQ(n, p);
   // Pull down data again:
   for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     delete v[i];

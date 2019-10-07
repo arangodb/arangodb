@@ -25,9 +25,7 @@
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Aql/AqlValue.h"
-#include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Basics/datetime.h"
 
 namespace arangodb {
 namespace transaction {
@@ -53,7 +51,7 @@ struct Functions {
   /// @brief helper function. not callable as a "normal" AQL function
   static void Stringify(transaction::Methods* trx,
                         arangodb::basics::VPackStringBufferAdapter& buffer,
-                        VPackSlice const& slice);
+                        arangodb::velocypack::Slice const& slice);
 
   static AqlValue IsNull(arangodb::aql::ExpressionContext*,
                          transaction::Methods*, VPackFunctionParameters const&);
@@ -199,6 +197,8 @@ struct Functions {
                                transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateDiff(arangodb::aql::ExpressionContext*,
                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateRound(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   /**
    * @brief Compares two dates given as the first two arguments.
    *        Third argument defines the highest signficant part,

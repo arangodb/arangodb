@@ -220,9 +220,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the LocalDocumentId from an index key
   ///
-  /// May be called only on Index keys. Other types will throw.
+  /// May be called only on Index keys, but not from the edge index
   //////////////////////////////////////////////////////////////////////////////
-  static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
+  static LocalDocumentId indexDocumentId(rocksdb::Slice const);
+  static LocalDocumentId edgeDocumentId(rocksdb::Slice const);
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key

@@ -143,7 +143,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
-  ~MMFilesAllIndexIterator() {}
+  ~MMFilesAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
 
@@ -167,7 +167,7 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
-  ~MMFilesAnyIndexIterator() {}
+  ~MMFilesAnyIndexIterator() = default;
 
   char const* typeName() const override { return "any-index-iterator"; }
 

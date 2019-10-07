@@ -135,7 +135,7 @@ if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
     set(ARANGODB_DARWIN_REVISION "devel")
 
   # nightly
-  elseif (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
+  elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
     set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_DEBIAN_REVISION "1")
 
@@ -303,11 +303,6 @@ set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
-# libraries
-set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO    arango_geo)
-set(LIB_ARANGO_V8     arango_v8)
-
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOBACKUP  arangobackup)
@@ -409,13 +404,18 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
-  add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
-  add_definitions(-DNOMINMAX)
-  add_definitions(-DPSAPI_VERSION=1)
-  add_definitions(-D_HAS_AUTO_PTR_ETC=1) #autopointer
-  add_definitions(-D_HAS_TR1_NAMESPACE=1) #tr1
+
   add_definitions(-D_USE_MATH_DEFINES)
-  add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_VISTA)
+  add_definitions(-DNOMINMAX)
+  add_definitions(-D_WIN32_WINNT=0x600)
+  add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
+  add_definitions(-DPSAPI_VERSION=1)
+
+  #add these if cpp17 build fails
+  #add_definitions(-D_HAS_AUTO_PTR_ETC=1) #autopointer
+  #add_definitions(-D_HAS_TR1_NAMESPACE=1) #tr1
+  #add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_VISTA)
+
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -652,9 +652,7 @@ endif ()
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
-include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 include_directories(${PROJECT_SOURCE_DIR}/lib)
 
 if (CUSTOM_INCLUDES)
@@ -795,6 +793,42 @@ option(USE_FAILURE_TESTS
 if (USE_FAILURE_TESTS)
   add_definitions("-DARANGODB_ENABLE_FAILURE_TESTS=1")
 endif ()
+
+################################################################################
+## INTERPROCEDURAL OPTIMIZATION (LINK TIME OPTIMIZATION)
+################################################################################
+
+set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
+
+set(IPO_ENABLED False)
+
+# Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
+if(USE_IPO STREQUAL "AUTO")
+  # When USE_IPO=AUTO, enable IPO for optimized / release builds.
+  # But to work around a g++ segfault triggered by using both -flto and
+  # -fno-devirtualize-functions, we disable IPO when using google tests, because
+  # this will set no-devirtualize. See
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+  # So this check may be removed later as soon as we use fixed gcc versions.
+  # - Tobias, 2019-08-08
+  if (NOT USE_GOOGLE_TESTS AND
+    (CMAKE_BUILD_TYPE STREQUAL "Release"
+    OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
+    set(IPO_ENABLED True)
+  else()
+    set(IPO_ENABLED False)
+  endif ()
+elseif(USE_IPO)
+  set(IPO_ENABLED True)
+else()
+  set(IPO_ENABLED False)
+endif()
+
+message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 ################################################################################
 ## LIBRARY RESOLV
@@ -1022,8 +1056,6 @@ endif ()
 # IResearch
 # ------------------------------------------------------------------------------
 
-set(LIB_ARANGO_IRESEARCH arango_iresearch)
-
 # 3rdParty exports:
 #
 # V8_VERSION
@@ -1192,37 +1224,6 @@ if (USE_MAINTAINER_MODE)
 endif ()
 
 ################################################################################
-## MIMETYPES FILE
-################################################################################
-
-if (USE_MAINTAINER_MODE)
-  set(MIMETYPES_FILES
-    lib/Basics/voc-mimetypes.h
-    lib/Basics/voc-mimetypes.cpp
-  )
-
-  set(MIMETYPES_FILES_GEN)
-  set(MIMETYPES_DAT lib/Basics/mimetypes.dat)
-
-  foreach (m IN LISTS MIMETYPES_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateMimetypes.py ./${MIMETYPES_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT "Building mimetypes files ${m}"
-      VERBATIM
-    )
-
-    list(APPEND MIMETYPES_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
-
-  add_custom_target(mimetypes ALL DEPENDS ${MIMETYPES_FILES_GEN})
-endif ()
-
-################################################################################
 ## SUB-PROJECTS
 ################################################################################
 
@@ -1245,10 +1246,12 @@ add_subdirectory(arangod)
 
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
-endif()
+endif ()
 
 add_dependencies(arangobench   zlibstatic)
-add_dependencies(arangobackup  zlibstatic)
+if (USE_ENTERPRISE)
+  add_dependencies(arangobackup  zlibstatic)
+endif ()
 add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
@@ -1256,21 +1259,26 @@ add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
 
-if(UNIX)
+if (UNIX)
   add_dependencies(arangobench   man)
-  add_dependencies(arangobackup  man)
+  if (USE_ENTERPRISE)
+    add_dependencies(arangobackup  man)
+  endif ()
   add_dependencies(arangod       man)
   add_dependencies(arangodump    man)
   add_dependencies(arangoexport  man)
   add_dependencies(arangoimport  man)
   add_dependencies(arangorestore man)
   add_dependencies(arangosh      man)
-endif()
+endif ()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well
   add_dependencies(arangobench   v8_build)
-  add_dependencies(arangobackup  v8_build)
+
+  if (USE_ENTERPRISE)
+    add_dependencies(arangobackup  v8_build)
+  endif ()
   add_dependencies(arangod       v8_build)
   add_dependencies(arangodump    v8_build)
   add_dependencies(arangoexport  v8_build)
@@ -1279,7 +1287,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangosh      v8_build)
   if (USE_GOOGLE_TESTS)
     add_dependencies(arangodbtests v8_build)
-  endif()
+  endif ()
 endif ()
 
 add_custom_target(packages
@@ -1292,11 +1300,11 @@ add_custom_target(copy_packages
 
 add_custom_target(clean_packages
   DEPENDS ${CLEAN_PACKAGES_LIST}
-  )
+)
 
 add_custom_target(clean_autogenerated_files
   DEPENDS ${CLEAN_AUTOGENERATED_FILES}
-  )
+)
 
 message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 

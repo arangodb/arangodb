@@ -224,7 +224,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
+                         : RocksDBKey::indexDocumentId(_iterator->key()));
 
       --limit;
       if (!advance()) {
@@ -255,7 +255,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       LocalDocumentId const documentId(
           _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                          : RocksDBKey::indexDocumentId(_bounds.type(), key));
+                          : RocksDBKey::indexDocumentId(key));
       cb(documentId, RocksDBKey::indexedVPack(key));
 
       --limit;
@@ -378,7 +378,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollect
 }
 
 /// @brief destroy the index
-RocksDBVPackIndex::~RocksDBVPackIndex() {}
+RocksDBVPackIndex::~RocksDBVPackIndex() = default;
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -845,6 +845,12 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
                                  LocalDocumentId const& documentId,
                                  velocypack::Slice const& doc,
                                  Index::OperationMode mode) {
+  TRI_IF_FAILURE("BreakHashIndexRemove") {
+    if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      // intentionally  break index removal
+      return Result(TRI_ERROR_INTERNAL, "BreakHashIndexRemove failure point triggered");
+    }
+  }
   Result res;
   rocksdb::Status s;
   SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;

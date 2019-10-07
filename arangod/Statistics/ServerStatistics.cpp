@@ -30,19 +30,18 @@ using namespace arangodb;
 // --SECTION--                                                    static members
 // -----------------------------------------------------------------------------
 
-double ServerStatistics::START_TIME = 0.0;
+ServerStatistics serverStatisticsGlobal(0);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
-ServerStatistics ServerStatistics::statistics() {
-  ServerStatistics server;
-
-  server._startTime = START_TIME;
-  server._uptime = StatisticsFeature::time() - START_TIME;
-
-  return server;
+ServerStatistics& ServerStatistics::statistics() {
+  //update the uptime for everyone reading the statistics.
+  serverStatisticsGlobal._uptime = StatisticsFeature::time() - serverStatisticsGlobal._startTime;
+  return serverStatisticsGlobal;
 }
 
-void ServerStatistics::initialize() { START_TIME = StatisticsFeature::time(); }
+void ServerStatistics::initialize(double startTime) {
+    serverStatisticsGlobal._startTime = startTime;
+}

@@ -259,8 +259,8 @@
     "ERROR_GRAPH_NOT_FOUND"        : { "code" : 1924, "message" : "graph '%s' not found" },
     "ERROR_GRAPH_DUPLICATE"        : { "code" : 1925, "message" : "graph already exists" },
     "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "vertex collection does not exist or is not part of the graph" },
-    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "not a vertex collection" },
-    "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" },
+    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "collection not a vertex collection" },
+    "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "collection is not in list of orphan collections" },
     "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection already used in edge def" },
     "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" },
     "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" },
@@ -353,7 +353,8 @@
     "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
     "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" },
-    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" }
+    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" },
+    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" :  7012, "message" : " \"hot backup not all db servers reachable\"" }
   };
 
   // For compatibility with <= 3.3

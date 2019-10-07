@@ -27,7 +27,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
@@ -45,18 +44,11 @@ namespace rest {
 void InitializeRest() {
   TRI_InitializeError();
   TRI_InitializeFiles();
-  TRI_InitializeMimetypes();
   TRI_InitializeProcess();
 
   // use the rng so the linker does not remove it from the executable
   // we might need it later because .so files might refer to the symbols
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
-
-#ifdef TRI_BROKEN_CXA_GUARD
-  pthread_cond_t cond;
-  pthread_cond_init(&cond, 0);
-  pthread_cond_broadcast(&cond);
-#endif
 
   Version::initialize();
   VelocyPackHelper::initialize();
@@ -66,7 +58,6 @@ void ShutdownRest() {
   RandomGenerator::shutdown();
 
   TRI_ShutdownProcess();
-  TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
 }
 }  // namespace rest

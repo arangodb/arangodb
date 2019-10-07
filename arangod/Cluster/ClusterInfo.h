@@ -43,14 +43,103 @@
 #include "Cluster/RebootTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/VocbaseInfo.h"
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
 }
+
 class ClusterInfo;
 class LogicalCollection;
 struct ClusterCollectionCreationInfo;
+
+// make sure a collection is still in Plan
+// we are only going from *assuming* that it is present
+// to it being changed to not present.
+class CollectionWatcher
+{
+public:
+  CollectionWatcher(CollectionWatcher const&) = delete;
+  CollectionWatcher(AgencyCallbackRegistry *agencyCallbackRegistry, LogicalCollection const& collection)
+    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
+    AgencyComm ac;
+
+    std::string databaseName = collection.vocbase().name();
+    std::string collectionID = std::to_string(collection.id());
+    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
+
+    _agencyCallback = std::make_shared<AgencyCallback>(
+        ac, where,
+        [this](VPackSlice const& result) {
+          if (result.isNone()) {
+            _present.store(false);
+          }
+          return true;
+        },
+        true, false);
+    _agencyCallbackRegistry->registerCallback(_agencyCallback);
+  };
+  ~CollectionWatcher();
+
+  bool isPresent() {
+    // Make sure we did not miss a callback
+    _agencyCallback->refetchAndUpdate(true, false);
+    return _present.load();
+  };
+
+private:
+  AgencyCallbackRegistry *_agencyCallbackRegistry;
+  std::shared_ptr<AgencyCallback> _agencyCallback;
+
+  // TODO: this does not really need to be atomic: We only write to it
+  //       in the callback, and we only read it in `isPresent`; it does
+  //       not actually matter whether this value is "correct".
+  std::atomic<bool> _present;
+};
+
+// Read the collection from Plan; this is an object to have a valid VPack
+// around to read from and to not have to carry around vpack builders.
+// Might want to do the error handling with throw/catch?
+class PlanCollectionReader {
+ public:
+  PlanCollectionReader(PlanCollectionReader const&&) = delete;
+  PlanCollectionReader(PlanCollectionReader const&) = delete;
+  explicit PlanCollectionReader(LogicalCollection const& collection) {
+    std::string databaseName = collection.vocbase().name();
+    std::string collectionID = std::to_string(collection.id());
+
+    AgencyComm ac;
+
+    std::string path =
+        "Plan/Collections/" + databaseName + "/" + collectionID;
+    _read = ac.getValues(path);
+
+    if (!_read.successful()) {
+      _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
+                      "Could not retrieve " + path + " from agency");
+      return;
+    }
+
+    _collection = _read.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+
+    if (!_collection.isObject()) {
+      _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return;
+    }
+    _state = Result();
+  }
+  VPackSlice indexes();
+  VPackSlice slice() { return _collection; }
+  Result state() { return _state; }
+
+ private:
+  AgencyCommResult _read;
+  Result _state;
+  velocypack::Slice _collection;
+};
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
@@ -273,7 +362,7 @@ class ClusterInfo final {
      public:
       explicit constexpr KnownServer(RebootId rebootId) : _rebootId(rebootId) {}
 
-      RebootId rebootId() const noexcept { return _rebootId; }
+      RebootId rebootId() const { return _rebootId; }
 
      private:
       RebootId _rebootId;
@@ -281,7 +370,7 @@ class ClusterInfo final {
 
     std::unordered_map<ServerID, KnownServer> const& serversKnown() const noexcept;
 
-    std::unordered_map<ServerID, RebootId> rebootIds() const noexcept;
+    std::unordered_map<ServerID, RebootId> rebootIds() const;
 
    private:
     std::unordered_map<ServerID, KnownServer> _serversKnown;
@@ -292,7 +381,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -300,21 +389,12 @@ class ClusterInfo final {
 
   TEST_VIRTUAL ~ClusterInfo();
 
- public:
-  static void createInstance(AgencyCallbackRegistry*);
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the unique instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* instance();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
 
-  static void cleanup();
+  void cleanup();
 
- public:
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -441,12 +521,23 @@ class ClusterInfo final {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
+  ///
+  /// A database is first created in the isBuilding state, and therefore not
+  ///  visible or usable to the outside world.
+  ///
+  /// After the database has been fully setup, it is then confirmed created
+  /// and becomes visible and usable.
+  ///
+  /// If any error happens on the way, a pending database will be cleaned up
+  ///
   //////////////////////////////////////////////////////////////////////////////
-  Result createDatabaseCoordinator(    // create database
-      std::string const& name,         // database name
-      velocypack::Slice const& slice,  // database definition
-      double timeout                   // request timeout
-  );
+  Result createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database);
+  Result createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief removes database and collection entries within the agency plan
+  //////////////////////////////////////////////////////////////////////////////
+  Result cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
@@ -464,8 +555,9 @@ class ClusterInfo final {
       std::string const& collectionID, uint64_t numberOfShards,
       uint64_t replicationFactor, uint64_t minReplicationFactor,
       bool waitForReplication, arangodb::velocypack::Slice const& json,
-      double timeout  // request timeout
-  );
+      double timeout,  // request timeout
+      bool isNewDatabase,
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan. it populates
@@ -481,7 +573,8 @@ class ClusterInfo final {
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
                                       std::vector<ClusterCollectionCreationInfo>&,
-                                      double endTime);
+                                      double endTime, bool isNewDatabase,
+                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -535,12 +628,10 @@ class ClusterInfo final {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
   Result ensureIndexCoordinator(        // create index
-      std::string const& databaseName,  // database name
-      std::string const& collectionID,  // collection identifier
+      LogicalCollection const& collection,
       arangodb::velocypack::Slice const& slice, bool create,
       arangodb::velocypack::Builder& resultBuilder,
-      double timeout  // request timeout
-  );
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -703,6 +794,8 @@ class ClusterInfo final {
 
   std::unordered_map<ServerID, std::string> getServerTimestamps();
 
+  std::unordered_map<ServerID, RebootId> rebootIds() const;
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -750,7 +843,16 @@ class ClusterInfo final {
     return timeout;
   }
 
+  application_features::ApplicationServer& server() const;
+
  private:
+  void buildIsBuildingSlice(CreateDatabaseInfo const& database,
+                              VPackBuilder& builder);
+
+  void buildFinalSlice(CreateDatabaseInfo const& database,
+                         VPackBuilder& builder);
+
+  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -769,8 +871,8 @@ class ClusterInfo final {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
   Result ensureIndexCoordinatorInner(   // create index
-      std::string const& databaseName,  // database name
-      std::string const& collectionID, std::string const& idSlice,
+      LogicalCollection const& collection,
+      std::string const& idString,
       arangodb::velocypack::Slice const& slice, bool create,
       arangodb::velocypack::Builder& resultBuilder,
       double timeout  // request timeout
@@ -780,6 +882,9 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
+
+  /// underlying application server
+  application_features::ApplicationServer& _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
@@ -807,7 +912,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    Mutex mutex;
+    mutable Mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     arangodb::basics::ReadWriteLock lock;

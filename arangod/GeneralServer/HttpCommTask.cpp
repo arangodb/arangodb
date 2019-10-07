@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -82,9 +80,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   self->_lastHeaderField.clear();
   self->_lastHeaderValue.clear();
   self->_origin.clear();
-  self->_request =
-      std::make_unique<HttpRequest>(self->_connectionInfo, /*header*/ nullptr, 0,
-                                    /*allowMethodOverride*/ true);
+  self->_request = std::make_unique<HttpRequest>(self->_connectionInfo, /*header*/ nullptr,
+                                                 0, self->_allowMethodOverride);
   self->_lastHeaderWasValue = false;
   self->_shouldKeepAlive = false;
   self->_messageDone = false;
@@ -214,13 +211,13 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
 }
 
 template <SocketType T>
-HttpCommTask<T>::HttpCommTask(GeneralServer& server,
-                              ConnectionInfo info,
+HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
                               std::unique_ptr<AsioSocket<T>> so)
-  : GeneralCommTask<T>(server, "HttpCommTask", std::move(info), std::move(so)),
-                      _lastHeaderWasValue(false),
-                      _shouldKeepAlive(false),
-                      _messageDone(false) {
+    : GeneralCommTask<T>(server, "HttpCommTask", std::move(info), std::move(so)),
+      _lastHeaderWasValue(false),
+      _shouldKeepAlive(false),
+      _messageDone(false),
+      _allowMethodOverride(GeneralServerFeature::allowMethodOverride()) {
   ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
 
   // initialize http parsing code
@@ -238,7 +235,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
 }
 
 template <SocketType T>
-HttpCommTask<T>::~HttpCommTask() {}
+HttpCommTask<T>::~HttpCommTask() = default;
 
 template <SocketType T>
 void HttpCommTask<T>::start() {
@@ -736,7 +733,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       if (ec || !(s = self.lock())) {  // was canceled / deallocated
         return;
       }
-      LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
+      LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
       << "keep alive timeout, closing stream!";
       s->close();
     });
@@ -824,7 +821,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       thisPtr->asyncReadSome();
     }
   };
-  asio_ns::async_write(this->_protocol->socket, std::move(buffers), std::move(cb));
+  asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
 }
 
 template <SocketType T>

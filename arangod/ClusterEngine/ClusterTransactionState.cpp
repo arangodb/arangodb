@@ -29,6 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
@@ -56,31 +57,33 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // set hints
     _hints = hints;
   }
-  
+
   auto cleanup = scopeGuard([&] {
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
+      ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
     }
     // free what we have got so far
     unuseCollections(nestingLevel());
   });
-  
+
   Result res = useCollections(nestingLevel());
   if (res.fail()) { // something is wrong
     return res;
   }
-  
+
   // all valid
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
-    
+    ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
+
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     setRegistered();
-    
+
     ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
     if (ce->isMMFiles() && hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       TRI_ASSERT(isCoordinator());
-      
+
       std::vector<std::string> leaders;
       allCollections([&leaders](TransactionCollection& c) {
         auto shardIds = c.collection()->shardIds();
@@ -92,8 +95,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
         }
         return true; // continue
       });
-      
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
+
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
       if (res.fail()) { // something is wrong
         return res;
       }
@@ -101,7 +104,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
-  
+
   cleanup.cancel();
   return res;
 }
@@ -119,6 +122,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
   arangodb::Result res;
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::COMMITTED);
+    ServerStatistics::statistics()._transactionsStatistics._transactionsCommitted++;
   }
 
   unuseCollections(nestingLevel());
@@ -132,6 +136,7 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   Result res;
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::ABORTED);
+    ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
   }
 
   unuseCollections(nestingLevel());

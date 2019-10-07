@@ -22,8 +22,10 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/RestHandlerMock.h"
-#include "../Mocks/Servers.h"
+#include "IResearch/RestHandlerMock.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+
 #include "Basics/StaticStrings.h"
 #include "RestHandler/RestDocumentHandler.h"
 
@@ -31,20 +33,21 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class RestDocumentHandlerTestBase {
+class RestDocumentHandlerTestBase
+    : public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
  protected:
   arangodb::tests::mocks::MockRestServer server;
 
   RestDocumentHandlerTestBase() : server{} {}
 
-  ~RestDocumentHandlerTestBase() {}
+  ~RestDocumentHandlerTestBase() = default;
 };
 
 class RestDocumentHandlerTest : public RestDocumentHandlerTestBase, public ::testing::Test {
  protected:
   RestDocumentHandlerTest() : RestDocumentHandlerTestBase{} {}
 
-  ~RestDocumentHandlerTest() {}
+  ~RestDocumentHandlerTest() = default;
 };
 
 class RestDocumentHandlerLaneTest
@@ -54,7 +57,7 @@ class RestDocumentHandlerLaneTest
   RestDocumentHandlerLaneTest()
       : RestDocumentHandlerTestBase{}, _type(GetParam()) {}
 
-  ~RestDocumentHandlerLaneTest() {}
+  ~RestDocumentHandlerLaneTest() = default;
 
   arangodb::rest::RequestType _type;
 };
@@ -65,7 +68,8 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_user) {
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(_type);
 
-  arangodb::RestDocumentHandler testee(fakeRequest.release(), fakeResponse.release());
+  arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
+                                       fakeResponse.release());
   ASSERT_EQ(arangodb::RequestLane::CLIENT_SLOW, testee.lane());
 }
 
@@ -77,7 +81,8 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_replication) {
   fakeRequest->values().emplace(arangodb::StaticStrings::IsSynchronousReplicationString,
                                 "abc");
 
-  arangodb::RestDocumentHandler testee(fakeRequest.release(), fakeResponse.release());
+  arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
+                                       fakeResponse.release());
   ASSERT_EQ(arangodb::RequestLane::CLIENT_FAST, testee.lane());
 }
 

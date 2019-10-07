@@ -99,88 +99,78 @@ function config (options) {
   print('absolute config tests');
   print('--------------------------------------------------------------------------------');
 
-  if (options.skipTest('TEST', 'config.absolute')) {
-    print(YELLOW + "[SKIPPED] config.absolute" + RESET + "\n");
-    results.absolute.skipped = true;
-  } else {
-    // we append one cleanup directory for the invoking logic...
-    let dummyDir = fs.join(fs.getTempPath(), 'configdummy');
-    fs.makeDirectory(dummyDir);
-    pu.cleanupDBDirectoriesAppend(dummyDir);
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'configdummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
-    let startTime = time();
+  let startTime = time();
 
-    for (let i = 0; i < ts.length; i++) {
-      const test = ts[i];
-      print(CYAN + 'checking "' + test + '"' + RESET);
+  for (let i = 0; i < ts.length; i++) {
+    const test = ts[i];
+    print(CYAN + 'checking "' + test + '"' + RESET);
 
-      const args = {
-        'configuration': fs.join(pu.CONFIG_ARANGODB_DIR, test + '.conf'),
-        'flatCommands': ['--check-configuration']
-      };
+    const args = {
+      'configuration': fs.join(pu.CONFIG_ARANGODB_DIR, test + '.conf'),
+      'flatCommands': ['--check-configuration']
+    };
 
-      const run = fs.join(pu.BIN_DIR, test);
+    const run = fs.join(pu.BIN_DIR, test);
 
-      results.absolute[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, false, options.coreCheck);
+    results.absolute[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, options.coreCheck);
 
-      if (!results.absolute[test].status) {
-        results.absolute.status = false;
-        results.absolute.failed += 1;
-        results.failed += 1;
-      }
-
-      results.absolute.total++;
-
-      if (options.verbose) {
-        print('Args for [' + test + ']:');
-        print(yaml.safeDump(args));
-        print('Result: ' + results.absolute[test].status);
-      }
+    if (!results.absolute[test].status) {
+      results.absolute.status = false;
+      results.absolute.failed += 1;
+      results.failed += 1;
     }
 
-    results.absolute.duration = time() - startTime;
+    results.absolute.total++;
+
+    if (options.verbose) {
+      print('Args for [' + test + ']:');
+      print(yaml.safeDump(args));
+      print('Result: ' + results.absolute[test].status);
+    }
   }
+
+  results.absolute.duration = time() - startTime;
 
   print('\n--------------------------------------------------------------------------------');
   print('relative config tests');
   print('--------------------------------------------------------------------------------');
 
-  if (options.skipTest('TEST', 'config.relative')) {
-    print(YELLOW + "[SKIPPED] config.relative" + RESET + "\n");
-    results.relative.skipped = true;
-  } else {
-    let startTime = time();
+  startTime = time();
 
-    for (let i = 0; i < ts.length; i++) {
-      const test = ts[i];
-      print(CYAN + 'checking "' + test + '"' + RESET);
+  for (let i = 0; i < ts.length; i++) {
+    const test = ts[i];
+    print(CYAN + 'checking "' + test + '"' + RESET);
 
-      const args = {
-        'configuration': fs.join(pu.CONFIG_RELATIVE_DIR, test + '.conf'),
-        'flatCommands': ['--check-configuration']
-      };
+    const args = {
+      'configuration': fs.join(pu.CONFIG_RELATIVE_DIR, test + '.conf'),
+      'flatCommands': ['--check-configuration']
+    };
 
-      const run = fs.join(pu.BIN_DIR, test);
+    const run = fs.join(pu.BIN_DIR, test);
 
-      results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, false, options.coreCheck);
+    results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, options.coreCheck);
 
-      if (!results.relative[test].status) {
-        results.failed += 1;
-        results.relative.failed += 1;
-        results.relative.status = false;
-      }
-
-      results.relative.total++;
-
-      if (options.verbose) {
-        print('Args for (relative) [' + test + ']:');
-        print(yaml.safeDump(args));
-        print('Result: ' + results.relative[test].status);
-      }
+    if (!results.relative[test].status) {
+      results.failed += 1;
+      results.relative.failed += 1;
+      results.relative.status = false;
     }
 
-    results.relative.duration = time() - startTime;
+    results.relative.total++;
+
+    if (options.verbose) {
+      print('Args for (relative) [' + test + ']:');
+      print(yaml.safeDump(args));
+      print('Result: ' + results.relative[test].status);
+    }
   }
+
+  results.relative.duration = time() - startTime;
 
   print();
 

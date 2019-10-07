@@ -27,6 +27,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -41,23 +42,45 @@
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualCollection.h"
+#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
+
+namespace {
+bool authorized(std::string const& user) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
+    return true;
+  }
+  return (user == exec.user());
+}
+
+std::string currentUser() {
+  return arangodb::ExecContext::current().user();
+}
+}  // namespace
 
 namespace arangodb {
 namespace transaction {
 
+const size_t Manager::maxTransactionSize;  // 128 MiB
+
 namespace {
-  struct MGMethods final : arangodb::transaction::Methods {
-    MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
-              arangodb::transaction::Options const& opts)
-    : Methods(ctx, opts) {
-      TRI_ASSERT(_state->isEmbeddedTransaction());
-    }
-  };
-}
+struct MGMethods final : arangodb::transaction::Methods {
+  MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
+            arangodb::transaction::Options const& opts)
+      : Methods(ctx, opts) {
+    TRI_ASSERT(_state->isEmbeddedTransaction());
+  }
+};
+}  // namespace
 
 // register a list of failed transactions
 void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
@@ -108,7 +131,8 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
+                                    bool isReadOnlyTransaction) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -169,11 +193,30 @@ uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
 }
 
+Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
+    : type(t),
+      finalStatus(Status::UNDEFINED),
+      usedTimeSecs(TRI_microtime()),
+      state(st),
+      user(::currentUser()),
+      rwlock() {}
+
+bool Manager::ManagedTrx::expired() const {
+  double now = TRI_microtime();
+  if (type == Manager::MetaType::Tombstone) {
+    return (now - usedTimeSecs) > tombstoneTTL;
+  }
+
+  auto role = ServerState::instance()->getRole();
+  if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
+    return (now - usedTimeSecs) > idleTTL;
+  }
+  return (now - usedTimeSecs) > idleTTLDBServer;
+}
+
 Manager::ManagedTrx::~ManagedTrx() {
-  if (type == MetaType::StandaloneAQL ||
-      state == nullptr ||
-      state->isEmbeddedTransaction()) {
-    return;
+  if (type == MetaType::StandaloneAQL || state == nullptr || state->isEmbeddedTransaction()) {
+    return;  // not managed by us
   }
   if (!state->isRunning()) {
     delete state;
@@ -182,9 +225,11 @@ Manager::ManagedTrx::~ManagedTrx() {
 
   try {
     transaction::Options opts;
-    auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
-    MGMethods trx(ctx, opts); // own state now
-    trx.begin();
+    auto ctx =
+        std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
+    MGMethods trx(ctx, opts);  // own state now
+    Result res = trx.begin();
+    (void) res;
     TRI_ASSERT(state->nestingLevel() == 1);
     state->decreaseNesting();
     TRI_ASSERT(state->isTopLevelTransaction());
@@ -206,22 +251,20 @@ void Manager::registerAQLTrx(TransactionState* state) {
   }
 
   TRI_ASSERT(state != nullptr);
-  const size_t bucket = getBucket(state->id());
+  auto const tid = state->id();
+  size_t const bucket = getBucket(tid);
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(state->id());
+    auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     "transaction ID already used");
+                                     std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-
-    buck._managed.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(state->id()),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state,
-                                                (defaultTTL + TRI_microtime())));
+    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
+                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
 
@@ -233,24 +276,26 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(tid);
   if (it == buck._managed.end()) {
-    LOG_TOPIC("92a49", ERR, Logger::TRANSACTIONS) << "a registered transaction was not found";
+    LOG_TOPIC("92a49", ERR, Logger::TRANSACTIONS)
+        << "a registered transaction was not found";
     TRI_ASSERT(false);
     return;
   }
   TRI_ASSERT(it->second.type == MetaType::StandaloneAQL);
 
   /// we need to make sure no-one else is still using the TransactionState
-  if (!it->second.rwlock.writeLock(/*maxAttempts*/256)) {
-    LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS) << "a transaction is still in use";
+  if (!it->second.rwlock.writeLock(/*maxAttempts*/ 256)) {
+    LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS)
+        << "a transaction is still in use";
     TRI_ASSERT(false);
     return;
   }
 
-  buck._managed.erase(it); // unlocking not necessary
+  buck._managed.erase(it);  // unlocking not necessary
 }
 
-Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
-                                 TRI_voc_tid_t tid, VPackSlice const trxOpts) {
+Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                                 VPackSlice const trxOpts) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -270,7 +315,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
-    if (slice.isNone()) {  // ignore nonexistant keys
+    if (slice.isNone()) {  // ignore nonexistent keys
       return true;
     } else if (slice.isString()) {
       cols.emplace_back(slice.copyString());
@@ -294,18 +339,19 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
                  fillColls(collections.get("write"), writes) &&
                  fillColls(collections.get("exclusive"), exclusives);
   if (!isValid) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections' attribute");
+    return res.reset(TRI_ERROR_BAD_PARAMETER,
+                     "invalid 'collections' attribute");
   }
 
-  return createManagedTrx(vocbase, tid, reads, writes, exclusives, options);
+  return createManagedTrx(vocbase, tid, reads, writes, exclusives, std::move(options));
 }
 
-  /// @brief create managed transaction
+/// @brief create managed transaction
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                  std::vector<std::string> const& readCollections,
                                  std::vector<std::string> const& writeCollections,
                                  std::vector<std::string> const& exclusiveCollections,
-                                 transaction::Options const& options) {
+                                 transaction::Options options) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -313,15 +359,20 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 
   const size_t bucket = getBucket(tid);
 
-  { // quick check whether ID exists
+  {  // quick check whether ID exists
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
-      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction ID already used");
+      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx lookup");
     }
   }
+
+  // enforce size limit per DBServer
+  options.maxTransactionSize =
+      std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
 
   std::unique_ptr<TransactionState> state;
   try {
@@ -348,9 +399,33 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       if (cid == 0) {
         // not found
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ":" + cname);
+                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
+                      ":" + cname);
       } else {
-        res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/0, false));
+#ifdef USE_ENTERPRISE
+        if (state->isCoordinator()) {
+          std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
+          if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+            auto theEdge = dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
+            if (theEdge == nullptr) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cast collection to smart edge collection");
+            }
+            res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname, mode, /*nestingLevel*/ 0, false));
+            if (res.fail()) {
+              return false;
+            }
+            res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname, mode, /*nestingLevel*/ 0, false));
+            if (res.fail()) {
+              return false;
+            }
+            res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname, mode, /*nestingLevel*/ 0, false));
+            if (res.fail()) {
+              return false;
+            }
+          }
+        }
+#endif
+        res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/ 0, false));
       }
 
       if (res.fail()) {
@@ -380,20 +455,19 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res;
   }
 
-  { // add transaction to bucket
+  {  // add transaction to bucket
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
     auto it = _transactions[bucket]._managed.find(tid);
     if (it != _transactions[bucket]._managed.end()) {
-      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction ID already used");
+      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
-    double expires = defaultTTL + TRI_microtime();
-    TRI_ASSERT(expires > 0);
     TRI_ASSERT(state->id() == tid);
     _transactions[bucket]._managed.emplace(std::piecewise_construct,
                                            std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed, state.release(),
-                                                                 expires));
+                                           std::forward_as_tuple(MetaType::Managed,
+                                                                 state.release()));
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -404,11 +478,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
+  auto& server = application_features::ApplicationServer::server();
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-
-  const size_t bucket = getBucket(tid);
+  
+  size_t const bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
   do {
@@ -416,44 +491,45 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
-    if (it == _transactions[bucket]._managed.end()) {
+    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
       return nullptr;
     }
 
     ManagedTrx& mtrx = it->second;
     if (mtrx.type == MetaType::Tombstone) {
-      return nullptr; // already committet this trx
+      return nullptr;  // already committed this trx
     }
 
     if (AccessMode::isWriteOrExclusive(mode)) {
       if (mtrx.type == MetaType::StandaloneAQL) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                                       "not allowed to write lock an AQL transaction");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+            "not allowed to write lock an AQL transaction");
       }
       if (mtrx.rwlock.tryWriteLock()) {
-        mtrx.expires = defaultTTL + TRI_microtime();
         state = mtrx.state;
         break;
       }
     } else {
       if (mtrx.rwlock.tryReadLock()) {
-        mtrx.expires = defaultTTL + TRI_microtime();
         state = mtrx.state;
         break;
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                                     "transaction is already in use");
+
+      LOG_TOPIC("abd72", DEBUG, Logger::TRANSACTIONS) << "transaction '" << tid << "' is already in use";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
+                                     std::string("transaction '") + std::to_string(tid) + "' is already in use");
     }
 
-    writeLocker.unlock(); // failure;
+    writeLocker.unlock();  // failure;
     allTransactionsLocker.unlock();
     std::this_thread::yield();
 
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
-      if (application_features::ApplicationServer::isStopping()) {
-        return nullptr; // shutting down
+      if (server.isStopping()) {
+        return nullptr;  // shutting down
       }
     }
   } while (true);
@@ -463,7 +539,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 1);
     return std::make_shared<ManagedContext>(tid, state, mode);
   }
-  TRI_ASSERT(false); // should be unreachable
+  TRI_ASSERT(false);  // should be unreachable
   return nullptr;
 }
 
@@ -473,8 +549,9 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end()) {
-    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS) << "managed transaction was not found";
+  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
+        << "managed transaction was not found";
     TRI_ASSERT(false);
     return;
   }
@@ -485,13 +562,13 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
 
   // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.expires == 0;
+  const bool isSoftAborted = it->second.usedTimeSecs == 0;
   if (!isSoftAborted) {
-    it->second.expires = defaultTTL + TRI_microtime();
+    it->second.usedTimeSecs = TRI_microtime();
   }
   if (AccessMode::isWriteOrExclusive(mode)) {
     it->second.rwlock.unlockWrite();
-  } else if (mode == AccessMode::Type::READ){
+  } else if (mode == AccessMode::Type::READ) {
     it->second.rwlock.unlockRead();
   } else {
     TRI_ASSERT(false);
@@ -509,7 +586,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end()) {
+  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -517,32 +594,52 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
 
   if (mtrx.type == MetaType::Tombstone) {
     return mtrx.finalStatus;
-  } else if (mtrx.expires > TRI_microtime() && mtrx.state != nullptr) {
+  } else if (!mtrx.expired() && mtrx.state != nullptr) {
     return transaction::Status::RUNNING;
   } else {
     return transaction::Status::ABORTED;
   }
 }
+  
+
+Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status) {
+  double startTime = 0.0;
+  constexpr double maxWaitTime = 2.0;
+  Result res;
+  while (true) {
+    res = updateTransaction(tid, status, false);
+    if (res.ok() || !res.is(TRI_ERROR_LOCKED)) {
+      break;
+    }
+    if (startTime <= 0.0001) { // fp tolerance
+      startTime = TRI_microtime();
+    } else if (TRI_microtime() - startTime > maxWaitTime) {
+      // timeout
+      break;
+    }
+    std::this_thread::yield();
+  }
+  return res;
+}
 
 Result Manager::commitManagedTrx(TRI_voc_tid_t tid) {
-  return updateTransaction(tid, transaction::Status::COMMITTED, false);
+  return statusChangeWithTimeout(tid, transaction::Status::COMMITTED);
 }
 
 Result Manager::abortManagedTrx(TRI_voc_tid_t tid) {
-  return updateTransaction(tid, transaction::Status::ABORTED, false);
+  return statusChangeWithTimeout(tid, transaction::Status::ABORTED);
 }
 
-Result Manager::updateTransaction(TRI_voc_tid_t tid,
-                                  transaction::Status status,
+Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
                                   bool clearServers) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
-  LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS) << "managed trx '" << tid
-    << " updating to '" << status << "'";
+  LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
+      << "managed trx '" << tid << " updating to '" << status << "'";
 
   Result res;
-  const size_t bucket = getBucket(tid);
+  size_t const bucket = getBucket(tid);
   bool wasExpired = false;
 
   std::unique_ptr<TransactionState> state;
@@ -552,16 +649,18 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
-    if (it == buck._managed.end()) {
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND);
+    if (it == buck._managed.end() || !::authorized(it->second.user)) {
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
     }
 
     ManagedTrx& mtrx = it->second;
     TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
     if (!tryGuard.isLocked()) {
-      return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                       "transaction is in use");
+      LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << "transaction '" << tid << "' is in use";
+      return res.reset(TRI_ERROR_LOCKED,
+                       std::string("transaction '") + std::to_string(tid) + "' is in use");
     }
+    TRI_ASSERT(tryGuard.isLocked());
 
     if (mtrx.type == MetaType::StandaloneAQL) {
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
@@ -569,9 +668,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     } else if (mtrx.type == MetaType::Tombstone) {
       TRI_ASSERT(mtrx.state == nullptr);
       // make sure everyone who asks gets the updated timestamp
-      mtrx.expires = TRI_microtime() + tombstoneTTL;
+      mtrx.usedTimeSecs = TRI_microtime();
       if (mtrx.finalStatus == status) {
-        return res; // all good
+        return res;  // all good
       } else {
         std::string msg("transaction was already ");
         msg.append(statusString(mtrx.finalStatus));
@@ -579,8 +678,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       }
     }
 
-    double now = TRI_microtime();
-    if (mtrx.expires < now) {
+    if (mtrx.expired() && status != transaction::Status::ABORTED) {
       status = transaction::Status::ABORTED;
       wasExpired = true;
     }
@@ -588,13 +686,13 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     state.reset(mtrx.state);
     mtrx.state = nullptr;
     mtrx.type = MetaType::Tombstone;
-    mtrx.expires = now + tombstoneTTL;
+    mtrx.usedTimeSecs = TRI_microtime();
     mtrx.finalStatus = status;
     // it is sufficient to pretend that the operation already succeeded
   }
 
   TRI_ASSERT(state);
-  if (!state) { // this should never happen
+  if (!state) {  // this should never happen
     return res.reset(TRI_ERROR_INTERNAL, "managed trx in an invalid state");
   }
 
@@ -607,13 +705,16 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       it->second.finalStatus = Status::ABORTED;
     }
   };
-  if (!state->isRunning()) { // this also should not happen
+  if (!state->isRunning()) {  // this also should not happen
     abortTombstone();
-    return res.reset(TRI_ERROR_TRANSACTION_ABORTED, "transaction was not running");
+    return res.reset(TRI_ERROR_TRANSACTION_ABORTED,
+                     "transaction was not running");
   }
 
+  bool const isCoordinator = state->isCoordinator();
+
   auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
-  state.release(); // now owned by ctx
+  state.release();  // now owned by ctx
 
   transaction::Options trxOpts;
   MGMethods trx(ctx, trxOpts);
@@ -621,12 +722,12 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   TRI_ASSERT(trx.state()->nestingLevel() == 1);
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
-  if (clearServers) {
+  if (clearServers && !isCoordinator) {
     trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();
-    if (res.fail()) { // set final status to aborted
+    if (res.fail()) {  // set final status to aborted
       abortTombstone();
     }
   } else {
@@ -641,10 +742,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
 }
 
 /// @brief calls the callback function for each managed transaction
-void Manager::iterateManagedTrx(
-    std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const& callback) const {
+void Manager::iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const& callback) const {
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  
+
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     READ_LOCKER(locker, _transactions[bucket]._lock);
@@ -669,35 +769,32 @@ bool Manager::garbageCollect(bool abortAll) {
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
-    double now = TRI_microtime();
-    auto it = _transactions[bucket]._managed.begin();
 
+    auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
       ManagedTrx& mtrx = it->second;
-
+      
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
-
-        if (abortAll || mtrx.expires < now) {
-          TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
+        if (abortAll || mtrx.expired()) {
+          TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
 
           if (tryGuard.isLocked()) {
             TRI_ASSERT(mtrx.state->isRunning() && mtrx.state->isTopLevelTransaction());
             TRI_ASSERT(it->first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
-          } else if (abortAll) { // transaction is in
-            mtrx.expires = 0; // soft-abort transaction
+          } else if (abortAll) {    // transaction is in
+            mtrx.usedTimeSecs = 0;  // soft-abort transaction
             didWork = true;
           }
         }
-      } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expires < now) {
+      } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expired()) {
         LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
-          << "expired AQL query transaction '" << it->first << "'";
-      } else if (mtrx.type == MetaType::Tombstone && mtrx.expires < now) {
+            << "expired AQL query transaction '" << it->first << "'";
+      } else if (mtrx.type == MetaType::Tombstone && mtrx.expired()) {
         TRI_ASSERT(mtrx.state == nullptr);
         TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
         it = _transactions[bucket]._managed.erase(it);
-
         continue;
       }
 
@@ -707,19 +804,27 @@ bool Manager::garbageCollect(bool abortAll) {
 
   for (TRI_voc_tid_t tid : toAbort) {
     LOG_TOPIC("6fbaf", DEBUG, Logger::TRANSACTIONS) << "garbage collecting "
-    "transaction: '" << tid << "'";
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/true);
-    if (res.fail()) {
-
+                                                       "transaction: '"
+                                                    << tid << "'";
+    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+    // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
+    // successfully aborts, so ignore this error.
+    // we can also get the TRI_ERROR_LOCKED error in case we cannot
+    // immediately acquire the lock on the transaction. this _can_ happen
+    // infrequently, but is not an error
+    if (res.fail() && 
+        !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+        !res.is(TRI_ERROR_LOCKED)) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
-      "transaction: '" << res.errorMessage() << "'";
+                                                        "transaction: '"
+                                                     << res.errorMessage() << "'";
     }
-
     didWork = true;
   }
 
   if (didWork) {
-    LOG_TOPIC("e5b31", INFO, Logger::TRANSACTIONS) << "aborted expired transactions";
+    LOG_TOPIC("e5b31", INFO, Logger::TRANSACTIONS)
+        << "aborted expired transactions";
   }
 
   return didWork;
@@ -727,7 +832,6 @@ bool Manager::garbageCollect(bool abortAll) {
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
-
   SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
   SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
@@ -737,11 +841,10 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
 
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
-
       ManagedTrx& mtrx = it->second;
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
-        TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
+        TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
         if (tryGuard.isLocked() && cb(*mtrx.state)) {
           toAbort.emplace_back(it->first);
         }
@@ -752,28 +855,24 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
   }
 
   for (TRI_voc_tid_t tid : toAbort) {
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/true);
+    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     if (res.fail()) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS) << "error aborting "
-      "transaction: '" << res.errorMessage() << "'";
+                                                        "transaction: '"
+                                                     << res.errorMessage() << "'";
     }
   }
   return !toAbort.empty();
 }
 
-void Manager::toVelocyPack(VPackBuilder& builder, 
-                           std::string const& database, 
-                           std::string const& username, 
-                           bool fanout) const {
+void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
+                           std::string const& username, bool fanout) const {
   TRI_ASSERT(!builder.isClosed());
 
   if (fanout) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-    auto ci = ClusterInfo::instance();
-    if (ci == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-      
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     if (cc == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -781,13 +880,13 @@ void Manager::toVelocyPack(VPackBuilder& builder,
 
     std::vector<ClusterCommRequest> requests;
     auto auth = AuthenticationFeature::instance();
-    
-    for (auto const& coordinator : ci->getCurrentCoordinators()) {
+
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
         // ourselves!
         continue;
       }
-      
+
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       if (auth != nullptr && auth->isActive()) {
         // when in superuser mode, username is empty
@@ -800,18 +899,18 @@ void Manager::toVelocyPack(VPackBuilder& builder,
           }
           VPackSlice slice = builder.slice();
           headers->emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                           "bearer " + auth->tokenCache().generateJwt(slice));
         }
       }
 
       requests.emplace_back("server:" + coordinator, rest::RequestType::GET,
-                            "/_db/" + database + "/_api/transaction?local=true", 
+                            "/_db/" + database + "/_api/transaction?local=true",
                             std::make_shared<std::string>(), std::move(headers));
     }
 
     if (!requests.empty()) {
       size_t nrGood = cc->performRequests(requests, 30.0, Logger::COMMUNICATION, false);
-      
+
       if (nrGood != requests.size()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
       }
@@ -834,10 +933,12 @@ void Manager::toVelocyPack(VPackBuilder& builder,
 
   // merge with local transactions
   iterateManagedTrx([&builder](TRI_voc_tid_t tid, ManagedTrx const& trx) {
-    builder.openObject(true);
-    builder.add("id", VPackValue(std::to_string(tid)));
-    builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
-    builder.close();
+    if (::authorized(trx.user)) {
+      builder.openObject(true);
+      builder.add("id", VPackValue(std::to_string(tid)));
+      builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
+      builder.close();
+    }
   });
 }
 

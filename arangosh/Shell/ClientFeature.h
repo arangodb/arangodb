@@ -38,8 +38,7 @@ struct SimpleHttpClientParams;
 
 }  // namespace httpclient
 
-class ClientFeature final : public application_features::ApplicationFeature,
-                            public HttpEndpointProvider {
+class ClientFeature final : public HttpEndpointProvider {
  public:
   constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;

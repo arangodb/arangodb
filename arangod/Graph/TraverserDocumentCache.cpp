@@ -41,11 +41,12 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(aql::Query* query)
-    : TraverserCache(query), _cache(nullptr) {
+TraverserDocumentCache::TraverserDocumentCache(aql::Query* query, BaseOptions const* options)
+    : TraverserCache(query, options), _cache(nullptr) {
   auto cacheManager = CacheManagerFeature::MANAGER;
   if (cacheManager != nullptr) {
     _cache = cacheManager->createCache(cache::CacheType::Plain);
@@ -78,7 +79,7 @@ cache::Finding TraverserDocumentCache::lookup(arangodb::velocypack::StringRef id
 VPackSlice TraverserDocumentCache::lookupAndCache(arangodb::velocypack::StringRef id) {
   VPackSlice result = lookupInCollection(id);
   if (_cache != nullptr) {
-    void const* key = id.begin();
+    void const* key = id.data();
     auto keySize = static_cast<uint32_t>(id.length());
 
     void const* resVal = result.begin();

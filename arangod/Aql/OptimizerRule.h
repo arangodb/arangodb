@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/StringRef.h>
+
 #include <type_traits>
 
 namespace arangodb {
@@ -50,6 +52,7 @@ struct OptimizerRule {
     ClusterOnly = 2,
     CanBeDisabled = 4,
     CanCreateAdditionalPlans = 8,
+    DisabledByDefault = 16,
   };
 
   /// @brief helper for building flags
@@ -81,6 +84,10 @@ struct OptimizerRule {
   
   bool canCreateAdditionalPlans() const {
     return hasFlag(Flags::CanCreateAdditionalPlans);
+  }
+
+  bool isDisabledByDefault() const {
+    return hasFlag(Flags::DisabledByDefault);
   }
 
   /// @brief optimizer rules
@@ -183,9 +190,6 @@ struct OptimizerRule {
     // remove FILTER and SORT if there are geoindexes
     applyGeoIndexRule,
 
-    // replace FULLTEXT with index
-    applyFulltextIndexRule,
-
     useIndexesRule,
 
     // try to remove filters covered by index ranges
@@ -219,9 +223,6 @@ struct OptimizerRule {
     // handling.
     substituteSingleDocumentOperations,
 
-    // make sort node aware of subsequent limit statements for internal optimizations
-    applySortLimitRule,
-
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
 
@@ -237,7 +238,9 @@ struct OptimizerRule {
     // gets pushed to a single server
     // if applied, this rule will turn all other cluster rules off
     // for the current plan
+#ifdef USE_ENTERPRISE
     clusterOneShardRule,
+#endif
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
@@ -279,26 +282,51 @@ struct OptimizerRule {
     // push collect operations to the db servers
     collectInClusterRule,
 
+    // make sort node aware of subsequent limit statements for internal optimizations
+    applySortLimitRule,
+
     // try to restrict fragments to a single shard if possible
     restrictToSingleShardRule,
 
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
+
+    // moves filters on collection data into EnumerateCollection to
+    // avoid copying large amounts of unneeded documents
+    moveFiltersIntoEnumerateCollection,
+
+    // splice subquery into the place of a subquery node
+    // enclosed by a SubqueryStartNode and a SubqueryEndNode
+    // Must run last.
+    spliceSubqueriesRule
   };
 
-  std::string name;
+  velocypack::StringRef name;
   RuleFunction func;
-  RuleLevel const level;
-  std::underlying_type<Flags>::type const flags;
+  RuleLevel level;
+  std::underlying_type<Flags>::type flags;
 
   OptimizerRule() = delete;
-
-  OptimizerRule(std::string const& name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
+  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
       : name(name),
         func(ruleFunc),
         level(level),
         flags(flags) {}
+
+  OptimizerRule(OptimizerRule&& other) = default;
+  OptimizerRule& operator=(OptimizerRule&& other) = default;
+  
+  OptimizerRule(OptimizerRule const& other) = delete;
+  OptimizerRule& operator=(OptimizerRule const& other) = delete;
+  
+  friend bool operator<(OptimizerRule const& lhs, int level) {
+    return lhs.level < level;
+  }
+  
+  friend bool operator<(int lhs, OptimizerRule const& rhs) {
+    return lhs < rhs.level;
+  }
 };
 
 }  // namespace aql

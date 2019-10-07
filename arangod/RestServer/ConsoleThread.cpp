@@ -53,11 +53,8 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer* applicationServer, TRI_vocbase_t* vocbase)
-    : Thread("Console"),
-      _applicationServer(applicationServer),
-      _vocbase(vocbase),
-      _userAborted(false) {}
+ConsoleThread::ConsoleThread(ApplicationServer& applicationServer, TRI_vocbase_t* vocbase)
+    : Thread(applicationServer, "Console"), _vocbase(vocbase), _userAborted(false) {}
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
 
@@ -84,12 +81,12 @@ void ConsoleThread::run() {
       LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
     }
   } catch (...) {
-    _applicationServer->beginShutdown();
+    _server.beginShutdown();
     throw;
   }
 
   // exit context
-  _applicationServer->beginShutdown();
+  _server.beginShutdown();
 }
 
 void ConsoleThread::inner(V8ContextGuard const& guard) {
@@ -204,7 +201,6 @@ start_color_print('arangodb', true);
 
       {
         v8::TryCatch tryCatch(isolate);
-        ;
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);

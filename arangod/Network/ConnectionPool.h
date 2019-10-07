@@ -39,6 +39,7 @@ class Connection;
 class ConnectionBuilder;
 }  // namespace v1
 }  // namespace fuerte
+class ClusterInfo;
 
 namespace network {
 
@@ -53,6 +54,7 @@ class ConnectionPool final {
 
  public:
   struct Config {
+    ClusterInfo* clusterInfo;
     uint64_t minOpenConnections = 1;      /// minimum number of open connections
     uint64_t maxOpenConnections = 25;     /// max number of connections
     uint64_t connectionTtlMilli = 60000;  /// unused connection lifetime
@@ -64,7 +66,7 @@ class ConnectionPool final {
 
   /// @brief simple connection reference counter
   struct Ref {
-    Ref(ConnectionPool::Connection* c);
+    explicit Ref(ConnectionPool::Connection* c);
     Ref(Ref&& r);
     Ref& operator=(Ref&&);
     Ref(Ref const& other);
@@ -78,17 +80,20 @@ class ConnectionPool final {
   };
 
  public:
-  ConnectionPool(ConnectionPool::Config const& config);
+  explicit ConnectionPool(ConnectionPool::Config const& config);
   virtual ~ConnectionPool();
 
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  Ref leaseConnection(EndpointSpec const&);
+  Ref leaseConnection(std::string const& endpoint);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
+  
+  /// @brief shutdown all connections
+  void drainConnections();
 
   /// @brief shutdown all connections
   void shutdown();
@@ -97,15 +102,17 @@ class ConnectionPool final {
   void pruneConnections();
   
   /// @brief cancel connections to this endpoint
-  void cancelConnections(EndpointSpec const&);
+  void cancelConnections(std::string const& endpoint);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;
 
+  Config const& config() const;
+
  protected:
   /// @brief connection container
   struct Connection {
-    Connection(std::shared_ptr<fuerte::Connection> f)
+    explicit Connection(std::shared_ptr<fuerte::Connection> f)
         : fuerte(std::move(f)),
           numLeased(0),
           lastUsed(std::chrono::steady_clock::now()) {}

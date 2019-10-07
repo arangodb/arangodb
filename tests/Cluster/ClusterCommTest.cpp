@@ -41,8 +41,10 @@ using namespace arangodb::rest;
 
 class ClusterCommTester : public ClusterComm {
  public:
-  ClusterCommTester()
-      : ClusterComm(false), _oldSched(nullptr), _testerSched(1, 2, 3, 4, 5) {
+  ClusterCommTester(application_features::ApplicationServer& server)
+      : ClusterComm(server, false),
+        _oldSched(nullptr),
+        _testerSched(server, 1, 2, 3, 4, 5) {
     // fake a scheduler object
     _oldSched = SchedulerFeature::SCHEDULER;
     SchedulerFeature::SCHEDULER = &_testerSched;
@@ -85,18 +87,20 @@ class ClusterCommTester : public ClusterComm {
 };  // class ClusterCommTester
 
 TEST(ClusterCommTest, no_matching_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   CoordTransactionID id = TRI_NewTickServer();
 
   result = testme.wait(id, 42, "", 100);
-  ASSERT_TRUE(CL_COMM_DROPPED == result.status);
-  ASSERT_TRUE(42 == result.operationID);
+  ASSERT_EQ(CL_COMM_DROPPED, result.status);
+  ASSERT_EQ(42, result.operationID);
 
 }  // no matching responses
 
 TEST(ClusterCommTest, single_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id;
   CoordTransactionID transId;
@@ -106,21 +110,22 @@ TEST(ClusterCommTest, single_response) {
   id = testme.addSimpleRequest(transId, CL_COMM_RECEIVED);
 
   result = testme.wait(transId, 0, "", 0.1);
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id, result.operationID);
 
   // find by ticketId
   transId = TRI_NewTickServer();
   id = testme.addSimpleRequest(transId, CL_COMM_RECEIVED);
 
   result = testme.wait(0, id, "", 0.1);
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id, result.operationID);
 
 }  // single response
 
 TEST(ClusterCommTest, out_of_order_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id_first, id_other;
   CoordTransactionID transId;
@@ -138,14 +143,15 @@ TEST(ClusterCommTest, out_of_order_response) {
   id_other = testme.getResponse(1).result->operationID;
 
   result = testme.wait(transId, 0, "", 0.1);
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id_other == result.operationID);
-  ASSERT_TRUE(id_first != result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id_other, result.operationID);
+  ASSERT_NE(id_first, result.operationID);
 
 }  // out of order response
 
 TEST(ClusterCommTest, simple_function_timeout) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   CoordTransactionID transId;
   ClusterCommTimeout startTime, endTime, diff;
@@ -158,8 +164,8 @@ TEST(ClusterCommTest, simple_function_timeout) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.0049 < diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_TIMEOUT == result.status);
-  ASSERT_TRUE(0 == result.operationID);
+  ASSERT_EQ(CL_COMM_TIMEOUT, result.status);
+  ASSERT_EQ(0, result.operationID);
 
   // larger timeout
   startTime = TRI_microtime();
@@ -167,12 +173,13 @@ TEST(ClusterCommTest, simple_function_timeout) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.09 <= diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_TIMEOUT == result.status);
-  ASSERT_TRUE(0 == result.operationID);
+  ASSERT_EQ(CL_COMM_TIMEOUT, result.status);
+  ASSERT_EQ(0, result.operationID);
 }  // simple function time out
 
 TEST(ClusterCommTest, time_delayed_out_of_order_response) {
-  ClusterCommTester testme;
+  application_features::ApplicationServer server(nullptr, nullptr);
+  ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id_first, id_other;
   CoordTransactionID transId;
@@ -204,8 +211,8 @@ TEST(ClusterCommTest, time_delayed_out_of_order_response) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.014 <= diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id_first == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id_first, result.operationID);
   f1.get();
 
   // do second time to get other response
@@ -224,8 +231,8 @@ TEST(ClusterCommTest, time_delayed_out_of_order_response) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.029 <= diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id_other == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id_other, result.operationID);
   f2.get();
 
   //
@@ -257,8 +264,8 @@ TEST(ClusterCommTest, time_delayed_out_of_order_response) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.014 <= diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id_other == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id_other, result.operationID);
   f3.get();
 
   // do second time to get other response
@@ -277,8 +284,8 @@ TEST(ClusterCommTest, time_delayed_out_of_order_response) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.029 <= diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id_first == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id_first, result.operationID);
   f4.get();
 
   // infinite wait
@@ -298,8 +305,8 @@ TEST(ClusterCommTest, time_delayed_out_of_order_response) {
   endTime = TRI_microtime();
   diff = endTime - startTime;
   ASSERT_TRUE(0.499 <= diff);  // must write range test in two parts for REQUIRE
-  ASSERT_TRUE(CL_COMM_RECEIVED == result.status);
-  ASSERT_TRUE(id_first == result.operationID);
+  ASSERT_EQ(CL_COMM_RECEIVED, result.status);
+  ASSERT_EQ(id_first, result.operationID);
   f5.get();
 
 }  // out of order response

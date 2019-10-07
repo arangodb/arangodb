@@ -69,7 +69,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
 
  protected:
@@ -288,11 +289,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t determineChunkSize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Grant temporary restore rights
-  //////////////////////////////////////////////////////////////////////////////
-  void grantTemporaryRights();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get correct replication applier, based on global paramerter

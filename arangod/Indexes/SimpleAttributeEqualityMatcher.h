@@ -86,7 +86,8 @@ class SimpleAttributeEqualityMatcher {
   /// comparable, and lower values mean lower costs
   Index::FilterCosts calculateIndexCosts(arangodb::Index const* index,
                                          arangodb::aql::AstNode const* attribute, 
-                                         size_t itemsInIndex, size_t coveredAttributes) const;
+                                         size_t itemsInIndex, size_t values,
+                                         size_t coveredAttributes) const;
 
   /// @brief whether or not the access fits
   bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,

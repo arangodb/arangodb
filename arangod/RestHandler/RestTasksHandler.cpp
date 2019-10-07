@@ -40,8 +40,9 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
   auto const type = _request->requestType();
@@ -138,13 +139,11 @@ void RestTasksHandler::registerTask(bool byId) {
     }
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "registering a task needs db RW permissions");
-      return;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "registering a task needs db RW permissions");
+    return;
   }
 
   // job id
@@ -178,15 +177,12 @@ void RestTasksHandler::registerTask(bool byId) {
       VelocyPackHelper::getStringValue(body, "runAsUser", "");
 
   // only the superroot is allowed to run tasks as an arbitrary user
-  TRI_ASSERT(exec == ExecContext::CURRENT);
-  if (exec != nullptr) {
-    if (runAsUser.empty()) {  // execute task as the same user
-      runAsUser = exec->user();
-    } else if (exec->user() != runAsUser) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "cannot run task as a different user");
-      return;
-    }
+  if (runAsUser.empty()) {  // execute task as the same user
+    runAsUser = exec.user();
+  } else if (exec.user() != runAsUser) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "cannot run task as a different user");
+    return;
   }
 
   // extract the command
@@ -279,13 +275,11 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "unregister task needs db RW permissions");
-      return;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "unregister task needs db RW permissions");
+    return;
   }
 
   int res = Task::unregisterTask(suffixes[0], true);

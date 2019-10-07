@@ -36,7 +36,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -45,7 +45,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -121,7 +121,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._createEdgeCollection("UnitTestsCollection");
 
@@ -130,7 +130,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

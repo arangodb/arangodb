@@ -44,15 +44,15 @@ TEST(CacheMetadataTest, test_basic_constructor) {
   uint64_t max = UINT64_MAX;
   Metadata metadata(usageLimit, fixed, table, max);
 
-  ASSERT_TRUE(metadata.fixedSize == fixed);
-  ASSERT_TRUE(metadata.tableSize == table);
-  ASSERT_TRUE(metadata.maxSize == max);
+  ASSERT_EQ(metadata.fixedSize, fixed);
+  ASSERT_EQ(metadata.tableSize, table);
+  ASSERT_EQ(metadata.maxSize, max);
   ASSERT_TRUE(metadata.allocatedSize > (usageLimit + fixed + table));
-  ASSERT_TRUE(metadata.deservedSize == metadata.allocatedSize);
+  ASSERT_EQ(metadata.deservedSize, metadata.allocatedSize);
 
-  ASSERT_TRUE(metadata.usage == 0);
-  ASSERT_TRUE(metadata.softUsageLimit == usageLimit);
-  ASSERT_TRUE(metadata.hardUsageLimit == usageLimit);
+  ASSERT_EQ(metadata.usage, 0);
+  ASSERT_EQ(metadata.softUsageLimit, usageLimit);
+  ASSERT_EQ(metadata.hardUsageLimit, usageLimit);
 }
 
 TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly) {
@@ -63,31 +63,31 @@ TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly)
 
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
-  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(512));
 
-  ASSERT_TRUE(!metadata.adjustLimits(2048, 2048));
-  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
+  ASSERT_FALSE(metadata.adjustLimits(2048, 2048));
+  ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
   ASSERT_TRUE(metadata.adjustDeserved(2048 + overhead));
   ASSERT_TRUE(metadata.adjustLimits(2048, 2048));
-  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_EQ(metadata.allocatedSize, 2048 + overhead);
 
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(1024));
 
   ASSERT_TRUE(metadata.adjustLimits(1024, 2048));
-  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_EQ(metadata.allocatedSize, 2048 + overhead);
 
-  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(-512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(-1024));
-  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(512));
 
   ASSERT_TRUE(metadata.adjustLimits(1024, 1024));
-  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
-  ASSERT_TRUE(!metadata.adjustLimits(512, 512));
+  ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
+  ASSERT_FALSE(metadata.adjustLimits(512, 512));
 
-  ASSERT_TRUE(!metadata.adjustLimits(2049, 2049));
-  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
+  ASSERT_FALSE(metadata.adjustLimits(2049, 2049));
+  ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
 
   metadata.writeUnlock();
 }
@@ -98,19 +98,19 @@ TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
 
   metadata.writeLock();
 
-  ASSERT_TRUE(!metadata.migrationAllowed(1024));
-  ASSERT_TRUE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));
+  ASSERT_FALSE(metadata.migrationAllowed(1024));
+  ASSERT_EQ(2048 + overhead, metadata.adjustDeserved(2048 + overhead));
 
   ASSERT_TRUE(metadata.migrationAllowed(1024));
   metadata.changeTable(1024);
-  ASSERT_TRUE(metadata.tableSize == 1024);
-  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_EQ(metadata.tableSize, 1024);
+  ASSERT_EQ(metadata.allocatedSize, 2048 + overhead);
 
-  ASSERT_TRUE(!metadata.migrationAllowed(1025));
+  ASSERT_FALSE(metadata.migrationAllowed(1025));
   ASSERT_TRUE(metadata.migrationAllowed(512));
   metadata.changeTable(512);
-  ASSERT_TRUE(metadata.tableSize == 512);
-  ASSERT_TRUE(metadata.allocatedSize == 1536 + overhead);
+  ASSERT_EQ(metadata.tableSize, 512);
+  ASSERT_EQ(metadata.allocatedSize, 1536 + overhead);
 
   metadata.writeUnlock();
 }

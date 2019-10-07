@@ -24,6 +24,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -85,31 +86,19 @@ std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix)
          prefix + "/";
 }
 
-void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
-      LOG_TOPIC("16eb0", ERR, Logger::PREGEL)
-          << "Error sending request to " << req.destination
-          << ". Payload: " << res.answer->payload().toJson();
-    }
-  }
-}
-
-int Utils::resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                        std::string const& shardKey, VPackStringRef vertexKey,
-                        std::string& responsibleShard) {
+int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                        std::string const& collectionName, std::string const& shardKey,
+                        VPackStringRef vertexKey, std::string& responsibleShard) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }
 
   auto const& planIDMap = config->collectionPlanIdMap();
-  ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci->getCollectionNT(config->database(), it->second);  // might throw
+    info = ci.getCollectionNT(config->database(), it->second);  // might throw
     if (info == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }

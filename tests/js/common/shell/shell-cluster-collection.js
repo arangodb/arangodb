@@ -411,50 +411,84 @@ function ClusterCollectionSuite () {
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidShardKeys1 : function () {
+    testCreateEmptyShardKeysArray : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_key"], props.shardKeys);
+    },
+    
+    testCreateShardKeysOnKey : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "_key" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_key"], props.shardKeys);
+    },
+    
+    testCreateShardKeysOnId : function () {
       try {
-        db._create("UnitTestsClusterCrud", { shardKeys: [ ] });
-      }
-      catch (err) {
+        db._create("UnitTestsClusterCrud", { shardKeys: [ "_id" ] });
+        fail();
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateInvalidShardKeys2 : function () {
+    testCreateShardKeysOnRev : function () {
       try {
         db._create("UnitTestsClusterCrud", { shardKeys: [ "_rev" ] });
-      }
-      catch (err) {
+        fail();
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateInvalidShardKeys3 : function () {
-      try {
-        db._create("UnitTestsClusterCrud", { shardKeys: [ "", "foo" ] });
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
+    testCreateIncompleteShardKeys1 : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "", "foo" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["foo"], props.shardKeys);
+    },
+    
+    testCreateIncompleteShardKeys2 : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "bar", "" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["bar"], props.shardKeys);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+    testCreateShardKeysOnFrom : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "_from" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_from"], props.shardKeys);
+    },
+    
+    testCreateShardKeysOnTo : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "_to" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_to"], props.shardKeys);
+    },
+    
+    testCreateShardKeysOnFromTo : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "_from", "_to" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_from", "_to"], props.shardKeys);
+    },
 
-    testCreateInvalidShardKeys4 : function () {
+    testCreateShardKeysMixed : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "_from" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["a", "_from"], props.shardKeys);
+    },
+    
+    testCreateShardKeysMany : function () {
+      db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "b", "c", "d", "e", "f", "g", "h" ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["a", "b", "c", "d", "e", "f", "g", "h"], props.shardKeys);
+    },
+    
+    testCreateShardKeysTooMany : function () {
       try {
-        db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "_from" ] });
-      }
-      catch (err) {
+        // only 8 shard keys are allowed
+        db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "b", "c", "d", "e", "f", "g", "h", "i" ] });
+        fail();
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },

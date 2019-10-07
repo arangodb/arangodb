@@ -35,20 +35,22 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/datetime.h"
 #include "Basics/fpconv.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Geo/GeoJson.h"
 #include "Geo/Ellipsoid.h"
-#include "Geo/Utils.h"
+#include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/Utils.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
@@ -284,9 +286,58 @@ AqlValue numberValue(double value, bool nullify) {
   return AqlValue(AqlValueHintDouble(value));
 }
 
-inline AqlValue timeAqlValue(tp_sys_clock_ms const& tp) {
-  std::string formatted = format("%FT%TZ", floor<milliseconds>(tp));
-  return AqlValue(formatted);
+/// @brief optimized version of datetime stringification
+/// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
+AqlValue timeAqlValue(ExpressionContext* expressionContext,
+                      char const* AFN,
+                      tp_sys_clock_ms const& tp) {
+  char formatted[24];
+
+  year_month_day ymd{floor<days>(tp)};
+  auto day_time = make_time(tp - sys_days(ymd));
+  
+  auto y = static_cast<int>(ymd.year());
+  // quick sanity check here for dates outside the allowed range
+  if (y < 0 || y > 9999) {
+    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  formatted[0] = '0' + (y / 1000);
+  formatted[1] = '0' + ((y % 1000) / 100);
+  formatted[2] = '0' + ((y % 100) / 10);
+  formatted[3] = '0' + (y % 10);
+  formatted[4] = '-';
+  auto m = static_cast<unsigned>(ymd.month());
+  formatted[5] = '0' + (m / 10);
+  formatted[6] = '0' + (m % 10);
+  formatted[7] = '-';
+  auto d = static_cast<unsigned>(ymd.day());
+  formatted[8] = '0' + (d / 10);
+  formatted[9] = '0' + (d % 10);
+  formatted[10] = 'T';
+  auto h = day_time.hours().count();
+  formatted[11] = '0' + (h / 10);
+  formatted[12] = '0' + (h % 10);
+  formatted[13] = ':';
+  auto i = day_time.minutes().count();
+  formatted[14] = '0' + (i / 10);
+  formatted[15] = '0' + (i % 10);
+  formatted[16] = ':';
+  auto s = day_time.seconds().count();
+  formatted[17] = '0' + (s / 10);
+  formatted[18] = '0' + (s % 10);
+  formatted[19] = '.';
+  uint64_t millis = day_time.subseconds().count();
+  if (millis > 999) {
+    millis = 999;
+  }
+  formatted[20] = '0' + (millis / 100);
+  formatted[21] = '0' + ((millis % 100) / 10);
+  formatted[22] = '0' + (millis % 10);
+  formatted[23] = 'Z';
+
+  return AqlValue(&formatted[0], sizeof(formatted));
 }
 
 DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
@@ -357,7 +408,8 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
 
 AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
                                         tp_sys_clock_ms const& tp, VPackSlice durationUnitsSlice,
-                                        VPackSlice durationType, bool isSubtract) {
+                                        VPackSlice durationType, char const* AFN,
+                                        bool isSubtract) {
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
@@ -427,11 +479,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
       ms *= durationUnits;
       break;
     default:
-      if (isSubtract) {
-        ::registerWarning(expressionContext, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      } else {
-        ::registerWarning(expressionContext, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      }
+      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
   }
   // Here we reconstruct the timepoint again
@@ -446,32 +494,34 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
         tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
                         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
-  return ::timeAqlValue(resTime);
+  return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               std::string const& duration, bool isSubtract) {
+                                               arangodb::velocypack::StringRef duration, 
+                                               char const* AFN, bool isSubtract) {
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
-  std::smatch duration_parts;
-  if (!basics::regexIsoDuration(duration, duration_parts)) {
-    if (isSubtract) {
-      ::registerWarning(expressionContext, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    } else {
-      ::registerWarning(expressionContext, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    }
+  
+  std::match_results<char const*> durationParts;
+  if (!basics::regexIsoDuration(duration, durationParts)) {
+    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
-  int number = basics::StringUtils::int32(duration_parts[2].str());
+  char const* begin; 
+  
+  begin = duration.data() + durationParts.position(2);
+  int number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(2));
   if (isSubtract) {
     ymd -= years{number};
   } else {
     ymd += years{number};
   }
 
-  number = basics::StringUtils::int32(duration_parts[4].str());
+  begin = duration.data() + durationParts.position(4);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(4));
   if (isSubtract) {
     ymd -= months{number};
   } else {
@@ -479,25 +529,43 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   }
 
   milliseconds ms{0};
-  number = basics::StringUtils::int32(duration_parts[6].str());
+  begin = duration.data() + durationParts.position(6);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(6));
   ms += weeks{number};
 
-  number = basics::StringUtils::int32(duration_parts[8].str());
+  begin = duration.data() + durationParts.position(8);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(8));
   ms += days{number};
 
-  number = basics::StringUtils::int32(duration_parts[11].str());
+  begin = duration.data() + durationParts.position(11);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(11));
   ms += hours{number};
 
-  number = basics::StringUtils::int32(duration_parts[13].str());
+  begin = duration.data() + durationParts.position(13);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(13));
   ms += minutes{number};
 
-  number = basics::StringUtils::int32(duration_parts[15].str());
+  begin = duration.data() + durationParts.position(15);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(15));
   ms += seconds{number};
 
   // The Milli seconds can be shortened:
   // .1 => 100ms
   // so we append 00 but only take the first 3 digits
-  number = basics::StringUtils::int32((duration_parts[17].str() + "00").substr(0, 3));
+  std::size_t matchLength = durationParts.length(17);
+  number = 0;
+  if (matchLength > 0) {
+    if (matchLength > 3) {
+      matchLength = 3;
+    }
+    begin = duration.data() + durationParts.position(17);
+    number = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
+    if (matchLength == 2) {
+      number *= 10;
+    } else if (matchLength == 1) {
+      number *= 100;
+    }
+  }
   ms += milliseconds{number};
 
   tp_sys_clock_ms resTime;
@@ -506,7 +574,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   } else {
     resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
   }
-  return ::timeAqlValue(resTime);
+  return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
 /// @brief register usage of an invalid function argument
@@ -521,22 +589,29 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
                           tp_sys_clock_ms& tp, char const* AFN, size_t parameterIndex) {
   AqlValue const& value = extractFunctionParameterValue(parameters, parameterIndex);
 
-  if (!value.isString() && !value.isNumber()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
-    return false;
-  }
-
   if (value.isNumber()) {
-    tp = tp_sys_clock_ms(milliseconds(value.toInt64()));
-  } else {
-    std::string const dateVal = value.slice().copyString();
-    if (!basics::parseDateTime(dateVal, tp)) {
+    int64_t v = value.toInt64();
+    if (ADB_UNLIKELY(v < -62167219200000 || v > 253402300799999)) {
+      // check if value is between "0000-01-01T00:00:00.000Z" and "9999-12-31T23:59:59.999Z"
+      // -62167219200000: "0000-01-01T00:00:00.000Z"
+      // 253402300799999: "9999-12-31T23:59:59.999Z"
       ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
+    tp = tp_sys_clock_ms(milliseconds(v));
+    return true;
   }
 
-  return true;
+  if (value.isString()) {
+    if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
+      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return false;
+    }
+    return true;
+  }
+
+  ::registerInvalidArgumentWarning(expressionContext, AFN);
+  return false;
 }
 
 /// @brief converts a value into a number value
@@ -1002,7 +1077,7 @@ AqlValue dateFromParameters(
     months m{extractFunctionParameterValue(parameters, 1).toInt64()};
     days d{extractFunctionParameterValue(parameters, 2).toInt64()};
 
-    if ((y < years{0}) || (m < months{0}) || (d < days{0})) {
+    if ((y < years{0} || y > years{9999}) || (m < months{0}) || (d < days{0})) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
@@ -1048,7 +1123,7 @@ AqlValue dateFromParameters(
   if (asTimestamp) {
     return AqlValue(AqlValueHintInt(time.count()));
   }
-  return timeAqlValue(tp);
+  return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
 AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Methods* trx,
@@ -3082,7 +3157,7 @@ AqlValue Functions::IsDatestring(ExpressionContext*, transaction::Methods*,
 
   if (value.isString()) {
     tp_sys_clock_ms tp;  // unused
-    isValid = basics::parseDateTime(value.slice().copyString(), tp);
+    isValid = basics::parseDateTime(value.slice().stringRef(), tp);
   }
 
   return AqlValue(AqlValueHintBool(isValid));
@@ -3336,7 +3411,6 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   } else if (duration == "m" || duration == "month" || duration == "months") {
     ymd = year{ymd.year()} / ymd.month() / day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
-    ;
     // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
     // However, we already split ymd to the precision of days,
     // and ms to cary the timestamp part, so nothing needs to be done here.
@@ -3355,7 +3429,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   }
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
 
-  return AqlValue(format("%FT%TZ", floor<milliseconds>(tp)));
+  return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
 /// @brief function DATE_ADD
@@ -3386,7 +3460,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
 
     // Numbers and Strings can both be sliced
     return ::addOrSubtractUnitFromTimestamp(expressionContext, tp, durationUnit.slice(),
-                                            durationType.slice(), false);
+                                            durationType.slice(), AFN, false);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -3394,8 +3468,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
       return AqlValue(AqlValueHintNull());
     }
 
-    std::string const duration = isoDuration.slice().copyString();
-    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, false);
+    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, isoDuration.slice().stringRef(), AFN, false);
   }
 }
 
@@ -3428,7 +3501,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
 
     // Numbers and Strings can both be sliced
     return ::addOrSubtractUnitFromTimestamp(expressionContext, tp, durationUnit.slice(),
-                                            durationType.slice(), true);
+                                            durationType.slice(), AFN, true);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -3436,8 +3509,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    std::string const duration = isoDuration.slice().copyString();
-    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, true);
+    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, isoDuration.slice().stringRef(), AFN, true);
   }
 }
 
@@ -3634,6 +3706,63 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
   // If we get here all significant places are equal
   // Name these two dates as equal
   return AqlValue(AqlValueHintBool(true));
+}
+
+/// @brief function DATE_ROUND
+AqlValue Functions::DateRound(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_ROUND";
+  tp_sys_clock_ms tp;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
+  if (!durationUnit.isNumber()) {  // unit must be number
+    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& durationType = extractFunctionParameterValue(parameters, 2);
+  if (!durationType.isString()) {  // unit type must be string
+    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  int64_t const m = durationUnit.toInt64(); 
+  if (m <= 0) {
+    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  velocypack::StringRef s = durationType.slice().stringRef();
+  
+  int64_t factor = 1;
+  if (s == "milliseconds" || s == "millisecond" || s == "f") {
+    factor = 1;
+  } else if (s == "seconds" || s == "second" || s == "s") {
+    factor = 1000;
+  } else if (s == "minutes" || s == "minute" || s == "i") {
+    factor = 60 * 1000;
+  } else if (s == "hours" || s == "hour" || s == "h") {
+    factor = 60 * 60 * 1000;
+  } else if (s == "days" || s == "day" || s == "d") {
+    factor = 24 * 60 * 60 * 1000;
+  } else {
+    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  int64_t const multiplier = factor * m; 
+  
+  duration<int64_t, std::milli> time = tp.time_since_epoch();
+  int64_t t = time.count();
+  // integer division!
+  t /= multiplier;
+  tp = tp_sys_clock_ms(milliseconds(t * multiplier));
+  return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
 /// @brief function PASSTHRU
@@ -4056,16 +4185,21 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  double const until = TRI_microtime() + value.toDouble();
+  auto& server = application_features::ApplicationServer::server();
+  
+  double const sleepValue = value.toDouble();
+  auto now = std::chrono::steady_clock::now();
+  auto const endTime = now + std::chrono::milliseconds(static_cast<int64_t>(sleepValue * 1000.0));
 
-  while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  while (now < endTime) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    if (expressionContext->killed()) {
+    if (expressionContext->query()->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    } else if (application_features::ApplicationServer::isStopping()) {
+    } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    now = std::chrono::steady_clock::now();
   }
   return AqlValue(AqlValueHintNull());
 }
@@ -4089,11 +4223,11 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
 
   size_t const n = colls.size();
 
+  auto const& exec = ExecContext::current();
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(),
+    if (!exec.canUseCollection(vocbase.name(), coll->name(),
                                                 auth::Level::RO)) {
       continue;
     }
@@ -6017,8 +6151,9 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
+  auto options = trx->transactionContextPtr()->getVPackOptions();
   std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
-      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual(options));
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -6296,16 +6431,10 @@ AqlValue Functions::CurrentDatabase(ExpressionContext* expressionContext,
 /// @brief function CURRENT_USER
 AqlValue Functions::CurrentUser(ExpressionContext*, transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  if (ExecContext::CURRENT == nullptr) {
-    return AqlValue(AqlValueHintNull());
-  }
-
-  std::string const& username = ExecContext::CURRENT->user();
-
+  std::string const& username = ExecContext::current().user();
   if (username.empty()) {
     return AqlValue(AqlValueHintNull());
   }
-
   return AqlValue(username);
 }
 

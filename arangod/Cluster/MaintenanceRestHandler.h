@@ -24,9 +24,6 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
 #define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
-
 #include "Cluster/Action.h"
 #include "RestHandler/RestBaseHandler.h"
 
@@ -38,7 +35,8 @@ namespace arangodb {
 
 class MaintenanceRestHandler : public RestBaseHandler {
  public:
-  MaintenanceRestHandler(GeneralRequest*, GeneralResponse*);
+  MaintenanceRestHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }

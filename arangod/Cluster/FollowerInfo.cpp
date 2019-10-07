@@ -146,7 +146,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
             "unable to remove follower"};
   }
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (_docColl->vocbase().server().isStopping()) {
     // If we are already shutting down, we cannot be trusted any more with
     // such an important decision like dropping a follower.
     return {TRI_ERROR_SHUTTING_DOWN};
@@ -344,6 +344,10 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   std::string planPath = PlanShardPath(*_docColl);
   AgencyComm ac;
   do {
+    if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
+      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    }
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
     AgencyCommResult res = ac.sendTransactionWithFailover(trx);
@@ -396,7 +400,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
     }
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(500ms);
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_docColl->vocbase().server().isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
 }
 

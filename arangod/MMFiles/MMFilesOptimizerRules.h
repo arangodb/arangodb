@@ -33,10 +33,11 @@ namespace aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
+class OptimizerRulesFeature;
 }  // namespace aql
 
 struct MMFilesOptimizerRules {
-  static void registerResources();
+  static void registerResources(aql::OptimizerRulesFeature& feature);
 
   static void removeSortRandRule(aql::Optimizer* opt,
                                  std::unique_ptr<aql::ExecutionPlan> plan,

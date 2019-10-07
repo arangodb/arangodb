@@ -31,6 +31,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {
@@ -81,9 +82,9 @@ class SortExecutorInfos : public ExecutorInfos {
 class SortExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
   using Infos = SortExecutorInfos;

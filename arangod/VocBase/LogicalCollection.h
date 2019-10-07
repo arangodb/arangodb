@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
@@ -92,6 +93,9 @@ class ChecksumResult {
 /// state each time! all state of a LogicalCollection in the coordinator case
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
+
+typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
+
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -165,6 +169,8 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const { return _isSmart; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
+  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
@@ -195,7 +201,8 @@ class LogicalCollection : public LogicalDataSource {
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           std::string& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "");
+                          arangodb::velocypack::StringRef const& key =
+                          arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -258,7 +265,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures() const;
+  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);

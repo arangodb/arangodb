@@ -389,6 +389,14 @@
     exports.serverId = global.REPLICATION_SERVER_ID;
     delete global.REPLICATION_SERVER_ID;
   }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for index selectivity estimate sync
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
+    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
+    delete global.WAIT_FOR_ESTIMATOR_SYNC;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief loadStartup
@@ -502,12 +510,12 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSegfault
+  // / @brief debugTerminate
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_DEBUG_SEGFAULT) {
-    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-    delete global.SYS_DEBUG_SEGFAULT;
+  if (global.SYS_DEBUG_TERMINATE) {
+    exports.debugTerminate = global.SYS_DEBUG_TERMINATE;
+    delete global.SYS_DEBUG_TERMINATE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

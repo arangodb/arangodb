@@ -115,7 +115,7 @@ class Promise {
   arangodb::futures::Future<T> getFuture();
 
  private:
-  Promise(detail::SharedState<T>* state) : _state(state), _retrieved(false) {}
+  explicit Promise(detail::SharedState<T>* state) : _state(state), _retrieved(false) {}
 
   // convenience method that checks if _state is set
   inline detail::SharedState<T>& getState() {

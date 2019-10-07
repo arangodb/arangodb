@@ -22,28 +22,60 @@
 
 #include "NetworkFeature.h"
 
+#include "Basics/FunctionUtils.h"
+#include "Basics/application-exit.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+
+namespace {
+void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
+  bool queued = false;
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    std::tie(queued, workItem) =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [&gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                                       offset, gcfunc);
+            },
+            arangodb::Logger::COMMUNICATION,
+            "queue transaction garbage collection");
+  }
+  if (!queued) {
+    LOG_TOPIC("c8b3d", FATAL, arangodb::Logger::COMMUNICATION)
+        << "Failed to queue transaction garbage collection, for 5 minutes, "
+           "exiting.";
+    FATAL_ERROR_EXIT();
+  }
+}
+}  // namespace
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
 
-std::atomic<network::ConnectionPool*> NetworkFeature::_poolPtr(nullptr);
-
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
+    : NetworkFeature(server, network::ConnectionPool::Config{}) {}
+
+NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+                               network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(1),
-      _maxOpenConnections(128),
-      _connectionTtlMilli(5 * 60 * 1000),
-      _verifyHosts(false) {
+      _numIOThreads(config.numIOThreads),
+      _maxOpenConnections(config.maxOpenConnections),
+      _connectionTtlMilli(config.connectionTtlMilli),
+      _verifyHosts(config.verifyHosts) {
   setOptional(true);
-  startsAfter("Server");
+  startsAfter<ClusterFeature>();
+  startsAfter<SchedulerFeature>();
+  startsAfter<ServerFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -59,26 +91,25 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt64Parameter(&_connectionTtlMilli));
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));
-  
-  _gcfunc = [this] (bool canceled) {
+
+  _gcfunc = [this](bool canceled) {
     if (canceled) {
       return;
     }
-    
+
     _pool->pruneConnections();
-    
-    auto* ci = ClusterInfo::instance();
-    if (ci != nullptr) {
-      auto failed = ci->getFailedServers();
+
+    if (server().hasFeature<ClusterFeature>()) {
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto failed = ci.getFailedServers();
       for (ServerID const& f : failed) {
         _pool->cancelConnections(f);
       }
     }
-    
-    auto off = std::chrono::seconds(3);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    if (!application_features::ApplicationServer::isStopping() && !canceled) {
-      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+
+    if (!server().isStopping() && !canceled) {
+      auto off = std::chrono::seconds(3);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
     }
   };
 }
@@ -99,17 +130,19 @@ void NetworkFeature::prepare() {
   config.maxOpenConnections = _maxOpenConnections;
   config.connectionTtlMilli = _connectionTtlMilli;
   config.verifyHosts = _verifyHosts;
+  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+    config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
+  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
 }
-  
+
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    std::lock_guard<std::mutex> guard(_workItemMutex);
     auto off = std::chrono::seconds(1);
-    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
 }
 
@@ -119,9 +152,28 @@ void NetworkFeature::beginShutdown() {
     _workItem.reset();
   }
   _poolPtr.store(nullptr, std::memory_order_release);
-  if (_pool) {
-    _pool->shutdown();
+  if (_pool) {  // first cancel all connections
+    _pool->drainConnections();
   }
 }
+
+void NetworkFeature::stop() {
+  {
+    // we might have posted another workItem during shutdown.
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
+  }
+  _pool->drainConnections();
+}
+
+arangodb::network::ConnectionPool* NetworkFeature::pool() const {
+  return _poolPtr.load(std::memory_order_acquire);
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
+  _poolPtr.store(pool, std::memory_order_release);
+}
+#endif
 
 }  // namespace arangodb

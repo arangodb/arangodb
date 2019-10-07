@@ -30,13 +30,16 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Logger/LogMacros.h"
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool LimitExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough LimitExecutor::Properties::allowsBlockPassthrough;
+constexpr bool LimitExecutor::Properties::inputSizeRestrictsOutputSize;
 
 LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                        // cppcheck-suppress passedByValue

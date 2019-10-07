@@ -26,7 +26,12 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Range.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -42,7 +47,8 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
                                                     std::unordered_set<RegisterId> const& registers,
                                                     size_t newNrRegs) const {
-  SharedAqlItemBlockPtr block = manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
+  SharedAqlItemBlockPtr block =
+      manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNrRegisters() <= newNrRegs);
@@ -114,6 +120,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
 ///                  such that actual indices start at 2
 void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
   TRI_ASSERT(isInitialized());
+  TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -178,9 +185,15 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < getNrRegisters(); column++) {
-    AqlValue const& a = getValue(column);
-
+  // We use column == 0 to simulate a shadowRow
+  // this is only relevant if all participants can use shadow rows
+  RegisterId startRegister = 0;
+  if (block().getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < getNrRegisters() + 1; column++) {
+    AqlValue const& a = column == 0 ? AqlValue{} : getValue(column - 1);
     // determine current state
     if (a.isEmpty()) {
       currentState = Empty;
@@ -236,4 +249,82 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
   raw.close();
   result.add("raw", raw.slice());
+}
+
+InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
+    : _block(nullptr), _baseIndex(0) {}
+
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex) {
+  TRI_ASSERT(_block != nullptr);
+}
+
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
+    : _block(std::move(block)), _baseIndex(baseIndex) {
+  TRI_ASSERT(_block != nullptr);
+}
+
+AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId < getNrRegisters());
+  return block().getValueReference(_baseIndex, registerId);
+}
+
+AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId < getNrRegisters());
+  AqlValue const& a = block().getValueReference(_baseIndex, registerId);
+  if (!a.isEmpty() && a.requiresDestruction()) {
+    // Now no one is responsible for AqlValue a
+    block().steal(a);
+  }
+  // This cannot fail, caller needs to take immediate ownership.
+  return a;
+}
+
+std::size_t InputAqlItemRow::getNrRegisters() const noexcept { return block().getNrRegs(); }
+
+bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
+  TRI_ASSERT(isInitialized());
+  return this->_block == other._block && this->_baseIndex == other._baseIndex;
+}
+
+bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
+  TRI_ASSERT(isInitialized());
+  return !(*this == other);
+}
+
+bool InputAqlItemRow::isInitialized() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_block != nullptr) {
+    TRI_ASSERT(!block().isShadowRow(_baseIndex));
+  }
+#endif
+  return _block != nullptr;
+}
+
+InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
+
+bool InputAqlItemRow::isFirstRowInBlock() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+  return _baseIndex == 0;
+}
+
+bool InputAqlItemRow::isLastRowInBlock() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+  return _baseIndex + 1 == block().size();
+}
+
+bool InputAqlItemRow::blockHasMoreRows() const noexcept { return !isLastRowInBlock(); }
+
+AqlItemBlock& InputAqlItemRow::block() noexcept {
+  TRI_ASSERT(_block != nullptr);
+  return *_block;
+}
+
+AqlItemBlock const& InputAqlItemRow::block() const noexcept {
+  TRI_ASSERT(_block != nullptr);
+  return *_block;
 }

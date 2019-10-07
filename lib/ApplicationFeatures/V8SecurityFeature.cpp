@@ -33,6 +33,8 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -163,8 +165,8 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
       _allowProcessControl(false),
       _allowPortTesting(false) {
   setOptional(false);
-  startsAfter("Temp");
-  startsAfter("V8Platform");
+  startsAfter<TempFeature>();
+  startsAfter<V8PlatformFeature>();
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -265,12 +267,8 @@ void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
 }
 
 void V8SecurityFeature::prepare() {
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-
-  v8security->addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::READ);
-  v8security->addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::WRITE);
+  addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::READ);
+  addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::WRITE);
   TRI_ASSERT(!_writeWhitelist.empty());
   TRI_ASSERT(!_readWhitelist.empty());
 }

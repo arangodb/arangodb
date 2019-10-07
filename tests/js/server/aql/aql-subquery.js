@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
+const { db } = require("@arangodb");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,10 +41,6 @@ var findExecutionNodes = helper.findExecutionNodes;
 function ahuacatlSubqueryTestSuite () {
 
   return {
-
-    setUp : function () {},
-
-    tearDown : function () {},
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery evaluation
@@ -324,7 +321,43 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this tests a rather complex interna of AQL execution combinations
+/// A subquery should only be executed if it has an input row
+/// A count collect block will produce an output even if it does not get an input
+/// specifically it will rightfully count 0.
+/// The insert block will write into the collection if it gets an input.
+/// So the assertion here is, that if a subquery has no input, than all it's
+/// Parts do not have side-effects, but the subquery still prduces valid results
+////////////////////////////////////////////////////////////////////////////////
+    testCollectWithinEmptyNestedSubquery: function () {
+      const colName = "UnitTestSubqueryCollection";
+      try {
+        db._create(colName);
+        const query = `
+          FOR k IN 1..2
+            LET sub1 = (
+              FOR x IN []
+                LET sub2 = (
+                  COLLECT WITH COUNT INTO q
+                  INSERT {counted: q} INTO ${colName}
+                  RETURN NEW
+                )
+                RETURN sub2
+            )
+            RETURN [k, sub1]
+        `;
+        const expected = [ [1, []], [2, []]];
+
+        var actual = getQueryResults(query);
+        assertEqual(expected, actual);
+        assertEqual(db[colName].count(), 0);
+      } finally {
+        db._drop(colName);
+      }
+      
+    }
+  }; 
 }
 
 jsunity.run(ahuacatlSubqueryTestSuite);

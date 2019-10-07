@@ -5,7 +5,8 @@
 
 @RESTDESCRIPTION
 Upload a specific local backup to a remote repository, or query
-progress on a previously scheduled upload operation.
+progress on a previously scheduled upload operation, or abort
+a running upload operation.
 
 @RESTBODYPARAM{id,string,optional,string}
 The identifier for this backup. This is required when an upload
@@ -15,7 +16,7 @@ attribute.
 @RESTBODYPARAM{remoteRepository,string,optional,string}
 URL of remote reporsitory. This is required when an upload
 operation is scheduled. In this case leave out the `uploadId`
-attribute.
+attribute. Provided repository URLs are normalized and validated as follows: One single colon must appear separating the configurtion section name and the path. The URL prefix up to the colon must exist as a key in the config object below. No slashes must appear before the colon. Multiple back to back slashes are collapsed to one, as `..` and `.` are applied accordingly. Local repositories must be absolute paths and must begin with a `/`. Trailing `/` are removed.    
 
 @RESTBODYPARAM{config,object,optional,object}
 Configuration of remote repository. This is required when an upload
@@ -24,8 +25,13 @@ attribute. See the description of the _arangobackup_ program in the manual
 for a description of the `config` object.
 
 @RESTBODYPARAM{uploadId,string,optional,string}
-Upload ID to specify for which upload operation progress is queried.
-If you specify this, leave out all other body parameters.
+Upload ID to specify for which upload operation progress is queried or
+the upload operation to abort.
+If you specify this, leave out all the above body parameters.
+
+@RESTBODYPARAM{abort,boolean,optional,boolean}
+Set this to `true` if a running upload operation should be aborted. In
+this case, the only other body parameter which is needed is `uploadId`.
 
 @RESTRETURNCODES
 
@@ -76,6 +82,8 @@ there is no known upload operation with the given `uploadId`.
       }
     };
 @END_EXAMPLE_ARANGOSH_RUN
+
+The `result` object of the body holds the `uploadId` string attribute which can be used to follow the upload process.
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted_rocksdb}
     try {
