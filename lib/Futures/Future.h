@@ -139,9 +139,9 @@ void waitImpl(Future<T>& f) {
   std::condition_variable cv;
   
   std::unique_lock<std::mutex> lock(m);
-  
   Promise<T> p;
   f.thenFinal([&p, &cv](Try<T>&& t) {
+    std::lock_guard<std::mutex> guard(m); // lock access to p
     p.setTry(std::move(t));
     cv.notify_one();
   });
