@@ -411,11 +411,6 @@ if (WIN32)
   add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
   add_definitions(-DPSAPI_VERSION=1)
 
-  # #add these if cpp17 build fails
-  # add_definitions(-D_HAS_AUTO_PTR_ETC=1) #autopointer
-  # add_definitions(-D_HAS_TR1_NAMESPACE=1) #tr1
-  # add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_VISTA)
-
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
