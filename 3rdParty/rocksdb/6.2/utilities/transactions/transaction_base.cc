@@ -121,48 +121,12 @@ Status TransactionBaseImpl::TryLock(ColumnFamilyHandle* column_family,
                  assume_tracked);
 }
 
-#if defined(__APPLE__) && _LIBCPP_STD_VER > 14
-// miserable hack to access the container member of std::stack
-// this is done because on older xcode stl versions
-// std::stack::emplace does not work correctly
-// this hack should not be ported to new versions
-// please consinder to increase the xcode version
-// requirements instead.
-
-template<typename type>
-struct access {
-  inline static type member_pointer;
-};
-
-template<typename type, type pointer>
-struct create_access : access<type> {
-  struct assign_pointer {
-    assign_pointer() { access<type>::member_pointer = pointer; }
-  };
-  inline static assign_pointer by_calling_default_ctor;
-};
-
-
-using member_type = autovector<TransactionBaseImpl::SavePoint>;
-using container_type = std::stack<TransactionBaseImpl::SavePoint, autovector<TransactionBaseImpl::SavePoint>>;
-using private_type = member_type container_type::*;
-template struct create_access<private_type, &container_type::c>;
-#endif
-
 void TransactionBaseImpl::SetSavePoint() {
   if (save_points_ == nullptr) {
     save_points_.reset(new std::stack<TransactionBaseImpl::SavePoint, autovector<TransactionBaseImpl::SavePoint>>());
   }
-
-#if defined(__APPLE__) && _LIBCPP_STD_VER > 14
-  ((*save_points_).*access<private_type>::member_pointer).emplace_back(
-                        snapshot_, snapshot_needed_, snapshot_notifier_,
-                        num_puts_, num_deletes_, num_merges_);
-
-#else
   save_points_->emplace(snapshot_, snapshot_needed_, snapshot_notifier_,
                         num_puts_, num_deletes_, num_merges_);
-#endif
   write_batch_.SetSavePoint();
 }
 
