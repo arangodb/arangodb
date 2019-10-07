@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print, beforeEach */
+/* global describe, before, after, it, require, beforeEach */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -121,7 +121,7 @@ describe('User Rights Management', () => {
                 try {
                   db._dropDatabase(testDBName);
                 } catch (e) {
-                  print(e);
+                  //
                 }
                 expect(rootTestDB()).to.equal(true, `${name} was able to drop a database with insufficient rights`);
               }

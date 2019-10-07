@@ -49,7 +49,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
@@ -83,22 +82,22 @@ class RocksDBTransactionCollection final : public TransactionCollection {
    * @param trxId     Active transaction ID
    * @param commitSeq Seq/tick immediately after upstream commit
    */
-  void commitCounts(uint64_t trxId, uint64_t commitSeq);
+  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexInsert(uint64_t idxObjectId, uint64_t hash);
+  void trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexRemove(uint64_t idxObjectId, uint64_t hash);
+  void trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash);
 
   /// @brief tracked index operations
   struct IndexOperations {
     std::vector<uint64_t> inserts;
     std::vector<uint64_t> removals;
   };
-  typedef std::unordered_map<uint64_t, IndexOperations> OperationsMap;
+  typedef std::unordered_map<TRI_idx_iid_t, IndexOperations> OperationsMap;
 
   /// @brief steal the tracked operations from the map
   OperationsMap stealTrackedOperations() {
@@ -118,7 +117,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int doUnlock(AccessMode::Type, int nestingLevel) override;
 
  private:
-  int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
   uint64_t _numInserts;

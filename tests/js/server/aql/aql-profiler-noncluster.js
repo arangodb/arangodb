@@ -86,7 +86,7 @@ function ahuacatlProfilerTestSuite () {
 /// @brief test EnumerateCollectionBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateCollectionBlock1: function () {
+    /*testEnumerateCollectionBlock1: function () {
       const col = db._create(colName);
       const prepare = (rows) => {
         col.truncate();
@@ -196,7 +196,7 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
-    },
+    },*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test TraversalBlock: traverse a tree
@@ -219,8 +219,8 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => {
         return [
           {type: SingletonBlock, calls: 1, items: 1},
-          {type: TraversalBlock, calls: batches, items: rows},
-          {type: ReturnBlock, calls: batches, items: rows}
+          {type: TraversalBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
+          {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows}
         ];
       };
       profHelper.runDefaultChecks(

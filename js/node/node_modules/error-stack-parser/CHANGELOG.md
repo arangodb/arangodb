@@ -1,3 +1,13 @@
+## v2.0.0
+* Update stackframe dependency to v1.x. Stackframes are constructed and accessed differently. 
+See the [stackframe CHANGELOG](https://github.com/stacktracejs/stackframe/blob/master/CHANGELOG.md#v10x) for details.
+
+## v1.3.6
+* Handle stack frames with no line/column information
+
+## v1.3.4
+* Avoid <anonymous> file names
+
 ## v1.3.2
 * Handle Safari stack entries with no location information
 

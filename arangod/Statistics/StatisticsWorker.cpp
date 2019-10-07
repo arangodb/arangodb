@@ -34,8 +34,11 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -88,7 +91,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : Thread("StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
+    : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
 
   for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
@@ -135,10 +138,8 @@ void StatisticsWorker::collectGarbage() {
 }
 
 void StatisticsWorker::collectGarbage(std::string const& name, double start) const {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -155,11 +156,11 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice keysToRemove = queryResult.result->slice();
+  VPackSlice keysToRemove = queryResult.data->slice();
   OperationOptions opOptions;
 
   opOptions.ignoreRevs = true;
@@ -179,7 +180,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   res = trx.finish(result.result);
 
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS)
+    LOG_TOPIC("14fa9", WARN, Logger::STATISTICS)
         << "removing outdated statistics failed: " << res.errorMessage();
   }
 }
@@ -242,23 +243,21 @@ void StatisticsWorker::historianAverage() {
       saveSlice(stat15, statistics15Collection);
     }
   } catch (velocypack::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("1c429", DEBUG, Logger::STATISTICS)
         << "vpack exception in historian average: " << ex.what();
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("40480", DEBUG, Logger::STATISTICS)
         << "exception in historian average: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+    LOG_TOPIC("570d6", DEBUG, Logger::STATISTICS)
         << "unknown exception in historian average";
   }
 }
 
 std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     std::string const& collectionName, double start) const {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -280,18 +279,16 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  return queryResult.result;
+  return queryResult.data;
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -313,11 +310,11 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  VPackSlice result = queryResult.result->slice();
+  VPackSlice result = queryResult.data->slice();
   uint64_t count = result.length();
 
   builder.clear();
@@ -437,7 +434,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       }
     } catch (std::exception const& ex) {
       // should almost never happen now
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("e4102", WARN, Logger::STATISTICS)
           << "caught exception during statistics processing: " << ex.what();
     }
   }
@@ -839,11 +836,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
 
-  ServerStatistics serverInfo = ServerStatistics::statistics();
-
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
+  ServerStatistics const& serverInfo = ServerStatistics::statistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {
@@ -921,23 +914,56 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  builder.add("transactions", VPackValue(VPackValueType::Object));
+  builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted));
+  builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted));
+  builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted));
+  builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits));
+  builder.close();
 
+  // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
+  // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
-  if (dealer->isEnabled()) {
-    v8Counters = dealer->getCurrentContextNumbers();
+  if (_server.hasFeature<V8DealerFeature>()) {
+    V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      v8Counters = dealer.getCurrentContextNumbers();
+      // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+    }
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("max", VPackValue(v8Counters.max));
+  /* at the time being we don't want to write this into the database so the data volume doesn't increase.
+  {
+    builder.add("memory", VPackValue(VPackValueType::Array));
+    for (auto memStatistic : memoryStatistics) {
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add("contextId", VPackValue(memStatistic.id));
+      builder.add("tMax", VPackValue(memStatistic.tMax));
+      builder.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
+      builder.add("heapMax", VPackValue(memStatistic.heapMax));
+      builder.add("heapMin", VPackValue(memStatistic.heapMin));
+      builder.close();
+    }
+    builder.close();
+  }
+  */
   builder.close();
 
+  // export threads statistics
   builder.add("threads", VPackValue(VPackValueType::Object));
-  SchedulerFeature::SCHEDULER->addQueueStatistics(builder);
+  SchedulerFeature::SCHEDULER->toVelocyPack(builder);
   builder.close();
+
+  // export ttl statistics
+  TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
+  builder.add(VPackValue("ttl"));
+  ttlFeature.statsToVelocyPack(builder);
 
   builder.close();
 
@@ -981,7 +1007,7 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not start transaction on "
+    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS) << "could not start transaction on "
                                         << collection << ": " << res.errorMessage();
     return;
   }
@@ -993,80 +1019,9 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   // result stays valid!
   res = trx.finish(result.result);
   if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not commit stats to " << collection
+    LOG_TOPIC("82af5", WARN, Logger::STATISTICS) << "could not commit stats to " << collection
                                         << ": " << res.errorMessage();
   }
-}
-
-void StatisticsWorker::createCollections() const {
-  createCollection(statisticsRawCollection);
-  createCollection(statisticsCollection);
-  createCollection(statistics15Collection);
-}
-
-void StatisticsWorker::createCollection(std::string const& collection) const {
-  VPackBuilder s;
-
-  s.openObject();
-  s.add("isSystem", VPackValue(true));
-  s.add("journalSize", VPackValue(8 * 1024 * 1024));
-
-  if (ServerState::instance()->isRunningInCluster() &&
-      ServerState::instance()->isCoordinator()) {
-    auto clusterFeature =
-        application_features::ApplicationServer::getFeature<ClusterFeature>(
-            "Cluster");
-    s.add("replicationFactor", VPackValue(clusterFeature->systemReplicationFactor()));
-    s.add("distributeShardsLike", VPackValue("_graphs"));
-  }
-
-  s.close();
-
-  Result r =
-      methods::Collections::create(&_vocbase, collection, TRI_COL_TYPE_DOCUMENT,
-                                   s.slice(), false, true,
-                                   [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-  if (r.is(TRI_ERROR_SHUTTING_DOWN)) {
-    // this is somewhat an expected error
-    return;
-  }
-
-  // check if the collection already existed. this is acceptable too
-  if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-    LOG_TOPIC(WARN, Logger::STATISTICS)
-        << "could not create statistics collection '" << collection
-        << "': error: " << r.errorMessage();
-  }
-
-  // check if the index on the collection must be created
-  r = methods::Collections::lookup(
-      &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-        TRI_ASSERT(coll);
-
-        VPackBuilder t;
-
-        t.openObject();
-        t.add("collection", VPackValue(collection));
-        t.add("type", VPackValue("skiplist"));
-        t.add("unique", VPackValue(false));
-        t.add("sparse", VPackValue(false));
-
-        t.add("fields", VPackValue(VPackValueType::Array));
-        t.add(VPackValue("time"));
-        t.close();
-        t.close();
-
-        VPackBuilder output;
-        Result idxRes = methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
-
-        if (!idxRes.ok()) {
-          LOG_TOPIC(WARN, Logger::STATISTICS)
-              << "could not create the skiplist index for statistics "
-                 "collection '"
-              << collection << "': error: " << idxRes.errorMessage();
-        }
-      });
 }
 
 void StatisticsWorker::beginShutdown() {
@@ -1083,7 +1038,7 @@ void StatisticsWorker::run() {
       // startup aborted
       return;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   try {
@@ -1091,8 +1046,6 @@ void StatisticsWorker::run() {
       // compute cluster id just once
       _clusterId = ServerState::instance()->getId();
     }
-
-    createCollections();
   } catch (...) {
     // do not fail hard here, as we are inside a thread!
   }
@@ -1114,10 +1067,10 @@ void StatisticsWorker::run() {
         historianAverage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("92a40", WARN, Logger::STATISTICS)
           << "caught exception in StatisticsWorker: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::STATISTICS)
+      LOG_TOPIC("9a4f9", WARN, Logger::STATISTICS)
           << "caught unknown exception in StatisticsWorker";
     }
 

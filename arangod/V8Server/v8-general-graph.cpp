@@ -61,13 +61,13 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
   bool dropCollections = false;
   if (args.Length() >= 2) {
-    dropCollections = TRI_ObjectToBoolean(args[1]);
+    dropCollections = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -101,8 +101,8 @@ static void JS_RenameGraphCollection(v8::FunctionCallbackInfo<v8::Value> const& 
   } else if (!args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string oldName = TRI_ObjectToString(args[0]);
-  std::string newName = TRI_ObjectToString(args[1]);
+  std::string oldName = TRI_ObjectToString(isolate, args[0]);
+  std::string newName = TRI_ObjectToString(isolate, args[1]);
   if (oldName.empty() || newName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -126,7 +126,7 @@ static void JS_GraphExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -150,7 +150,7 @@ static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -189,7 +189,8 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!result.isEmpty()) {
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs")));
+    auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"), ctx->getVPackOptionsForDump()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -229,7 +230,7 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -290,7 +291,7 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -306,7 +307,8 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*graph.get(), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
 
   if (r.fail()) {
@@ -338,7 +340,7 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -354,7 +356,8 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r =
       gops.editEdgeDefinition(edgeDefinition.slice(), false,
                               edgeDefinition.slice().get("collection").copyString());
@@ -393,8 +396,8 @@ static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const&
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_removeVertexCollection(vertexName, dropCollection)");
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
-  std::string vertexName = TRI_ObjectToString(args[1]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
+  std::string vertexName = TRI_ObjectToString(isolate, args[1]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -404,7 +407,7 @@ static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const&
   }
   bool dropCollection = false;
   if (args.Length() >= 3) {
-    dropCollection = TRI_ObjectToBoolean(args[2]);
+    dropCollection = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -420,7 +423,8 @@ static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const&
   builder.add("collection", VPackValue(vertexName));
   builder.close();
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r = gops.eraseOrphanCollection(false, vertexName, dropCollection);
 
   if (r.fail()) {
@@ -457,8 +461,8 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_addVertexCollection(vertexName, createCollection)");
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
-  std::string vertexName = TRI_ObjectToString(args[1]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
+  std::string vertexName = TRI_ObjectToString(isolate, args[1]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -468,11 +472,11 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   bool createCollection = true;
   if (args.Length() >= 3) {
-    createCollection = TRI_ObjectToBoolean(args[2]);
+    createCollection = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(vocbase, true);
 
   GraphManager gmngr{vocbase};
   auto graph = gmngr.lookupGraphByName(graphName);
@@ -481,7 +485,7 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  GraphOperations gops{*graph.get(), vocbase, ctx};
 
   VPackBuilder builder;
   builder.openObject();
@@ -524,8 +528,8 @@ static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_deleteEdgeDefinition(edgeCollection, dropCollection)");
   }
-  std::string graphName = TRI_ObjectToString(args[0]);
-  std::string edgeDefinitionName = TRI_ObjectToString(args[1]);
+  std::string graphName = TRI_ObjectToString(isolate, args[0]);
+  std::string edgeDefinitionName = TRI_ObjectToString(isolate, args[1]);
   if (graphName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
@@ -536,7 +540,7 @@ static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   bool dropCollections = false;
   if (args.Length() >= 3) {
-    dropCollections = TRI_ObjectToBoolean(args[2]);
+    dropCollections = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -548,7 +552,8 @@ static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r = gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 
   if (r.fail()) {

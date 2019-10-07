@@ -33,8 +33,10 @@ using namespace arangodb;
 /// @brief wait interval for the remover thread when idle
 uint64_t const MMFilesRemoverThread::Interval = 2000000;
 
-MMFilesRemoverThread::MMFilesRemoverThread(MMFilesLogfileManager* logfileManager)
-    : Thread("WalRemover"), _logfileManager(logfileManager), _condition() {}
+MMFilesRemoverThread::MMFilesRemoverThread(MMFilesLogfileManager& logfileManager)
+    : Thread(logfileManager.server(), "WalRemover"),
+      _logfileManager(logfileManager),
+      _condition() {}
 
 /// @brief begin shutdown sequence
 void MMFilesRemoverThread::beginShutdown() {
@@ -52,18 +54,18 @@ void MMFilesRemoverThread::run() {
     bool worked = false;
 
     try {
-      worked = _logfileManager->removeLogfiles();
+      worked = _logfileManager.removeLogfiles();
 
       if (++iterations == 5) {
         iterations = 0;
-        _logfileManager->collectLogfileBarriers();
+        _logfileManager.collectLogfileBarriers();
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("c9859", ERR, arangodb::Logger::ENGINES)
           << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("3536b", ERR, arangodb::Logger::ENGINES)
           << "got unspecific error in removerThread::run";
     }
 

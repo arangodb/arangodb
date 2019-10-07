@@ -49,10 +49,10 @@ class VertexContext {
   GraphStore<V, E>* _graphStore = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
-  VertexEntry* _vertexEntry = nullptr;
+  Vertex<V,E>* _vertexEntry = nullptr;
 
  public:
-  virtual ~VertexContext() {}
+  virtual ~VertexContext() = default;
 
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
@@ -76,10 +76,10 @@ class VertexContext {
   inline WorkerContext const* context() const { return _context; }
 
   V* mutableVertexData() {
-    return (V*)_graphStore->mutableVertexData(_vertexEntry);
+    return &(_vertexEntry->data());
   }
 
-  V vertexData() { return *((V*)_graphStore->mutableVertexData(_vertexEntry)); }
+  V vertexData() const { return _vertexEntry->data(); }
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
@@ -104,7 +104,7 @@ class VertexContext {
   inline uint64_t localSuperstep() const { return _lss; }
 
   PregelShard shard() const { return _vertexEntry->shard(); }
-  PregelKey const& key() const { return _vertexEntry->key(); }
+  velocypack::StringRef key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
@@ -115,21 +115,22 @@ class VertexComputation : public VertexContext<V, E, M> {
   bool _enterNextGSS = false;
 
  public:
-  virtual ~VertexComputation() {}
+  virtual ~VertexComputation() = default;
 
   void sendMessage(Edge<E> const* edge, M const& data) {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
 
   void sendMessage(PregelID const& pid, M const& data) {
-    _cache->appendMessage(pid.shard, pid.key, data);
+    _cache->appendMessage(pid.shard, velocypack::StringRef(pid.key), data);
   }
 
   /// Send message along outgoing edges to all reachable neighbours
   /// TODO Multi-receiver messages
   void sendMessageToAllNeighbours(M const& data) {
     RangeIterator<Edge<E>> edges = this->getEdges();
-    for (Edge<E> const* edge : edges) {
+    for (; edges.hasMore(); ++edges) {
+      Edge<E> const* edge = *edges;
       _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
     }
   }
@@ -153,7 +154,7 @@ class VertexCompensation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
 
  public:
-  virtual ~VertexCompensation() {}
+  virtual ~VertexCompensation() = default;
   virtual void compensate(bool inLostPartition) = 0;
 };
 }  // namespace pregel

@@ -2,7 +2,7 @@
 @startDocuBlock post_admin_execute
 @brief Execute a script on the server.
 
-@RESTHEADER{POST /_admin/execute, Execute program}
+@RESTHEADER{POST /_admin/execute, Execute program, RestAdminExecuteHandler}
 
 @RESTALLBODYPARAM{body,string,required}
 The body to be executed.

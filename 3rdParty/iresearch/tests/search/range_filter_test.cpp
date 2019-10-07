@@ -24,12 +24,10 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/range_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "formats/formats_10.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class range_filter_test_case : public filter_test_case_base {
+class range_filter_test_case : public tests::filter_test_case_base {
  protected:
   void by_range_sequential_numeric() {
     /* add segment */
@@ -47,17 +45,17 @@ class range_filter_test_case : public filter_test_case_base {
           } else if (data.is_null()) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(iresearch::string_ref(name));
+            field.name(irs::string_ref(name));
             field.value(irs::null_token_stream::value_null());
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(iresearch::string_ref(name));
+            field.name(irs::string_ref(name));
             field.value(irs::boolean_token_stream::value_true());
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(iresearch::string_ref(name));
+            field.name(irs::string_ref(name));
             field.value(irs::boolean_token_stream::value_true());
           } else if (data.is_number()){
             const double dValue = data.as_number<double_t>();
@@ -65,7 +63,7 @@ class range_filter_test_case : public filter_test_case_base {
             {
               doc.insert(std::make_shared<tests::double_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(dValue);
             }
 
@@ -74,7 +72,7 @@ class range_filter_test_case : public filter_test_case_base {
               // 'value' can be interpreted as a float 
               doc.insert(std::make_shared<tests::float_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(fValue);
             }
 
@@ -82,13 +80,13 @@ class range_filter_test_case : public filter_test_case_base {
             {
               doc.insert(std::make_shared<tests::long_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(lValue);
             }
             {
               doc.insert(std::make_shared<tests::int_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(int32_t(lValue));
             }
           }
@@ -124,8 +122,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -157,8 +159,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -185,8 +191,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -213,8 +223,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -246,8 +260,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -279,8 +297,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -307,8 +329,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -335,8 +361,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -368,8 +398,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -401,8 +435,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -429,8 +467,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -457,8 +499,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -489,8 +535,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -521,8 +571,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -549,8 +603,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -577,8 +635,12 @@ class range_filter_test_case : public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -919,17 +981,25 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       check_query(
         irs::by_range()
@@ -938,7 +1008,8 @@ class range_filter_test_case : public filter_test_case_base {
           .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
         , order, docs, rdr
       );
-      ASSERT_EQ(11, collect_count);
+      ASSERT_EQ(11, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(11, collect_term_count); // 11 different terms
       ASSERT_EQ(11, finish_count); // 11 different terms
     }
 
@@ -948,7 +1019,7 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_range()
           .field("value")
@@ -964,7 +1035,7 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_range()
           .field("value")
@@ -985,7 +1056,7 @@ class range_filter_test_case : public filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
 
       ASSERT_TRUE(max_stream.next());
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_range()
           .field("value")
@@ -997,12 +1068,6 @@ class range_filter_test_case : public filter_test_case_base {
   }
 }; // range_filter_test_case 
 
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                              by_range base tests 
-// ----------------------------------------------------------------------------
-
 TEST(by_range_test, ctor) {
   irs::by_range q;
   ASSERT_EQ(irs::by_range::type(), q.type());
@@ -1010,7 +1075,7 @@ TEST(by_range_test, ctor) {
   ASSERT_TRUE(q.term<irs::Bound::MAX>().empty());
   ASSERT_FALSE(q.include<irs::Bound::MAX>());
   ASSERT_FALSE(q.include<irs::Bound::MIN>());
-  ASSERT_EQ(irs::boost::no_boost(), q.boost());
+  ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
 TEST(by_range_test, equal) { 
@@ -1041,12 +1106,12 @@ TEST(by_range_test, boost) {
       .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("max_term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 
   // with boost
   {
-    iresearch::boost::boost_t boost = 1.5f;
+    irs::boost_t boost = 1.5f;
     irs::by_range q;
     q.field("field")
       .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("min_term")
@@ -1054,36 +1119,37 @@ TEST(by_range_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(boost, prepared->boost());
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_range_filter_test_case : public tests::range_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_range_filter_test_case, by_range) {
+TEST_P(range_filter_test_case, by_range) {
   by_range_sequential_cost();
 }
 
-TEST_F(memory_range_filter_test_case, by_range_numeric) {
+TEST_P(range_filter_test_case, by_range_numeric) {
   by_range_sequential_numeric();
 }
 
-TEST_F(memory_range_filter_test_case, by_range_order) {
+TEST_P(range_filter_test_case, by_range_order) {
   by_range_sequential_order();
 }
+
+INSTANTIATE_TEST_CASE_P(
+  range_filter_test,
+  range_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

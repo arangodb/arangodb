@@ -24,6 +24,7 @@
 #include "MMFilesWalLogfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/encoding.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
@@ -48,7 +49,7 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unable to create logfile '" << filename
+      LOG_TOPIC("67643", ERR, arangodb::Logger::ENGINES) << "unable to create logfile '" << filename
                                                 << "': " << TRI_errno_string(res);
       return nullptr;
     }
@@ -69,11 +70,11 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unable to open logfile '" << filename
+      LOG_TOPIC("6be8a", ERR, arangodb::Logger::ENGINES) << "unable to open logfile '" << filename
                                                 << "': " << TRI_errno_string(res);
     } else {
       // cannot figure out the type of error
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("44b1f", ERR, arangodb::Logger::ENGINES)
           << "unable to open logfile '" << filename << "'";
     }
     return nullptr;

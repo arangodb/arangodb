@@ -41,6 +41,7 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   bool quiet() const { return _quiet; }
   void setQuiet(bool value) { _quiet = value; }
   bool colors() const { return _colors; }
+  bool useHistory() const { return _useHistory; }
   bool autoComplete() const { return _autoComplete; }
   bool prettyPrint() const { return _prettyPrint; }
   bool pager() const { return _pager; }
@@ -54,6 +55,7 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
 #endif
   bool _quiet;
   bool _colors;
+  bool _useHistory;
   bool _autoComplete;
   bool _prettyPrint;
   std::string _auditFile;

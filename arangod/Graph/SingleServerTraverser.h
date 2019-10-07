@@ -30,8 +30,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
-
 namespace graph {
 struct BaseOptions;
 class SingleServerEdgeCursor;
@@ -43,7 +41,7 @@ class PathEnumerator;
 
 class SingleServerTraverser final : public Traverser {
  public:
-  SingleServerTraverser(TraverserOptions*, transaction::Methods*, ManagedDocumentResult*);
+  SingleServerTraverser(TraverserOptions*, transaction::Methods*);
 
   ~SingleServerTraverser();
 
@@ -53,30 +51,35 @@ class SingleServerTraverser final : public Traverser {
 
   void setStartVertex(std::string const& v) override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief No engines on single server
+  //////////////////////////////////////////////////////////////////////////////
+  void destroyEngines() override {}
+
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Adds the _id of the vertex into the given vector
 
-  bool getVertex(arangodb::velocypack::Slice edge, std::vector<arangodb::StringRef>&) override;
+  bool getVertex(arangodb::velocypack::Slice edge, std::vector<arangodb::velocypack::StringRef>&) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   bool getSingleVertex(arangodb::velocypack::Slice edge,
-                       arangodb::StringRef const sourceVertexId, uint64_t depth,
-                       arangodb::StringRef& targetVertexId) override;
+                       arangodb::velocypack::StringRef const sourceVertexId, uint64_t depth,
+                       arangodb::velocypack::StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(StringRef) override;
+  aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(StringRef, arangodb::velocypack::Builder&) override;
+  void addVertexToVelocyPack(arangodb::velocypack::StringRef, arangodb::velocypack::Builder&) override;
 };
 }  // namespace traverser
 }  // namespace arangodb

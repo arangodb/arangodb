@@ -252,15 +252,13 @@ ArangoQueryCursor.prototype[Symbol.iterator] = function * () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (!this.data.id) {
-    // client side only cursor
+  if (!this.data.id || !this._hasMore) {
+    // client side only cursor, or already disposed
     return;
   }
 
   var requestResult = this._database._connection.DELETE(this._baseurl());
-
   arangosh.checkRequestResult(requestResult);
-
   this.data.id = undefined;
 };
 

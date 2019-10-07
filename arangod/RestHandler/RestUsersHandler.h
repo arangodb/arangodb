@@ -32,7 +32,8 @@ class UserManager;
 
 class RestUsersHandler : public arangodb::RestBaseHandler {
  public:
-  RestUsersHandler(GeneralRequest*, GeneralResponse*);
+  RestUsersHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestUsersHandler"; }
@@ -44,7 +45,8 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   bool canAccessUser(std::string const& user) const;
 
   /// helper to generate a compliant response for individual user requests
-  void generateUserResult(rest::ResponseCode code, VPackBuilder const& doc);
+  void generateUserResult(rest::ResponseCode code,
+                          velocypack::Builder const& doc);
 
   void generateDatabaseResult(auth::UserManager*, std::string const& user, bool full);
 

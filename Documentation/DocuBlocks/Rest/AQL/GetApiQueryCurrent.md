@@ -2,7 +2,7 @@
 @startDocuBlock GetApiQueryCurrent
 @brief returns a list of currently running AQL queries
 
-@RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
+@RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries, readQuery:current}
 
 @RESTDESCRIPTION
 Returns an array containing the AQL queries currently running in the selected

@@ -183,6 +183,9 @@
         async: true,
         success: function (data) {
           frontendConfig.version = data;
+          if (!frontendConfig.version.hasOwnProperty('version')) {
+            frontendConfig.version.version = 'N/A';
+          }
           self.showServerStatus(true);
           if (self.isOffline === true) {
             self.isOffline = false;

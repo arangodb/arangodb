@@ -21,7 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsFeature.h"
+
+#include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -77,16 +82,17 @@ StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistri
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class arangodb::StatisticsThread final : public Thread {
+class StatisticsThread final : public Thread {
  public:
-  StatisticsThread() : Thread("Statistics") {}
+  explicit StatisticsThread(ApplicationServer& server) 
+    : Thread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
   void run() override {
-    uint64_t const MAX_SLEEP_TIME = 250 * 1000;
+    uint64_t const MAX_SLEEP_TIME = 250;
 
-    uint64_t sleepTime = 100 * 1000;
+    uint64_t sleepTime = 100;
     int nothingHappened = 0;
 
     while (!isStopping() && StatisticsFeature::enabled()) {
@@ -96,21 +102,22 @@ class arangodb::StatisticsThread final : public Thread {
         if (++nothingHappened == 10 * 30) {
           // increase sleep time every 30 seconds
           nothingHappened = 0;
-          sleepTime += 50 * 1000;
+          sleepTime += 50;
 
           if (sleepTime > MAX_SLEEP_TIME) {
             sleepTime = MAX_SLEEP_TIME;
           }
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+
       } else {
         nothingHappened = 0;
 
         if (count < 10) {
-          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } else if (count < 100) {
-          std::this_thread::sleep_for(std::chrono::microseconds(1 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
       }
     }
@@ -127,8 +134,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _descriptions(new stats::Descriptions()) {
-  startsAfter("AQLPhase");
   setOptional(true);
+  startsAfter<AqlFeaturePhase>();
 }
 
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -154,44 +161,40 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  ServerStatistics::initialize();
+  ServerStatistics::initialize(StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }
 
 void StatisticsFeature::start() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-
-  if (!sysDbFeature) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+  if (!server().hasFeature<arangodb::SystemDatabaseFeature>()) {
+    LOG_TOPIC("9b551", FATAL, arangodb::Logger::STATISTICS)
         << "could not find feature 'SystemDatabase'";
     FATAL_ERROR_EXIT();
   }
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
 
-  auto vocbase = sysDbFeature->use();
+  auto vocbase = sysDbFeature.use();
 
   if (!vocbase) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("cff56", FATAL, arangodb::Logger::STATISTICS)
         << "could not find system database";
     FATAL_ERROR_EXIT();
   }
 
-  _statisticsThread.reset(new StatisticsThread);
+  _statisticsThread.reset(new StatisticsThread(server()));
   _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
   if (!_statisticsThread->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics thread";
     FATAL_ERROR_EXIT();
   }
 
   if (!_statisticsWorker->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+    LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics worker";
     FATAL_ERROR_EXIT();
   }

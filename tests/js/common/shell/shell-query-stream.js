@@ -30,6 +30,7 @@
 
 const jsunity = require("jsunity");
 const db = require("internal").db;
+const aqlfunctions = require("@arangodb/aql/functions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: stream cursors
@@ -64,6 +65,12 @@ function StreamCursorSuite () {
       for (let i = 0; i < 5000; i++) {
         c.insert({value1: i % 10, value2: i % 25 , value3: i % 25 });
       }
+ 
+      try {
+        aqlfunctions.unregister("my::test");
+      } catch (err) {}
+
+      aqlfunctions.register("my::test", function() { return 42; });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +78,10 @@ function StreamCursorSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      try {
+        aqlfunctions.unregister("my::test");
+      } catch (err) {}
+
       c.drop();
     },
 
@@ -103,14 +114,26 @@ function StreamCursorSuite () {
       while (cursor.hasNext() && i-- > 0) {
         cursor.next();
       }
-    }
+    },
+
+    testUserDefinedFunction : function () {
+      let stmt = db._createStatement({ 
+        query: "FOR i IN 1..10000 RETURN my::test()",
+        options: { stream: true },
+        batchSize: 1000
+      });
+      let cursor = stmt.execute();
+
+      assertEqual(undefined, cursor.count());
+      let count = 0;
+      while (cursor.hasNext()) {
+        assertEqual(42, cursor.next());
+        ++count;
+      }
+      assertEqual(10000, count);
+    },
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(StreamCursorSuite);
 return jsunity.done();
-

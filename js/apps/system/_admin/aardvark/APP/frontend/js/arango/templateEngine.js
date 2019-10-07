@@ -11,10 +11,7 @@
         var template = $('#' + id.replace('.', '\\.')).html();
         return {
           render: function (params) {
-            var tmp = _.template(template);
-            tmp = tmp(params);
-
-            return tmp;
+            return window['JST']["templates/" + id](params);
           }
         };
       };

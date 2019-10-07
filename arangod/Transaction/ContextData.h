@@ -31,6 +31,9 @@ namespace arangodb {
 class LogicalCollection;
 
 namespace transaction {
+
+/// Storage engine specific data that shares the lifetime
+/// of the transaction::Context
 class ContextData {
  public:
   ContextData(ContextData const&) = delete;

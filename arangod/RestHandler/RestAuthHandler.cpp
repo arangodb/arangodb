@@ -28,16 +28,20 @@
 
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/SslInterface.h"
+#include "Utils/Events.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _validFor(60 * 60 * 24 * 30) {}
+RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _validFor(60 * 60 * 24 * 30) {}
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
@@ -86,7 +90,7 @@ RestStatus RestAuthHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";
-    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << msg;
+    LOG_TOPIC("2e7d4", ERR, Logger::AUTHENTICATION) << msg;
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
   } else if (um->checkPassword(_username, password)) {
     VPackBuilder resultBuilder;
@@ -110,4 +114,16 @@ RestStatus RestAuthHandler::badRequest() {
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                 "invalid JSON");
   return RestStatus::DONE;
+}
+
+void RestAuthHandler::shutdownExecute(bool isFinalized) noexcept {
+  try {
+    if (_isValid) {
+      events::LoggedIn(*_request, _username);
+    } else {
+      events::CredentialsBad(*_request, _username);
+    }
+  } catch (...) {
+  }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }

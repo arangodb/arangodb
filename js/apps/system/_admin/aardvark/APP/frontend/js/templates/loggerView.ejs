@@ -1,59 +1,29 @@
-<script id="loggerView.ejs" type="text/template">
+<div id="loggerContent" class="logger-content-id innerContent">
 
-  <div id="loggerContent" class="logger-content-id innerContent">
+  <div class="arangoToolbar arangoToolbarTop">
 
-    <div class="arangoToolbar arangoToolbarTop">
-
-      <div class="pull-left">
-      </div>
-
-      <div class="pull-right">
-        <button id="logTopicSelection" class="button-default filterSelect">Topic <i class="fa fa-caret-down"></i></button>
-        <button id="logLevelSelection" class="button-default filterSelect">Level <i class="fa fa-caret-down"></i></button>
-        <button style="display: none" class="button-default filterSelect" id="logFilters">
-          <i class="fa fa-close"></i>Clear current <a id="filterDesc"></a> filter
-        </button>
-      </div>
-
+    <div class="pull-left">
     </div>
 
-    <div id="noLogEntries" style="display: none">
-      <span>No suitable log entries found </span>
-    </div>
-
-    <div id="logEntries">
-    </div>
-
-    <div class="actions">
-      <button id="loadMoreEntries" class="button-success">Load older entries</button>
+    <div class="pull-right">
+      <button id="logTopicSelection" class="button-default filterSelect">Topic <i class="fa fa-caret-down"></i></button>
+      <button id="logLevelSelection" class="button-default filterSelect">Level <i class="fa fa-caret-down"></i></button>
+      <button style="display: none" class="button-default filterSelect" id="logFilters">
+        <i class="fa fa-close"></i>Clear current <a id="filterDesc"></a> filter
+      </button>
     </div>
 
   </div>
 
-</script>
+  <div id="noLogEntries" style="display: none">
+    <span>No suitable log entries found </span>
+  </div>
 
-<script id="loggerViewEntries.ejs" type="text/template">
-  <% _.each(entries, function (entry) { %>
-    <div class="pure-g" level="<%=entry.status.toLowerCase()%>" topic="<%=entry.topic.toLowerCase()%>">
-      <div class="pure-u-1-24">
-        <p class="labels">
-          <% var lcolor = arangoHelper.statusColors[entry.status.toLowerCase()];%>
-          <% var tcolor = arangoHelper.alphabetColors[entry.topic.charAt(0).toLowerCase()];%>
-          <span class="tippy level" title="Level: <%=entry.status%>" style="background: <%=lcolor%>"></span>
-          <span class="tippy topic" title="Topic: <%=entry.topic%>" style="background: <%=tcolor%>"></span>
-        </p>
-      </div>
-      <div class="pure-u-19-24 desc">
-        <p class="msg"><%=entry.msg%></p>
-      </div>
-      <div class="pure-u-4-24 date">
-        <p>
-          <% var x = moment(entry.timestamp, "X").fromNow() %>
-          <i class="fa fa-clock-o" aria-hidden="true"></i>
-          <span class="tippy" title="<%=entry.date%>"><%= x %></span>
-        </p>
-      </div>
-      <div class="logBorder"></div>
-    </div>
-  <% }); %>
-</script>
+  <div id="logEntries">
+  </div>
+
+  <div class="actions">
+    <button id="loadMoreEntries" class="button-success">Load older entries</button>
+  </div>
+
+</div>

@@ -28,22 +28,31 @@
 #include "utils/string.hpp"
 
 #define MAKE_DELETER(method) \
-template< typename _T > \
-struct auto_##method : std::default_delete< _T > \
+template<typename T> \
+struct auto_##method : std::default_delete<T> \
 { \
-    typedef _T type; \
-    typedef std::default_delete<type> base; \
-    typedef std::unique_ptr< type, auto_##method<type> > ptr; \
-    void operator()(type* p) const NOEXCEPT \
-    { \
-      if (p) { \
-        try { \
-            p->method(); \
-        } catch(...) { } \
+  typedef T type; \
+  typedef std::default_delete<type> base; \
+  typedef std::unique_ptr< type, auto_##method<type> > ptr; \
+  void operator()(type* p) const NOEXCEPT \
+  { \
+    if (p) { \
+      try { \
+        p->method(); \
+        base::operator()(p); \
+      } catch (const std::exception& e) { \
+        IR_FRMT_ERROR( \
+          "caught exception while closing i/o stream: '%s'", \
+          e.what() \
+        ); \
+      } catch (...) { \
+        IR_FRMT_ERROR( \
+          "caught an unspecified exception while closing i/o stream" \
+        ); \
       } \
-      base::operator()(p); \
     } \
-} 
+  } \
+}
 
 NS_ROOT
 NS_BEGIN(io_utils)

@@ -110,7 +110,7 @@ class mmap_index_input : public irs::bytes_ref_input {
   }
 
  private:
-  DEFINE_FACTORY_INLINE(index_input);
+  DEFINE_FACTORY_INLINE(index_input)
 
   mmap_index_input(mmap_handle_ptr&& handle) NOEXCEPT
     : handle_(std::move(handle)) {

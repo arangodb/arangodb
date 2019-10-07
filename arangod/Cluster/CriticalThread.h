@@ -24,9 +24,11 @@
 #define ARANGOD_CLUSTER_CRITICAL_THREAD_H 1
 
 #include "Basics/Thread.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class CriticalThread : public Thread {
  public:
@@ -34,10 +36,11 @@ class CriticalThread : public Thread {
   CriticalThread(CriticalThread const&) = delete;
   CriticalThread& operator=(CriticalThread const&) = delete;
 
-  CriticalThread(std::string const& name, bool deleteOnExit = false)
-      : Thread(name, deleteOnExit) {}
+  explicit CriticalThread(application_features::ApplicationServer& server,
+                          std::string const& name, bool deleteOnExit = false)
+      : Thread(server, name, deleteOnExit) {}
 
-  virtual ~CriticalThread() {}
+  virtual ~CriticalThread() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Notification of when thread crashes via uncaught throw ... log it

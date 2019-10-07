@@ -1,4 +1,3 @@
-<script id="indicesView.ejs" type="text/template">
   <% if (typeof supported !== 'undefined') { %>
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
@@ -12,6 +11,7 @@
                 <th class="collectionInfoTh">Deduplicate</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Name</th>
                 <th class="collectionInfoTh">Action</th>
               </tr>
             </thead>
@@ -19,6 +19,7 @@
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -52,11 +53,20 @@
                       <option value="Fulltext">Fulltext Index</option>
                     <% } %> 
                     <% if (supported.indexOf('skiplist') > -1) { %> 
-                      <option value="Skiplist">Skip-List Index</option>
+                      <option value="Skiplist">Skiplist Index</option>
+                    <% } %> 
+                    <% if (supported.indexOf('ttl') > -1) { %> 
+                      <option value="Ttl">TTL Index</option>
                     <% } %> 
                   </select>
                 </th>
-                <th class="" style="width: 18px"/>
+                <th class="tooltipInfoTh">
+                  <div class="tooltipDiv">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('hash') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
             <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
@@ -67,6 +77,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list with one or two attribute paths. Example: latitude,longitude">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newGeoName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -85,6 +106,19 @@
                     </div>
                   </th>
                 </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newGeoBackground" type="checkbox" name="newGeoBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
               </table>
             </div>
             <div id="newIndexTypePersistent" class="newIndexClass" style="display:none">
@@ -95,6 +129,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newPersistentName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -127,13 +172,26 @@
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newPersistentDeduplicate" type="checkbox" name="newPersistentDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newPersistentBackground" type="checkbox" name="newPersistentBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -149,6 +207,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newHashName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -181,13 +250,26 @@
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newHashDeduplicate" type="checkbox" name="newHashDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newHashBackground" type="checkbox" name="newHashBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -209,11 +291,35 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newFulltextName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Min. length:</th>
                   <th><input type="text" id="newFulltextMinLength" value=""/></th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newFulltextBackground" type="checkbox" name="newFulltextBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -230,6 +336,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newSkiplistName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -262,13 +379,76 @@
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newSkiplistDeduplicate" type="checkbox" name="newSkiplistDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newSkiplistBackground" type="checkbox" name="newSkiplistBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div id="newIndexTypeTtl" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newTtlFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path containing a numeric datetime value. Example: createdAt">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newTtlName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Documents expire after (s):</th>
+                  <th><input type="text" id="newTtlExpireAfter" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Number of seconds to be added to the timestamp attribute value of each document. If documents have reached their expiration timepoint, they will eventually get deleted by a background process.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newTtlBackground" type="checkbox" name="newTtlBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -288,4 +468,3 @@
         </div>
       </div>
     <% } %>
-</script>

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global CryptoJS, _, arangoHelper, Backbone, window $ */
+/* global CryptoJS, _, arangoHelper, Backbone, window, $ */
 
 (function () {
   'use strict';
@@ -158,7 +158,7 @@
         {
           type: window.modalView.tables.TEXT,
           label: 'Name',
-          value: name,
+          value: _.escape(name),
           id: 'editName',
           placeholder: 'Name'
         },
@@ -301,7 +301,7 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'User: ' + this.username
+          'User: ' + _.escape(this.username)
         );
         arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'General');
       } else {

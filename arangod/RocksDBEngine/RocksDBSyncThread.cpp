@@ -23,7 +23,9 @@
 #include "RocksDBSyncThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/RocksDBUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 #include <rocksdb/status.h>
@@ -31,8 +33,8 @@
 
 using namespace arangodb;
 
-RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine* engine, std::chrono::milliseconds interval)
-    : Thread("RocksDBSync"),
+RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval)
+    : Thread(engine.server(), "RocksDBSync"),
       _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),
@@ -43,9 +45,9 @@ RocksDBSyncThread::~RocksDBSyncThread() { shutdown(); }
 Result RocksDBSyncThread::syncWal() {
   // note the following line in RocksDB documentation (rocksdb/db.h):
   // > Currently only works if allow_mmap_writes = false in Options.
-  TRI_ASSERT(!_engine->rocksDBOptions().allow_mmap_writes);
+  TRI_ASSERT(!_engine.rocksDBOptions().allow_mmap_writes);
 
-  auto db = _engine->db()->GetBaseDB();
+  auto db = _engine.db()->GetBaseDB();
 
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
@@ -74,7 +76,7 @@ Result RocksDBSyncThread::sync(rocksdb::DB* db) {
   // if called on Windows, we would get the following error from RocksDB:
   // > Not implemented: SyncWAL() is not supported for this implementation of
   // WAL file
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "syncing RocksDB WAL";
+  LOG_TOPIC("a3978", TRACE, Logger::ENGINES) << "syncing RocksDB WAL";
 
   rocksdb::Status status = db->SyncWAL();
   if (!status.ok()) {
@@ -93,10 +95,9 @@ void RocksDBSyncThread::beginShutdown() {
 }
 
 void RocksDBSyncThread::run() {
-  TRI_ASSERT(_engine != nullptr);
-  auto db = _engine->db()->GetBaseDB();
+  auto db = _engine.db()->GetBaseDB();
 
-  LOG_TOPIC(TRACE, Logger::ENGINES)
+  LOG_TOPIC("11872", TRACE, Logger::ENGINES)
       << "starting RocksDB sync thread with interval " << _interval.count()
       << " milliseconds";
 
@@ -137,14 +138,14 @@ void RocksDBSyncThread::run() {
       Result res = sync(db);
 
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::ENGINES)
+        LOG_TOPIC("5e275", WARN, Logger::ENGINES)
             << "could not sync RocksDB WAL: " << res.errorMessage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC("77b1e", ERR, Logger::ENGINES)
           << "caught exception in RocksDBSyncThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC("90e8e", ERR, Logger::ENGINES)
           << "caught unknown exception in RocksDBSyncThread";
     }
   }

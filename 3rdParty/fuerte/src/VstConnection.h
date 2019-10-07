@@ -25,12 +25,11 @@
 #ifndef ARANGO_CXX_DRIVER_VST_CONNECTION_H
 #define ARANGO_CXX_DRIVER_VST_CONNECTION_H 1
 
-#include <boost/lockfree/queue.hpp>
-#include <fuerte/connection.h>
-
-#include "AsioSockets.h"
+#include "GeneralConnection.h"
 #include "MessageStore.h"
 #include "vst.h"
+
+#include <boost/lockfree/queue.hpp>
 
 // naming in this file will be closer to asio for internal functions and types
 // functions that are exposed to other classes follow ArangoDB conding
@@ -38,11 +37,10 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 
-  
-// Connection object that handles sending and receiving of Velocystream
-// Messages.
-template<SocketType ST>
-class VstConnection final : public Connection {
+// Connection object that handles sending and receiving of
+//  Velocystream Messages.
+template <SocketType ST>
+class VstConnection final : public fuerte::GeneralConnection<ST> {
  public:
   explicit VstConnection(EventLoopService& loop,
                          detail::ConnectionConfiguration const&);
@@ -58,95 +56,66 @@ class VstConnection final : public Connection {
   // and a write action is triggerd when there is
   // no other write in progress
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-  
+
   // Return the number of unfinished requests.
-  size_t requestsLeft() const override {
-    return (_loopState.load(std::memory_order_acquire) & WRITE_LOOP_QUEUE_MASK) + _messageStore.size();
+  std::size_t requestsLeft() const override {
+    return (_loopState.load(std::memory_order_acquire) &
+            WRITE_LOOP_QUEUE_MASK) +
+           _messageStore.size();
   }
-  
-  /// @brief connection state
-  Connection::State state() const override final {
-    return _state.load(std::memory_order_acquire);
-  }
-  
-  /// @brief cancel the connection, unusable afterwards
-  void cancel() override final;
-  
+
  protected:
- 
-  /// Activate the connection.
-  void startConnection() override final;
+  void finishConnect() override;
+
+  // Thread-Safe: activate the writer loop (if off and items are queud)
+  void startWriting() override;
+
+  // called by the async_read handler (called from IO thread)
+  void asyncReadCallback(asio_ns::error_code const&) override;
+
+  /// abort ongoing / unfinished requests
+  void abortOngoingRequests(const fuerte::Error) override;
+
+  /// abort all requests lingering in the queue
+  void drainQueue(const fuerte::Error) override;
 
  private:
-  
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries);
-  
-  /// shutdown connection, cancel async operations
-  void shutdownConnection(const ErrorCondition);
-  
-  void restartConnection(const ErrorCondition);
-  
-  void finishInitialization();
-  
-  // Thread-Safe: reset io loop flags
-  void stopIOLoops();
-  
-  // Thread-Safe: activate the writer loop (if off and items are queud)
-  void startWriting();
-  
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();
-  
+
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const& ec, size_t transferred,
                           std::shared_ptr<RequestItem>);
-  
+
   // Thread-Safe: activate the read loop (if needed)
   void startReading();
-  
+
   // Thread-Safe: stops read loop
   void stopReading();
-  
-  // Call on IO-Thread: read from socket
-  void asyncReadSome();
-  
-  // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&, size_t transferred);
 
  private:
   // Send out the authentication message on this connection
   void sendAuthenticationRequest();
 
   // Process the given incoming chunk.
-  void processChunk(ChunkHeader&& chunk, asio_ns::const_buffer const&);
+  void processChunk(Chunk const& chunk);
   // Create a response object for given RequestItem & received response buffer.
-  std::unique_ptr<Response> createResponse(RequestItem& item,
-                                           std::unique_ptr<velocypack::Buffer<uint8_t>>&);
-      
+  std::unique_ptr<Response> createResponse(
+      RequestItem& item, std::unique_ptr<velocypack::Buffer<uint8_t>>&);
+
   // adjust the timeouts (only call from IO-Thread)
   void setTimeout();
 
  private:
-  const VSTVersion _vstVersion;
-      
-  /// io context to use
-  std::shared_ptr<asio_ns::io_context> _io_context;
-  Socket<ST> _protocol;
-  
-  /// @brief timer to handle connection / request timeouts
-  asio_ns::steady_timer _timeout;
-  
-  /// @brief is the connection established
-  std::atomic<Connection::State> _state;
-  
-  /// stores in-flight messages (thread-safe)
+  /// elements to send out
+  boost::lockfree::queue<vst::RequestItem*, boost::lockfree::capacity<1024>>
+      _writeQueue;
+
+  /// stores in-flight messages
   MessageStore<vst::RequestItem> _messageStore;
-  
-  /// default max chunksize is 30kb in arangodb
-  static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
-  ::asio_ns::streambuf _receiveBuffer;
-  
+
+  const VSTVersion _vstVersion;
+
   /// highest two bits mean read or write loops are active
   /// low 30 bit contain number of queued request items
   std::atomic<uint32_t> _loopState;
@@ -157,10 +126,6 @@ class VstConnection final : public Connection {
   static constexpr uint32_t WRITE_LOOP_QUEUE_MASK = WRITE_LOOP_ACTIVE - 1;
   static_assert((WRITE_LOOP_ACTIVE & WRITE_LOOP_QUEUE_MASK) == 0, "");
   static_assert((WRITE_LOOP_ACTIVE & READ_LOOP_ACTIVE) == 0, "");
-  
-  /// elements to send out
-  boost::lockfree::queue<vst::RequestItem*,
-    boost::lockfree::capacity<1024>> _writeQueue;
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst

@@ -22,13 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "terminal-utils.h"
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
 #if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
-
 TRI_TerminalSize TRI_DefaultTerminalSize() {
   char* e = getenv("COLUMNS");
 
@@ -44,7 +46,7 @@ TRI_TerminalSize TRI_DefaultTerminalSize() {
       int rows = (int)TRI_Int32String(e);
 
       if (rows == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
-        return TRI_DEFAULT_TERM_SIZE;
+        return TRI_DEFAULT_TERMINAL_SIZE;
       }
       return TRI_TerminalSize{rows, columns};
     }

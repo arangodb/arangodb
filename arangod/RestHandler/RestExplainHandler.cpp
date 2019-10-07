@@ -33,8 +33,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestExplainHandler::RestExplainHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestExplainHandler::RestExplainHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestExplainHandler::execute() {
   // extract the sub-request type
@@ -109,16 +110,8 @@ void RestExplainHandler::explainQuery() {
                              bindBuilder, optionsBuilder, arangodb::aql::PART_MAIN);
   auto queryResult = query.explain();
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    auto code = rest::ResponseCode::BAD;
-
-    switch (queryResult.code) {
-      case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
-        code = rest::ResponseCode::NOT_FOUND;
-        break;
-    }
-
-    generateError(code, queryResult.code, queryResult.details);
+  if (queryResult.result.fail()) {
+    generateError(queryResult.result);
     return;
   }
 
@@ -126,9 +119,9 @@ void RestExplainHandler::explainQuery() {
   result.openObject();
 
   if (query.queryOptions().allPlans) {
-    result.add("plans", queryResult.result->slice());
+    result.add("plans", queryResult.data->slice());
   } else {
-    result.add("plan", queryResult.result->slice());
+    result.add("plan", queryResult.data->slice());
     result.add("cacheable", VPackValue(queryResult.cached));
   }
 

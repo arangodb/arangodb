@@ -24,9 +24,11 @@
 #ifndef ARANGODB_V8_V8__UTILS_H
 #define ARANGODB_V8_V8__UTILS_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <cstdint>
+#include <string>
 
-#include "V8/v8-globals.h"
+#include <v8.h>
 
 namespace arangodb {
 class Result;
@@ -37,7 +39,7 @@ class Result;
 
 class TRI_Utf8ValueNFC {
  public:
-  explicit TRI_Utf8ValueNFC(v8::Handle<v8::Value> const);
+  explicit TRI_Utf8ValueNFC(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 
   ~TRI_Utf8ValueNFC();
 
@@ -83,17 +85,21 @@ static int const SLOT_EXTERNAL = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class T>
-static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type) {
+static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
+                          v8::Handle<v8::Context> context) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
-
-  if (obj->GetInternalField(SLOT_CLASS_TYPE)->Int32Value() != type) {
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
+  if (slot->Int32Value(context).ToChecked() != type) {
     return nullptr;
   }
 
-  return static_cast<T*>(
-      v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
+  auto slotc = obj->GetInternalField(SLOT_CLASS);
+  auto slotp = v8::Handle<v8::External>::Cast(slotc);
+  auto val = slotp->Value();
+  auto ret = static_cast<T*>(val);
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,12 +119,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all files from a directory into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all files from a directory in a local context

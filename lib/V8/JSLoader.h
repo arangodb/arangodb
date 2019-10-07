@@ -24,16 +24,17 @@
 #ifndef ARANGODB_V8_JSLOADER_H
 #define ARANGODB_V8_JSLOADER_H 1
 
-#include "Basics/Common.h"
-#include "Utilities/ScriptLoader.h"
+#include <string>
 
 #include <v8.h>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Basics/Common.h"
+#include "Utilities/ScriptLoader.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
@@ -51,20 +52,12 @@ class JSLoader : public ScriptLoader {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief executes a named script in the global context
-  //////////////////////////////////////////////////////////////////////////////
-
-  v8::Handle<v8::Value> executeGlobalScript(v8::Isolate* isolate,
-                                            v8::Handle<v8::Context> context,
-                                            std::string const& name);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief loads a named script, if the builder pointer is not nullptr the
   /// returned result will be written there as vpack
   //////////////////////////////////////////////////////////////////////////////
 
   JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
-                              std::string const& name, VPackBuilder* builder);
+                              std::string const& name, velocypack::Builder* builder);
 };
 }  // namespace arangodb
 

@@ -22,10 +22,17 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-const isCluster = require('@arangodb/cluster').isCluster();
+const cluster = require('@arangodb/cluster');
+const isCluster = cluster.isCluster();
 const tasks = require('@arangodb/tasks');
 const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
+
+const coordinatorId = (
+  isCluster && cluster.isCoordinator()
+  ? cluster.coordinatorId()
+  : undefined
+);
 
 var runInDatabase = function () {
   var busy = false;
@@ -64,9 +71,13 @@ var runInDatabase = function () {
           }
 
           jobs.forEach(function (job) {
-            db._jobs.update(job, {
+            const update = {
               status: 'progress'
-            });
+            };
+            if (isCluster) {
+              update.startedBy = coordinatorId;
+            }
+            db._jobs.update(job, update);
             tasks.register({
               command: function (cfg) {
                 var db = require('@arangodb').db;
@@ -95,20 +106,73 @@ var runInDatabase = function () {
   }
 };
 
+const resetDeadJobs = function () {
+  const queues = require('@arangodb/foxx/queues');
+
+  const initialDatabase = db._name();
+  db._databases().forEach(function (name) {
+    try {
+      db._useDatabase(name);
+      db._jobs.toArray().filter(function (job) {
+        return job.status === 'progress';
+      }).forEach(function (job) {
+        db._jobs.update(job._id, {status: 'pending'});
+      });
+      if (!isCluster) {
+        queues._updateQueueDelay();
+      } else {
+        global.KEYSPACE_CREATE('queue-control', 1, true);
+      }
+    } catch (e) {
+      // noop
+    }
+  });
+  db._useDatabase(initialDatabase);
+};
+
+const resetDeadJobsOnFirstRun = function () {
+  const foxxmasterInitialized
+    = global.KEY_GET('queue-control', 'foxxmasterInitialized') || 0;
+  const foxxmasterSince = global.ArangoServerState.getFoxxmasterSince();
+
+  if (foxxmasterSince <= 0) {
+    console.error(
+      "It's unknown since when this is a Foxxmaster. "
+      + 'This is probably a bug in the Foxx queues, please report this error.'
+    );
+  }
+  if (foxxmasterInitialized > foxxmasterSince) {
+    console.error(
+      'HLC seems to have decreased, which can never happen. '
+      + 'This is probably a bug in the Foxx queues, please report this error.'
+    );
+  }
+
+  if (foxxmasterInitialized < foxxmasterSince) {
+    // We've not run this (successfully) since we got to be Foxxmaster.
+    resetDeadJobs();
+    global.KEY_SET('queue-control', 'foxxmasterInitialized', foxxmasterSince);
+  }
+};
+
 exports.manage = function () {
   if (!global.ArangoServerState.isFoxxmaster()) {
     return;
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (isCluster) {
-      var foxxQueues = require('@arangodb/foxx/queues');
-      foxxQueues._updateQueueDelay();
-    } else {
+    if (!isCluster) {
       // On a Foxxmaster change FoxxmasterQueueupdate is set to true
       // we use this to signify a Leader change to this server
       foxxManager.healAll(true);
     }
+    // Reset jobs before updating the queue delay. Don't continue on errors,
+    // but retry later.
+    resetDeadJobsOnFirstRun();
+    if (isCluster) {
+      var foxxQueues = require('@arangodb/foxx/queues');
+      foxxQueues._updateQueueDelay();
+    } 
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
@@ -159,43 +223,21 @@ exports.manage = function () {
 };
 
 exports.run = function () {
-  var options = require('internal').options();
+  let period = global.FOXX_QUEUES_POLL_INTERVAL;
 
   // disable foxx queues
-  if (options['foxx.queues'] === false) {
+  if (period < 0) {
     return;
   }
 
-  var queues = require('@arangodb/foxx/queues');
+  let queues = require('@arangodb/foxx/queues');
   queues.create('default');
 
   // wakeup/poll interval for Foxx queues
-  var period = 1;
-  if (options.hasOwnProperty('foxx.queues-poll-interval')) {
-    period = options['foxx.queues-poll-interval'];
-  }
-
   global.KEYSPACE_CREATE('queue-control', 1, true);
-
-  var initialDatabase = db._name();
-  db._databases().forEach(function (name) {
-    try {
-      db._useDatabase(name);
-      db._jobs.toArray().filter(function(job) {
-        return job.status === 'progress';
-      }).forEach(function(job) {
-        db._jobs.update(job._id, { status: 'pending' });
-      });
-      if (!isCluster) {
-        queues._updateQueueDelay();
-      } else {
-        global.KEYSPACE_CREATE('queue-control', 1, true);
-      }
-    } catch (e) {
-      // noop
-    }
-  });
-  db._useDatabase(initialDatabase);
+  if (!isCluster) {
+    resetDeadJobs();
+  }
 
   if (tasks.register !== undefined) {
     tasks.register({

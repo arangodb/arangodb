@@ -23,23 +23,41 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "store/memory_directory.hpp"
-#include "formats/formats_10.hpp"
-#include "store/fs_directory.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/sort.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class column_existence_filter_test_case
-    : public filter_test_case_base {
+class column_existence_filter_test_case : public tests::filter_test_case_base {
  protected:
-  void simple_sequential_exact_match() {
+  void simple_sequential_mask() {
     // add segment
     {
+      class mask_field : public tests::ifield {
+       public:
+        explicit mask_field(const std::string& name)
+          : name_(name) {
+        }
+
+        bool write(data_output&) const { return true; }
+        irs::string_ref name() const { return name_; }
+        const irs::flags& features() const { return irs::flags::empty_instance(); }
+        irs::token_stream& get_tokens() const {
+          // nothing to index
+          stream_.next();
+          return stream_;
+        }
+
+       private:
+        std::string name_;
+        mutable irs::null_token_stream stream_;
+      };
+
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
+        [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+          doc.insert(std::make_shared<mask_field>(irs::string_ref(name)));
+      });
       add_segment(gen);
     }
 
@@ -64,11 +82,16 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
+        ASSERT_EQ(filter_it->value(), doc->value);
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -94,10 +117,14 @@ class column_existence_filter_test_case
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
+        ASSERT_EQ(filter_it->value(), doc->value);
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -158,6 +185,9 @@ class column_existence_filter_test_case
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -190,6 +220,9 @@ class column_existence_filter_test_case
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
@@ -218,6 +251,9 @@ class column_existence_filter_test_case
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
@@ -242,6 +278,244 @@ class column_existence_filter_test_case
 
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
+      ASSERT_FALSE(filter_it->next());
+    }
+  }
+
+  void simple_sequential_exact_match() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment(gen);
+    }
+
+    auto rdr = open_reader();
+
+    // 'prefix' column
+    {
+      const std::string column_name = "prefix";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      auto filter_it = prepared->execute(segment);
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
+
+      while (filter_it->next()) {
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(filter_it->value(), column_it->value());
+        ASSERT_EQ(filter_it->value(), doc->value);
+      }
+      ASSERT_FALSE(column_it->next());
+    }
+
+    // 'name' column
+    {
+      const std::string column_name = "name";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
+      size_t docs_count = 0;
+      while (filter_it->next()) {
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(filter_it->value(), column_it->value());
+        ASSERT_EQ(filter_it->value(), doc->value);
+        ++docs_count;
+      }
+      ASSERT_FALSE(column_it->next());
+      ASSERT_EQ(segment.docs_count(), docs_count);
+      ASSERT_EQ(segment.live_docs_count(), docs_count);
+    }
+
+    // 'seq' column
+    {
+      const std::string column_name = "seq";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
+
+      size_t docs_count = 0;
+      while (filter_it->next()) {
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(filter_it->value(), column_it->value());
+        ++docs_count;
+      }
+      ASSERT_FALSE(column_it->next());
+      ASSERT_EQ(segment.docs_count(), docs_count);
+      ASSERT_EQ(segment.live_docs_count(), docs_count);
+    }
+
+    // 'same' column
+    {
+      const std::string column_name = "same";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
+      size_t docs_count = 0;
+      while (filter_it->next()) {
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(filter_it->value(), column_it->value());
+        ++docs_count;
+      }
+      ASSERT_FALSE(column_it->next());
+      ASSERT_EQ(segment.docs_count(), docs_count);
+      ASSERT_EQ(segment.live_docs_count(), docs_count);
+    }
+
+    // 'value' column
+    {
+      const std::string column_name = "value";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
+      while (filter_it->next()) {
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(filter_it->value(), column_it->value());
+      }
+      ASSERT_FALSE(column_it->next());
+    }
+
+    // 'duplicated' column
+    {
+      const std::string column_name = "duplicated";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
+      while (filter_it->next()) {
+        ASSERT_TRUE(column_it->next());
+        ASSERT_EQ(filter_it->value(), column_it->value());
+      }
+      ASSERT_FALSE(column_it->next());
+    }
+
+    // invalid column
+    {
+      const std::string column_name = "invalid_column";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(false);
+      filter.field(column_name);
+
+      auto prepared = filter.prepare(
+        *rdr, irs::order::prepared::unordered()
+      );
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto filter_it = prepared->execute(segment);
+      ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -279,6 +553,9 @@ class column_existence_filter_test_case
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       // #(foo) + #(foobar) + #(foobaz) + #(fookar)
       ASSERT_EQ(8+9+1+10, irs::cost::extract(it->attributes()));
@@ -346,6 +623,9 @@ class column_existence_filter_test_case
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
 
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       // #(koobar) + #(koobaz)
       ASSERT_EQ(4+2, irs::cost::extract(it->attributes()));
 
@@ -387,6 +667,9 @@ class column_existence_filter_test_case
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       // #(oobar) + #(oobaz)
       ASSERT_EQ(5+3, irs::cost::extract(it->attributes()));
@@ -430,6 +713,9 @@ class column_existence_filter_test_case
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
 
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       // #(collection)
       ASSERT_EQ(4, irs::cost::extract(it->attributes()));
 
@@ -466,6 +752,9 @@ class column_existence_filter_test_case
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
     }
@@ -491,15 +780,19 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -524,6 +817,9 @@ class column_existence_filter_test_case
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_itr->attributes()));
 
+      auto& doc = filter_itr->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
       ASSERT_TRUE(bool(score));
@@ -537,6 +833,7 @@ class column_existence_filter_test_case
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());
+        ASSERT_EQ(filter_itr->value(), doc->value);
         ++docs_count;
       }
 
@@ -544,7 +841,8 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32, scorer_score_count);
 
@@ -567,15 +865,19 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -620,7 +922,8 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32, scorer_score_count);
 
@@ -644,15 +947,19 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -697,7 +1004,8 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32 * 2, scorer_score_count); // 2 columns matched
 
@@ -713,14 +1021,22 @@ class column_existence_filter_test_case
   }
 }; // column_existence_filter_test_case
 
-NS_END
+TEST_P(column_existence_filter_test_case, mask_column) {
+  simple_sequential_mask();
+}
+
+TEST_P(column_existence_filter_test_case, exact_prefix_match) {
+  simple_sequential_exact_match();
+  simple_sequential_prefix_match();
+  simple_sequential_order();
+}
 
 TEST(by_column_existence, ctor) {
   irs::by_column_existence filter;
   ASSERT_EQ(irs::by_column_existence::type(), filter.type());
   ASSERT_FALSE(filter.prefix_match());
   ASSERT_TRUE(filter.field().empty());
-  ASSERT_EQ(irs::boost::no_boost(), filter.boost());
+  ASSERT_EQ(irs::no_boost(), filter.boost());
 }
 
 TEST(by_column_existence, boost) {
@@ -762,52 +1078,21 @@ TEST(by_column_existence, equal) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  column_existence_filter_test,
+  column_existence_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
-class memory_column_existence_filter_test_case
-    : public tests::column_existence_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_column_existence_filter_test_case, exact_prefix_match) {
-  simple_sequential_exact_match();
-  simple_sequential_prefix_match();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_column_existence_test_case
-    : public tests::column_existence_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_column_existence_test_case, exact_prefix_match) {
-  simple_sequential_exact_match();
-  simple_sequential_prefix_match();
-  simple_sequential_order();
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

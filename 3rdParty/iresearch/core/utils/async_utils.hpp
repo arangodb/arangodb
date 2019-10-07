@@ -114,6 +114,7 @@ class IRESEARCH_API read_write_mutex final {
    std::atomic<size_t> concurrent_count_;
    size_t exclusive_count_;
    std::atomic<std::thread::id> exclusive_owner_;
+   VALGRIND_ONLY(std::mutex exclusive_owner_mutex_;)
    size_t exclusive_owner_recursion_count_;
    std::mutex mutex_;
    std::condition_variable reader_cond_;

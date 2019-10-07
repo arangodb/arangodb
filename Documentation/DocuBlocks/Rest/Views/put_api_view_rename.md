@@ -1,7 +1,7 @@
 @startDocuBlock put_api_view_rename
 @brief renames a view
 
-@RESTHEADER{PUT /_api/view/{view-name}/rename, Rename a view}
+@RESTHEADER{PUT /_api/view/{view-name}/rename, Rename a view, modifyView:rename}
 
 @RESTURLPARAMETERS
 

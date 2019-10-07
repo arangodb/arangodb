@@ -49,14 +49,12 @@ namespace {
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
-
-  if (!databaseFeature) {
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   static const std::string wildcard("*");
 
@@ -64,7 +62,7 @@ arangodb::Result existsCollection(std::string const& database, std::string const
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature->lookupDatabase(database);
+  auto* vocbase = databaseFeature.lookupDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -86,18 +84,13 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static bool IsAdminUser() {
-  if (ExecContext::CURRENT != nullptr) {
-    return ExecContext::CURRENT->isAdminUser();
-  }
-  return true;
+  return ExecContext::current().isAdminUser();
 }
 
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
-  if (ExecContext::CURRENT != nullptr) {
-    return IsAdminUser() || user == ExecContext::CURRENT->user();
-  }
-  return true;
+  auto const& exec = ExecContext::current();
+  return exec.isAdminUser() || exec.user() == user;
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
@@ -110,15 +103,16 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_USER_INVALID_NAME);
   }
-  std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  std::string pass =
-      args.Length() > 1 && args[1]->IsString() ? TRI_ObjectToString(args[1]) : "";
+  std::string pass = args.Length() > 1 && args[1]->IsString()
+                         ? TRI_ObjectToString(isolate, args[1])
+                         : "";
   bool active = true;
   if (args.Length() >= 3 && args[2]->IsBoolean()) {
-    active = TRI_ObjectToBoolean(args[2]);
+    active = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   VPackBuilder extras;
@@ -164,7 +158,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "update(username[, password, active, userData])");
   }
-  std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
@@ -184,10 +178,10 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   um->updateUser(username, [&](auth::User& u) {
     if (args.Length() > 1 && args[1]->IsString()) {
-      u.updatePassword(TRI_ObjectToString(args[1]));
+      u.updatePassword(TRI_ObjectToString(isolate, args[1]));
     }
     if (args.Length() > 2 && args[2]->IsBoolean()) {
-      u.setActive(TRI_ObjectToBoolean(args[2]));
+      u.setActive(TRI_ObjectToBoolean(isolate, args[2]));
     }
     if (!extras.isEmpty()) {
       u.setUserData(std::move(extras));
@@ -215,7 +209,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "users are not supported on this server");
   }
 
-  Result r = um->removeUser(TRI_ObjectToString(args[0]));
+  Result r = um->removeUser(TRI_ObjectToString(isolate, args[0]));
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -231,7 +225,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(username)");
   }
 
-  std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
 
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -282,11 +276,11 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string username = TRI_ObjectToString(args[0]);
-  std::string db = TRI_ObjectToString(args[1]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  std::string db = TRI_ObjectToString(isolate, args[1]);
   auth::Level lvl = auth::Level::RW;
   if (args.Length() >= 3) {
-    std::string type = TRI_ObjectToString(args[2]);
+    std::string type = TRI_ObjectToString(isolate, args[2]);
     lvl = auth::convertToAuthLevel(type);
   }
 
@@ -323,8 +317,8 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "user are not supported on this server");
   }
 
-  std::string username = TRI_ObjectToString(args[0]);
-  std::string db = TRI_ObjectToString(args[1]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  std::string db = TRI_ObjectToString(isolate, args[1]);
   Result r = um->updateUser(username, [&](auth::User& entry) {
     entry.removeDatabase(db);
     return TRI_ERROR_NO_ERROR;
@@ -356,9 +350,9 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
                                    "user are not supported on this server");
   }
 
-  std::string username = TRI_ObjectToString(args[0]);
-  std::string db = TRI_ObjectToString(args[1]);
-  std::string coll = TRI_ObjectToString(args[2]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  std::string db = TRI_ObjectToString(isolate, args[1]);
+  std::string coll = TRI_ObjectToString(isolate, args[2]);
 
   // validate that the collection is present
   {
@@ -372,7 +366,7 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auth::Level lvl = auth::Level::RW;
 
   if (args.Length() >= 4) {
-    std::string type = TRI_ObjectToString(args[3]);
+    std::string type = TRI_ObjectToString(isolate, args[3]);
     lvl = auth::convertToAuthLevel(type);
   }
 
@@ -408,9 +402,9 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
                                    "user are not supported on this server");
   }
 
-  std::string username = TRI_ObjectToString(args[0]);
-  std::string db = TRI_ObjectToString(args[1]);
-  std::string coll = TRI_ObjectToString(args[2]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  std::string db = TRI_ObjectToString(isolate, args[1]);
+  std::string coll = TRI_ObjectToString(isolate, args[2]);
 
   // validate that the collection is present
   {
@@ -441,12 +435,12 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("updateConfigData(username, key[, value])");
   }
-  std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string key = TRI_ObjectToString(args[1]);
+  std::string key = TRI_ObjectToString(isolate, args[1]);
   VPackBuilder merge;
   if (args.Length() > 2) {
     VPackBuilder value;
@@ -486,7 +480,7 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
       (args.Length() > 1 && !args[1]->IsString())) {
     TRI_V8_THROW_EXCEPTION_USAGE("configData(username[, key])");
   }
-  std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
@@ -555,8 +549,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
       auto lvl = um->databaseAuthLevel(username, vocbase.name());
 
       if (lvl != auth::Level::NONE) {  // hide non accessible collections
-        result->ForceSet(TRI_V8_STD_STRING(isolate, vocbase.name()),
-                         TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
+        result->Set(TRI_V8_STD_STRING(isolate, vocbase.name()),
+                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
       }
     });
     TRI_V8_RETURN(result);
@@ -583,8 +577,8 @@ static void JS_CurrentUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("currentUser()");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ExecContext::CURRENT->user()));
+  if (!ExecContext::current().user().empty()) {
+    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ExecContext::current().user()));
   }
   TRI_V8_RETURN_NULL();
   TRI_V8_TRY_CATCH_END

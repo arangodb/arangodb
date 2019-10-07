@@ -37,13 +37,14 @@ var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+  
+const ruleName = "use-index-for-sort";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
-  var ruleName = "use-index-for-sort";
   var secondRuleName = "use-indexes";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
@@ -115,13 +116,15 @@ function optimizerRuleTestSuite() {
       internal.db._drop(colName);
       skiplist = internal.db._create(colName, {numberOfShards: 1});
       var i, j;
+      let docs = [];
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
-          skiplist.save({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
+          docs.push({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
         }
-        skiplist.save(  { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
-        skiplist.save(  {                   "c": j,                 "joinme" : "aoeu " + j});
+        docs.push(  { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
+        docs.push(  {                   "c": j,                 "joinme" : "aoeu " + j});
       }
+      skiplist.insert(docs);
 
       skiplist.ensureSkiplist("a", "b");
       skiplist.ensureSkiplist("d");
@@ -129,13 +132,16 @@ function optimizerRuleTestSuite() {
 
       internal.db._drop(colNameOther);
       skiplist2 = internal.db._create(colNameOther, {numberOfShards: 1});
+      docs = [];
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
-          skiplist2.save({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});
+          docs.push({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});
         }
-        skiplist2.save(  { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
-        skiplist2.save(  {                   "h": j,                 "joinme" : "aoeu " + j});
+        docs.push(  { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
+        docs.push(  {                   "h": j,                 "joinme" : "aoeu " + j});
       }
+      skiplist2.insert(docs);
+ 
       skiplist2.ensureSkiplist("f", "g");
       skiplist2.ensureSkiplist("i");
       skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });

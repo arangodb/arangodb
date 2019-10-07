@@ -24,23 +24,13 @@
 #define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/QueryRegistry.h"
+#include "Cluster/TraverserEngineRegistry.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/RestHandlerFactory.h"
 
 namespace arangodb {
-
-namespace aql {
-class QueryRegistry;
-}
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
-
-namespace rest {
-class AsyncJobManager;
-class RestHandlerFactory;
-class GeneralServer;
-}  // namespace rest
-
 class RestServerThread;
 
 class GeneralServerFeature final : public application_features::ApplicationFeature {
@@ -93,29 +83,27 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
-
- private:
-  double _keepAliveTimeout = 300.0;
-  bool _allowMethodOverride;
-
-  bool _proxyCheck;
-  std::vector<std::string> _trustedProxies;
-  std::vector<std::string> _accessControlAllowOrigins;
-
- public:
+ 
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
-
+ 
  private:
   void buildServers();
   void defineHandlers();
 
+ private:
+  double _keepAliveTimeout = 300.0;
+  bool _allowMethodOverride;
+  bool _proxyCheck;
+  std::vector<std::string> _trustedProxies;
+  std::vector<std::string> _accessControlAllowOrigins;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
-  std::vector<rest::GeneralServer*> _servers;
+  std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
 };
 

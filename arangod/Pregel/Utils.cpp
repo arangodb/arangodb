@@ -24,6 +24,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -39,6 +40,7 @@ std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedWorkerStepPath = "finishedStep";
+std::string const Utils::finishedWorkerFinalizationPath = "finishedFinalization";
 std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
@@ -59,6 +61,7 @@ std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncModeKey = "asyncMode";
 std::string const Utils::lazyLoadingKey = "lazyloading";
+std::string const Utils::useMemoryMaps = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
 
 std::string const Utils::globalSuperstepKey = "gss";
@@ -83,36 +86,24 @@ std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix)
          prefix + "/";
 }
 
-void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
-      LOG_TOPIC(ERR, Logger::PREGEL)
-          << "Error sending request to " << req.destination
-          << ". Payload: " << res.answer->payload().toJson();
-    }
-  }
-}
-
-int Utils::resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                        std::string const& shardKey, std::string const& vertexKey,
-                        std::string& responsibleShard) {
+int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                        std::string const& collectionName, std::string const& shardKey,
+                        VPackStringRef vertexKey, std::string& responsibleShard) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }
 
   auto const& planIDMap = config->collectionPlanIdMap();
-  ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci->getCollection(config->database(), it->second);  // might throw
+    info = ci.getCollectionNT(config->database(), it->second);  // might throw
     if (info == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
   } else {
-    LOG_TOPIC(ERR, Logger::PREGEL)
+    LOG_TOPIC("67fda", ERR, Logger::PREGEL)
         << "The collection could not be translated to a planID";
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
@@ -121,8 +112,8 @@ int Utils::resolveShard(WorkerConfig const* config, std::string const& collectio
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(shardKey, VPackValue(vertexKey));
+  partial.add(shardKey, VPackValuePair(vertexKey.data(), vertexKey.size(), VPackValueType::String));
   partial.close();
-  //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
+  //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
   return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

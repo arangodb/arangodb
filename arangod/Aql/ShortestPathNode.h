@@ -43,7 +43,6 @@ namespace aql {
 class ShortestPathNode : public GraphNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
-  friend class ShortestPathBlock;
 
   /// @brief constructor with a vocbase and a collection name
  public:
@@ -69,7 +68,8 @@ class ShortestPathNode : public GraphNode {
   NodeType getType() const override final { return SHORTEST_PATH; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -108,20 +108,8 @@ class ShortestPathNode : public GraphNode {
     return vars;
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override {
-    std::vector<Variable const*> vars;
-    if (_inStartVariable != nullptr) {
-      vars.emplace_back(_inStartVariable);
-    }
-    if (_inTargetVariable != nullptr) {
-      vars.emplace_back(_inTargetVariable);
-    }
-    return vars;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

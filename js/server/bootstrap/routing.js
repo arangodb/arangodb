@@ -32,18 +32,18 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = require('internal');
-  var console = require('console');
+  let internal = require('internal');
+  let console = require('console');
   return {
     startup: function () {
-      var db = internal.db;
-      var dbName = db._name();
+      let db = internal.db;
+      let dbName = db._name();
 
       db._useDatabase('_system');
-      var databases = db._databases();
+      let databases = db._databases();
 
-      for (var i = 0; i < databases.length; ++i) {
-        var name = databases[i];
+      for (let i = 0; i < databases.length; ++i) {
+        let name = databases[i];
         try {
           db._useDatabase(name);
           require('@arangodb/actions').reloadRouting();

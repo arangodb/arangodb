@@ -1,7 +1,7 @@
 # ArangoDB configuration file
 # 
 # Documentation: 
-# https://docs.arangodb.com/latest/Manual/Administration/Configuration/
+# https://www.arangodb.com/docs/stable/administration-configuration.html
 # 
 
 [database]
@@ -71,4 +71,3 @@ level = info
 
 [rocksdb]
 # encryption-keyfile=/your-encryption-file
-

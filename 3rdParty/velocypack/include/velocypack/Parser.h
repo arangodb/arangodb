@@ -80,8 +80,8 @@ class Parser {
   std::shared_ptr<Builder> _builder;
   Builder* _builderPtr;
   uint8_t const* _start;
-  size_t _size;
-  size_t _pos;
+  std::size_t _size;
+  std::size_t _pos;
   int _nesting;
 
  public:
@@ -158,7 +158,7 @@ class Parser {
   }
   
   static std::shared_ptr<Builder> fromJson(
-      char const* start, size_t size,
+      char const* start, std::size_t size,
       Options const* options = &Options::Defaults) {
     Parser parser(options);
     parser.parse(start, size);
@@ -166,7 +166,7 @@ class Parser {
   }
 
   static std::shared_ptr<Builder> fromJson(
-      uint8_t const* start, size_t size,
+      uint8_t const* start, std::size_t size,
       Options const* options = &Options::Defaults) {
     Parser parser(options);
     parser.parse(start, size);
@@ -178,11 +178,11 @@ class Parser {
                  multi);
   }
 
-  ValueLength parse(char const* start, size_t size, bool multi = false) {
+  ValueLength parse(char const* start, std::size_t size, bool multi = false) {
     return parse(reinterpret_cast<uint8_t const*>(start), size, multi);
   }
 
-  ValueLength parse(uint8_t const* start, size_t size, bool multi = false) {
+  ValueLength parse(uint8_t const* start, std::size_t size, bool multi = false) {
     _start = start;
     _size = size;
     _pos = 0;
@@ -209,7 +209,7 @@ class Parser {
 
   // Returns the position at the time when the just reported error
   // occurred, only use when handling an exception.
-  size_t errorPos() const { return _pos > 0 ? _pos - 1 : _pos; }
+  std::size_t errorPos() const { return _pos > 0 ? _pos - 1 : _pos; }
 
   void clear() { _builderPtr->clear(); }
 

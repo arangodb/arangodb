@@ -48,6 +48,7 @@ var sanitizeStats = function (stats) {
   delete stats.executionTime;
   delete stats.httpRequests;
   delete stats.fullCount;
+  delete stats.peakMemoryUsage;
   return stats;
 };
 

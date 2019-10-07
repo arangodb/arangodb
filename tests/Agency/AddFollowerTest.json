@@ -47,7 +47,7 @@ R"=(
           "Status": "GOOD"
         },
         "leader": {
-          "Status": "FAILED"
+          "Status": "GOOD"
         },
         "free": {
           "Status": "GOOD"

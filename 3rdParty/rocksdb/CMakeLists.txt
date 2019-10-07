@@ -4,7 +4,7 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_ROCKSDB_VERSION "v5.18.X")
+set(ARANGO_ROCKSDB_VERSION "6.2")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # jemalloc settings

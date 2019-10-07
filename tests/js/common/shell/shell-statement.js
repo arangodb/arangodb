@@ -916,7 +916,6 @@ function StatementSuite () {
         // cursor does not exist anymore
         c.next();
       } catch (err) {
-        require("internal").print(err);
         assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
       }
     },
@@ -994,6 +993,17 @@ function StatementSuite () {
       var result = aql`FOR i IN ${list} RETURN ${what}`;
       assertEqual("FOR i IN @value0 RETURN @value1", result.query);
       assertEqual({ value0: [ 1, 2, 3, 4 ], value1: { foo: "bar", baz: "bark" } }, result.bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringBuilderEmptyInlines : function () {
+      var foo = "foo-matic", bar = "BAR o MATIC", what = "' this string \\ \" is ' evil\n`";
+      var result = aql`FOR ${foo} ${aql.join([])} IN ${bar} ${aql``} RETURN ${what} ${aql.literal('')}`;
+      assertEqual("FOR @value0  IN @value1  RETURN @value2 ", result.query);
+      assertEqual({ value0: foo, value1: bar, value2: what }, result.bindVars);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

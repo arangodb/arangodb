@@ -24,12 +24,13 @@
 #ifndef ARANGOD_AQL_QUERY_LIST_H
 #define ARANGOD_AQL_QUERY_LIST_H 1
 
+#include <cmath>
+#include <list>
+
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
-
-#include <list>
 
 struct TRI_vocbase_t;
 
@@ -37,6 +38,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+class QueryRegistryFeature;
 
 namespace aql {
 
@@ -60,7 +62,7 @@ struct QueryEntryCopy {
 class QueryList {
  public:
   /// @brief create a query list
-  explicit QueryList(TRI_vocbase_t*);
+  explicit QueryList(QueryRegistryFeature&, TRI_vocbase_t*);
 
   /// @brief destroy a query list
   ~QueryList() = default;
@@ -197,6 +199,8 @@ class QueryList {
 
   /// @brief clear the list of slow queries
   void clearSlow();
+
+  size_t count();
 
  private:
   std::string extractQueryString(Query const* query, size_t maxLength) const;

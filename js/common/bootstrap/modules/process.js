@@ -22,6 +22,13 @@ global.DEFINE_MODULE('process', (function () {
     }
   };
 
+  exports.stderr = {
+    isTTY: internal.COLOR_OUTPUT,
+    write(text) {
+      console.errorLines(text);
+    }
+  };
+
   exports.cwd = function () {
     return fs.makeAbsolute('');
   };

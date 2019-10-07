@@ -36,8 +36,8 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class all_query: public filter::prepared {
  public:
-  explicit all_query(attribute_store&& attrs)
-    : filter::prepared(std::move(attrs)) {
+  explicit all_query(bstring&& stats, boost_t boost)
+    : filter::prepared(std::move(stats), boost) {
   }
 
   virtual doc_iterator::ptr execute(
@@ -46,16 +46,13 @@ class all_query: public filter::prepared {
       const attribute_view& /*ctx*/
   ) const override {
     return doc_iterator::make<all_iterator>(
-      rdr,
-      attributes(), // prepared_filter attributes
-      order,
-      rdr.docs_count()
+      rdr, stats(), order, rdr.docs_count(), boost()
     );
   }
 };
 
-DEFINE_FILTER_TYPE(irs::all);
-DEFINE_FACTORY_DEFAULT(irs::all);
+DEFINE_FILTER_TYPE(irs::all)
+DEFINE_FACTORY_DEFAULT(irs::all)
 
 all::all() NOEXCEPT
   : filter(all::type()) {
@@ -67,14 +64,16 @@ filter::prepared::ptr all::prepare(
     boost_t filter_boost,
     const attribute_view& /*ctx*/
 ) const {
-  attribute_store attrs;
+  // skip field-level/term-level statistics because there are no explicit
+  // fields/terms, but still collect index-level statistics
+  // i.e. all fields and terms implicitly match
+  bstring stats(order.stats_size(), 0);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(attrs, reader);
+  order.prepare_stats(stats_buf);
+  order.prepare_collectors(stats_buf, reader);
 
-  irs::boost::apply(attrs, boost() * filter_boost); // apply boost
-
-  return filter::prepared::make<all_query>(std::move(attrs));
+  return filter::prepared::make<all_query>(std::move(stats), this->boost()*filter_boost);
 }
 
 NS_END // ROOT

@@ -22,16 +22,48 @@
 
 #include "DaemonFeature.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/stat.h>
 #include <chrono>
+#include <stdexcept>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileResult.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
+#include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "Basics/threads.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -42,7 +74,7 @@ namespace arangodb {
 DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
 #ifndef _WIN32
   _workingDirectory = "/var/tmp";
@@ -69,40 +101,38 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_pidFile.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("9d6ba", FATAL, arangodb::Logger::FIXME)
         << "need --pid-file in --daemon mode";
     FATAL_ERROR_EXIT();
   }
 
-  LoggerFeature* logger =
-      ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->setBackgrounded(true);
+  auto& server = ApplicationServer::server();
+  LoggerFeature& logger = server.getFeature<LoggerFeature>();
+  logger.setBackgrounded(true);
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
+  std::string absoluteFile = TRI_GetAbsolutePath(_pidFile, currentDir);
 
-  char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
-
-  if (absoluteFile != nullptr) {
-    _pidFile = std::string(absoluteFile);
-    TRI_Free(absoluteFile);
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  if (!absoluteFile.empty()) {
+    _pidFile = absoluteFile;
+    LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
         << "using absolute pid file '" << _pidFile << "'";
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("24de9", FATAL, arangodb::Logger::FIXME)
         << "cannot determine absolute path";
     FATAL_ERROR_EXIT();
   }
 }
 
 void DaemonFeature::daemonize() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::daemonize";
+  LOG_TOPIC("71164", TRACE, Logger::STARTUP) << name() << "::daemonize";
 
   if (!_daemon) {
     return;
   }
 
-  LOG_TOPIC(INFO, Logger::STARTUP) << "starting up in daemon mode";
+  LOG_TOPIC("480d4", INFO, Logger::STARTUP) << "starting up in daemon mode";
 
   checkPidFile();
 
@@ -120,7 +150,7 @@ void DaemonFeature::daemonize() {
 
   // child process
   else {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "daemon mode continuing within child";
+    LOG_TOPIC("0b126", DEBUG, Logger::STARTUP) << "daemon mode continuing within child";
   }
 }
 
@@ -131,7 +161,7 @@ void DaemonFeature::unprepare() {
 
   // remove pid file
   if (!FileUtils::remove(_pidFile)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("1b46c", ERR, arangodb::Logger::FIXME)
         << "cannot remove pid file '" << _pidFile << "'";
   }
 }
@@ -140,16 +170,16 @@ void DaemonFeature::checkPidFile() {
   // check if the pid-file exists
   if (!_pidFile.empty()) {
     if (FileUtils::isDirectory(_pidFile)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile << "' is a directory";
+      LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
     } else if (FileUtils::exists(_pidFile) && FileUtils::size(_pidFile) > 0) {
-      LOG_TOPIC(INFO, Logger::STARTUP)
+      LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
           << "pid-file '" << _pidFile << "' already exists, verifying pid";
       std::string oldPidS;
       try {
         oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("4aadd", FATAL, arangodb::Logger::FIXME)
             << "Couldn't read PID file '" << _pidFile << "' - " << ex.what();
         FATAL_ERROR_EXIT();
       }
@@ -162,40 +192,40 @@ void DaemonFeature::checkPidFile() {
         try {
           oldPid = std::stol(oldPidS);
         } catch (std::invalid_argument const& ex) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' doesn't contain a number.";
           FATAL_ERROR_EXIT();
         }
         if (oldPid == 0) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("aef5d", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' is unreadable";
           FATAL_ERROR_EXIT();
         }
 
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "found old pid: " << oldPid;
+        LOG_TOPIC("ecac1", DEBUG, Logger::STARTUP) << "found old pid: " << oldPid;
 
         int r = kill(oldPid, 0);
 
         if (r == 0 || errno == EPERM) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("5fa62", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' exists and process with pid "
               << oldPid << " is still running, refusing to start twice";
           FATAL_ERROR_EXIT();
         } else if (errno == ESRCH) {
-          LOG_TOPIC(ERR, Logger::STARTUP)
+          LOG_TOPIC("a9576", ERR, Logger::STARTUP)
               << "pid-file '" << _pidFile << " exists, but no process with pid "
               << oldPid << " exists";
 
           if (!FileUtils::remove(_pidFile)) {
-            LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
                 << "pid-file '" << _pidFile << "' exists, no process with pid "
                 << oldPid << " exists, but pid-file cannot be removed";
             FATAL_ERROR_EXIT();
           }
 
-          LOG_TOPIC(INFO, Logger::STARTUP) << "removed stale pid-file '" << _pidFile << "'";
+          LOG_TOPIC("1f3e6", INFO, Logger::STARTUP) << "removed stale pid-file '" << _pidFile << "'";
         } else {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("180c0", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' exists and kill " << oldPid << " failed";
           FATAL_ERROR_EXIT();
         }
@@ -203,13 +233,13 @@ void DaemonFeature::checkPidFile() {
 
       // failed to open file
       else {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("ab3fe", FATAL, arangodb::Logger::FIXME)
             << "pid-file '" << _pidFile << "' exists, but cannot be opened";
         FATAL_ERROR_EXIT();
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "using pid-file '" << _pidFile << "'";
+    LOG_TOPIC("1589d", DEBUG, Logger::STARTUP) << "using pid-file '" << _pidFile << "'";
   }
 }
 
@@ -218,7 +248,7 @@ int DaemonFeature::forkProcess() {
   TRI_pid_t pid = fork();
 
   if (pid < 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot fork";
+    LOG_TOPIC("fd0f9", FATAL, arangodb::Logger::FIXME) << "cannot fork";
     FATAL_ERROR_EXIT();
   }
 
@@ -227,7 +257,7 @@ int DaemonFeature::forkProcess() {
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "started child process with pid " << pid;
+    LOG_TOPIC("89e55", DEBUG, Logger::STARTUP) << "started child process with pid " << pid;
     return pid;
   }
 
@@ -244,7 +274,7 @@ int DaemonFeature::forkProcess() {
   TRI_pid_t sid = setsid();
 
   if (sid < 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create sid";
+    LOG_TOPIC("e9093", FATAL, arangodb::Logger::FIXME) << "cannot create sid";
     FATAL_ERROR_EXIT();
   }
 
@@ -252,7 +282,7 @@ int DaemonFeature::forkProcess() {
   FileResultString cwd = FileUtils::currentDirectory();
 
   if (!cwd.ok()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("a681c", FATAL, arangodb::Logger::FIXME)
         << "cannot get current directory: " << cwd.errorMessage();
     FATAL_ERROR_EXIT();
   }
@@ -264,12 +294,12 @@ int DaemonFeature::forkProcess() {
     FileResult res = FileUtils::changeDirectory(_workingDirectory);
 
     if (!res.ok()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+      LOG_TOPIC("d9f9d", FATAL, arangodb::Logger::STARTUP)
           << "cannot change into working directory '" << _workingDirectory
           << "': " << res.errorMessage();
       FATAL_ERROR_EXIT();
     } else {
-      LOG_TOPIC(INFO, arangodb::Logger::STARTUP)
+      LOG_TOPIC("ae8be", INFO, arangodb::Logger::STARTUP)
           << "changed working directory for child process to '"
           << _workingDirectory << "'";
     }
@@ -293,26 +323,26 @@ void DaemonFeature::remapStandardFileDescriptors() {
   int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
 
   if (fd < 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot open /dev/null";
+    LOG_TOPIC("92755", FATAL, arangodb::Logger::FIXME) << "cannot open /dev/null";
     FATAL_ERROR_EXIT();
   }
 
   // the following calls silently close and repoen the given fds
   // to avoid concurrency issues
   if (dup2(fd, STDIN_FILENO) != STDIN_FILENO) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("3d2ca", FATAL, arangodb::Logger::FIXME)
         << "cannot re-map stdin to /dev/null";
     FATAL_ERROR_EXIT();
   }
 
   if (dup2(fd, STDOUT_FILENO) != STDOUT_FILENO) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4d834", FATAL, arangodb::Logger::FIXME)
         << "cannot re-map stdout to /dev/null";
     FATAL_ERROR_EXIT();
   }
 
   if (dup2(fd, STDERR_FILENO) != STDERR_FILENO) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("39cac", FATAL, arangodb::Logger::FIXME)
         << "cannot re-map stderr to /dev/null";
     FATAL_ERROR_EXIT();
   }
@@ -327,7 +357,7 @@ void DaemonFeature::writePidFile(int pid) {
   try {
     arangodb::basics::FileUtils::spit(_pidFile, std::to_string(pid), true);
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("c2741", FATAL, arangodb::Logger::FIXME)
         << "cannot write pid-file '" << _pidFile << "' - " << ex.what();
   }
 }
@@ -370,13 +400,13 @@ int DaemonFeature::waitForChildProcess(int pid) {
       }
 
       // failure!
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("dce6d", ERR, arangodb::Logger::FIXME)
           << "unable to start arangod. please check the logfiles for errors";
       return EXIT_FAILURE;
     }
 
     // sleep a while and retry
-    std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   // enough time has elapsed... we now abort our loop

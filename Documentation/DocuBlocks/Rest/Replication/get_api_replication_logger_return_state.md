@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_return_state
 @brief returns the state of the replication logger
 
-@RESTHEADER{GET /_api/replication/logger-state, Return replication logger state}
+@RESTHEADER{GET /_api/replication/logger-state, Return replication logger state, handleCommandLoggerState}
 
 @RESTDESCRIPTION
 Returns the current state of the server's replication logger. The state will
@@ -34,6 +34,8 @@ attributes:
 
 - *clients*: returns the last fetch status by replication clients connected to
   the logger. Each client is returned as a JSON object with the following attributes:
+
+  - *syncerId*: id of the client syncer
 
   - *serverId*: server id of client
 

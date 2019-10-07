@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # limit memory useage for process
 # using control groups https://en.wikipedia.org/wiki/Cgroups
 

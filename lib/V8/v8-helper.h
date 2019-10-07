@@ -38,15 +38,16 @@ inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) 
   if (value.IsEmpty()) {
     return std::string{};
   }
-  v8::Local<v8::Object> json = isolate->GetCurrentContext()
-                                   ->Global()
+  auto ctx = isolate->GetCurrentContext();
+  v8::Local<v8::Object> json = ctx->Global()
                                    ->Get(TRI_V8_ASCII_STRING(isolate, "JSON"))
-                                   ->ToObject();
+                                   ->ToObject(ctx)
+                                   .FromMaybe(v8::Local<v8::Object>());
   v8::Local<v8::Function> stringify =
       json->Get(TRI_V8_ASCII_STRING(isolate, "stringify")).As<v8::Function>();
   v8::Local<v8::Value> args[1] = {value};
   v8::Local<v8::Value> jsString = stringify->Call(json, 1, args);
-  v8::String::Utf8Value const rv(jsString);
+  v8::String::Utf8Value const rv(isolate, jsString);
   return std::string(*rv, rv.length());
 }
 
@@ -93,6 +94,7 @@ inline bool isContextCanceled(v8::Isolate* isolate) {
 inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
                                                          v8::TryCatch& tryCatch,
                                                          int errorCode) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   // function tries to receive arango error form tryCatch Object
   // return tuple:
   //   bool - can continue
@@ -115,7 +117,9 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   v8::Handle<v8::Value> exception = tryCatch.Exception();
   if (exception->IsString()) {
     // the error is a plain string
-    std::string errorMessage = *v8::String::Utf8Value(exception->ToString());
+    std::string errorMessage =
+        *v8::String::Utf8Value(isolate, exception->ToString(TRI_IGETC).FromMaybe(
+                                            v8::Local<v8::String>()));
     std::get<1>(rv) = true;
     std::get<2>(rv).reset(errorCode, errorMessage);
     tryCatch.Reset();
@@ -125,7 +129,7 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   if (!exception->IsObject()) {
     // we have no idea what this error is about
     std::get<1>(rv) = true;
-    TRI_Utf8ValueNFC exception(tryCatch.Exception());
+    TRI_Utf8ValueNFC exception(isolate, tryCatch.Exception());
     char const* exceptionString = *exception;
     if (exceptionString == nullptr) {
       std::get<2>(rv).reset(errorCode, "JavaScript exception");
@@ -139,25 +143,25 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
 
   int errorNum = -1;
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum"))) {
+  if (TRI_HasProperty(context, isolate, object, "errorNum")) {
     errorNum = static_cast<int>(TRI_ObjectToInt64(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
+        isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
   }
 
   try {
-    if ((errorNum != -1) &&
-        (object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage")) ||
-         object->Has(TRI_V8_ASCII_STRING(isolate, "message")))) {
+    if ((errorNum != -1) && (TRI_HasProperty(context, isolate, object, "errorMessage") ||
+                             TRI_HasProperty(context, isolate, object, "message"))) {
       std::string errorMessage;
-      if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))) {
+      if (TRI_HasProperty(context, isolate, object, "errorMessage")) {
         v8::String::Utf8Value msg(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
+            isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
         if (*msg != nullptr) {
           errorMessage = std::string(*msg, msg.length());
         }
       } else {
-        v8::String::Utf8Value msg(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+        v8::String::Utf8Value msg(isolate,
+                                  object->Get(
+                                      TRI_V8_ASCII_STRING(isolate, "message")));
         if (*msg != nullptr) {
           errorMessage = std::string(*msg, msg.length());
         }
@@ -168,18 +172,18 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
       return rv;
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
-        object->Has(TRI_V8_ASCII_STRING(isolate, "message"))) {
+    if (TRI_HasProperty(context, isolate, object, "name") &&
+        TRI_HasProperty(context, isolate, object, "message")) {
       std::string name;
-      v8::String::Utf8Value nameString(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
+      v8::String::Utf8Value nameString(isolate, object->Get(TRI_V8_ASCII_STRING(isolate,
+                                                                                "name")));
       if (*nameString != nullptr) {
         name = std::string(*nameString, nameString.length());
       }
 
       std::string message;
       v8::String::Utf8Value messageString(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
       if (*messageString != nullptr) {
         message = std::string(*messageString, messageString.length());
       }

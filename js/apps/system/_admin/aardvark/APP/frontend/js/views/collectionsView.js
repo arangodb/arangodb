@@ -35,9 +35,7 @@
     checkLockedCollections: function () {
       var callback = function (error, lockedCollections) {
         var self = this;
-        if (error) {
-          console.log('Could not check locked collections');
-        } else {
+        if (!error) {
           this.collection.each(function (model) {
             model.set('locked', false);
           });
@@ -350,20 +348,33 @@
         } else {
           var collName = $('#new-collection-name').val();
           var collSize = $('#new-collection-size').val();
-          var replicationFactor = $('#new-replication-factor').val();
+          var replicationFactor = Number($('#new-replication-factor').val());
+          var minReplicationFactor = Number($('#new-min-replication-factor').val());
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
-          var shardBy = [];
+          var shardKeys = [];
+          var smartJoinAttribute = '';
+          var distributeShardsLike = '';
 
           if (replicationFactor === '') {
             replicationFactor = 1;
+          }
+          if (minReplicationFactor === '') {
+            minReplicationFactor = 1;
           }
           if ($('#is-satellite-collection').val() === 'true') {
             replicationFactor = 'satellite';
           }
 
           if (isCoordinator) {
+            if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
+              smartJoinAttribute = $('#smart-join-attribute').val().trim();
+            }
+            if (frontendConfig.isEnterprise) {
+              distributeShardsLike = $('#distribute-shards-like').val().trim();
+            }
+
             shards = $('#new-collection-shards').val();
 
             if (shards === '') {
@@ -376,9 +387,11 @@
               );
               return 0;
             }
-            shardBy = _.pluck($('#new-collection-shardBy').select2('data'), 'text');
-            if (shardBy.length === 0) {
-              shardBy.push('_key');
+            shardKeys = _.pluck($('#new-collection-shardKeys').select2('data'), 'text');
+            if (shardKeys.length === 0) {
+              shardKeys.push('_key');
+            } else {
+              _.each(shardKeys, function (element, index) { shardKeys[index] = arangoHelper.escapeHtml(element); });
             }
           }
           if (collName.substr(0, 1) === '_') {
@@ -415,21 +428,45 @@
             }
           }.bind(this);
 
+          var abort = false;
+          try {
+            if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
+              // validation here, as our Joi integration misses some core features
+              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater than replication factor");
+              abort = true;
+            }
+          } catch (ignore) {
+          }
+
           var tmpObj = {
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
-            shardBy: shardBy
+            shardKeys: shardKeys
           };
+
           if (self.engine.name !== 'rocksdb') {
             tmpObj.journalSize = collSize;
           }
-          this.collection.newCollection(tmpObj, callback);
-          window.modalView.hide();
-          arangoHelper.arangoNotification('Collection', 'Collection "' + collName + '" will be created.');
+          if (smartJoinAttribute !== '') {
+            tmpObj.smartJoinAttribute = smartJoinAttribute;
+          }
+
+          tmpObj.distributeShardsLike = distributeShardsLike;
+          if (distributeShardsLike === '' && window.App.isCluster) {
+            // if we are in the cluster and are not using distribute shards like
+            // then we want to make use of the replication factor
+            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+            tmpObj.minReplicationFactor = Number(minReplicationFactor);
+          }
+
+          if (!abort) {
+            this.collection.newCollection(tmpObj, callback);
+            window.modalView.hide();
+            arangoHelper.arangoNotification('Collection', 'Collection "' + collName + '" will be created.');
+          }
         }
       }.bind(this);
 
@@ -437,6 +474,24 @@
     },
 
     createNewCollectionModal: function () {
+        var self = this;
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/database/properties'), //get default properties of current db
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.createNewCollectionModalReal(data.result);
+          },
+          error: function () {
+            arangoHelper.arangoError('Engine', 'Could not fetch default collection properties.');
+          }
+        });
+
+    },
+
+    createNewCollectionModalReal: function (properties) {
       var self = this;
       var callbackCoord2 = function (error, isCoordinator) {
         if (error) {
@@ -471,6 +526,7 @@
               ]
             )
           );
+
           tableContent.push(
             window.modalView.createSelectEntry(
               'new-collection-type',
@@ -485,18 +541,17 @@
             tableContent.push(
               window.modalView.createTextEntry(
                 'new-collection-shards',
-                'Shards',
+                'Number of shards',
                 '',
-                'The number of shards to create. You cannot change this afterwards. ' +
-                'Recommended: DBServers squared',
+                'The number of shards to create. You cannot change this afterwards. ',
                 '',
                 true
               )
             );
             tableContent.push(
               window.modalView.createSelect2Entry(
-                'new-collection-shardBy',
-                'shardBy',
+                'new-collection-shardKeys',
+                'Shard keys',
                 '',
                 'The keys used to distribute documents on shards. ' +
                 'Type the key and press return to add it.',
@@ -504,6 +559,25 @@
                 false
               )
             );
+          
+            if (window.App.isCluster) {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-replication-factor',
+                  'Replication factor',
+                  ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.replicationFactor : '',
+                  'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+                  '',
+                  false,
+                  [
+                    {
+                      rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                      msg: 'Must be a number between 1 and 10.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           buttons.push(
@@ -515,6 +589,18 @@
           if (window.App.isCluster) {
             if (frontendConfig.isEnterprise) {
               advancedTableContent.push(
+                window.modalView.createTextEntry(
+                  'distribute-shards-like',
+                  'Distribute shards like',
+                  properties.sharding === "single" ? "_graphs" : "",
+                  'Name of another collection that should be used as a prototype for sharding this collection.',
+                  '',
+                  false,
+                  [
+                  ]
+                )
+              );
+              advancedTableContent.push(
                 window.modalView.createSelectEntry(
                   'is-satellite-collection',
                   'Satellite collection',
@@ -523,20 +609,35 @@
                   [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
                 )
               );
+              advancedTableContent.push(
+                window.modalView.createTextEntry(
+                  'smart-join-attribute',
+                  'Smart join attribute',
+                  '',
+                  'String attribute name. Can be left empty if smart joins are not used.',
+                  '',
+                  false,
+                  [
+                  ]
+                )
+              );
             }
+
             advancedTableContent.push(
               window.modalView.createTextEntry(
-                'new-replication-factor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+                'new-min-replication-factor',
+                'Mininum replication factor',
+                ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.minReplicationFactor : '',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,
                 [
                   {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
+                    rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                    msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                   }
+                  // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
+                  // So we cannot easily verify if minReplication > replicationFactor...
                 ]
               )
             );
@@ -579,7 +680,7 @@
           );
 
           // select2 workaround
-          $('#s2id_new-collection-shardBy .select2-search-field input').on('focusout', function (e) {
+          $('#s2id_new-collection-shardKeys .select2-search-field input').on('focusout', function (e) {
             if ($('.select2-drop').is(':visible')) {
               if (!$('#select2-search-field input').is(':focus')) {
                 window.setTimeout(function () {
@@ -593,10 +694,13 @@
             $('#is-satellite-collection').on('change', function (element) {
               if ($('#is-satellite-collection').val() === 'true') {
                 $('#new-replication-factor').prop('disabled', true);
+                $('#new-min-replication-factor').prop('disabled', true);
               } else {
                 $('#new-replication-factor').prop('disabled', false);
+                $('#new-min-replication-factor').prop('disabled', false);
               }
               $('#new-replication-factor').val('').focus().focusout();
+              $('#new-min-replication-factor').val('').focus().focusout();
             });
           }
         }

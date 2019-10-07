@@ -114,9 +114,9 @@ void AggregatorHandler::resetValues() {
 }
 
 bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) const {
-  READ_LOCKER(guard, _lock);
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+  READ_LOCKER(guard, _lock);
   for (auto const& pair : _values) {
     AggregatorID const& name = pair.first;
     IAggregator* agg = pair.second;
@@ -125,6 +125,7 @@ bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) co
       hasValues = true;
     }
   }
+  guard.unlock();
   b.close();
   return hasValues;
 }

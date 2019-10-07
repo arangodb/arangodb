@@ -98,8 +98,6 @@ NS_END
   // NOOP
 #endif
 
-#include <boost/crc.hpp>
-
 NS_ROOT
 
 typedef boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true> crc32c;

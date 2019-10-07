@@ -25,7 +25,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -35,6 +34,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
@@ -42,6 +42,7 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <regex>
 
@@ -98,15 +99,15 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
     auto queryRegistry = QueryRegistryFeature::registry();
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+    if (queryResult.result.fail()) {
+      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
         return Result(TRI_ERROR_REQUEST_CANCELED);
       }
-      return Result(queryResult.code, "error group-deleting user defined AQL");
+      return queryResult.result;
     }
 
-    VPackSlice countSlice = queryResult.result->slice();
+    VPackSlice countSlice = queryResult.data->slice();
     if (!countSlice.isArray()) {
       return Result(TRI_ERROR_INTERNAL,
                     "bad query result for deleting AQL user functions");
@@ -164,16 +165,15 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
     auto queryRegistry = QueryRegistryFeature::registry();
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+    if (queryResult.result.fail()) {
+      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
         return Result(TRI_ERROR_REQUEST_CANCELED);
       }
-      return Result(queryResult.code,
-                    std::string("Error group-deleting AQL user functions"));
+      return queryResult.result;
     }
 
-    VPackSlice countSlice = queryResult.result->slice();
+    VPackSlice countSlice = queryResult.data->slice();
     if (!countSlice.isArray()) {
       return Result(TRI_ERROR_INTERNAL,
                     "bad query result for deleting AQL user functions");
@@ -233,8 +233,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-    V8ContextDealerGuard dealerGuard(res, isolate, &vocbase, true /*allowModification*/
-    );
+   
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
 
     if (res.fail()) {
       return res;
@@ -246,7 +247,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
     v8::Handle<v8::Value> result;
     {
-      v8::TryCatch tryCatch;
+      v8::TryCatch tryCatch(isolate);
 
       result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                            TRI_V8_STD_STRING(isolate, testCode),
@@ -357,19 +358,15 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   auto queryRegistry = QueryRegistryFeature::registry();
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       return Result(TRI_ERROR_REQUEST_CANCELED);
     }
-    return Result(
-        queryResult.code,
-        std::string(
-            "error fetching user defined AQL functions with this query: ") +
-            queryResult.details);
+    return queryResult.result;
   }
 
-  auto usersFunctionsSlice = queryResult.result->slice();
+  auto usersFunctionsSlice = queryResult.data->slice();
 
   if (!usersFunctionsSlice.isArray()) {
     return Result(TRI_ERROR_INTERNAL,
@@ -397,7 +394,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     }
     // We simply ignore invalid entries in the _functions collection:
     if (name.isString() && fn.isString() && (fn.getStringLength() > 2)) {
-      auto ref = StringRef(fn);
+      auto ref = arangodb::velocypack::StringRef(fn);
 
       ref = ref.substr(1, ref.length() - 2);
       tmp = basics::StringUtils::trim(ref.toString());

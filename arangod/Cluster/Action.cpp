@@ -34,6 +34,7 @@
 #include "Cluster/NonAction.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
+#include "Cluster/TakeoverShardLeadership.h"
 #include "Cluster/UpdateCollection.h"
 
 #include "Logger/Logger.h"
@@ -91,6 +92,11 @@ static factories_t const factories = factories_t{
        return std::unique_ptr<ActionBase>(new UpdateCollection(f, a));
      }},
 
+    {TAKEOVER_SHARD_LEADERSHIP,
+     [](MaintenanceFeature& f, ActionDescription const& a) {
+       return std::unique_ptr<ActionBase>(new TakeoverShardLeadership(f, a));
+     }},
+
 };
 
 Action::Action(MaintenanceFeature& feature, ActionDescription const& description)
@@ -114,7 +120,7 @@ Action::Action(MaintenanceFeature& feature, std::shared_ptr<ActionDescription> c
 Action::Action(std::unique_ptr<ActionBase> action)
     : _action(std::move(action)) {}
 
-Action::~Action() {}
+Action::~Action() = default;
 
 void Action::create(MaintenanceFeature& feature, ActionDescription const& description) {
   auto factory = factories.find(description.name());
@@ -179,6 +185,29 @@ void Action::endStats() { _action->endStats(); }
 void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(_action != nullptr);
   _action->toVelocyPack(builder);
+}
+
+bool Action::operator<(Action const& other) const {
+  // This is to sort actions in a priority queue, therefore, the higher, the
+  // higher the priority. FastTrack is always higher, priority counts then,
+  // and finally creation time (earlier is higher):
+  if (!fastTrack() && other.fastTrack()) {
+    return true;
+  }
+  if (fastTrack() && !other.fastTrack()) {
+    return false;
+  }
+  if (priority() < other.priority()) {
+    return true;
+  }
+  if (priority() > other.priority()) {
+    return false;
+  }
+  if (getCreateTime() > other.getCreateTime()) {
+    // Intentional inversion! smaller time is higher priority.
+    return true;
+  }
+  return false;
 }
 
 namespace std {

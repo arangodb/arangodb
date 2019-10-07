@@ -30,8 +30,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var startupPath = global.STARTUP_PATH;
-  var load = global.SYS_LOAD;
+  let startupPath = global.STARTUP_PATH;
+  let load = global.SYS_LOAD;
 
   if (startupPath === '') {
     startupPath = '.';

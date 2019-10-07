@@ -24,8 +24,11 @@
 #ifndef ARANGOD_AQL_COLLECTIONS_H
 #define ARANGOD_AQL_COLLECTIONS_H 1
 
-#include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
+
+#include <map>
+#include <string>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -52,7 +55,7 @@ class Collections {
 
   std::map<std::string, Collection*> const* collections() const;
 
-  bool empty() const { return _collections.empty(); }
+  bool empty() const;
 
  private:
   TRI_vocbase_t* _vocbase;

@@ -37,23 +37,22 @@ static inline v8::Handle<v8::Value> TRI_V8UInt64String(v8::Isolate* isolate, T v
 }
 
 // converts a V8 object to a string
-std::string TRI_ObjectToString(v8::Handle<v8::Value>);
 std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value>);
 
 // converts a V8 object to an int64_t
-int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const);
+int64_t TRI_ObjectToInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 
 // converts a V8 object to a uint64_t
-uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const, bool);
+uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const, bool);
 
 // converts a V8 object to a double
-double TRI_ObjectToDouble(v8::Handle<v8::Value> const);
+double TRI_ObjectToDouble(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 
 // converts a V8 object to a double with error handling
-double TRI_ObjectToDouble(v8::Handle<v8::Value> const, bool& error);
+double TRI_ObjectToDouble(v8::Isolate* isolate, v8::Handle<v8::Value> const, bool& error);
 
 // converts a V8 object to a boolean
-bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const);
+bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 
 bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate, v8::Handle<v8::Object> const obj,
                                     const char* property, bool defaultValue);

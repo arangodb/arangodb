@@ -50,7 +50,6 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
@@ -71,7 +70,6 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   SmallVector<MMFilesDocumentOperation*, 64>::allocator_type::arena_type _arena;
   SmallVector<MMFilesDocumentOperation*, 64> _operations;
   TRI_voc_rid_t _originalRevision;  // collection revision at trx start
-  int _nestingLevel;       // the transaction level that added this collection
   bool _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;       // whether or not the collection has waitForSync
 };

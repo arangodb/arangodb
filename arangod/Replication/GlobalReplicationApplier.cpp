@@ -24,7 +24,9 @@
 #include "GlobalReplicationApplier.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalTailingSyncer.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -64,7 +66,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("f270b", DEBUG, Logger::REPLICATION)
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
@@ -85,12 +87,13 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
     TRI_ASSERT(builder.isEmpty());
-    return ReplicationApplierConfiguration();
+    return ReplicationApplierConfiguration(engine->server());
   }
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), std::string());
+  return ReplicationApplierConfiguration::fromVelocyPack(engine->server(),
+                                                         builder.slice(), std::string());
 }
 
 std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
@@ -105,9 +108,9 @@ std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
 
 std::string GlobalReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
-  auto vocbase = sysDbFeature->use();
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto vocbase = sysDbFeature.use();
 
   std::string const path = engine->databasePath(vocbase.get());
   if (path.empty()) {

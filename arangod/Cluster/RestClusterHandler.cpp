@@ -18,15 +18,17 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/Supervision.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
@@ -36,8 +38,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestClusterHandler::RestClusterHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestClusterHandler::RestClusterHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestClusterHandler::execute() {
   if (_request->requestType() != RequestType::GET) {
@@ -47,24 +50,57 @@ RestStatus RestClusterHandler::execute() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (!suffixes.empty() && suffixes[0] == "endpoints") {
-    handleCommandEndpoints();
-  } else {
-    generateError(
-        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/endpoints"));
-  }
+  if (!suffixes.empty()) {
+    if (suffixes[0] == "endpoints") {
+      handleCommandEndpoints();
+      return RestStatus::DONE;
+    } else if (suffixes[0] == "agency-dump") {
+      handleAgencyDump();
+      return RestStatus::DONE;
+    }
+  } 
+  
+  generateError(
+    Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
 
   return RestStatus::DONE;
 }
 
+void RestClusterHandler::handleAgencyDump() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only to be executed on coordinators");
+    return;
+  }
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce an agency dump");
+      return;
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ci.agencyDump(body);
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+
 /// @brief returns information about all coordinator endpoints
 void RestClusterHandler::handleCommandEndpoints() {
-  ClusterInfo* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<ServerID> endpoints;
 
   if (ServerState::instance()->isCoordinator()) {
-    endpoints = ci->getCurrentCoordinators();
+    endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
     if (!replication->isActiveFailoverEnabled() || !AgencyCommManager::isEnabled()) {
@@ -138,8 +174,8 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     for (ServerID const& sid : endpoints) {
       VPackObjectBuilder obj(&builder);
-      std::string advertised = ci->getServerAdvertisedEndpoint(sid);
-      std::string internal = ci->getServerEndpoint(sid);
+      std::string advertised = ci.getServerAdvertisedEndpoint(sid);
+      std::string internal = ci.getServerEndpoint(sid);
       if (!advertised.empty()) {
         builder.add("endpoint", VPackValue(advertised));
         builder.add("internal", VPackValue(internal));

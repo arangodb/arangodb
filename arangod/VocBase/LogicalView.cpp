@@ -25,12 +25,15 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -72,7 +75,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, u
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
-                                     bool detailed, bool forPersistence) const {
+                                     std::underlying_type<Serialize>::type flags) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -81,7 +84,19 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
   builder.add(StaticStrings::DataSourceType, arangodb::velocypack::Value(type().name()));
 
-  return appendVelocyPackImpl(builder, detailed, forPersistence);
+  return appendVelocyPackImpl(builder, flags);
+}
+
+bool LogicalView::canUse(arangodb::auth::Level const& level) {
+  // as per https://github.com/arangodb/backlog/issues/459
+  return ExecContext::current().canUseDatabase(vocbase().name(), level); // can use vocbase
+
+  /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
+  return !ctx // authentication not enabled
+    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
+        && (ctx->canUseCollection(vocbase.name(), name(), level)) // can use view
+       );
+  */
 }
 
 /*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
@@ -92,19 +107,23 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
 /*static*/ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                                       velocypack::Slice definition) {
-  auto* viewTypes =
-      application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
-
-  if (!viewTypes) {
+  if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
+    std::string name;
+    if (definition.isObject()) {
+      name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
+                                                      "");
+    }
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(
         TRI_ERROR_INTERNAL,
         "Failure to get 'ViewTypes' feature while creating LogicalView");
   }
+  auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
   auto type =
       basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
                                              velocypack::StringRef(nullptr, 0));
-  auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.create(view, vocbase, definition);
 }
@@ -149,16 +168,15 @@ Result LogicalView::drop() {
     return true;
   }
 
-  auto* engine = arangodb::ClusterInfo::instance();
-
-  if (!engine) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
+  if (!vocbase.server().hasFeature<ClusterFeature>()) {
+    LOG_TOPIC("694fd", ERR, Logger::VIEWS)
         << "failure to get storage engine while enumerating views";
 
     return false;
   }
+  auto& engine = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-  for (auto& view : engine->getViews(vocbase.name())) {
+  for (auto& view : engine.getViews(vocbase.name())) {
     if (!callback(view)) {
       return false;
     }
@@ -170,19 +188,17 @@ Result LogicalView::drop() {
 /*static*/ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                                            velocypack::Slice definition, uint64_t planVersion /*= 0*/
 ) {
-  auto* viewTypes =
-      application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
-
-  if (!viewTypes) {
+  if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
         "Failure to get 'ViewTypes' feature while creating LogicalView");
   }
+  auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
   auto type =
       basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
                                              velocypack::StringRef(nullptr, 0));
-  auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.instantiate(view, vocbase, definition, planVersion);
 }
@@ -217,14 +233,13 @@ Result LogicalView::rename(std::string&& newName) {
                                                           TRI_vocbase_t& vocbase,
                                                           velocypack::Slice const& definition) noexcept {
   try {
-    auto* engine = ClusterInfo::instance();
-
-    if (!engine) {
+    if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failure to find storage engine while creating "
                                 "arangosearch View in database '") +
                         vocbase.name() + "'");
     }
+    auto& engine = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
     LogicalView::ptr impl;
     auto res = LogicalView::instantiate(impl, vocbase, definition);
@@ -244,40 +259,31 @@ Result LogicalView::rename(std::string&& newName) {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = impl->properties(builder, true,
-                           true);  // include links so that Agency will always
-                                   // have a full definition
+    // include links so that Agency will always have a full definition
+    res = impl->properties(builder,
+                           LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                                        LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;
     }
 
     builder.close();
+    res = engine.createViewCoordinator(  // create view
+        vocbase.name(), std::to_string(impl->id()), builder.slice()  // args
+    );
 
-    std::string error;
-    auto resNum =
-        engine->createViewCoordinator(vocbase.name(), std::to_string(impl->id()),
-                                      builder.slice(), error);
-
-    if (TRI_ERROR_NO_ERROR != resNum) {
-      if (error.empty()) {
-        error = TRI_errno_string(resNum);
-      }
-
-      return arangodb::Result(
-          resNum,
-          std::string("failure during ClusterInfo persistance of created view "
-                      "while creating arangosearch View in database '") +
-              vocbase.name() + "', error: " + error);
+    if (!res.ok()) {
+      return res;
     }
 
-    view = engine->getView(vocbase.name(),
-                           std::to_string(impl->id()));  // refresh view from Agency
+    view = engine.getView(vocbase.name(),
+                          std::to_string(impl->id()));  // refresh view from Agency
 
     if (view) {
-      view->open();  // open view to match the behaviour in
+      view->open();  // open view to match the behavior in
                      // StorageEngine::openExistingDatabase(...) and original
-                     // behaviour of TRI_vocbase_t::createView(...)
+                     // behavior of TRI_vocbase_t::createView(...)
     }
 
     return Result();
@@ -297,31 +303,17 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperClusterInfo::drop(LogicalView const& view) noexcept {
   try {
-    auto* engine = ClusterInfo::instance();
-
-    if (!engine) {
+    if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
       return Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to find storage engine while dropping view '") +
               view.name() + "' from database '" + view.vocbase().name() + "'");
     }
+    auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    std::string error;
-    auto res = engine->dropViewCoordinator(view.vocbase().name(),
-                                           std::to_string(view.id()), error);
-
-    if (TRI_ERROR_NO_ERROR == res) {
-      return Result();
-    }
-
-    if (error.empty()) {
-      error = TRI_errno_string(res);
-    }
-
-    return Result(res,
-                  std::string("failure during ClusterInfo removal of view '") +
-                      view.name() + "' from database '" +
-                      view.vocbase().name() + "': " + error);
+    return engine.dropViewCoordinator(                    // drop view
+        view.vocbase().name(), std::to_string(view.id())  // args
+    );
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {
@@ -338,21 +330,23 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperClusterInfo::properties(LogicalView const& view) noexcept {
   try {
-    auto* engine = ClusterInfo::instance();
-
-    if (!engine) {
+    if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failure to find storage engine while updating "
                                 "definition of view '") +
                         view.name() + "' from database '" +
                         view.vocbase().name() + "'");
     }
+    auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     velocypack::Builder builder;
 
     builder.openObject();
 
-    auto res = view.properties(builder, true, true);
+    auto res =
+        view.properties(builder,
+                        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                                     LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;
@@ -360,9 +354,9 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.close();
 
-    return engine->setViewPropertiesCoordinator(view.vocbase().name(),
-                                                std::to_string(view.id()),
-                                                builder.slice());
+    return engine.setViewPropertiesCoordinator(view.vocbase().name(),
+                                               std::to_string(view.id()),
+                                               builder.slice());
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {
@@ -481,35 +475,32 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperStorageEngine::properties(LogicalView const& view) noexcept {
   try {
-    auto* databaseFeature =
-        application_features::ApplicationServer::lookupFeature<DatabaseFeature>(
-            "Database");
-
-    if (!databaseFeature) {
+    if (!view.vocbase().server().hasFeature<DatabaseFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find feature 'Database' while "
                                 "updating definition of view '") +
                         view.name() + "' in database '" +
                         view.vocbase().name() + "'");
     }
+    auto& databaseFeature = view.vocbase().server().getFeature<DatabaseFeature>();
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-
-    if (!engine) {
+    if (!view.vocbase().server().hasFeature<EngineSelectorFeature>() ||
+        !view.vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find a storage engine while "
                                 "updating definition of view '") +
                         view.name() + "' in database '" +
                         view.vocbase().name() + "'");
     }
+    auto& engine = view.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-    auto doSync = databaseFeature->forceSyncProperties();
+    auto doSync = databaseFeature.forceSyncProperties();
 
-    if (engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return Result();  // do not modify engine while in recovery
     }
 
-    return engine->changeView(view.vocbase(), view, doSync);
+    return engine.changeView(view.vocbase(), view, doSync);
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {

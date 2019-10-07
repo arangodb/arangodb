@@ -42,13 +42,20 @@
   exports.db = global.db;
   delete global.db;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief ArangoAnalyzers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoAnalyzers = global.ArangoAnalyzers;
+  delete global.ArangoAnalyzers;
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoCollection
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.ArangoCollection = global.ArangoCollection;
   delete global.ArangoCollection;
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoView
   // //////////////////////////////////////////////////////////////////////////////
@@ -62,7 +69,7 @@
 
   exports.ArangoUsers = global.ArangoUsers;
   delete global.ArangoUsers;
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoGeneralGraphModule
   // //////////////////////////////////////////////////////////////////////////////
@@ -150,6 +157,18 @@
     }
   };
 
+  // / @brief ttlStatistics
+  if (global.SYS_TTL_STATISTICS) {
+    exports.ttlStatistics = global.SYS_TTL_STATISTICS;
+    delete global.SYS_TTL_STATISTICS;
+  }
+
+  // / @brief ttlProperties
+  if (global.SYS_TTL_PROPERTIES) {
+    exports.ttlProperties = global.SYS_TTL_PROPERTIES;
+    delete global.SYS_TTL_PROPERTIES;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief defines an action
   // //////////////////////////////////////////////////////////////////////////////
@@ -158,6 +177,22 @@
     exports.defineAction = global.SYS_DEFINE_ACTION;
     delete global.SYS_DEFINE_ACTION;
   }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief expose configuration
+  // //////////////////////////////////////////////////////////////////////////////
+
+
+  if (global.SYS_IS_FOXX_API_DISABLED) {
+    exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
+    delete global.SYS_IS_FOXX_API_DISABLED;
+  }
+
+  if (global.SYS_IS_FOXX_STORE_DISABLED) {
+    exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
+    delete global.SYS_IS_FOXX_STORE_DISABLED;
+  }
+
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief throw-collection-not-loaded
@@ -187,7 +222,7 @@
       }
 
       modules = modules.byExample({ autoload: true }).toArray();
-        
+
       modules.forEach(function (module) {
         // this module is only meant to be executed in one thread
         if (exports.threadNumber !== 0 && !module.perThread) {
@@ -221,15 +256,67 @@
   };
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief executes a string in all V8 contexts
+  // / @brief serverStatistics
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
-    exports.executeGlobalContextFunction = global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }else {
-    exports.executeGlobalContextFunction = function () {
-      // nothing to do. we're probably in --no-server mode
-    };
+  if (global.SYS_SERVER_STATISTICS) {
+    exports.serverStatistics = global.SYS_SERVER_STATISTICS;
+    delete global.SYS_SERVER_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief processStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS) {
+    exports.thisProcessStatistics = global.SYS_PROCESS_STATISTICS;
+    exports.processStatistics = global.SYS_PROCESS_STATISTICS;
+    delete global.SYS_PROCESS_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not Statistics are enabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ENABLED_STATISTICS) {
+    exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
+    delete global.SYS_ENABLED_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief clientStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_CLIENT_STATISTICS) {
+    exports.clientStatistics = global.SYS_CLIENT_STATISTICS;
+    delete global.SYS_CLIENT_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief httpStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_HTTP_STATISTICS) {
+    exports.httpStatistics = global.SYS_HTTP_STATISTICS;
+    delete global.SYS_HTTP_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getCurrentRequest
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_GET_CURRENT_REQUEST) {
+    exports.getCurrentRequest = global.SYS_GET_CURRENT_REQUEST;
+    delete global.SYS_GET_CURRENT_REQUEST;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getCurrentResponse
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_GET_CURRENT_RESPONSE) {
+    exports.getCurrentResponse = global.SYS_GET_CURRENT_RESPONSE;
+    delete global.SYS_GET_CURRENT_RESPONSE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -238,11 +325,10 @@
 
   if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
     exports.reloadAqlFunctions = function () {
-      exports.executeGlobalContextFunction('reloadAql');
+      global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadAql');
       require('@arangodb/aql').reload();
     };
-    delete global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }else {
+  } else {
     exports.reloadAqlFunctions = function () {
       require('@arangodb/aql').reload();
     };
@@ -302,6 +388,14 @@
   if (global.REPLICATION_SERVER_ID) {
     exports.serverId = global.REPLICATION_SERVER_ID;
     delete global.REPLICATION_SERVER_ID;
+  }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for index selectivity estimate sync
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
+    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
+    delete global.WAIT_FOR_ESTIMATOR_SYNC;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -416,12 +510,12 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSegfault
+  // / @brief debugTerminate
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_DEBUG_SEGFAULT) {
-    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-    delete global.SYS_DEBUG_SEGFAULT;
+  if (global.SYS_DEBUG_TERMINATE) {
+    exports.debugTerminate = global.SYS_DEBUG_TERMINATE;
+    delete global.SYS_DEBUG_TERMINATE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -443,6 +537,15 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugShouldFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_SHOULD_FAILAT) {
+    exports.debugShouldFailAt = global.SYS_DEBUG_SHOULD_FAILAT;
+    delete global.SYS_DEBUG_SHOULD_FAILAT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief debugClearFailAt
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -459,5 +562,14 @@
     exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
     delete global.SYS_DEBUG_CAN_USE_FAILAT;
   }
+
+  // /////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not clustering is enabled
+  // /////////////////////////////////////////////////////////////////////////////
+
+  exports.isCluster = function () {
+    var role = global.ArangoServerState.role();
+    return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
+  };
 
 }());

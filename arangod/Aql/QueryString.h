@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_QUERY_STRING_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
+#include <velocypack/StringRef.h>
 
 #include <iosfwd>
 
@@ -41,7 +41,7 @@ class QueryString {
   QueryString(char const* data, size_t length)
       : _queryString(data, length), _hash(0), _hashed(false) {}
 
-  explicit QueryString(arangodb::StringRef const& ref)
+  explicit QueryString(arangodb::velocypack::StringRef const& ref)
       : QueryString(ref.data(), ref.size()) {}
 
   explicit QueryString(std::string const& val)

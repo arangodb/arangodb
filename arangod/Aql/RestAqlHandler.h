@@ -40,27 +40,21 @@ class TraverserEngineRegistry;
 namespace aql {
 class Query;
 class QueryRegistry;
+enum class SerializationFormat;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(GeneralRequest*, GeneralResponse*,
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
                  std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  RequestLane lane() const override final {
-    return RequestLane::CLUSTER_INTERNAL;
-  }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
   RestStatus execute() override;
   RestStatus continueExecute() override;
 
  public:
-  // POST method for /_api/aql/instantiate
-  // The body is a VelocyPack with attributes "plan" for the execution plan and
-  // "options" for the options, all exactly as in AQL_EXECUTEJSON.
-  void createQueryFromVelocyPack();
-
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "getSome" or "skip".
@@ -108,8 +102,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   bool registerSnippets(arangodb::velocypack::Slice const snippets,
                         arangodb::velocypack::Slice const collections,
                         arangodb::velocypack::Slice const variables,
-                        std::shared_ptr<arangodb::velocypack::Builder> options,
-                        std::shared_ptr<transaction::Context> const& ctx, double const ttl,
+                        std::shared_ptr<arangodb::velocypack::Builder> const& options,
+                        std::shared_ptr<transaction::Context> const& ctx,
+                        double const ttl, aql::SerializationFormat format,
                         bool& needToLock, arangodb::velocypack::Builder& answer);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
@@ -134,6 +129,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  private:
   // dig out vocbase from context and query from ID, handle errors
   bool findQuery(std::string const& idString, Query*& query);
+
+  // generate patched options with TTL extracted from request
+  std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
 
   // our query registry
   QueryRegistry* _queryRegistry;

@@ -45,14 +45,17 @@ segment_meta::segment_meta(
     uint64_t live_docs_count,
     bool column_store,
     segment_meta::file_set&& files,
-    size_t size
-): files(std::move(files)),
-   name(std::move(name)),
-   docs_count(docs_count),
-   live_docs_count(live_docs_count),
-   codec(codec),
-   size(size),
-   column_store(column_store) {
+    size_t size, /* = 0*/
+    field_id sort /* = field_limits::invalid() */
+) NOEXCEPT
+  : files(std::move(files)),
+    name(std::move(name)),
+    docs_count(docs_count),
+    live_docs_count(live_docs_count),
+    codec(codec),
+    size(size),
+    sort(sort),
+    column_store(column_store) {
 }
 
 segment_meta::segment_meta(segment_meta&& rhs) NOEXCEPT
@@ -63,9 +66,11 @@ segment_meta::segment_meta(segment_meta&& rhs) NOEXCEPT
     codec(rhs.codec),
     size(rhs.size),
     version(rhs.version),
+    sort(rhs.sort),
     column_store(rhs.column_store) {
   rhs.docs_count = 0;
   rhs.size = 0;
+  rhs.sort = field_limits::invalid();
 }
 
 segment_meta& segment_meta::operator=(segment_meta&& rhs) NOEXCEPT {
@@ -81,6 +86,8 @@ segment_meta& segment_meta::operator=(segment_meta&& rhs) NOEXCEPT {
     size = rhs.size;
     rhs.size = 0;
     version = rhs.version;
+    sort = rhs.sort;
+    rhs.sort = field_limits::invalid();
     column_store = rhs.column_store;
   }
 
@@ -104,7 +111,7 @@ bool segment_meta::operator!=(const segment_meta& other) const NOEXCEPT {
     || size != other.size
     || column_store != other.column_store
     || files != other.files
-  ;
+    || sort != other.sort;
 }
 
 /* -------------------------------------------------------------------
@@ -120,14 +127,18 @@ index_meta::index_meta(const index_meta& rhs)
   : gen_(rhs.gen_),
     last_gen_(rhs.last_gen_),
     seg_counter_(rhs.seg_counter_.load()),
-    segments_(rhs.segments_) {
+    segments_(rhs.segments_),
+    payload_buf_(rhs.payload_buf_),
+    payload_(rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_)) {
 }
 
 index_meta::index_meta(index_meta&& rhs) NOEXCEPT
   : gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
     seg_counter_(rhs.seg_counter_.load()),
-    segments_(std::move(rhs.segments_)) {
+    segments_(std::move(rhs.segments_)),
+    payload_buf_(std::move(rhs.payload_buf_)),
+    payload_(rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_)) {
 }
 
 index_meta& index_meta::operator=(index_meta&& rhs) NOEXCEPT {
@@ -136,6 +147,8 @@ index_meta& index_meta::operator=(index_meta&& rhs) NOEXCEPT {
     last_gen_ = std::move(rhs.last_gen_);
     seg_counter_ = rhs.seg_counter_.load();
     segments_ = std::move(rhs.segments_);
+    payload_buf_ = std::move(rhs.payload_buf_);
+    payload_ = rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_);
   }
 
   return *this;
@@ -149,7 +162,8 @@ bool index_meta::operator==(const index_meta& other) const NOEXCEPT {
   if (gen_ != other.gen_
       || last_gen_ != other.last_gen_
       || seg_counter_ != other.seg_counter_
-      || segments_.size() != other.segments_.size()) {
+      || segments_.size() != other.segments_.size()
+      || payload_ != other.payload_) {
     return false;
   }
 

@@ -43,14 +43,14 @@ function queryWithCollectionsTestSuite () {
   var errors = internal.errors;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection1");
       db._drop("UnitTestsCollection2");
       c1 = db._create("UnitTestsCollection1");
       c2 = db._create("UnitTestsCollection2");
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection2");
       db._drop("UnitTestsCollection1");
     },

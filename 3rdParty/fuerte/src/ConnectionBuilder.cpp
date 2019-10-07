@@ -29,7 +29,6 @@
 
 #include "HttpConnection.h"
 #include "VstConnection.h"
-#include "http_parser/http_parser.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Create an connection and start opening it.
@@ -72,8 +71,8 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   return result;
 }
   
-void parseSchema( std::string const& schema,
-                  detail::ConnectionConfiguration& conf) {
+void parseSchema(std::string const& schema,
+                 detail::ConnectionConfiguration& conf) {
   // non exthausive list of supported url schemas
   // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
   // "vsts://", "vst://", "http://", "https://", "vst+unix://", "vst+tcp://"
@@ -89,7 +88,7 @@ void parseSchema( std::string const& schema,
       conf._socketType = SocketType::Ssl;
     } else if (socket == "unix") {
       conf._socketType = SocketType::Unix;
-    } else {
+    } else if (conf._socketType == SocketType::Undefined) {
       throw std::runtime_error(std::string("invalid socket type: ") + proto);
     }
     
@@ -97,7 +96,7 @@ void parseSchema( std::string const& schema,
       conf._protocolType = ProtocolType::Vst;
     } else if (proto == "http") {
       conf._protocolType = ProtocolType::Http;
-    } else {
+    } else if (conf._protocolType == ProtocolType::Undefined) {
       throw std::runtime_error(std::string("invalid protocol: ") + proto);
     }
     
@@ -117,49 +116,111 @@ void parseSchema( std::string const& schema,
     } else if (proto == "unix") {
       conf._socketType = SocketType::Unix;
       conf._protocolType = ProtocolType::Http;
-    } else {
-      throw std::runtime_error(std::string("invalid protocol: ") + proto);
+    } else if (conf._socketType == SocketType::Undefined ||
+               conf._protocolType == ProtocolType::Undefined) {
+      throw std::runtime_error(std::string("invalid schema: ") + proto);
     }
   }
 }
 
-ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
-  // we need to handle unix:// urls seperately
-  size_t pos = host.find("://");
-  if (pos == std::string::npos) {
-    throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
+namespace {
+bool is_invalid(char c) { return c == ' ' || c == '\r' || c == '\n'; }
+char lower(char c) { return (unsigned char)(c | 0x20); }
+bool is_alpha(char c) { return (lower(c) >= 'a' && lower(c) <= 'z'); }
+bool is_num(char c) { return ((c) >= '0' && (c) <= '9'); }
+bool is_alphanum(char c) { return is_num(c) || is_alpha(c); }
+bool is_host_char(char c) {
+  return (is_alphanum(c) || (c) == '.' || (c) == '-');
+}
+}  // namespace
+
+ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
+  if (spec.empty()) {
+    throw std::runtime_error("invalid empty endpoint spec");
   }
-  std::string schema = host.substr(0, pos);
-  boost::algorithm::to_lower(schema); // in-place
-  parseSchema(schema, _conf);
+  
+  // we need to handle unix:// urls seperately
+  std::string::size_type pos = spec.find("://");
+  if (std::string::npos != pos) {
+    std::string schema = spec.substr(0, pos);
+    boost::algorithm::to_lower(schema); // in-place
+    parseSchema(schema, _conf);
+  }
   
   if (_conf._socketType == SocketType::Unix) {
-    // unix:///a/b/c does not contain a port
-    _conf._host = host.substr(pos + 3);
+    if (std::string::npos != pos) {
+      // unix:///a/b/c does not contain a port
+      _conf._host = spec.substr(pos + 3);
+    }
     return *this;
   }
   
-  // now lets perform proper URL parsing
-  struct http_parser_url parsed;
-  http_parser_url_init(&parsed);
-  int error = http_parser_parse_url(host.c_str(), host.length(), 0, &parsed);
-  if (error != 0) {
-    throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
+  pos = (pos != std::string::npos) ? pos + 3 : 0;
+  std::string::size_type x = pos + 1;
+  if (spec[pos] == '[') { // ipv6 addresses contain colons
+    pos++; // do not include '[' in actual address
+    while (spec[x] != '\0' && spec[x] != ']') {
+      if (is_invalid(spec[x])) {  // we could validate this better
+        throw std::runtime_error(std::string("invalid ipv6 address: ") + spec);
+      }
+      x++;
+    }
+    if (spec[x] != ']') {
+      throw std::runtime_error(std::string("invalid ipv6 address: ") + spec);
+    }
+    _conf._host = spec.substr(pos, ++x - pos - 1); // do not include ']'
+  } else {
+    while (spec[x] != '\0' && spec[x] != '/' && spec[x] != ':') {
+      if (!is_host_char(spec[x])) {
+        throw std::runtime_error(std::string("invalid host in spec: ") + spec);
+      }
+      x++;
+    }
+    _conf._host = spec.substr(pos, x - pos);
+  }
+  if (_conf._host.empty()) {
+    throw std::runtime_error(std::string("invalid host: ") + spec);
   }
   
-  // put hostname, port and path in seperate strings
-  if (!(parsed.field_set & (1 << UF_HOST))) {
-    throw std::runtime_error(std::string("invalid host: ") + host);
+  if (spec[x] == ':') {
+    pos = ++x;
+    while (spec[x] != '\0' && spec[x] != '/' && spec[x] != '?') {
+      if (!is_num(spec[x])) {
+        throw std::runtime_error(std::string("invalid port in spec: ") + spec);
+      }
+      x++;
+    }
+    _conf._port = spec.substr(pos, x - pos);
+    if (_conf._port.empty()) {
+      throw std::runtime_error(std::string("invalid port in spec: ") + spec);
+    }
   }
-  _conf._host = host.substr(parsed.field_data[UF_HOST].off,
-                            parsed.field_data[UF_HOST].len);
   
-  if (!(parsed.field_set & (1 << UF_PORT))) {
-    throw std::runtime_error(std::string("invalid port: ") + host);
-  }
-  _conf._port = host.substr(parsed.field_data[UF_PORT].off,
-                            parsed.field_data[UF_PORT].len);
-
   return *this;
 }
+  
+/// @brief get the normalized endpoint
+std::string ConnectionBuilder::normalizedEndpoint() const {
+  std::string endpoint;
+  if (ProtocolType::Http == _conf._protocolType) {
+    endpoint.append("http+");
+  } else if (ProtocolType::Vst == _conf._protocolType) {
+    endpoint.append("vst+");
+  }
+  
+  if (SocketType::Tcp == _conf._socketType) {
+    endpoint.append("tcp://");
+  } else if (SocketType::Ssl == _conf._socketType) {
+    endpoint.append("ssl://");
+  } else if (SocketType::Unix == _conf._socketType) {
+    endpoint.append("unix://");
+  }
+  
+  endpoint.append(_conf._host);
+  endpoint.push_back(':');
+  endpoint.append(_conf._port);
+  
+  return endpoint;
+}
+  
 }}}  // namespace arangodb::fuerte::v1

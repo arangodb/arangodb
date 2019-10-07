@@ -29,10 +29,11 @@
 
 namespace arangodb {
 
-class RocksDBReplicationResult : public Result {
+class RocksDBReplicationResult {
  public:
   RocksDBReplicationResult(int errorNumber, uint64_t lastTick);
   RocksDBReplicationResult(int errorNumber, char const* errorMessage, uint64_t lastTick);
+  void reset(Result const&);
   uint64_t maxTick() const;
   uint64_t lastScannedTick() const { return _lastScannedTick; }
   void lastScannedTick(uint64_t lastScannedTick) {
@@ -41,7 +42,18 @@ class RocksDBReplicationResult : public Result {
   bool minTickIncluded() const;
   void includeMinTick();
 
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+
+  // access methods
+  Result const& result() const& { return _result; }
+  Result result() && { return std::move(_result); }
+
  private:
+  Result _result;
   uint64_t _maxTick;
   uint64_t _lastScannedTick;
   bool _minTickIncluded;

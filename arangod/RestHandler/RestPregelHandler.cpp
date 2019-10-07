@@ -23,11 +23,11 @@
 #include "RestPregelHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
 
@@ -36,8 +36,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestPregelHandler::execute() {
   try {
@@ -46,7 +47,7 @@ RestStatus RestPregelHandler::execute() {
     VPackSlice body(parsedBody->start());  // never nullptr
 
     if (!parseSuccess || !body.isObject()) {
-      LOG_TOPIC(ERR, Logger::PREGEL) << "Bad request body\n";
+      LOG_TOPIC("cec03", ERR, Logger::PREGEL) << "Bad request body\n";
       // error message generated in parseVelocyPackBody
       return RestStatus::DONE;
     }
@@ -62,7 +63,7 @@ RestStatus RestPregelHandler::execute() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      PregelFeature::handleConductorRequest(suffix[1], body, response);
+      PregelFeature::handleConductorRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
       /*
        if (buffer.empty()) {
@@ -86,15 +87,15 @@ RestStatus RestPregelHandler::execute() {
                     "the prefix is incorrect");
     }
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::PREGEL)
+    LOG_TOPIC("d1b56", ERR, arangodb::Logger::PREGEL)
         << "Exception in pregel REST handler: " << ex.what();
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::PREGEL)
+    LOG_TOPIC("2f547", ERR, arangodb::Logger::PREGEL)
         << "Exception in pregel REST handler: " << ex.what();
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Exception in pregel REST handler";
+    LOG_TOPIC("e2ef6", ERR, Logger::PREGEL) << "Exception in pregel REST handler";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "error in pregel handler");
   }

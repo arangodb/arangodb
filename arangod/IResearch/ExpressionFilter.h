@@ -29,20 +29,20 @@
 
 #include "search/filter.hpp"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-NS_BEGIN(aql)
+namespace aql {
 struct AstNode;
 class Ast;
 class ExecutionPlan;
-NS_END  // aql
+}  // namespace aql
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
-    ///////////////////////////////////////////////////////////////////////////////
-    /// @struct ExpressionCompilationContext
-    ///////////////////////////////////////////////////////////////////////////////
-    struct ExpressionCompilationContext {
+///////////////////////////////////////////////////////////////////////////////
+/// @struct ExpressionCompilationContext
+///////////////////////////////////////////////////////////////////////////////
+struct ExpressionCompilationContext {
   bool operator==(ExpressionCompilationContext const& rhs) const noexcept {
     return plan == rhs.plan && ast == rhs.ast && node == rhs.node;
   }
@@ -55,7 +55,7 @@ NS_BEGIN(iresearch)
 
   size_t hash() const noexcept;
 
-  arangodb::aql::ExecutionPlan* plan{};
+  arangodb::aql::ExecutionPlan const* plan{};
   arangodb::aql::Ast* ast{};
   std::shared_ptr<arangodb::aql::AstNode> node{};
 };  // ExpressionCompilationContext
@@ -95,13 +95,13 @@ class ByExpression final : public irs::filter {
 
   ByExpression() noexcept;
 
-  void init(aql::ExecutionPlan& plan, aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
+  void init(aql::ExecutionPlan const& plan, aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
     _ctx.plan = &plan;
     _ctx.ast = &ast;
     _ctx.node.reset(&node, [](arangodb::aql::AstNode*) {});
   }
 
-  void init(aql::ExecutionPlan& plan, aql::Ast& ast,
+  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
             std::shared_ptr<arangodb::aql::AstNode>&& node) noexcept {
     _ctx.plan = &plan;
     _ctx.ast = &ast;
@@ -112,7 +112,7 @@ class ByExpression final : public irs::filter {
 
   virtual irs::filter::prepared::ptr prepare(irs::index_reader const& index,
                                              irs::order::prepared const& ord,
-                                             irs::boost::boost_t boost,
+                                             irs::boost_t boost,
                                              irs::attribute_view const& ctx) const override;
 
   virtual size_t hash() const noexcept override;
@@ -128,7 +128,7 @@ class ByExpression final : public irs::filter {
   ExpressionCompilationContext _ctx;
 };  // ByExpression
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif  // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER

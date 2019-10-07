@@ -20,7 +20,17 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <string.h>
+
 #include "PrivilegeFeature.h"
+
+#include "Basics/application-exit.h"
+#include "Basics/error.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef ARANGODB_HAVE_GETGRGID
 #include <grp.h>
@@ -30,10 +40,16 @@
 #include <pwd.h>
 #endif
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/conversions.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -43,7 +59,7 @@ namespace arangodb {
 PrivilegeFeature::PrivilegeFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Privilege"), _numericUid(0), _numericGid(0) {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -86,7 +102,7 @@ void PrivilegeFeature::extractPrivileges() {
       group* g = getgrgid(gidNumber);
 
       if (g == nullptr) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown numeric gid '" << _gid << "'";
+        LOG_TOPIC("3d53b", FATAL, arangodb::Logger::FIXME) << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
       }
 #endif
@@ -99,13 +115,13 @@ void PrivilegeFeature::extractPrivileges() {
         gidNumber = g->gr_gid;
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("20096", FATAL, arangodb::Logger::FIXME)
             << "cannot convert groupname '" << _gid
             << "' to numeric gid: " << TRI_last_error();
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("ff815", FATAL, arangodb::Logger::FIXME)
           << "cannot convert groupname '" << _gid << "' to numeric gid";
       FATAL_ERROR_EXIT();
 #endif
@@ -126,7 +142,7 @@ void PrivilegeFeature::extractPrivileges() {
       passwd* p = getpwuid(uidNumber);
 
       if (p == nullptr) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown numeric uid '" << _uid << "'";
+        LOG_TOPIC("09f8d", FATAL, arangodb::Logger::FIXME) << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
       }
 #endif
@@ -138,12 +154,12 @@ void PrivilegeFeature::extractPrivileges() {
       if (p != nullptr) {
         uidNumber = p->pw_uid;
       } else {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("d54b7", FATAL, arangodb::Logger::FIXME)
             << "cannot convert username '" << _uid << "' to numeric uid";
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("1e521", FATAL, arangodb::Logger::FIXME)
           << "cannot convert username '" << _uid << "' to numeric uid";
       FATAL_ERROR_EXIT();
 #endif
@@ -170,13 +186,13 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
 #ifdef ARANGODB_HAVE_SETGID
   // first GID
   if (!_gid.empty()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC("9fb03", DEBUG, arangodb::Logger::FIXME)
         << "permanently changing the gid to " << _numericGid;
 
     int res = setgid(_numericGid);
 
     if (res != 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("4837b", FATAL, arangodb::Logger::FIXME)
           << "cannot set gid " << _numericGid << ": " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
@@ -186,13 +202,13 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
 #ifdef ARANGODB_HAVE_SETUID
   // then UID (because we are dropping)
   if (!_uid.empty()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC("4b8b4", DEBUG, arangodb::Logger::FIXME)
         << "permanently changing the uid to " << _numericUid;
 
     int res = setuid(_numericUid);
 
     if (res != 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("ec732", FATAL, arangodb::Logger::FIXME)
           << "cannot set uid '" << _uid << "': " << strerror(errno);
       FATAL_ERROR_EXIT();
     }

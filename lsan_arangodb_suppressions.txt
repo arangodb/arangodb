@@ -1,0 +1,4 @@
+leak:create_conn
+leak:curl_multi_perform
+leak:curl_multi_init
+leak:CRYPTO_zalloc

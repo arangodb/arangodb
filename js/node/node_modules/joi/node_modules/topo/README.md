@@ -11,7 +11,7 @@ Lead Maintainer: [Devin Ivy](https://github.com/devinivy)
 See the [API Reference](API.md)
 
 **Example**
-```node
+```js
 const Topo = require('topo');
 
 const morning = new Topo();

@@ -24,24 +24,11 @@
 #ifndef ARANGODB_BASICS_SCOPE_GUARD_H
 #define ARANGODB_BASICS_SCOPE_GUARD_H 1
 
-// must not be included from somewhere except from Common.h
-// we will fix this later
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #include <type_traits>
+#include <utility>
 
 #define SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y) x##y
 #define SCOPE_GUARD_TOKEN_PASTE(x, y) SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y)
-
-// helper macros for creating a ScopeGuard using a user-defined lambda or
-// functor
-#define TRI_DEFER_FUNC_INTERNAL(func, objname) \
-  auto objname = arangodb::scopeGuard(func);
-
-#define TRI_DEFER_FUNC(func) \
-  TRI_DEFER_FUNC_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
 
 // helper macros for creating a capture-all ScopeGuard
 #define TRI_DEFER_BLOCK_INTERNAL(func, objname) \

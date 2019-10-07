@@ -38,18 +38,34 @@ var DURATION = 0;
 var RESULTS = {};
 var COMPLETE = {};
 
+var SETUPS = 0;
+var TEARDOWNS = 0;
+
+var TOTALSETUPS = 0;
+var TOTALTEARDOWNS = 0;
+
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
+var ENDTEST = 0.0;
+var STARTSUITE = 0.0;
+var ENDTEARDOWN = 0.0;
 var testFilter = "undefined";
+var currentSuiteName = "undefined";
+var testCount = 0;
+var startMessage = "";
 
 function setTestFilter(filter) {
   testFilter = filter;
 }
 
 jsUnity.results.begin = function (total, suiteName) {
-  print(Date() + ' Running ' + (suiteName || 'unnamed test suite'));
-  print(' ' + total + ' test(s) found');
-  print();
+  if (testCount > 0)
+  {
+    print();
+    testCount = 0;
+  }
+  currentSuiteName = suiteName;
+  startMessage = " [------------] " + total + " tests from " + (suiteName || 'unnamed test suite');
   RESULTS = {};
 
   STARTTEST = jsUnity.env.getDate();
@@ -58,39 +74,123 @@ jsUnity.results.begin = function (total, suiteName) {
 jsUnity.results.pass = function (index, testName) {
   var newtime = jsUnity.env.getDate();
 
-  RESULTS[testName] = {};
   RESULTS[testName].status = true;
-  RESULTS[testName].duration = newtime - STARTTEST;
+  RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's');
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' +
+       testName + internal.COLORS.COLOR_RESET +
+       ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms,' +
+       ' test: ' + RESULTS[testName].duration + 'ms,' +
+       ' tearDown: ' + RESULTS[testName].tearDownDuration + 'ms)');
 
   STARTTEST = newtime;
+
+  ++testCount;
 };
 
 jsUnity.results.fail = function (index, testName, message) {
   var newtime = jsUnity.env.getDate();
 
-  RESULTS[testName] = {};
+  ++testCount;
+
+  if (RESULTS[testName] === undefined)
+  {
+    if (testCount === 1)
+    {
+      print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
+           internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
+
+      ENDTEST = newtime;
+    }
+    print(internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
+    if (RESULTS.hasOwnProperty('message')) {
+      RESULTS['message'] += "\n" + currentSuiteName + " - failed at: " + message;
+    } else {
+      RESULTS['message'] = currentSuiteName + " - failed at: " + message;
+    }
+    return;
+  }
+
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
-  RESULTS[testName].duration = newtime - STARTTEST;
+  RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's: ' +
-    internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
+  if (RESULTS[testName].setUpDuration === undefined)
+  {
+    RESULTS[testName].setUpDuration = newtime - SETUPS;
+    RESULTS[testName].duration = 0;
+  }
+
+  print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " +
+       testName + internal.COLORS.COLOR_RESET +
+       ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms,' +
+       ' test: ' + RESULTS[testName].duration + 'ms,' +
+       ' tearDown: ' +  (newtime - ENDTEST) + 'ms)\n' +
+       internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
 };
 
 jsUnity.results.end = function (passed, failed, duration) {
-  print(' ' + passed + ' test(s) passed');
-  print(' ' + ((failed > 0) ?
-      internal.COLORS.COLOR_RED :
-      internal.COLORS.COLOR_RESET) +
-    failed + ' test(s) failed' + internal.COLORS.COLOR_RESET);
-  print(' ' + duration + ' millisecond(s) elapsed');
-  print();
+  print(jsUnity.env.getDate().toISOString() +
+       ((failed > 0) ? internal.COLORS.COLOR_RED : internal.COLORS.COLOR_GREEN) + " [------------] " +
+       (passed + failed) + " tests from " + currentSuiteName + " ran" + internal.COLORS.COLOR_RESET +
+       " (tearDownAll: " + (jsUnity.env.getDate() - ENDTEST) + "ms)");
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN +
+       " [   PASSED   ] " + passed + " tests." + internal.COLORS.COLOR_RESET);
+  if(failed > 0)
+  {
+    print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_RED +
+        " [   FAILED   ] " + failed + ' tests.' + internal.COLORS.COLOR_RESET);
+  }
+};
+
+jsUnity.results.beginSetUpAll = function(index) {
+  SETUPS = jsUnity.env.getDate();
+};
+
+jsUnity.results.endSetUpAll = function(index) {
+  RESULTS.setUpAllDuration = jsUnity.env.getDate() - SETUPS;
+  TOTALSETUPS += RESULTS.setUpAllDuration;
+};
+
+jsUnity.results.beginSetUp = function(index, testName) {
+  if (testCount === 0)
+  {
+    print(STARTTEST.toISOString() + internal.COLORS.COLOR_GREEN +
+         startMessage + internal.COLORS.COLOR_RESET + ' (setUpAll: ' +
+         (jsUnity.env.getDate() - STARTTEST) + 'ms)' + internal.COLORS.COLOR_RESET);
+  }
+  RESULTS[testName] = {};
+  SETUPS = jsUnity.env.getDate();
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN + ' [ RUN        ] ' + testName + internal.COLORS.COLOR_RESET);
+};
+
+jsUnity.results.endSetUp = function(index, testName) {
+  RESULTS[testName].setUpDuration = jsUnity.env.getDate() - SETUPS;
+  TOTALSETUPS += RESULTS[testName].setUpDuration;
+
+  STARTTEST = jsUnity.env.getDate();
+};
+
+jsUnity.results.beginTeardown = function(index, testName) {
+  TEARDOWNS = jsUnity.env.getDate();
+
+  ENDTEST = jsUnity.env.getDate();
+};
+
+jsUnity.results.endTeardown = function(index, testName) {
+  RESULTS[testName].tearDownDuration = jsUnity.env.getDate() - TEARDOWNS;
+  TOTALTEARDOWNS += RESULTS[testName].tearDownDuration;
+};
+
+jsUnity.results.beginTeardownAll = function(index) {
+  TEARDOWNS = jsUnity.env.getDate();
+};
+
+jsUnity.results.endTeardownAll = function(index) {
+  RESULTS.teardownAllDuration = jsUnity.env.getDate() - TEARDOWNS;
+  TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -128,10 +228,12 @@ function Run (testsuite) {
   scope.tearDown = tearDown;
   scope.setUpAll = setUpAll;
   scope.tearDownAll = tearDownAll;
+  let nonMatchedTests = [];
 
   for (var key in definition) {
     if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
       // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+      nonMatchedTests.push(key);
       continue;
     }
     if (key.indexOf('test') === 0) {
@@ -143,16 +245,18 @@ function Run (testsuite) {
     }
   }
   if (tests.length === 0) {
-    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`;
+    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything. We have: [${nonMatchedTests}]`;
     print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
     let res = {
       suiteName: suite.suiteName,
       message: err,
       duration: 0,
+      setUpDuration: 0,
+      tearDownDuration: 0,
       passed: 0,
       status: false,
       failed: 1,
-      total: 1,
+      total: 1
     };
     TOTAL += 1;
     FAILED += 2;
@@ -176,8 +280,17 @@ function Run (testsuite) {
 
   let duplicates = [];
   for (var attrname in RESULTS) {
-    if (RESULTS.hasOwnProperty(attrname)) {
+    if (typeof(RESULTS[attrname]) === 'number') {
+      if (!COMPLETE.hasOwnProperty(attrname)) {
+        COMPLETE[attrname] = { };
+      }
+      COMPLETE[attrname][suite.suiteName] = RESULTS[attrname];
+    } else if (RESULTS.hasOwnProperty(attrname)) {
       if (COMPLETE.hasOwnProperty(attrname)) {
+        if (attrname === 'message') {
+          COMPLETE[attrname] += "\n\n" + RESULTS[attrname];
+          continue;
+        }
         print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
         duplicates.push(attrname);
       }
@@ -195,16 +308,22 @@ function Run (testsuite) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function Done (suiteName) {
-  internal.printf('%d total, %d passed, %d failed, %d ms', TOTAL, PASSED, FAILED, DURATION);
-  print();
+  let newtime = jsUnity.env.getDate();
 
   var ok = FAILED === 0;
+
+  print(newtime.toISOString() + (ok ? internal.COLORS.COLOR_GREEN : internal.COLORS.COLOR_RED) +
+       " [============] " + "Ran: " + TOTAL + " tests (" + PASSED + " passed, " + FAILED + " failed)" +
+       internal.COLORS.COLOR_RESET+ " (" + DURATION + "ms total)");
+  print();
 
   COMPLETE.duration = DURATION;
   COMPLETE.status = ok;
   COMPLETE.failed = FAILED;
   COMPLETE.total = TOTAL;
   COMPLETE.suiteName = suiteName;
+  COMPLETE.totalSetUp = TOTALSETUPS;
+  COMPLETE.totalTearDown = TOTALTEARDOWNS;
 
   TOTAL = 0;
   PASSED = 0;
@@ -232,12 +351,34 @@ function WriteDone (suiteName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function RunTest (path, outputReply, filter) {
+  // re-reset our globlas, on module loading may be cached.
+  TOTAL = 0;
+  PASSED = 0;
+  FAILED = 0;
+  DURATION = 0;
+  RESULTS = {};
+  COMPLETE = {};
+  
+  SETUPS = 0;
+  TEARDOWNS = 0;
+  
+  TOTALSETUPS = 0;
+  TOTALTEARDOWNS = 0;
+  STARTTEST = 0.0;
+  ENDTEST = 0.0;
+  STARTSUITE = 0.0;
+  ENDTEARDOWN = 0.0;
+  STARTTEST = 0.0;
+  ENDTEST = 0.0;
+  STARTSUITE = 0.0;
+  ENDTEARDOWN = 0.0;
+
   var content;
   var f;
 
   content = fs.read(path);
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)});  ${content} }());
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const getOptions = false;  ${content} }());
 });`;
   f = internal.executeScript(content, undefined, path);
 

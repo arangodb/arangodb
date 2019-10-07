@@ -1,7 +1,7 @@
 @startDocuBlock delete_remove_document
 @brief removes a document
 
-@RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document}
+@RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document, removeDocument}
 
 @RESTURLPARAMETERS
 

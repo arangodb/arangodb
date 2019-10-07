@@ -19,16 +19,19 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_DEBUGGING_H
 #define ARANGODB_BASICS_DEBUGGING_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
+#include <stdlib.h>
 #include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
+
+#include "Basics/system-compiler.h"
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -46,9 +49,9 @@
 
 /// @brief cause a segmentation violation
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_SegfaultDebugging(char const* value);
+void TRI_TerminateDebugging(char const* value);
 #else
-inline void TRI_SegfaultDebugging(char const*) {}
+inline void TRI_TerminateDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
@@ -99,6 +102,67 @@ void TRI_LogBacktrace();
 void TRI_FlushDebugging();
 void TRI_FlushDebugging(char const* file, int line, char const* message);
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief container traits
+////////////////////////////////////////////////////////////////////////////////
+
+namespace container_traits {
+
+using tc = char[2];
+
+template<typename T> struct is_container {
+  static tc& test(...);
+
+  template <typename U>
+  static char test(U&&, decltype(std::begin(std::declval<U>()))* = 0);
+  static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
+};
+
+template < typename T > struct is_associative {
+  static tc& test(...) ;
+  
+  template < typename U >
+  static char test(U&&, typename U::key_type* = 0) ;
+  static constexpr bool value = sizeof( test( std::declval<T>() ) ) == 1 ;
+};
+
+}
+
+template < typename T > struct is_container :
+  std::conditional<(container_traits::is_container<T>::value || std::is_array<T>::value)
+                   && !std::is_same<char *, typename std::decay<T>::type>::value
+                   && !std::is_same<char const*, typename std::decay<T>::type>::value
+                   && !std::is_same<unsigned char *, typename std::decay<T>::type>::value
+                   && !std::is_same<unsigned char const*, typename std::decay<T>::type>::value
+                   && !std::is_same<T, std::string>::value
+                   && !std::is_same<T, const std::string>::value, std::true_type, std::false_type >::type {};
+
+template < typename T > struct is_associative :
+  std::conditional< container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
+                    std::true_type, std::false_type >::type {};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief no std::enable_if_t in c++11
+////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus <= 201103L
+namespace std {
+template< bool B, class T = void >
+using enable_if_t = typename std::enable_if<B,T>::type;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward declaration for pair output below
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+std::enable_if_t<is_container<T>::value, std::ostream&>
+operator<< (std::ostream& o, T const& t);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump pair contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,115 +177,58 @@ std::ostream& operator<<(std::ostream& stream, std::pair<T1, T2> const& obj) {
 /// @brief dump vector contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-std::ostream& operator<<(std::ostream& stream, std::vector<T> const& data) {
-  bool first = true;
+template<bool b>
+struct conpar {
+  static char const open;
+  static char const close;
+};
 
-  stream << "[";
-  for (auto const& it : data) {
+template< bool B, class T = void >
+using enable_if_t = typename std::enable_if<B,T>::type;
+
+template<typename T>
+enable_if_t<is_container<T>::value, std::ostream&>
+operator<< (std::ostream& o, T const& t) {
+  o << conpar<is_associative<T>::value>::open;
+  bool first = true;  
+  for (auto const& i : t) {
     if (first) {
-      stream << " ";
+      o << " ";
       first = false;
     } else {
-      stream << ", ";
+      o << ", ";
     }
-    stream << it;
+    o << i ;
   }
-  stream << " ]";
-
-  return stream;
+  o << " " << conpar<is_associative<T>::value>::close;
+  return o;  
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump deque contents to an ostream
-////////////////////////////////////////////////////////////////////////////////
+/// @brief assert
+#ifndef TRI_ASSERT
 
-template <typename T>
-std::ostream& operator<<(std::ostream& stream, std::deque<T> const& data) {
-  bool first = true;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-  stream << "[";
-  for (auto const& it : data) {
-    if (first) {
-      stream << " ";
-      first = false;
-    } else {
-      stream << ", ";
-    }
-    stream << it;
-  }
-  stream << " ]";
+#define TRI_ASSERT(expr)                             \
+  do {                                               \
+    if (!(ADB_LIKELY(expr))) {                       \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
+      TRI_PrintBacktrace();                          \
+      std::abort();                                  \
+    }                                                \
+  } while (0)
 
-  return stream;
-}
+#else
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump unordered_set contents to an ostream
-////////////////////////////////////////////////////////////////////////////////
+#define TRI_ASSERT(expr) \
+  while (0) {            \
+    (void)(expr);        \
+  }                      \
+  do {                   \
+  } while (0)
 
-template <typename T>
-std::ostream& operator<<(std::ostream& stream, std::unordered_set<T> const& data) {
-  bool first = true;
+#endif
 
-  stream << "{";
-  for (auto const& it : data) {
-    if (first) {
-      stream << " ";
-      first = false;
-    } else {
-      stream << ", ";
-    }
-    stream << it;
-  }
-  stream << " }";
-
-  return stream;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump unordered_map contents to an ostream
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename K, typename V>
-std::ostream& operator<<(std::ostream& stream, std::unordered_map<K, V> const& data) {
-  bool first = true;
-
-  stream << "{";
-  for (auto const& it : data) {
-    if (first) {
-      stream << " ";
-      first = false;
-    } else {
-      stream << ", ";
-    }
-    stream << it.first << ": " << it.second;
-  }
-  stream << " }";
-
-  return stream;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump map contents to an ostream
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename K, typename V>
-std::ostream& operator<<(std::ostream& stream, std::map<K, V> const& data) {
-  bool first = true;
-
-  stream << "{";
-  for (auto const& it : data) {
-    if (first) {
-      stream << " ";
-      first = false;
-    } else {
-      stream << ", ";
-    }
-    stream << it.first << ": " << it.second;
-  }
-  stream << " }";
-
-  return stream;
-}
+#endif
 
 #endif

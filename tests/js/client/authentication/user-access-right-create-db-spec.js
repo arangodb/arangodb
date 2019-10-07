@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, before, after, it, require, print */
+/* global describe, beforeEach, afterEach, before, after, it, require */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -130,7 +130,7 @@ describe('User Rights Management', () => {
                 try {
                   db._createDatabase(testDBName);
                 } catch (e) {
-                  //print(e);
+                  //
                 }
                 expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
               }

@@ -25,6 +25,9 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb::consensus;
 
@@ -296,7 +299,7 @@ config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Adding " << id << "(" << endpoint << ") to agent pool";
+      LOG_TOPIC("95b8d", INFO, Logger::AGENCY) << "Adding " << id << "(" << endpoint << ") to agent pool";
       _pool[id] = endpoint;
       ++_version;
       return CHANGED;
@@ -514,8 +517,7 @@ bool config_t::findInPool(std::string const& id) const {
 
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker,
-               _lock);  // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker, _lock);  // All must happen under the lock or else ...
 
   // FIXME: All these "command line beats persistence" are wrong, since
   // the given default values never happen. Only fixed _supervision with
@@ -537,7 +539,7 @@ bool config_t::merge(VPackSlice const& conf) {
       ss << _agencySize << " (command line)";
     }
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("c0b77", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -553,13 +555,13 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _poolSize << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("474ea", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
   ss << "Agent pool: ";
   if (conf.hasKey(poolStr)) {  // Persistence only
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
+    LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
     for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
       auto const& id = peer.key.copyString();
       if (id != _id) {
@@ -572,7 +574,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << "empty (default)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("445ea", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -586,7 +588,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << "empty (default)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("00f99", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -602,7 +604,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _minPing << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("7095f", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -618,7 +620,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _maxPing << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("d2569", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -633,7 +635,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _supervision << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("6f913", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -649,7 +651,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _supervisionFrequency << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("cb813", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -665,7 +667,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _compactionStepSize << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("06b38", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -681,7 +683,7 @@ bool config_t::merge(VPackSlice const& conf) {
   } else {
     ss << _compactionKeepSize << " (command line)";
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
+  LOG_TOPIC("ebf13", DEBUG, Logger::AGENCY) << ss.str();
   ++_version;
   return true;
 }

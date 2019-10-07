@@ -2,7 +2,7 @@
 @startDocuBlock post_api_aqlfunction
 @brief create a new AQL user function
 
-@RESTHEADER{POST /_api/aqlfunction, Create AQL user function}
+@RESTHEADER{POST /_api/aqlfunction, Create AQL user function, RestAqlUserFunctionsHandler:create}
 
 @RESTBODYPARAM{name,string,required,string}
 the fully qualified name of the user functions.

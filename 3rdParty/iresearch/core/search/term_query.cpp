@@ -36,13 +36,11 @@ NS_ROOT
 term_query::ptr term_query::make(
     const index_reader& index,
     const order::prepared& ord,
-    filter::boost_t boost,
+    boost_t boost,
     const string_ref& field,
     const bytes_ref& term) {
   term_query::states_t states(index.size());
-  attribute_store attrs;
-
-  auto stats = ord.prepare_stats();
+  auto collectors = ord.prepare_collectors(1);
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -52,6 +50,8 @@ term_query::ptr term_query::make(
     if (!reader) {
       continue;
     }
+
+    collectors.collect(segment, *reader); // collect field statistics once per segment
 
     // find term
     auto terms = reader->iterator();
@@ -78,21 +78,26 @@ term_query::ptr term_query::make(
       state.estimation = meta->docs_count;
     }
 
-    stats.collect(segment, *reader, terms->attributes()); // collect statistics
+    collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
   }
 
-  stats.finish(attrs, index);
+  bstring stats(ord.stats_size(), 0);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  // apply boost
-  irs::boost::apply(attrs, boost);
+  ord.prepare_stats(stats_buf);
+  collectors.finish(stats_buf, index);
 
   return memory::make_shared<term_query>(
-    std::move(states), std::move(attrs)
+    std::move(states), std::move(stats), boost
   );
 }
 
-term_query::term_query(term_query::states_t&& states, attribute_store&& attrs)
-  : filter::prepared(std::move(attrs)), states_(std::move(states)) {
+term_query::term_query(
+    term_query::states_t&& states,
+    bstring&& stats,
+    boost_t boost)
+  : filter::prepared(std::move(stats), boost),
+    states_(std::move(states)) {
 }
 
 doc_iterator::ptr term_query::execute(
@@ -119,10 +124,11 @@ doc_iterator::ptr term_query::execute(
   return doc_iterator::make<basic_doc_iterator>(
     rdr, 
     *state->reader,
-    this->attributes(), 
+    stats(),
     terms->postings(ord.features()), 
     ord, 
-    state->estimation
+    state->estimation,
+    boost()
   );
 }
 

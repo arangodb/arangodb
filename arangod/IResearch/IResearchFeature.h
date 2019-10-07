@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -36,6 +37,7 @@ struct Function;
 
 namespace iresearch {
 
+class IResearchLink; // forward declaration
 class ResourceMutex;  // forward declaration
 
 bool isFilter(arangodb::aql::Function const& func) noexcept;

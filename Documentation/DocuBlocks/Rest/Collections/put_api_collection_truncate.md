@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_truncate
 @brief truncates a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/truncate, Truncate collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/truncate, Truncate collection, handleCommandPut:truncateCollection}
 
 @HINTS
 {% hint 'warning' %}

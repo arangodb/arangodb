@@ -21,9 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_vocbase_GUARD_H
-#define ARANGOD_UTILS_vocbase_GUARD_H 1
+#ifndef ARANGOD_UTILS_DATABASE_GUARD_H
+#define ARANGOD_UTILS_DATABASE_GUARD_H 1
 
+#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -37,11 +38,7 @@ class DatabaseGuard {
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
 
   /// @brief create guard on existing db
-  explicit DatabaseGuard(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {
-    if (!_vocbase.use()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-  }
+  explicit DatabaseGuard(TRI_vocbase_t& vocbase);
 
   /// @brief create the guard, using a database id
   explicit DatabaseGuard(TRI_voc_tick_t id);

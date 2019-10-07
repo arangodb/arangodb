@@ -26,6 +26,7 @@
 
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
@@ -38,8 +39,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
@@ -49,6 +48,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class CollectionNameResolver;
+class LogicalDataSource;  // forward declaration
 
 namespace transaction {
 class Context;
@@ -68,11 +68,11 @@ namespace aql {
 struct AstNode;
 class Ast;
 class ExecutionEngine;
-class ExecutionPlan;
 class Query;
 struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
+enum class SerializationFormat;
 
 /// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
@@ -82,7 +82,6 @@ class Query {
  private:
   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
- private:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
@@ -99,27 +98,33 @@ class Query {
 
   virtual ~Query();
 
+  /// @brief note that the query uses the DataSource
+  void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
+
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
- public:
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
-  bool killed() const;
+  inline bool killed() const { return _killed; }
 
   /// @brief set the query to killed
   void kill();
+
+  /// @brief increase number of HTTP requests. this is normally
+  /// called during the setup of a query
+  void incHttpRequests(size_t requests);
 
   void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction(transaction::Methods* trx) {
-    _trx = trx;
+  void injectTransaction(std::shared_ptr<transaction::Methods> trx) {
+    _trx = std::move(trx);
     init();
   }
 
@@ -148,12 +153,6 @@ class Query {
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
 
-  /// @brief return the current runtime of the query
-  double runTime(double now) const { return now - _startTime; }
-
-  /// @brief return the current runtime of the query
-  double runTime() const { return runTime(TRI_microtime()); }
-
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
 
@@ -165,7 +164,8 @@ class Query {
     return _collections.add(name, accessType);
   }
 
-  inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
+  inline Collection* addCollection(arangodb::velocypack::StringRef name,
+                                   AccessMode::Type accessType) {
     return _collections.add(name.toString(), accessType);
   }
 
@@ -213,9 +213,12 @@ class Query {
   void registerErrorCustom(int, char const*);
 
   /// @brief register a warning
-  virtual void registerWarning(int, char const* = nullptr);
+  TEST_VIRTUAL void registerWarning(int, char const* = nullptr);
 
-  void prepare(QueryRegistry*);
+  /// @brief register a warning (convenience overload)
+  TEST_VIRTUAL void registerWarning(int code, std::string const& details);
+
+  void prepare(QueryRegistry*, SerializationFormat format);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
@@ -249,7 +252,7 @@ class Query {
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() const { return _trx.get(); }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -287,15 +290,6 @@ class Query {
   ///        warnings. If there are none it will not modify the builder
   void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
-  /// @brief get a description of the query's current state
-  std::string getStateString() const;
-
-  /// @brief note that the query uses the view
-  void addView(std::string const& name) {
-    // Either collection or view
-    _views.emplace(name);
-  }
-
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
 
@@ -312,6 +306,10 @@ class Query {
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::unique_ptr<ExecutionPlan> stealPlan() { return preparePlan(); }
+#endif
+
  private:
   /// @brief initializes the query
   void init();
@@ -323,7 +321,7 @@ class Query {
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in
   /// the QueryRegistry.
-  ExecutionPlan* preparePlan();
+  std::unique_ptr<ExecutionPlan> preparePlan();
 
   /// @brief log a query
   void log();
@@ -334,18 +332,15 @@ class Query {
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
-  /// @brief neatly format exception messages for the users
-  std::string buildErrorMessage(int errorCode) const;
-
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query. synchronous variant,
   /// will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
+  void cleanupPlanAndEngineSync(int errorCode, velocypack::Builder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode, velocypack::Builder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
@@ -375,6 +370,10 @@ class Query {
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
+  /// @brief set of DataSources used in the query
+  ///        needed for the query cache, stores datasource guid -> datasource name
+  std::unordered_map<std::string, std::string> _queryDataSources;
+
   /// @brief the actual query string
   QueryString _queryString;
 
@@ -400,17 +399,14 @@ class Query {
   /// @brief query execution profile
   std::unique_ptr<QueryProfile> _profile;
 
-  /// @brief current state the query is in (used for profiling and error
-  /// messages)
-  QueryExecutionState::ValueType _state;
-
   /// @brief the ExecutionPlan object, if the query is prepared
   std::shared_ptr<ExecutionPlan> _plan;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
-  transaction::Methods* _trx;
+  std::shared_ptr<transaction::Methods> _trx;
+  bool _isClonedQuery = false;
 
   /// @brief the ExecutionEngine object, if the query is prepared
   std::unique_ptr<ExecutionEngine> _engine;
@@ -424,8 +420,8 @@ class Query {
   /// @brief query start time
   double _startTime;
 
-  /// @brief the query part
-  QueryPart const _part;
+  /// @brief hash for this query. will be calculated only once when needed
+  mutable uint64_t _queryHash = DontCache;
 
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
@@ -440,6 +436,9 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
+  
+  /// @brief whether or not the hash was already calculated
+  mutable bool _queryHashCalculated;
 
   /// Create the result in this builder. It is also used to determine
   /// if we are continuing the query or of we called
@@ -448,6 +447,13 @@ class Query {
   /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
   std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+  
+  /// @brief current state the query is in (used for profiling and error
+  /// messages)
+  QueryExecutionState::ValueType _state;
+  
+  /// @brief the query part
+  QueryPart const _part;
 
   /// Track in which phase of execution we are, in order to implement
   /// repeatability.
@@ -456,19 +462,10 @@ class Query {
   /// @brief shared state
   std::shared_ptr<SharedQueryState> _sharedState;
 
-  /// @brief names of views used by the query. needed for the query cache
-  std::unordered_set<std::string> _views;
-
   /// @brief query cache entry built by the query
   /// only populated when the query has generated its result(s) and before
   /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
-
-  /// @brief hash for this query. will be calculated only once when needed
-  mutable uint64_t _queryHash = DontCache;
-
-  /// @brief whether or not the hash was already calculated
-  mutable bool _queryHashCalculated = false;
 };
 
 }  // namespace aql

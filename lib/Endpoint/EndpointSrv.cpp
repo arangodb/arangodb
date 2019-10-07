@@ -23,19 +23,22 @@
 
 #include "EndpointSrv.h"
 
+#include <algorithm>
+#include <vector>
+
 #ifndef _WIN32
 
 #define BIND_4_COMPAT 1  // LINUX
 #define BIND_8_COMPAT 1  // MACOSX
 
-#include <arpa/inet.h>
 #include <arpa/nameser.h>
 #include <netinet/in.h>
 #include <resolv.h>
 
 #include "Basics/StringUtils.h"
-#include "Endpoint/EndpointIp.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -88,7 +91,7 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
       if (n < 0) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("c39cc", WARN, arangodb::Logger::FIXME)
             << "DNS record for '" << specification << "' is corrupt";
         return {};
       }
@@ -101,7 +104,7 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
       if (n < 0) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("352d9", WARN, arangodb::Logger::FIXME)
             << "DNS record for '" << specification << "' is corrupt";
         return {};
       }
@@ -132,14 +135,14 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
       if (n < 0) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        LOG_TOPIC("4c4db", WARN, arangodb::Logger::FIXME)
             << "DNS record for '" << specification << "' is corrupt";
         break;
       }
 
       cp += n;
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      LOG_TOPIC("b1488", TRACE, arangodb::Logger::FIXME)
           << "DNS record for '" << specification << "': type " << type
           << ", class " << nclass << ", ttl " << ttl << ", len " << dlen
           << ", prio " << priority << ", weight " << weight << ", port " << port
@@ -159,7 +162,7 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       services.push_back(srv);
     }
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("b804a", WARN, arangodb::Logger::FIXME)
         << "DNS record for '" << specification << "' not found";
   }
 

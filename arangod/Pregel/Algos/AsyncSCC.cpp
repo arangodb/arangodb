@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncSCC.h"
+
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -46,7 +48,7 @@ enum SCCPhase {
   BACKWARD_TRAVERSAL_REST = 4
 };
 
-struct ASCCComputation
+struct ASCCComputation final
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
   ASCCComputation() {}
 
@@ -148,35 +150,23 @@ VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* AsyncSCC::createCo
   return new ASCCComputation();
 }
 
+namespace {
+
 struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
-  uint64_t vertexIdRange = 0;
 
-  explicit SCCGraphFormat(std::string const& result) : _resultField(result) {}
-
-  void willLoadVertices(uint64_t count) override {
-    // if we aren't running in a cluster it doesn't matter
-    if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {
-        vertexIdRange = ci->uniqid(count);
-      }
-    }
-  }
+  explicit SCCGraphFormat(application_features::ApplicationServer& server,
+                          std::string const& result)
+      : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        SCCValue* targetPtr, size_t maxSize) override {
-    SCCValue* senders = (SCCValue*)targetPtr;
-    senders->vertexID = vertexIdRange++;
-    return sizeof(SCCValue);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        SCCValue& targetPtr) override {
+    targetPtr.vertexID = vertexIdRange++;
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const SCCValue* ptr, size_t size) const override {
@@ -191,8 +181,10 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   }
 };
 
+}  // namespace
+
 GraphFormat<SCCValue, int8_t>* AsyncSCC::inputFormat() const {
-  return new SCCGraphFormat(_resultField);
+  return new SCCGraphFormat(_server, _resultField);
 }
 
 struct ASCCMasterContext : public MasterContext {
@@ -206,13 +198,13 @@ struct ASCCMasterContext : public MasterContext {
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: TRIMMING";
+        LOG_TOPIC("b0431", DEBUG, Logger::PREGEL) << "Phase: TRIMMING";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::TRIMMING);
         break;
 
       case SCCPhase::TRIMMING:
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
+        LOG_TOPIC("44a2f", DEBUG, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;
@@ -220,13 +212,13 @@ struct ASCCMasterContext : public MasterContext {
       case SCCPhase::FORWARD_TRAVERSAL: {
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
-          LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
+          LOG_TOPIC("14832", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
+        LOG_TOPIC("8d480", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 
@@ -234,7 +226,7 @@ struct ASCCMasterContext : public MasterContext {
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {
-          LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
+          LOG_TOPIC("a9542", DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;

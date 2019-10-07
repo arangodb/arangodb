@@ -18,6 +18,6 @@ Any omitted options will be reset to their default values or marked as unconfigu
 Mount path of the installed service.
 
 @RESTRETURNCODE{200}
-Returned if the request was sucessful.
+Returned if the request was successful.
 
 @endDocuBlock

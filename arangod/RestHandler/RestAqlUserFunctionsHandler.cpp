@@ -24,7 +24,6 @@
 #include "RestAqlUserFunctionsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
 
 #include "VocBase/Methods/AqlUserFunctions.h"
 
@@ -35,9 +34,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(GeneralRequest* request,
+RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(application_features::ApplicationServer& server,
+                                                         GeneralRequest* request,
                                                          GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();

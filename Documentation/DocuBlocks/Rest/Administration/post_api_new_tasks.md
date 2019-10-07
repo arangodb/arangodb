@@ -2,7 +2,7 @@
 @startDocuBlock post_api_new_tasks
 @brief creates a new task
 
-@RESTHEADER{POST /_api/tasks, creates a task}
+@RESTHEADER{POST /_api/tasks, creates a task, registerTask}
 
 @RESTBODYPARAM{name,string,required,string}
 The name of the task

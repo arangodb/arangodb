@@ -24,26 +24,39 @@
 #ifndef ARANGODB_BASICS_SOCKET__UTILS_H
 #define ARANGODB_BASICS_SOCKET__UTILS_H 1
 
+#include <stddef.h>
+
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
+#ifdef TRI_HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef TRI_HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WS2tcpip.h>
 #include <WinSock2.h>
+#include <WS2tcpip.h>
+
+typedef long suseconds_t;
 #endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-typedef struct TRI_socket_s {
+struct TRI_socket_t {
   int fileDescriptor;
   SOCKET fileHandle;
-} TRI_socket_t;
+};
 #else
-typedef struct TRI_socket_s {
+struct TRI_socket_t {
   int fileDescriptor;
-} TRI_socket_t;
+};
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,22 +84,6 @@ static inline int TRI_listen(TRI_socket_t s, int backlog) {
 #else
   return listen(s.fileDescriptor, backlog);
 #endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief accept abstraction for different OSes
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
-                                      socklen_t* address_len) {
-  TRI_socket_t res;
-#ifdef _WIN32
-  res.fileHandle = accept(s.fileHandle, address, address_len);
-  res.fileDescriptor = -1;
-#else
-  res.fileDescriptor = accept(s.fileDescriptor, address, address_len);
-#endif
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,20 +123,6 @@ static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length, i
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getsockname abstraction for different OSes
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr, int* len) {
-  return getsockname(s.fileHandle, addr, len);
-}
-#else
-static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr, socklen_t* len) {
-  return getsockname(s.fileDescriptor, addr, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getsockopt abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,38 +158,7 @@ static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
 /// @brief setsockopt abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
-  DWORD to = (DWORD)timeout * 1000;
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to, sizeof(to)) != 0) {
-    return false;
-  }
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to, sizeof(to)) != 0) {
-    return false;
-  }
-  return true;
-}
-#else
-static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
-  struct timeval tv;
-
-  // shut up Valgrind
-  memset(&tv, 0, sizeof(tv));
-  tv.tv_sec = (time_t)timeout;
-  tv.tv_usec = (suseconds_t)((timeout - (double)tv.tv_sec) * 1000000.0);
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
-    return false;
-  }
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != 0) {
-    return false;
-  }
-  return true;
-}
-#endif
+bool TRI_setsockopttimeout(TRI_socket_t s, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether or not a socket is valid

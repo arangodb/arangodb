@@ -44,10 +44,10 @@ struct FailedLeader : public Job {
   virtual ~FailedLeader();
 
   virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
-  virtual bool start() override final;
+  virtual bool start(bool&) override final;
   virtual JOB_STATUS status() override final;
-  virtual void run() override final;
-  virtual Result abort() override final;
+  virtual void run(bool&) override final;
+  virtual Result abort(std::string const& reason) override final;
   void rollback();
 
   std::string _database;

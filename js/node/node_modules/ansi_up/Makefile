@@ -7,6 +7,7 @@ typescript:
 		./node_modules/.bin/tsc -p .
 		cat ./umd.header ./dist/ansi_up.js ./umd.footer > ansi_up.js
 		mv  ./dist/ansi_up.js ./dist/ansi_up.js.include
+		node ./scripts/fix-typings.js
 		
 test:
 		@NODE_ENV=test ./node_modules/.bin/mocha \

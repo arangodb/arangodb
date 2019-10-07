@@ -23,7 +23,10 @@
 #include "ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/V8ShellFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/V8ShellFeature.h"
@@ -37,11 +40,10 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server, int*
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
-      _runMode(RunMode::INTERACTIVE),
-      _unitTestFilter("") {
+      _runMode(RunMode::INTERACTIVE) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("V8ShellPhase");
+  startsAfter<application_features::V8ShellFeaturePhase>();
 }
 
 void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -72,18 +74,15 @@ void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   _positionals = options->processingResult()._positionals;
 
-  ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("Client"));
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+  ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
-  ConsoleFeature* console =
-      dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
-
-  if (client->endpoint() == "none") {
-    client->disable();
+  if (client.endpoint() == "none") {
+    client.disable();
   }
 
   if (!_jslint.empty()) {
-    client->disable();
+    client.disable();
   }
 
   size_t n = 0;
@@ -91,86 +90,86 @@ void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
   _runMode = RunMode::INTERACTIVE;
 
   if (!_executeScripts.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::EXECUTE_SCRIPT;
     ++n;
   }
 
   if (!_executeStrings.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::EXECUTE_STRING;
     ++n;
   }
 
   if (!_checkSyntaxFiles.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::CHECK_SYNTAX;
     ++n;
   }
 
   if (!_unitTests.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::UNIT_TESTS;
     ++n;
   }
 
   if (!_jslint.empty()) {
-    console->setQuiet(true);
+    console.setQuiet(true);
     _runMode = RunMode::JSLINT;
     ++n;
   }
 
   if (1 < n) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("80a8c", ERR, arangodb::Logger::FIXME)
         << "you cannot specify more than one type ("
         << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
 }
 
 void ShellFeature::start() {
-  *_result = EXIT_FAILURE;
+  *_result = EXIT_SUCCESS;
 
-  V8ShellFeature* shell =
-      application_features::ApplicationServer::getFeature<V8ShellFeature>(
-          "V8Shell");
+  V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
 
   bool ok = false;
 
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
-        ok = (shell->runShell(_positionals) == TRI_ERROR_NO_ERROR);
+        ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
-        ok = shell->runScript(_executeScripts, _positionals, true);
+        ok = shell.runScript(_executeScripts, _positionals, true);
         break;
 
       case RunMode::EXECUTE_STRING:
-        ok = shell->runString(_executeStrings, _positionals);
+        ok = shell.runString(_executeStrings, _positionals);
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell->runScript(_checkSyntaxFiles, _positionals, false);
+        ok = shell.runScript(_checkSyntaxFiles, _positionals, false);
         break;
 
       case RunMode::UNIT_TESTS:
-        ok = shell->runUnitTests(_unitTests, _positionals, _unitTestFilter);
+        ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
 
       case RunMode::JSLINT:
-        ok = shell->jslint(_jslint);
+        ok = shell.jslint(_jslint);
         break;
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
+    LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
     ok = false;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
+    LOG_TOPIC("4a477", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
     ok = false;
   }
 
-  *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (*_result == EXIT_SUCCESS && !ok) {
+    *_result = EXIT_FAILURE;
+  }
 }
 
 }  // namespace arangodb

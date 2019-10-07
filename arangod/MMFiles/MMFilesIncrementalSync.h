@@ -196,7 +196,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     }
 
     if (!syncer._state.isChildSyncer) {
-      syncer._batch.extend(syncer._state.connection, syncer._progress);
+      syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
       syncer._state.barrier.extend(syncer._state.connection);
     }
 
@@ -233,7 +233,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   }
 
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress);
+    syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
@@ -361,7 +361,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       ++stats.numDocsRemoved;
     }
 
-    trx.commit();
+    res = trx.commit();
+    if (res.fail()) {
+      return res;
+    }
   }
 
   size_t nextStart = 0;
@@ -402,7 +405,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                        " for collection '" + coll->name() + "'");
 
     if (!syncer._state.isChildSyncer) {
-      syncer._batch.extend(syncer._state.connection, syncer._progress);
+      syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
       syncer._state.barrier.extend(syncer._state.connection);
     }
 
@@ -435,16 +438,16 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
     if (match) {
       // now must hash the range
-      uint64_t hash = 0x012345678;
+      uint64_t hashval = 0x012345678;
 
       for (size_t i = localFrom; i <= localTo; ++i) {
         TRI_ASSERT(i < markers.size());
         VPackSlice const current(markers.at(i));
-        hash ^= current.get(StaticStrings::KeyString).hashString();
-        hash ^= current.get(StaticStrings::RevString).hash();
+        hashval ^= current.get(StaticStrings::KeyString).hashString();
+        hashval ^= current.get(StaticStrings::RevString).hash();
       }
 
-      if (std::to_string(hash) != hashSlice.copyString()) {
+      if (std::to_string(hashval) != hashSlice.copyString()) {
         match = false;
       }
     }

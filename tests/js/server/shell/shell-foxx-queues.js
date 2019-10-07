@@ -1,4 +1,4 @@
-/*global assertEqual, assertNotEqual, assertFalse, fail */
+/*global assertEqual, assertNotEqual, assertNotUndefined, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test foxx queues
@@ -53,6 +53,30 @@ function foxxQueuesSuite () {
       db._drop(cn);
       queues.delete(qn);
     },
+    
+    testCreateQueueInsideTransactionNoCollectionDeclaration : function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: function() {
+            queues.create(qn);
+          }
+        });
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+    
+    testCreateQueueInsideTransactionWithCollectionDeclaration : function () {
+      db._executeTransaction({
+        collections: { write: ["_queues"] },
+        action: function() {
+          queues.create(qn);
+        }
+      });
+      assertEqual([], queues.get(qn).all());
+    },
 
     testCreateEmptyQueue : function () {
       var queue = queues.create(qn);
@@ -62,6 +86,30 @@ function foxxQueuesSuite () {
     testCreateQueueAndFetch : function () {
       var queue = queues.create(qn);
       assertEqual(qn, queues.get(qn).name);
+    },
+
+    testCheckJobIndexes : function () {
+      let indexes = db._jobs.getIndexes();
+      assertEqual(indexes.length, 3);
+      indexes.forEach(idx => {
+        switch(idx.type) {
+          case "primary":
+            break;
+          case "skiplist":
+            assertNotUndefined(idx.fields);
+            assertFalse(idx.unique, idx);
+            assertFalse(idx.sparse);
+            assertEqual(idx.fields.length, 3);
+            if (idx.fields[0] === "queue") {
+              assertEqual(idx.fields, ["queue", "status", "delayUntil"]);
+            } else {
+              assertEqual(idx.fields, ["status", "queue", "delayUntil"]);
+            }
+            break;
+          default:
+            fail();
+        }
+      });
     },
     
     testCreateDelayedJob : function () {

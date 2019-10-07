@@ -111,34 +111,20 @@ VertexComputation<LPValue, int8_t, uint64_t>* LabelPropagation::createComputatio
 
 struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
-  std::atomic<uint64_t> vertexIdRange;
 
-  explicit LPGraphFormat(std::string const& result)
-      : _resultField(result), vertexIdRange(0) {}
+  explicit LPGraphFormat(application_features::ApplicationServer& server,
+                         std::string const& result)
+      : GraphFormat<LPValue, int8_t>(server), _resultField(result) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
 
-  void willLoadVertices(uint64_t count) override {
-    // if we aren't running in a cluster it doesn't matter
-    if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {
-        vertexIdRange = ci->uniqid(count);
-      }
-    }
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                      LPValue& value) override {
+    value.currentCommunity = vertexIdRange++;
   }
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        LPValue* value, size_t maxSize) override {
-    value->currentCommunity = vertexIdRange++;
-    return sizeof(LPValue);
-  }
-
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
                            size_t size) const override {
@@ -154,5 +140,5 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 };
 
 GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
-  return new LPGraphFormat(_resultField);
+  return new LPGraphFormat(_server, _resultField);
 }

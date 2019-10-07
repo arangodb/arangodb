@@ -94,7 +94,7 @@ iresearch::range_state& collect_terms(
   state.reader = &tr;
   state.min_term = terms.value();
   state.min_cookie = terms.cookie();
-  state.unscored_docs.reset((irs::type_limits<irs::type_t::doc_id_t>::min)() + reader.docs_count()); // highest valid doc_id in reader
+  state.unscored_docs.reset((irs::doc_limits::min)() + reader.docs_count()); // highest valid doc_id in reader
 
   auto& meta = terms.attributes().get<iresearch::term_meta>(); // get term metadata
 
@@ -649,7 +649,7 @@ filter::prepared::ptr by_granular_range::prepare(
   Or multirange_filter;
 
   for (auto& range_state: range_states) {
-    multirange_filter.add<range_filter_proxy>().query_ = memory::make_shared<range_query>(std::move(range_state));
+    multirange_filter.add<range_filter_proxy>().query_ = memory::make_shared<range_query>(std::move(range_state), irs::no_boost());
   }
 
   return multirange_filter.boost(this->boost()).prepare(rdr, ord, boost);

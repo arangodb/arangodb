@@ -23,25 +23,30 @@
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/QueryOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace arangodb::aql::tests;
+using namespace arangodb::tests;
+using namespace arangodb::tests::aql;
 
-WaitingExecutionBlockMock::WaitingExecutionBlockMock(
-    ExecutionEngine* engine, ExecutionNode const* node,
-    std::shared_ptr<VPackBuilder> data)
+WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
+                                                     ExecutionNode const* node,
+                                                     std::deque<SharedAqlItemBlockPtr>&& data)
     : ExecutionBlock(engine, node),
-      _data(data),
+      _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
       _hasWaited(false) {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
-      arangodb::aql::AqlItemBlock* items, size_t pos) {
+    arangodb::aql::InputAqlItemRow const& input) {
   if (!_hasWaited) {
     _hasWaited = true;
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
@@ -51,51 +56,60 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlock
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<arangodb::aql::ExecutionState,
-          std::unique_ptr<arangodb::aql::AqlItemBlock>>
-WaitingExecutionBlockMock::getSome(size_t atMost) {
+std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shutdown(int errorCode) {
+  ExecutionState state;
+  Result res;
+  return std::make_pair(state, res);
+}
+
+std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
   if (!_hasWaited) {
     _hasWaited = true;
+    if (_returnedDone) {
+      return {ExecutionState::DONE, nullptr};
+    }
     return {ExecutionState::WAITING, nullptr};
   }
   _hasWaited = false;
-  VPackSlice source = _data->slice();
-  size_t max = source.length();
-  TRI_ASSERT(_inflight <= max);
-  size_t toReturn = (std::min)(max - _inflight, atMost);
-  _inflight += toReturn;
-  VPackBuilder data;
-  data.openArray();
-  for (size_t i = 0; i < toReturn; ++i) {
-    data.add(source.at(i));
+
+  if (_data.empty()) {
+    _returnedDone = true;
+    return {ExecutionState::DONE, nullptr};
   }
-  data.close();
-  auto result = std::make_unique<AqlItemBlock>(&_resourceMonitor, data.slice());
-  if (_inflight < max) {
+
+  auto result = std::move(_data.front());
+  _data.pop_front();
+
+  if (_data.empty()) {
+    _returnedDone = true;
+    return {ExecutionState::DONE, std::move(result)};
+  } else {
     return {ExecutionState::HASMORE, std::move(result)};
   }
-  return {ExecutionState::DONE, std::move(result)};
-
 }
 
-std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(
-  size_t atMost
-) {
+std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEnd(0, ExecutionState::WAITING);
+    traceSkipSomeEnd(ExecutionState::WAITING, 0);
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
-  size_t max = _data->slice().length();
-  TRI_ASSERT(_inflight <= max);
-  size_t skipped = (std::min)(max - _inflight, atMost);
-  _inflight += skipped;
-  if (_inflight < max) {
-    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
+
+  if (_data.empty()) {
+    traceSkipSomeEnd(ExecutionState::DONE, 0);
+    return {ExecutionState::DONE, 0};
+  }
+
+  size_t skipped = _data.front()->size();
+  _data.pop_front();
+
+  if (_data.empty()) {
+    traceSkipSomeEnd(ExecutionState::DONE, skipped);
+    return {ExecutionState::DONE, skipped};
+  } else {
+    traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
     return {ExecutionState::HASMORE, skipped};
   }
-  traceSkipSomeEnd(skipped, ExecutionState::DONE);
-  return {ExecutionState::DONE, skipped};
 }

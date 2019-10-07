@@ -27,6 +27,8 @@
 #ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
 #define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
 
+#include <cstdint>
+
 #include "Basics/AssocUniqueHelpers.h"
 #include "Basics/Common.h"
 
@@ -39,6 +41,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/PerformanceLogScope.h"
+#include "Basics/debugging.h"
 #include "Basics/gcd.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
@@ -60,7 +63,7 @@ class AssocUnique {
  public:
   typedef std::function<bool(Element&)> CallbackElementFuncType;
 
-  typedef arangodb::basics::IndexBucket<Element, uint64_t, SIZE_MAX> Bucket;
+  typedef arangodb::basics::IndexBucket<Element, uint64_t> Bucket;
 
  private:
   AssocUniqueHelper _helper;
@@ -252,7 +255,9 @@ class AssocUnique {
  public:
   void truncate(CallbackElementFuncType callback) {
     for (auto& b : _buckets) {
-      invokeOnAllElements(callback, b);
+      if (callback) {
+        invokeOnAllElements(callback, b);
+      }
       b.deallocate();
       b.allocate(initialSize());
     }

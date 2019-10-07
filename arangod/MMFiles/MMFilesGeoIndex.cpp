@@ -27,17 +27,16 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 
@@ -47,12 +46,10 @@ struct NearIterator final : public IndexIterator {
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                MMFilesGeoIndex const* index, geo::QueryParams&& params)
       : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
-    if (!params.fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
-  ~NearIterator() {}
+  ~NearIterator() = default;
 
   char const* typeName() const override { return "s2-index-iterator"; }
 
@@ -242,7 +239,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -254,7 +251,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -296,7 +293,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
     if (!basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
@@ -321,14 +318,22 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
     }
     return res;
   }
-  // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
+  // LOG_TOPIC("0e6a2", ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
 
   IndexValue value(documentId, std::move(centroid));
   for (S2CellId cell : cells) {
+// The bool comperator is warned about in a unused code branch (which expects an int), MSVC doesn't properly detect this.
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning( disable : 4804)
+#endif
     _tree.insert(std::make_pair(cell, value));
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
   }
 
   return res;
@@ -349,7 +354,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
     }
     return res;
   }
-  // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
+  // LOG_TOPIC("1255b", ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty());
 
@@ -367,8 +372,8 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+std::unique_ptr<IndexIterator> MMFilesGeoIndex::iteratorForCondition(
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
@@ -377,7 +382,6 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
   params.pointsOnly = pointsOnly();
-  params.fullRange = opts.fullRange;
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
@@ -400,11 +404,9 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
 
   // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                           std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new NearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                            std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 

@@ -25,13 +25,11 @@
 #define ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Graph/EdgeDocumentToken.h"
+#include <velocypack/StringRef.h>
+#include <deque>
 
 namespace arangodb {
-
-class ManagedDocumentResult;
-class StringRef;
 
 namespace aql {
 struct AqlValue;
@@ -49,12 +47,13 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
+class KShortestPathsFinder;
 class TraverserCache;
 
 class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
-
+  friend class arangodb::graph::KShortestPathsFinder;
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.
@@ -90,6 +89,9 @@ class ShortestPathResult {
 
   size_t length() { return _vertices.size(); };
 
+  void addVertex(arangodb::velocypack::StringRef v);
+  void addEdge(arangodb::graph::EdgeDocumentToken e);
+
  private:
   /// @brief Count how many documents have been read
   size_t _readDocuments;
@@ -98,7 +100,7 @@ class ShortestPathResult {
   // path is _vertices[0] , _edges[0], _vertices[1] etc.
 
   /// @brief vertices
-  std::deque<arangodb::StringRef> _vertices;
+  std::deque<arangodb::velocypack::StringRef> _vertices;
 
   /// @brief edges
   std::deque<arangodb::graph::EdgeDocumentToken> _edges;

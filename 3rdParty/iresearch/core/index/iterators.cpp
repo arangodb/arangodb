@@ -24,6 +24,7 @@
 #include "iterators.hpp"
 #include "field_meta.hpp"
 #include "formats/formats.hpp"
+#include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
@@ -38,9 +39,11 @@ irs::cost empty_cost() NOEXCEPT {
 
 irs::attribute_view empty_doc_iterator_attributes() {
   static irs::cost COST = empty_cost();
+  static irs::document DOC(irs::doc_limits::eof());
 
-  irs::attribute_view attrs(1); // cost
+  irs::attribute_view attrs(2); // document+cost
   attrs.emplace(COST);
+  attrs.emplace(DOC);
 
   return attrs;
 }
@@ -51,11 +54,11 @@ irs::attribute_view empty_doc_iterator_attributes() {
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t value() const override {
-    return irs::type_limits<irs::type_t::doc_id_t>::eof();
+    return irs::doc_limits::eof();
   }
   virtual bool next() override { return false; }
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
-    return irs::type_limits<irs::type_t::doc_id_t>::eof();
+    return irs::doc_limits::eof();
   }
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();

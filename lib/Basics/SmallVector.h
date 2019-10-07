@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_AUTO_VECTOR_H
-#define ARANGODB_BASICS_AUTO_VECTOR_H 1
+#ifndef ARANGODB_BASICS_SMALL_VECTOR_H
+#define ARANGODB_BASICS_SMALL_VECTOR_H 1
+
+#include <vector>
 
 #include "Basics/Common.h"
 #include "Basics/short_alloc.h"
-
-#include <list>
 
 namespace arangodb {
 

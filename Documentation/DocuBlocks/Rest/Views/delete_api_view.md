@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_view
 @brief drops a view
 
-@RESTHEADER{DELETE /_api/view/{view-name}, Drops a view}
+@RESTHEADER{DELETE /_api/view/{view-name}, Drops a view, deleteView}
 
 @RESTURLPARAMETERS
 

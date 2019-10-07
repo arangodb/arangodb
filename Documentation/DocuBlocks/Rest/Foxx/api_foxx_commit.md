@@ -14,6 +14,6 @@ This can be used to resolve service conflicts between coordinators that can not 
 Overwrite existing service files in database even if they already exist.
 
 @RESTRETURNCODE{204}
-Returned if the request was sucessful.
+Returned if the request was successful.
 
 @endDocuBlock

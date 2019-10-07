@@ -46,7 +46,7 @@ RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, TRI_v
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);
 }
 
-RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::StringRef const& vertexId) {
+RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId) {
   return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
@@ -114,7 +114,7 @@ TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
       TRI_ERROR_INTERNAL, "Could not extract revisionId from rocksdb::Slice");
 }
 
-StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
+arangodb::velocypack::StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
   return vertexId(s.data(), s.size());
 }
 
@@ -188,7 +188,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::EdgeIndexValue: {
@@ -215,25 +215,25 @@ LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {
   return LocalDocumentId(uint64FromPersistent(data));
 }
 
-StringRef RocksDBValue::vertexId(char const* data, size_t size) {
+arangodb::velocypack::StringRef RocksDBValue::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  return StringRef(data, size);
+  return arangodb::velocypack::StringRef(data, size);
 }
 
 VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  return VPackSlice(data);
+  return VPackSlice(reinterpret_cast<uint8_t const*>(data));
 }
 
 uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(data));
+  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(reinterpret_cast<uint8_t const*>(data)));
   if (key.isString()) {
     VPackValueLength l;
-    char const* p = key.getString(l);
+    char const* p = key.getStringUnchecked(l);
     if (l > 0 && *p >= '0' && *p <= '9') {
       return NumberUtils::atoi_zero<uint64_t>(p, p + l);
     }

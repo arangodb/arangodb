@@ -23,7 +23,6 @@
 
 #include "MMFilesCollectionKeys.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -40,6 +39,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -121,8 +121,8 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // now sort all document tokens without the read-lock
   std::sort(_vpack.begin(), _vpack.end(), [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
-    return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) <
-            StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
+    return (arangodb::velocypack::StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) <
+            arangodb::velocypack::StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
   });
 }
 
@@ -142,7 +142,7 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
   TRI_ASSERT(first.isObject());
   TRI_ASSERT(last.isObject());
 
-  uint64_t hash = 0x012345678;
+  uint64_t hashval = 0x012345678;
 
   for (size_t i = from; i < to; ++i) {
     VPackSlice current(_vpack.at(i));
@@ -150,13 +150,13 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
+    hashval ^= transaction::helpers::extractKeyFromDocument(current).hashString();
+    hashval ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   }
 
   return std::make_tuple(transaction::helpers::extractKeyFromDocument(first).copyString(),
                          transaction::helpers::extractKeyFromDocument(last).copyString(),
-                         hash);
+                         hashval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

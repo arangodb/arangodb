@@ -25,9 +25,7 @@
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Aql/AqlValue.h"
-#include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Basics/datetime.h"
 
 namespace arangodb {
 namespace transaction {
@@ -50,12 +48,10 @@ typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
 
 struct Functions {
  public:
-  static void init();
-
   /// @brief helper function. not callable as a "normal" AQL function
   static void Stringify(transaction::Methods* trx,
                         arangodb::basics::VPackStringBufferAdapter& buffer,
-                        VPackSlice const& slice);
+                        arangodb::velocypack::Slice const& slice);
 
   static AqlValue IsNull(arangodb::aql::ExpressionContext*,
                          transaction::Methods*, VPackFunctionParameters const&);
@@ -201,6 +197,8 @@ struct Functions {
                                transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateDiff(arangodb::aql::ExpressionContext*,
                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateRound(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   /**
    * @brief Compares two dates given as the first two arguments.
    *        Third argument defines the highest signficant part,
@@ -272,6 +270,10 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Sha512(arangodb::aql::ExpressionContext*,
                          transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Crc32(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                        VPackFunctionParameters const&);
+  static AqlValue Fnv64(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                        VPackFunctionParameters const&);
   static AqlValue Hash(arangodb::aql::ExpressionContext*, transaction::Methods*,
                        VPackFunctionParameters const&);
   static AqlValue IsKey(arangodb::aql::ExpressionContext*,
@@ -304,6 +306,8 @@ struct Functions {
                                 transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoEquals(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue GeoArea(arangodb::aql::ExpressionContext*,
+                          transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue IsInPolygon(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoPoint(arangodb::aql::ExpressionContext*,
@@ -440,7 +444,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Fail(arangodb::aql::ExpressionContext*, transaction::Methods*,
                        VPackFunctionParameters const&);
-
+  static AqlValue DecodeRev(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
 

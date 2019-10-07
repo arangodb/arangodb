@@ -27,8 +27,17 @@ extern "C" {
 #include <linenoise.h>
 }
 
+#include "Basics/operating-system.h"
 #include "Logger/Logger.h"
 #include "Utilities/Completer.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 using namespace arangodb;
 
@@ -63,7 +72,9 @@ LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
 LinenoiseShell::~LinenoiseShell() { COMPLETER = nullptr; }
 
 bool LinenoiseShell::open(bool) {
-  linenoiseHistoryLoad(_historyFilename.c_str());
+  if (!_historyFilename.empty()) {
+    linenoiseHistoryLoad(_historyFilename.c_str());
+  }
   _state = STATE_OPENED;
   return true;
 }
@@ -89,7 +100,9 @@ void LinenoiseShell::addHistory(std::string const& str) {
 }
 
 bool LinenoiseShell::writeHistory() {
-  linenoiseHistorySave(_historyFilename.c_str());
+  if (!_historyFilename.empty()) {
+    linenoiseHistorySave(_historyFilename.c_str());
+  }
 
   return true;
 }

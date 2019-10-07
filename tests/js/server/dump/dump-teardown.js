@@ -1,4 +1,5 @@
 /*jshint globalstrict:false, strict:false */
+/* global print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -33,7 +34,13 @@
   var db = require("@arangodb").db;
 
   db._dropDatabase("UnitTestsDumpSrc");
-  db._dropDatabase("UnitTestsDumpDst");
+  if (db._databases().length > 1) {
+    db._dropDatabase("UnitTestsDumpDst");
+  }
+  else {
+    print ("not deleting database UnitTestsDumpDst since its most probably not here:" + db._databases());
+  }
+
 })();
 
 return {

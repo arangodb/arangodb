@@ -34,27 +34,6 @@
 
 NS_ROOT
 
-NS_BEGIN(fst_utils)
-
-template<typename L>
-inline void append(
-    fst::StringLeftWeight<L>& lhs,
-    const fst::StringLeftWeight<L>& rhs) {
-  assert(fst::StringLeftWeight<L>::NoWeight() != rhs);
-
-  if (fst::StringLeftWeight<L>::Zero() == rhs) {
-    return;
-  }
-
-  // must be empty in order to simplify the condition above
-  // (otherwise we should do return in case if fst::StringLeftWeight<L>::One() == rhs)
-  assert(fst::StringLeftWeight<L>::One().Empty());
-
-  lhs.PushBack(rhs);
-}
-
-NS_END // fst_utils
-
 struct byte_weight_output : data_output, private util::noncopyable {
   virtual void close() override {}
 

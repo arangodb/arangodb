@@ -204,7 +204,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
       uint64_t end,
       uint64_t child = 0,
       size_t skipped = 0,
-      doc_id_t doc = type_limits<type_t::doc_id_t>::invalid()
+      doc_id_t doc = doc_limits::invalid()
     ) NOEXCEPT;
     level(level&& rhs) NOEXCEPT;
 
@@ -224,13 +224,13 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     uint64_t child{}; // pointer to current child level
     size_t step{}; // how many docs we jump over with a single skip
     size_t skipped{}; // number of sipped documents
-    doc_id_t doc{ type_limits<type_t::doc_id_t>::invalid() }; // current key
+    doc_id_t doc{ doc_limits::invalid() }; // current key
   };
 
   typedef std::vector<level> levels_t;
 
   static void load_level(levels_t& levels, index_input::ptr&& stream, size_t step);
-  static doc_id_t nop(size_t, index_input&) { return type_limits<type_t::doc_id_t>::invalid(); }
+  static doc_id_t nop(size_t, index_input&) { return doc_limits::invalid(); }
   static void seek_skip(skip_reader::level& level, uint64_t ptr, size_t skipped);
 
   void read_skip(skip_reader::level& level);

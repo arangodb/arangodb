@@ -29,6 +29,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-compiler.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/ticks.h"
@@ -46,7 +48,10 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief lookup table for key checks
-static std::array<bool, 256> const keyCharLookupTable = {
+/// in case this table is changed, the regex in file
+/// js/common/modules/@arangodb/common.js for function isValidDocumentKey
+/// should be adjusted too
+std::array<bool, 256> const keyCharLookupTable = {
     {/* 0x00 . */ false, /* 0x01 . */ false,
      /* 0x02 . */ false, /* 0x03 . */ false,
      /* 0x04 . */ false, /* 0x05 . */ false,
@@ -266,8 +271,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
     TraditionalKeyGenerator::toVelocyPack(builder);
 
     // add our specific stuff
-    MUTEX_LOCKER(mutexLocker, _lock);
-    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
  private:
@@ -282,38 +286,35 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
 
     // keep track of last assigned value, and make sure the value
     // we hand out is always higher than it
-    {
-      MUTEX_LOCKER(mutexLocker, _lock);
-
-      if (ADB_UNLIKELY(_lastValue >= UINT64_MAX - 1ULL)) {
-        // oops, out of keys!
-        return 0;
-      }
-
-      if (tick <= _lastValue) {
-        tick = ++_lastValue;
-      } else {
-        _lastValue = tick;
-      }
+    auto lastValue = _lastValue.load(std::memory_order_relaxed);    
+    if (ADB_UNLIKELY(lastValue >= UINT64_MAX - 1ULL)) {
+      // oops, out of keys!
+      return 0;
     }
+
+    do {
+      if (tick <= lastValue) {
+        tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
+        break;
+      }
+    } while(!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
 
     return tick;
   }
 
   /// @brief track a key value (internal)
   void track(uint64_t value) override {
-    MUTEX_LOCKER(mutexLocker, _lock);
-
-    if (value > _lastValue) {
+    auto lastValue = _lastValue.load(std::memory_order_relaxed);
+    while (value > lastValue) {
       // and update our last value
-      _lastValue = value;
+      if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+        break;
+      }
     }
   }
 
  private:
-  mutable arangodb::Mutex _lock;
-
-  uint64_t _lastValue;
+  std::atomic<uint64_t> _lastValue;
 };
 
 /// @brief traditional key generator for a coordinator
@@ -326,20 +327,20 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
 class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
-      : TraditionalKeyGenerator(allowUserKeys) {
+  explicit TraditionalKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
+      : TraditionalKeyGenerator(allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->uniqid();
-  }
+  uint64_t generateValue() override { return _ci.uniqid(); }
 
   /// @brief track a key value (internal)
   void track(uint64_t /* value */) override {}
+
+ private:
+  ClusterInfo& _ci;
 };
 
 /// @brief base class for padded key generators
@@ -467,8 +468,7 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
     PaddedKeyGenerator::toVelocyPack(builder);
 
     // add our own specific values
-    MUTEX_LOCKER(mutexLocker, _lock);
-    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
  private:
@@ -481,38 +481,36 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
       return 0;
     }
 
-    {
-      MUTEX_LOCKER(mutexLocker, _lock);
-
-      if (ADB_UNLIKELY(_lastValue >= UINT64_MAX - 1ULL)) {
-        // oops, out of keys!
-        return 0;
-      }
-
-      if (tick <= _lastValue) {
-        tick = ++_lastValue;
-      } else {
-        _lastValue = tick;
-      }
+    auto lastValue = _lastValue.load(std::memory_order_relaxed);
+    if (ADB_UNLIKELY(lastValue >= UINT64_MAX - 1ULL)) {
+      // oops, out of keys!
+      return 0;
     }
+
+    do {
+      if (tick <= lastValue) {
+        tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
+        break;
+      }
+    } while(!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
+
 
     return tick;
   }
 
   /// @brief generate a key value (internal)
   void track(uint64_t value) override {
-    MUTEX_LOCKER(mutexLocker, _lock);
-
-    if (value > _lastValue) {
+    auto lastValue = _lastValue.load(std::memory_order_relaxed);
+    while (value > lastValue) {
       // and update our last value
-      _lastValue = value;
+      if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+        break;
+      }
     }
   }
 
  private:
-  mutable arangodb::Mutex _lock;
-
-  uint64_t _lastValue;
+  std::atomic<uint64_t> _lastValue;
 };
 
 /// @brief padded key generator for a coordinator
@@ -525,20 +523,20 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorCluster(bool allowUserKeys)
-      : PaddedKeyGenerator(allowUserKeys) {
+  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
+      : PaddedKeyGenerator(allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->uniqid();
-  }
+  uint64_t generateValue() override { return _ci.uniqid(); }
 
   /// @brief generate a key value (internal)
   void track(uint64_t /* value */) override {}
+
+ private:
+  ClusterInfo& _ci;
 };
 
 /// @brief auto-increment key generator - not usable in cluster
@@ -554,25 +552,23 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   std::string generate() override {
     uint64_t keyValue;
 
-    {
-      MUTEX_LOCKER(mutexLocker, _lock);
-
+    auto lastValue = _lastValue.load(std::memory_order_relaxed);
+    do {
       // user has not specified a key, generate one based on algorithm
-      if (_lastValue < _offset) {
+      if (lastValue < _offset) {
         keyValue = _offset;
       } else {
-        keyValue = _lastValue + _increment - ((_lastValue - _offset) % _increment);
+        keyValue = lastValue + _increment - ((lastValue - _offset) % _increment);
       }
 
       // bounds and sanity checks
-      if (keyValue == UINT64_MAX || keyValue < _lastValue) {
+      if (keyValue == UINT64_MAX || keyValue < lastValue) {
         return "";
       }
 
-      TRI_ASSERT(keyValue > _lastValue);
+      TRI_ASSERT(keyValue > lastValue);
       // update our last value
-      _lastValue = keyValue;
-    }
+    } while(!_lastValue.compare_exchange_weak(lastValue, keyValue, std::memory_order_relaxed));
 
     return arangodb::basics::StringUtils::itoa(keyValue);
   }
@@ -606,11 +602,12 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
       uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
 
       if (value > 0) {
-        MUTEX_LOCKER(mutexLocker, _lock);
-
-        if (value > _lastValue) {
+        auto lastValue = _lastValue.load(std::memory_order_relaxed);
+        while (value > lastValue) {
           // and update our last value
-          _lastValue = value;
+          if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+            break;
+          }
         }
       }
     }
@@ -621,20 +618,15 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("autoincrement"));
 
-    MUTEX_LOCKER(mutexLocker, _lock);
     builder.add("offset", VPackValue(_offset));
     builder.add("increment", VPackValue(_increment));
-    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
  private:
-  mutable arangodb::Mutex _lock;
-
-  uint64_t _lastValue;  // last value assigned
-
-  uint64_t _offset;  // start value
-
-  uint64_t _increment;  // increment value
+  std::atomic<uint64_t> _lastValue;  // last value assigned
+  const uint64_t _offset;  // start value
+  const uint64_t _increment;  // increment value
 };
 
 /// @brief uuid key generator
@@ -705,7 +697,9 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
     {static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL),
      [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         return new TraditionalKeyGeneratorCluster(allowUserKeys);
+         auto& server = application_features::ApplicationServer::server();
+         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+         return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new TraditionalKeyGeneratorSingle(allowUserKeys);
      }},
@@ -768,7 +762,9 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
      [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         return new PaddedKeyGeneratorCluster(allowUserKeys);
+         auto& server = application_features::ApplicationServer::server();
+         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+         return new PaddedKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new PaddedKeyGeneratorSingle(allowUserKeys);
      }}};

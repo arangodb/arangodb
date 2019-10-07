@@ -28,6 +28,10 @@
 #include "s2/s2cell_id.h"
 #include "s2/s2cell_union.h"
 
+#ifdef _WIN32
+#pragma warning(disable : 4200)
+#endif
+
 class S2Region;
 
 // An S2RegionCoverer is a class that allows arbitrary regions to be

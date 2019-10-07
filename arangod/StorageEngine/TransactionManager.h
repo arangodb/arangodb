@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_MANAGER_H
 #define ARANGOD_STORAGE_ENGINE_TRANSACTION_MANAGER_H 1
 
+#include <chrono>
+
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
@@ -37,7 +39,7 @@ struct TransactionData {
 class TransactionManager {
  public:
   TransactionManager() {}
-  virtual ~TransactionManager() {}
+  virtual ~TransactionManager() = default;
 
   // register a list of failed transactions
   virtual void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) = 0;
@@ -50,16 +52,25 @@ class TransactionManager {
 
   // register a transaction
   virtual void registerTransaction(TRI_voc_tid_t transactionId,
-                                   std::unique_ptr<TransactionData> data) = 0;
+                                   std::unique_ptr<TransactionData> data,
+                                   bool isReadOnlyTransaction) = 0;
 
   // unregister a transaction
-  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) = 0;
+  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) = 0;
 
   // iterate all the active transactions
   virtual void iterateActiveTransactions(
       std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) = 0;
 
   virtual uint64_t getActiveTransactionCount() = 0;
+
+  // functions to block transactions during hotbackup or restore
+  //  (not yet implemented/needed in all storage engines)
+  // holdTransactions: true on successful hold, false on timeout or error
+  virtual bool holdTransactions(uint64_t timeout) {return true;}
+  virtual bool holdTransactions(std::chrono::microseconds timeout) {return true;}
+
+  virtual void releaseTransactions() {}
 };
 
 }  // namespace arangodb

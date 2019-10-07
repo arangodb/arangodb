@@ -73,34 +73,38 @@ function ahuacatlLegacyGeoTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
 
       locations = db._create("UnitTestsAhuacatlLocations");
+      let docs = [];
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
-          locations.save({"latitude" : lat, "longitude" : lon });
+          docs.push({"latitude" : lat, "longitude" : lon });
         }
       }
+      locations.insert(docs);
 
       locations.ensureGeoIndex("latitude", "longitude");
 
       //locations without index
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
+      docs = [];
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
-          locationsNon.save({"latitude" : lat, "longitude" : lon });
+          docs.push({"latitude" : lat, "longitude" : lon });
         }
       }
+      locationsNon.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
     },
@@ -316,7 +320,7 @@ function legacyGeoTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
@@ -343,7 +347,7 @@ function legacyGeoTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
     },
@@ -549,7 +553,7 @@ function pointsTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       var lat, lon;
       db._drop("UnitTestsPointsTestSuite");
 
@@ -567,7 +571,7 @@ function pointsTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsPointsTestSuite");
     },
 
@@ -951,9 +955,6 @@ function geoJsonTestSuite() {
     var result2 = getQueryResults(query.string, query.bindVars || {}, false,
       { optimizer: { rules: ["-all"] } });
     let expected = query.expected.slice().sort();
-    /*
-    result1.forEach(k => internal.print("Res: ", locations.document(k)));
-    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
 
     assertEqual(expected, result1.sort(), query.string);
     assertEqual(expected, result2.sort(), query.string);
@@ -992,7 +993,7 @@ function geoJsonTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       var lat, lon;
       db._drop("UnitTestsGeoJsonTestSuite");
 
@@ -1007,7 +1008,7 @@ function geoJsonTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsGeoJsonTestSuite");
     },
 
@@ -1173,9 +1174,6 @@ function geoFunctionsTestSuite() {
     var result2 = getQueryResults(query.string, query.bindVars || {}, false,
       { optimizer: { rules: ["-all"] } });
     let expected = query.expected.slice().sort();
-    /*
-    result1.forEach(k => internal.print("Res: ", locations.document(k)));
-    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
 
     assertEqual(expected, result1.sort(), query.string);
     assertEqual(expected, result2.sort(), query.string);

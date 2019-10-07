@@ -52,11 +52,11 @@ std::unique_ptr<Request> createRequest(RestVerb const& verb,
 // For User
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
                                        StringMap const& parameter,
-                                       velocypack::Buffer<uint8_t>&& payload);
+                                       velocypack::Buffer<uint8_t> payload);
 
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
                                        StringMap const& parameter,
-                                       velocypack::Slice const& payload);
+                                       velocypack::Slice const payload);
 
 std::unique_ptr<Request> createRequest(
     RestVerb verb, std::string const& path,

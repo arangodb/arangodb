@@ -40,7 +40,7 @@ inline void TODO_IMPLEMENT() {
   std::cerr << "\x1b[31mTODO: implement me" << std::endl;
 }
 
-class test_base : public ::testing::Test {
+class test_env {
  public:
   static const std::string test_results;
 
@@ -51,17 +51,10 @@ class test_base : public ::testing::Test {
   static const irs::utf8_path& resource_dir() { return resource_dir_; }
   static const irs::utf8_path& test_results_dir() { return res_dir_; }
 
-  /* returns path to resource with the specified name */
+  // returns path to resource with the specified name
   static std::string resource( const std::string& name );
 
   static uint32_t iteration();
-
-  const irs::utf8_path& test_dir() { return test_dir_; }
-  const irs::utf8_path& test_case_dir() { return test_case_dir_; }
-
- protected:
-  test_base() = default;
-  virtual void SetUp() override;
 
  private:
   static void make_directories();
@@ -70,8 +63,8 @@ class test_base : public ::testing::Test {
 
   static int argc_;
   static char** argv_;
-  static std::string argv_ires_output_; /* argv_ for ires_output */
-  static std::string test_name_; /* name of the current test */
+  static std::string argv_ires_output_; // argv_ for ires_output
+  static std::string test_name_; // name of the current test //
   static irs::utf8_path exec_path_; // path where executable resides
   static irs::utf8_path exec_dir_; // directory where executable resides
   static irs::utf8_path exec_file_; // executable file name
@@ -82,10 +75,25 @@ class test_base : public ::testing::Test {
 
   static irs::utf8_path res_dir_; // output_dir_/test_name_YYYY_mm_dd_HH_mm_ss_XXXXXX
   static irs::utf8_path res_path_; // res_dir_/test_detail.xml
+};
 
+class test_base : public test_env, public ::testing::Test {
+ public:
+  const irs::utf8_path& test_dir() const { return test_dir_; }
+  const irs::utf8_path& test_case_dir() const { return test_case_dir_; }
+
+ protected:
+  test_base() = default;
+  virtual void SetUp() override;
+
+ private:
   irs::utf8_path test_dir_; // res_dir_/<test-name>
   irs::utf8_path test_case_dir_; // test_dir/<test-case-name>
   bool artifacts_;
-}; // test_base
+}; // test_info
+
+template<typename T>
+class test_param_base : public test_base, public ::testing::WithParamInterface<T> {
+};
 
 #endif

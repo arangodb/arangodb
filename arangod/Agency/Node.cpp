@@ -25,6 +25,9 @@
 #include "Store.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -37,13 +40,33 @@
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
-struct NotEmpty {
-  bool operator()(const std::string& s) { return !s.empty(); }
-};
+const Node::Children Node::dummyChildren = Node::Children();
+const Node Node::_dummyNode = Node("dumm-di-dumm");
 
-struct Empty {
-  bool operator()(const std::string& s) { return s.empty(); }
-};
+static std::string const SLASH("/");
+static std::regex const reg("/+");
+
+std::string Node::normalize(std::string const& path) {
+
+  if (path.empty()) {
+    return SLASH;
+  }
+
+  std::string key = std::regex_replace(path, reg, SLASH);
+
+  // Must specify absolute path
+  if (key.front() != SLASH.front()) {
+    key = SLASH + key;
+  }
+
+  // Remove trailing slash
+  if (key.size() > 2 && key.back() == SLASH.front()) {
+    key.pop_back();
+  }
+
+  return key;
+
+}
 
 /// @brief Split strings by separator
 inline static std::vector<std::string> split(const std::string& str, char separator) {
@@ -51,7 +74,7 @@ inline static std::vector<std::string> split(const std::string& str, char separa
   if (str.empty()) {
     return result;
   }
-  std::regex reg("/+");
+
   std::string key = std::regex_replace(str, reg, "/");
 
   if (!key.empty() && key.front() == '/') {
@@ -68,7 +91,10 @@ inline static std::vector<std::string> split(const std::string& str, char separa
     p = q + 1;
   }
   result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
+  result.erase(std::find_if(result.rbegin(), result.rend(),
+                            [](std::string const& s) -> bool {
+                              return !s.empty();
+                            }).base(),
                result.end());
   return result;
 }
@@ -86,7 +112,7 @@ Node::Node(std::string const& name, Store* store)
     : _nodeName(name), _parent(nullptr), _store(store), _vecBufDirty(true), _isArray(false) {}
 
 /// @brief Default dtor
-Node::~Node() {}
+Node::~Node() = default;
 
 /// @brief Get slice to value buffer
 Slice Node::slice() const {
@@ -179,7 +205,7 @@ Node::Node(Node const& other)
 /// 1. remove any existing time to live entry
 /// 2. clear children map
 /// 3. copy from rhs buffer to my buffer
-/// @brief Must not copy _parent, _ttl, _observers
+/// @brief Must not copy _parent, _store, _ttl
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
   _children.clear();
@@ -200,12 +226,13 @@ Node& Node::operator=(VPackSlice const& slice) {
   return *this;
 }
 
-/// @brief Move operator
+// Move operator
+// cppcheck-suppress operatorEqVarError
 Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
-  // Must not move over rhs's _parent, _observers
+  // Must not move over rhs's _parent, _store
   _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
   // The _children map has been moved here, therefore we must
@@ -221,12 +248,13 @@ Node& Node::operator=(Node&& rhs) {
   return *this;
 }
 
-/// Assignment operator
+// Assignment operator
+// cppcheck-suppress operatorEqVarError
 Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
   // 3. move from rhs to buffer pointer
-  // Must not move rhs's _parent, _observers
+  // Must not move rhs's _parent, _store
   removeTimeToLive();
   _nodeName = rhs._nodeName;
   _children.clear();
@@ -285,45 +313,56 @@ NodeType Node::type() const {
 
 /// @brief lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
-  if (!pv.empty()) {
-    std::string const& key = pv.front();
-    // Create new child
-    // 1. Remove any values, 2. add new child
-    if (_children.find(key) == _children.end()) {
-      _isArray = false;
-      if (!_value.empty()) {
-        _value.clear();
+  Node* current = this;
+
+  for (std::string const& key : pv) {
+
+    auto& children = current->_children;
+    auto  child = children.find(key);
+
+    if (child == children.end()) {
+
+      current->_isArray = false;
+      if (!current->_value.empty()) {
+        current->_value.clear();
       }
-      _children[key] = std::make_shared<Node>(key, this);
+
+      auto const& node = std::make_shared<Node>(key, current);
+      children.insert(Children::value_type(key, node));
+
+      current = node.get();
+    } else {
+      current = child->second.get();
     }
-    auto pvc(pv);
-    pvc.erase(pvc.begin());
-    TRI_ASSERT(_children[key]->_parent == this);
-    return (*_children[key])(pvc);
-  } else {
-    return *this;
   }
+
+  return *current;
 }
 
 /// @brief rh-value at path vector. Check if TTL has expired.
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
-  if (!pv.empty()) {
-    auto const& key = pv.front();
-    auto const it = _children.find(key);
-    if (it == _children.end() ||
-        (it->second->_ttl != std::chrono::system_clock::time_point() &&
-         it->second->_ttl < std::chrono::system_clock::now())) {
-      throw StoreException(std::string("Node ") + key + " not found!");
+
+  Node const* current = this;
+
+  for (std::string const& key : pv) {
+
+    auto const& children = current->_children;
+    auto const  child = children.find(key);
+
+    if (child == children.end() ||
+        (child->second->_ttl != std::chrono::system_clock::time_point() &&
+         child->second->_ttl < std::chrono::system_clock::now())) {
+      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+    }  else {
+      current = child->second.get();
     }
-    auto const& child = *_children.at(key);
-    TRI_ASSERT(child._parent == this);
-    auto pvc(pv);
-    pvc.erase(pvc.begin());
-    return child(pvc);
-  } else {
-    return *this;
+
   }
+
+  return *current;
+
 }
+
 
 /// @brief lh-value at path
 Node& Node::operator()(std::string const& path) {
@@ -366,6 +405,17 @@ Store& Node::store() { return *(root()._store); }
 
 Store const& Node::store() const { return *(root()._store); }
 
+Store* Node::getStore() {
+  Node* par = _parent;
+  Node* tmp = this;
+  while (par != nullptr) {
+    tmp = par;
+    par = par->_parent;
+  }
+  return tmp->_store; // Can be nullptr if we are not in a Node that belongs
+                      // to a store.
+}
+
 // velocypack value type of this node
 ValueType Node::valueType() const { return slice().type(); }
 
@@ -377,23 +427,26 @@ bool Node::addTimeToLive(long millis) {
   return true;
 }
 
+void Node::timeToLive(TimePoint const& ttl) {
+  _ttl = ttl;
+}
+
+TimePoint const& Node::timeToLive() const {
+  return _ttl;
+}
+
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
+
+  Store* s = getStore();  // We could be in a Node that belongs to a store,
+                          // or in one that doesn't.
+  if (s != nullptr) {
+    s->removeTTL(uri());
+  }
   if (_ttl != std::chrono::system_clock::time_point()) {
-    store().removeTTL(uri());
     _ttl = std::chrono::system_clock::time_point();
   }
   return true;
-}
-
-inline bool Node::observedBy(std::string const& url) const {
-  auto ret = store().observerTable().equal_range(url);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == uri()) {
-      return true;
-    }
-  }
-  return false;
 }
 
 namespace arangodb {
@@ -402,6 +455,12 @@ namespace consensus {
 /// Set value
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
+
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC("ad662", WARN, Logger::AGENCY)
+        << "Operator set without new value: " << slice.toJson();
+    return false;
+  }
   Slice val = slice.get("new");
 
   if (val.isObject()) {
@@ -426,7 +485,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
                        : static_cast<long>(slice.get("ttl").getNumber<int>()));
       addTimeToLive(ttl);
     } else {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("66da2", WARN, Logger::AGENCY)
           << "Non-number value assigned to ttl: " << ttl_v.toJson();
     }
   }
@@ -474,7 +533,7 @@ bool Node::handle<DECREMENT>(VPackSlice const& slice) {
 template <>
 bool Node::handle<PUSH>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("a9481", WARN, Logger::AGENCY)
         << "Operator push without new value: " << slice.toJson();
     return false;
   }
@@ -497,17 +556,17 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
   bool havePos = slice.hasKey("pos");
 
   if (!haveVal && !havePos) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("b5eaa", WARN, Logger::AGENCY)
         << "Operator erase without value or position to be erased is illegal: "
         << slice.toJson();
     return false;
   } else if (haveVal && havePos) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("c2756", WARN, Logger::AGENCY)
         << "Operator erase with value and position to be erased is illegal: "
         << slice.toJson();
     return false;
   } else if (havePos && (!slice.get("pos").isUInt() && !slice.get("pos").isSmallInt())) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("d6648", WARN, Logger::AGENCY)
         << "Operator erase with non-positive integer position is illegal: "
         << slice.toJson();
   }
@@ -520,7 +579,7 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
-          if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/ true) != 0) {
+          if (!VelocyPackHelper::equal(old, valToErase, /*useUTF8*/ true)) {
             tmp.add(old);
           }
         }
@@ -548,12 +607,12 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
 template <>
 bool Node::handle<REPLACE>(VPackSlice const& slice) {
   if (!slice.hasKey("val")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("27763", WARN, Logger::AGENCY)
         << "Operator erase without value to be erased: " << slice.toJson();
     return false;
   }
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("28331", WARN, Logger::AGENCY)
         << "Operator replace without new value: " << slice.toJson();
     return false;
   }
@@ -563,7 +622,7 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
     if (this->slice().isArray()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
-        if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/ true) == 0) {
+        if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
           tmp.add(slice.get("new"));
         } else {
           tmp.add(old);
@@ -600,7 +659,7 @@ bool Node::handle<POP>(VPackSlice const& slice) {
 template <>
 bool Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
         << "Operator prepend without new value: " << slice.toJson();
     return false;
   }
@@ -638,50 +697,6 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
   return true;
 }
 
-/// Add observer for this node
-template <>
-bool Node::handle<OBSERVE>(VPackSlice const& slice) {
-  if (!slice.hasKey("url")) return false;
-  if (!slice.get("url").isString()) return false;
-  std::string url(slice.get("url").copyString()), uri(this->uri());
-
-  // check if such entry exists
-  if (!observedBy(url)) {
-    store().observerTable().emplace(std::pair<std::string, std::string>(url, uri));
-    store().observedTable().emplace(std::pair<std::string, std::string>(uri, url));
-    return true;
-  }
-
-  return false;
-}
-
-/// Remove observer for this node
-template <>
-bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
-  if (!slice.hasKey("url")) return false;
-  if (!slice.get("url").isString()) return false;
-  std::string url(slice.get("url").copyString()), uri(this->uri());
-
-  // delete in both cases a single entry (ensured above)
-  // breaking the iterators is fine then
-  auto ret = store().observerTable().equal_range(url);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == uri) {
-      store().observerTable().erase(it);
-      break;
-    }
-  }
-  ret = store().observedTable().equal_range(uri);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == url) {
-      store().observedTable().erase(it);
-      return true;
-    }
-  }
-
-  return false;
-}
-
 }  // namespace consensus
 }  // namespace arangodb
 
@@ -692,6 +707,7 @@ bool Node::applieOp(VPackSlice const& slice) {
     if (_parent == nullptr) {  // root node
       _children.clear();
       _value.clear();
+      _vecBufDirty = true;    // just in case there was an array
       return true;
     } else {
       return _parent->removeChild(_nodeName);
@@ -710,26 +726,12 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<PREPEND>(slice);
   } else if (oper == "shift") {  // "op":"shift"
     return handle<SHIFT>(slice);
-  } else if (oper == "observe") {  // "op":"observe"
-    return handle<OBSERVE>(slice);
-  } else if (oper == "unobserve") {  // "op":"unobserve"
-    handle<UNOBSERVE>(slice);
-    if (_children.empty() && _value.empty()) {
-      if (_parent == nullptr) {  // root node
-        _children.clear();
-        _value.clear();
-        return true;
-      } else {
-        return _parent->removeChild(_nodeName);
-      }
-    }
-    return true;
   } else if (oper == "erase") {  // "op":"erase"
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
   } else {  // "op" might not be a key word after all
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("fb064", WARN, Logger::AGENCY)
         << "Keyword 'op' without known operation. Handling as regular key: \""
         << oper << "\"";
   }
@@ -784,7 +786,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
     }
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("44d99", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -918,7 +920,7 @@ std::pair<Node const&, bool> Node::hasAsNode(std::string const& url) const {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("3e591", DEBUG, Logger::SUPERVISION)
         << "hasAsNode had exception processing " << url;
   }  // catch
 
@@ -936,7 +938,7 @@ std::pair<Node&, bool> Node::hasAsWritableNode(std::string const& url) {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("027ed", DEBUG, Logger::SUPERVISION)
         << "hasAsWritableNode had exception processing " << url;
   }  // catch
 
@@ -953,7 +955,7 @@ std::pair<NodeType, bool> Node::hasAsType(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("7f66c", DEBUG, Logger::SUPERVISION)
         << "hasAsType had exception processing " << url;
   }  // catch
 
@@ -971,7 +973,7 @@ std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("16f3d", TRACE, Logger::SUPERVISION)
         << "hasAsSlice had exception processing " << url;
   }  // catch
 
@@ -990,7 +992,7 @@ std::pair<uint64_t, bool> Node::hasAsUInt(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("eaa6b", DEBUG, Logger::SUPERVISION)
         << "hasAsUInt had exception processing " << url;
   }  // catch
 
@@ -1009,7 +1011,7 @@ std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("99238", DEBUG, Logger::SUPERVISION)
         << "hasAsBool had exception processing " << url;
   }  // catch
 
@@ -1030,30 +1032,26 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("fd020", DEBUG, Logger::SUPERVISION)
         << "hasAsString had exception processing " << url;
   }  // catch
 
   return ret_pair;
 }  // hasAsString
 
-std::pair<Node::Children, bool> Node::hasAsChildren(std::string const& url) const {
-  std::pair<Children, bool> ret_pair;
-
-  ret_pair.second = false;
+std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& url) const {
 
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    ret_pair.first = target.children();
-    ret_pair.second = true;
+    return std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
-    // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("4e3cb", DEBUG, Logger::SUPERVISION)
         << "hasAsChildren had exception processing " << url;
   }  // catch
 
-  return ret_pair;
+  return std::pair<Children const&, bool> {dummyChildren, false};
+
 }  // hasAsChildren
 
 std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& builder,
@@ -1067,7 +1065,7 @@ std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& build
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("fb685", DEBUG, Logger::SUPERVISION)
         << "hasAsBuilder(1) had exception processing " << url;
   }  // catch
 
@@ -1086,7 +1084,7 @@ std::pair<Builder, bool> Node::hasAsBuilder(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("68a75", DEBUG, Logger::SUPERVISION)
         << "hasAsBuilder(2) had exception processing " << url;
   }  // catch
 
@@ -1104,7 +1102,7 @@ std::pair<Slice, bool> Node::hasAsArray(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("0a72b", DEBUG, Logger::SUPERVISION)
         << "hasAsArray had exception processing " << url;
   }  // catch
 
@@ -1131,7 +1129,7 @@ Slice Node::getArray() const {
 
 void Node::clear() {
   _children.clear();
-  _ttl = std::chrono::system_clock::time_point();
+  removeTimeToLive();
   _value.clear();
   _vecBuf.clear();
   _vecBufDirty = true;

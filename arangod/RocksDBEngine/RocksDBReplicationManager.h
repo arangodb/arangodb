@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Cluster/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 
@@ -55,7 +56,8 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, TRI_server_id_t serverId);
+  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId,
+                                           TRI_server_id_t clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -76,9 +78,11 @@ class RocksDBReplicationManager {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id and extend lifetime
-  /// may be used concurrently on used contextes
+  /// may be used concurrently on used contexts
+  /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  int extendLifetime(RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
+  ResultT<std::tuple<SyncerId, TRI_server_id_t, std::string>> extendLifetime(
+      RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use

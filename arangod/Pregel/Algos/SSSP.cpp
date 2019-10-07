@@ -26,6 +26,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
@@ -43,8 +44,9 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       *state = tmp;  // update state
 
       RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (Edge<int64_t>* edge : edges) {
-        int64_t val = *edge->data() + tmp;
+      for (; edges.hasMore(); ++edges) {
+        Edge<int64_t>* edge = *edges;
+        int64_t val = edge->data() + tmp;
         sendMessage(edge, val);
       }
     }
@@ -72,13 +74,14 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, resultField;
 
  public:
-  SSSPGraphFormat(std::string const& source, std::string const& result)
-      : InitGraphFormat<int64_t, int64_t>(result, 0, 1), _sourceDocId(source) {}
+  SSSPGraphFormat(application_features::ApplicationServer& server,
+                  std::string const& source, std::string const& result)
+      : InitGraphFormat<int64_t, int64_t>(server, result, 0, 1),
+        _sourceDocId(source) {}
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        int64_t* targetPtr, size_t maxSize) override {
-    *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
-    return sizeof(int64_t);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        int64_t& targetPtr) override {
+    targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
@@ -88,7 +91,7 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
 };
 
 GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat() const {
-  return new SSSPGraphFormat(_sourceDocumentId, _resultField);
+  return new SSSPGraphFormat(_server, _sourceDocumentId, _resultField);
 }
 
 struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {

@@ -25,15 +25,17 @@
 
 #include "LogicalDataSource.h"
 
+#include <velocypack/StringRef.h>
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "velocypack/StringRef.h"
 
 #include "Logger/Logger.h"
 
@@ -53,7 +55,7 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   // id numbers can also not conflict, first character is always 'h'
   if (arangodb::ServerState::instance()->isCoordinator() ||
       arangodb::ServerState::instance()->isDBServer()) {
-    TRI_ASSERT(planId);
+    TRI_ASSERT(planId); // ensured by LogicalDataSource constructor + '_id' != 0
     guid.append("c");
     guid.append(std::to_string(planId));
     guid.push_back('/');
@@ -65,9 +67,9 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   } else if (isSystem) {
     guid.append(name);
   } else {
+    TRI_ASSERT(id); // ensured by ensureId(...)
     char buf[sizeof(TRI_server_id_t) * 2 + 1];
     auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
-    TRI_ASSERT(id);
     guid.append("h");
     guid.append(buf, len);
     TRI_ASSERT(guid.size() > 3);
@@ -78,19 +80,28 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   return std::move(guid);
 }
 
-TRI_voc_cid_t ensureId(TRI_voc_cid_t id) {
+TRI_voc_cid_t ensureId(arangodb::ClusterInfo* ci, TRI_voc_cid_t id) {
   if (id) {
     return id;
   }
 
-  if (arangodb::ServerState::instance()->isCoordinator() ||
-      arangodb::ServerState::instance()->isDBServer()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    return ci ? ci->uniqid(1) : 0;
+  if (!arangodb::ServerState::instance()->isCoordinator() // not coordinator
+      && !arangodb::ServerState::instance()->isDBServer() // not db-server
+     ) {
+    return TRI_NewTickServer();
   }
 
-  return TRI_NewTickServer();
+  TRI_ASSERT(ci != nullptr);
+  id = ci->uniqid(1);
+
+  if (!id) {
+    THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+      TRI_ERROR_INTERNAL, // code
+      "invalid zero value returned for uniqueid by 'ClusterInfo' while generating LogicalDataSource ID" // message
+    );
+  }
+
+  return id;
 }
 
 bool readIsSystem(arangodb::velocypack::Slice definition) {
@@ -168,7 +179,10 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
       _category(category),
       _type(type),
       _vocbase(vocbase),
-      _id(ensureId(id)),
+      _id(ensureId(vocbase.server().hasFeature<ClusterFeature>()
+                       ? &vocbase.server().getFeature<ClusterFeature>().clusterInfo()
+                       : nullptr,
+                   id)),
       _planId(planId ? planId : _id),
       _planVersion(planVersion),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
@@ -179,7 +193,7 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
 }
 
 Result LogicalDataSource::properties(velocypack::Builder& builder,
-                                     bool detailed, bool forPersistence) const {
+                                     std::underlying_type<Serialize>::type flags) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -194,7 +208,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
   // includeSystem if we are persisting the properties
-  if (forPersistence) {
+  if (hasFlag(flags, Serialize::ForPersistence)) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
@@ -204,7 +218,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
                 velocypack::Value(std::to_string(planId())));
   }
 
-  return appendVelocyPack(builder, detailed, forPersistence);
+  return appendVelocyPack(builder, flags);
 }
 
 }  // namespace arangodb

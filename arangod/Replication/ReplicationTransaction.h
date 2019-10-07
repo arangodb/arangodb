@@ -41,7 +41,7 @@ class ReplicationTransaction : public transaction::Methods {
       : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
         _guard(vocbase) {
     TRI_ASSERT(_state != nullptr);
-    _state->setType(AccessMode::Type::EXCLUSIVE);
+    _state->setExclusiveAccessType();
   }
 
  private:

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseGuard.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
 
@@ -48,9 +47,18 @@ TRI_vocbase_t& vocbase(T& id) {
 }  // namespace
 
 namespace arangodb {
+  
+/// @brief create guard on existing db
+DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) 
+    : _vocbase(vocbase) {
+  if (!_vocbase.use()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+}
 
 /// @brief create the guard, using a database id
-DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id) : _vocbase(vocbase(id)) {
+DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id) 
+    : _vocbase(vocbase(id)) {
   TRI_ASSERT(!_vocbase.isDangling());
 }
 

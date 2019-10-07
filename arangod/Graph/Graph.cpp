@@ -84,10 +84,11 @@ Graph::Graph(velocypack::Slice const& slice)
                                                                            1)),
       _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
           slice, StaticStrings::ReplicationFactor, 1)),
+      _minReplicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+              slice, StaticStrings::MinReplicationFactor, 1)),
       _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
                                                     "")) {
   // If this happens we have a document without an _key Attribute.
-  TRI_ASSERT(!_graphName.empty());
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
@@ -95,12 +96,14 @@ Graph::Graph(velocypack::Slice const& slice)
   }
 
   // If this happens we have a document without an _rev Attribute.
-  TRI_ASSERT(!_rev.empty());
   if (_rev.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
                                    "have a _rev set. Please contact support.");
   }
+  
+  TRI_ASSERT(!_graphName.empty());
+  TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
     parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
@@ -117,6 +120,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
       _edgeColls(),
       _numberOfShards(1),
       _replicationFactor(1),
+      _minReplicationFactor(1),
       _rev("") {
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -134,11 +138,12 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
         VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     _replicationFactor =
         VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+    _minReplicationFactor =
+            VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor, 1);
   }
 }
 
 void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
-  TRI_ASSERT(edgeDefs.isArray());
   if (!edgeDefs.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_GRAPH_INVALID_GRAPH,
@@ -148,13 +153,17 @@ void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
   for (auto const& def : VPackArrayIterator(edgeDefs)) {
     auto edgeDefRes = addEdgeDefinition(def);
     if (edgeDefRes.fail()) {
-      THROW_ARANGO_EXCEPTION(edgeDefRes.copy_result());
+      THROW_ARANGO_EXCEPTION(std::move(edgeDefRes).result());
     }
   }
 }
 
 void Graph::insertOrphanCollections(VPackSlice const arr) {
-  TRI_ASSERT(arr.isArray());
+  if (!arr.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_GRAPH_INVALID_GRAPH,
+        "'orphanCollections' are not an array in the graph definition");
+  }
   for (auto const& c : VPackArrayIterator(arr)) {
     TRI_ASSERT(c.isString());
     validateOrphanCollection(c);
@@ -185,6 +194,8 @@ std::map<std::string, EdgeDefinition>& Graph::edgeDefinitions() {
 uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
+
+uint64_t Graph::minReplicationFactor() const { return _minReplicationFactor; }
 
 std::string const Graph::id() const {
   return std::string(StaticStrings::GraphCollection + "/" + _graphName);
@@ -228,6 +239,7 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
 
 Result Graph::removeOrphanCollection(std::string&& name) {
   TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
+  // cppcheck-suppress redundantIfRemove
   if (_orphanColls.find(name) != _orphanColls.end()) {
     _orphanColls.erase(name);
     _vertexColls.erase(name);
@@ -252,6 +264,10 @@ void Graph::setNumberOfShards(uint64_t numberOfShards) {
 
 void Graph::setReplicationFactor(uint64_t replicationFactor) {
   _replicationFactor = replicationFactor;
+}
+
+void Graph::setMinReplicationFactor(uint64_t minReplicationFactor) {
+  _minReplicationFactor = minReplicationFactor;
 }
 
 void Graph::setRev(std::string&& rev) { _rev = std::move(rev); }
@@ -285,6 +301,7 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   // Cluster Information
   builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(_minReplicationFactor));
   builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
 
   // EdgeDefinitions
@@ -379,6 +396,12 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
   }
   for (auto const& it : VPackArrayIterator(to)) {
     toSet.emplace(it.copyString());
+  }
+
+  // We do not allow creating an edge definition with either an empty from
+  // or an empty to set
+  if (fromSet.size() == 0 || toSet.size() == 0) {
+    return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
 
   return EdgeDefinition{collection, std::move(fromSet), std::move(toSet)};
@@ -496,7 +519,7 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
 
 Result Graph::replaceEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   if (removeEdgeDefinition(edgeDefinition.getName())) {
-    return addEdgeDefinition(edgeDefinition);
+    return addEdgeDefinition(edgeDefinition).result();
   }
   // Graph doesn't contain this edge definition, no need to do anything.
   return TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST;
@@ -527,7 +550,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDe
   auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
   if (res.fail()) {
-    return res.copy_result();
+    return std::move(res).result();
   }
   TRI_ASSERT(res.ok());
 
@@ -656,6 +679,7 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor()));
 }
 
 boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(std::string const& collectionName) const {

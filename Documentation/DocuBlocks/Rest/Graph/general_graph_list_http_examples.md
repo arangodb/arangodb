@@ -52,10 +52,10 @@ concurrent modifications to this graph.
 The replication factor used for every new collection in the graph.
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
-Flag if the graph is a SmartGraph (Enterprise only) or not.
+Flag if the graph is a SmartGraph (Enterprise Edition only) or not.
 
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
-The name of the sharding attribute in smart graph case (Enterprise Only)
+The name of the sharding attribute in smart graph case (Enterprise Edition only)
 
 @EXAMPLES
 

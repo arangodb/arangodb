@@ -27,6 +27,7 @@
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Node.h"
+#include <map>
 
 namespace arangodb {
 namespace consensus {
@@ -69,7 +70,8 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(Agent* agent, std::string const& name = "root");
+  explicit Store(application_features::ApplicationServer& server, Agent* agent,
+                 std::string const& name = "root");
 
   /// @brief Destruct
   virtual ~Store();
@@ -155,6 +157,9 @@ class Store {
 
   /// @brief Run thread
  private:
+  /// @brief underlying application server, needed for testing code
+  application_features::ApplicationServer& _server;
+
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
 

@@ -25,9 +25,11 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
+
 #include "fakeit.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/Handler.h"
 #include "Auth/User.h"
@@ -43,108 +45,110 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
-class TestQueryRegistry: public QueryRegistry {
+class TestQueryRegistry : public QueryRegistry {
  public:
-  TestQueryRegistry() : QueryRegistry(1.0) {};
-  virtual ~TestQueryRegistry() {}
+  TestQueryRegistry() : QueryRegistry(1.0){};
+  virtual ~TestQueryRegistry() = default;
 };
 
-class TestDatabaseFeature: public DatabaseFeature {
- public:
-  TestDatabaseFeature(application_features::ApplicationServer& server)
-    : DatabaseFeature(server) {
-  }
-};
-
-TEST_CASE("🥑🔐 UserManager", "[authentication]") {
+class UserManagerTest : public ::testing::Test {
+ protected:
+  application_features::ApplicationServer server;
   TestQueryRegistry queryRegistry;
-
-  auto state = ServerState::instance();
-  state->setRole(ServerState::ROLE_SINGLE);
-
+  ServerState* state;
   Mock<DatabaseFeature> databaseFeatureMock;
-  DatabaseFeature &databaseFeature = databaseFeatureMock.get();
-  DatabaseFeature::DATABASE = &databaseFeature;
-
+  DatabaseFeature& databaseFeature;
   auth::UserManager um;
-  um.setQueryRegistry(&queryRegistry);
-  
-  SECTION("An unknown user will have no access") {
-    auth::UserMap userEntryMap;
-    um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.databaseAuthLevel("test", "test");
-    REQUIRE(authLevel == auth::Level::NONE);
+
+  UserManagerTest()
+      : server(nullptr, nullptr),
+        state(ServerState::instance()),
+        databaseFeature(databaseFeatureMock.get()),
+        um(server) {
+    state->setRole(ServerState::ROLE_SINGLE);
+    um.setQueryRegistry(&queryRegistry);
+    DatabaseFeature::DATABASE = &databaseFeature;
   }
 
-  SECTION("Granting RW access on database * will grant access to all databases") {
-    auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
-    testUser.grantDatabase("*", auth::Level::RW);
-    userEntryMap.emplace("test", testUser);
-
-    um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.databaseAuthLevel("test", "test");
-    REQUIRE(authLevel == auth::Level::RW);
+  ~UserManagerTest() {
+    state->setServerMode(ServerState::Mode::DEFAULT);
+    state->setReadOnly(false);
   }
+};
 
-  SECTION("Setting ServerState to readonly will make all users effective RO users") {
-    auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
-    testUser.grantDatabase("*", auth::Level::RW);
-    userEntryMap.emplace("test", testUser);
-
-    state->setReadOnly(true);
-
-    um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.databaseAuthLevel("test", "test");
-    REQUIRE(authLevel == auth::Level::RO);
-  }
-
-  SECTION("In readonly mode the configured access level will still be accessible") {
-    auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
-    testUser.grantDatabase("*", auth::Level::RW);
-    userEntryMap.emplace("test", testUser);
-
-    state->setReadOnly(true);
-
-    um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
-    REQUIRE(authLevel == auth::Level::RW);
-  }
-
-  SECTION("Setting ServerState to readonly will make all users effective RO users (collection level)") {
-    auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
-    testUser.grantDatabase("*", auth::Level::RW);
-    testUser.grantCollection("test", "test", auth::Level::RW);
-    userEntryMap.emplace("test", testUser);
-
-    state->setReadOnly(true);
-
-    um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
-    REQUIRE(authLevel == auth::Level::RO);
-  }
-
-  SECTION("In readonly mode the configured access level will still be accessible (collection level)") {
-    auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
-    testUser.grantDatabase("*", auth::Level::RW);
-    testUser.grantCollection("test", "test", auth::Level::RW);
-    userEntryMap.emplace("test", testUser);
-
-    state->setReadOnly(true);
-
-    um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.collectionAuthLevel("test", "test", "test", /*configured*/ true);
-    REQUIRE(authLevel == auth::Level::RW);
-  }
-
-  state->setServerMode(ServerState::Mode::DEFAULT);
-  state->setReadOnly(false);
+TEST_F(UserManagerTest, unknown_user_will_have_no_access) {
+  auth::UserMap userEntryMap;
+  um.setAuthInfo(userEntryMap);
+  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  ASSERT_EQ(authLevel, auth::Level::NONE);
 }
 
+TEST_F(UserManagerTest, granting_rw_access_on_database_star_will_grant_to_all_databases) {
+  auth::UserMap userEntryMap;
+  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  testUser.grantDatabase("*", auth::Level::RW);
+  userEntryMap.emplace("test", testUser);
+
+  um.setAuthInfo(userEntryMap);
+  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  ASSERT_EQ(authLevel, auth::Level::RW);
 }
+
+TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effectively_ro_users) {
+  auth::UserMap userEntryMap;
+  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  testUser.grantDatabase("*", auth::Level::RW);
+  userEntryMap.emplace("test", testUser);
+
+  state->setReadOnly(true);
+
+  um.setAuthInfo(userEntryMap);
+  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  ASSERT_EQ(authLevel, auth::Level::RO);
 }
+
+TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_be_accessible) {
+  auth::UserMap userEntryMap;
+  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  testUser.grantDatabase("*", auth::Level::RW);
+  userEntryMap.emplace("test", testUser);
+
+  state->setReadOnly(true);
+
+  um.setAuthInfo(userEntryMap);
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
+  ASSERT_EQ(authLevel, auth::Level::RW);
 }
+
+TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effective_ro_users_collection_level) {
+  auth::UserMap userEntryMap;
+  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  testUser.grantDatabase("*", auth::Level::RW);
+  testUser.grantCollection("test", "test", auth::Level::RW);
+  userEntryMap.emplace("test", testUser);
+
+  state->setReadOnly(true);
+
+  um.setAuthInfo(userEntryMap);
+  auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
+  ASSERT_EQ(authLevel, auth::Level::RO);
+}
+
+TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_be_accessible_collection_level) {
+  auth::UserMap userEntryMap;
+  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  testUser.grantDatabase("*", auth::Level::RW);
+  testUser.grantCollection("test", "test", auth::Level::RW);
+  userEntryMap.emplace("test", testUser);
+
+  state->setReadOnly(true);
+
+  um.setAuthInfo(userEntryMap);
+  auth::Level authLevel =
+      um.collectionAuthLevel("test", "test", "test", /*configured*/ true);
+  ASSERT_EQ(authLevel, auth::Level::RW);
+}
+
+}  // namespace auth_info_test
+}  // namespace tests
+}  // namespace arangodb

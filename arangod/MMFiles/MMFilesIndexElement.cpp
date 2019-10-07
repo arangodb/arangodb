@@ -48,7 +48,6 @@ MMFilesHashIndexElement* MMFilesHashIndexElement::initialize(
 /// in place.
 arangodb::velocypack::Slice MMFilesHashIndexElement::slice(MMFilesIndexLookupContext* context,
                                                            size_t position) const {
-  TRI_ASSERT(context->result() != nullptr);
   MMFilesIndexElementValue const* sub = subObject(position);
 
   if (sub->isInline()) {
@@ -128,7 +127,6 @@ MMFilesSkiplistIndexElement* MMFilesSkiplistIndexElement::initialize(
 /// in place.
 arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(MMFilesIndexLookupContext* context,
                                                                size_t position) const {
-  TRI_ASSERT(context->result() != nullptr);
   MMFilesIndexElementValue const* sub = subObject(position);
 
   if (sub->isInline()) {
@@ -158,7 +156,6 @@ uint64_t MMFilesSimpleIndexElement::hash(arangodb::velocypack::Slice const& valu
 }
 
 VPackSlice MMFilesSimpleIndexElement::slice(MMFilesIndexLookupContext* context) const {
-  TRI_ASSERT(context->result() != nullptr);
   uint8_t const* vpack = context->lookup(_localDocumentId);
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);

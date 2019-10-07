@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_LIST_H
 #define ARANGOD_MMFILES_MMFILES_FULLTEXT_LIST_H 1
 
+#include <set>
+
 #include "VocBase/voc-types.h"
 #include "mmfiles-fulltext-common.h"
 
@@ -57,11 +59,5 @@ TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(TRI_fulltext_list_t*,
 /// this might free the old list and allocate a new, smaller one
 TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(TRI_fulltext_list_t*,
                                                         TRI_fulltext_list_entry_t);
-
-/// @brief return the number of entries
-uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
-
-/// @brief return a pointer to the first list entry
-TRI_fulltext_list_entry_t* TRI_StartListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
 
 #endif

@@ -35,7 +35,7 @@ static bool CreateIndex(SimpleHttpClient*, std::string const&,
                         std::string const&, std::string const&);
 
 struct VersionTest : public BenchmarkOperation {
-  VersionTest() : BenchmarkOperation() { _url = "/_api/version"; }
+  VersionTest() : BenchmarkOperation(), _url("/_api/version") {}
 
   bool setUp(SimpleHttpClient* client) override { return true; }
 
@@ -826,9 +826,9 @@ struct HashTest : public BenchmarkOperation {
 };
 
 struct DocumentImportTest : public BenchmarkOperation {
-  DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(nullptr) {
-    _url = "/_api/import?collection=" + ARANGOBENCH->collection() +
-           "&type=documents";
+  DocumentImportTest() : BenchmarkOperation(),
+     _url("/_api/import?collection=" + ARANGOBENCH->collection() + "&type=documents"), 
+     _buffer(nullptr) {
 
     uint64_t const n = ARANGOBENCH->complexity();
 
@@ -878,8 +878,9 @@ struct DocumentImportTest : public BenchmarkOperation {
 };
 
 struct DocumentCreationTest : public BenchmarkOperation {
-  DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(nullptr) {
-    _url = "/_api/document?collection=" + ARANGOBENCH->collection();
+  DocumentCreationTest() : BenchmarkOperation(),
+       _url("/_api/document?collection=" + ARANGOBENCH->collection()),
+       _buffer(nullptr) {
 
     uint64_t const n = ARANGOBENCH->complexity();
 
@@ -934,9 +935,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 };
 
 struct CollectionCreationTest : public BenchmarkOperation {
-  CollectionCreationTest() : BenchmarkOperation(), _url() {
-    _url = "/_api/collection";
-  }
+  CollectionCreationTest() : BenchmarkOperation(), _url("/_api/collection") {}
 
   bool setUp(SimpleHttpClient* client) override { return true; }
 
@@ -1518,10 +1517,8 @@ struct AqlV8Test : public BenchmarkOperation {
 
 static bool DeleteCollection(SimpleHttpClient* client, std::string const& name) {
   std::unordered_map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = nullptr;
-
-  result = client->request(rest::RequestType::DELETE_REQ,
-                           "/_api/collection/" + name, "", 0, headerFields);
+  std::unique_ptr<SimpleHttpResult> result(client->request(rest::RequestType::DELETE_REQ,
+                           "/_api/collection/" + name, "", 0, headerFields));
 
   bool failed = true;
   if (result != nullptr) {
@@ -1529,8 +1526,6 @@ static bool DeleteCollection(SimpleHttpClient* client, std::string const& name) 
     if (statusCode == 200 || statusCode == 201 || statusCode == 202 || statusCode == 404) {
       failed = false;
     }
-
-    delete result;
   }
 
   return !failed;
@@ -1543,7 +1538,6 @@ static bool DeleteCollection(SimpleHttpClient* client, std::string const& name) 
 static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
                              int const type) {
   std::unordered_map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = nullptr;
 
   std::string payload =
       "{\"name\":\"" + name + "\",\"type\":" + StringUtils::itoa(type) +
@@ -1552,8 +1546,8 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
       ",\"waitForSync\":" + (ARANGOBENCH->waitForSync() ? "true" : "false") +
       "}";
 
-  result = client->request(rest::RequestType::POST, "/_api/collection",
-                           payload.c_str(), payload.size(), headerFields);
+  std::unique_ptr<SimpleHttpResult> result(client->request(rest::RequestType::POST, "/_api/collection",
+                           payload.c_str(), payload.size(), headerFields));
 
   bool failed = true;
 
@@ -1562,8 +1556,6 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
     if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
       failed = false;
     }
-
-    delete result;
   }
 
   return !failed;
@@ -1576,12 +1568,12 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
 static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
                         std::string const& type, std::string const& fields) {
   std::unordered_map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = nullptr;
 
   std::string payload =
       "{\"type\":\"" + type + "\",\"fields\":" + fields + ",\"unique\":false}";
-  result = client->request(rest::RequestType::POST, "/_api/index?collection=" + name,
-                           payload.c_str(), payload.size(), headerFields);
+
+  std::unique_ptr<SimpleHttpResult> result(client->request(rest::RequestType::POST, "/_api/index?collection=" + name,
+                           payload.c_str(), payload.size(), headerFields));
 
   bool failed = true;
 
@@ -1589,8 +1581,6 @@ static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
     if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
     }
-
-    delete result;
   }
 
   return !failed;
@@ -1603,11 +1593,10 @@ static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
 static bool CreateDocument(SimpleHttpClient* client, std::string const& collection,
                            std::string const& payload) {
   std::unordered_map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = nullptr;
 
-  result = client->request(rest::RequestType::POST,
+  std::unique_ptr<SimpleHttpResult> result(client->request(rest::RequestType::POST,
                            "/_api/document?collection=" + collection,
-                           payload.c_str(), payload.size(), headerFields);
+                           payload.c_str(), payload.size(), headerFields));
 
   bool failed = true;
 
@@ -1616,8 +1605,6 @@ static bool CreateDocument(SimpleHttpClient* client, std::string const& collecti
         result->getHttpReturnCode() == 202) {
       failed = false;
     }
-
-    delete result;
   }
 
   return !failed;

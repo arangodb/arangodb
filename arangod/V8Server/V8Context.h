@@ -38,9 +38,6 @@ class GlobalContextMethods {
     UNKNOWN = 0,
     RELOAD_ROUTING,
     RELOAD_AQL,
-    COLLECT_GARBAGE,
-    BOOTSTRAP_COORDINATOR,
-    WARMUP_EXPORTS
   };
 
  public:
@@ -50,15 +47,6 @@ class GlobalContextMethods {
     }
     if (type == "reloadAql") {
       return MethodType::RELOAD_AQL;
-    }
-    if (type == "collectGarbage") {
-      return MethodType::COLLECT_GARBAGE;
-    }
-    if (type == "bootstrapCoordinator") {
-      return MethodType::BOOTSTRAP_COORDINATOR;
-    }
-    if (type == "warmupExports") {
-      return MethodType::WARMUP_EXPORTS;
     }
 
     return MethodType::UNKNOWN;
@@ -70,12 +58,6 @@ class GlobalContextMethods {
         return "reloadRouting";
       case MethodType::RELOAD_AQL:
         return "reloadAql";
-      case MethodType::COLLECT_GARBAGE:
-        return "collectGarbage";
-      case MethodType::BOOTSTRAP_COORDINATOR:
-        return "bootstrapCoordinator";
-      case MethodType::WARMUP_EXPORTS:
-        return "warmupExports";
       case MethodType::UNKNOWN:
       default:
         return "unknown";
@@ -88,12 +70,6 @@ class GlobalContextMethods {
         return CodeReloadRouting;
       case MethodType::RELOAD_AQL:
         return CodeReloadAql;
-      case MethodType::COLLECT_GARBAGE:
-        return CodeCollectGarbage;
-      case MethodType::BOOTSTRAP_COORDINATOR:
-        return CodeBootstrapCoordinator;
-      case MethodType::WARMUP_EXPORTS:
-        return CodeWarmupExports;
       case MethodType::UNKNOWN:
       default:
         return StaticStrings::Empty;
@@ -103,9 +79,6 @@ class GlobalContextMethods {
  public:
   static std::string const CodeReloadRouting;
   static std::string const CodeReloadAql;
-  static std::string const CodeCollectGarbage;
-  static std::string const CodeBootstrapCoordinator;
-  static std::string const CodeWarmupExports;
 };
 
 class V8Context {

@@ -21,7 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "composite_reader_impl.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "store/store_utils.hpp"
 #include "utils/string_utils.hpp"
@@ -29,6 +28,19 @@
 #include "transaction_store.hpp"
 
 NS_LOCAL
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief represents multiple sequential arbitrary byte sequences
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API payload_iterator
+  : public attribute, public iterator<const bytes_ref&> {
+  DECLARE_ATTRIBUTE_TYPE();
+
+  payload_iterator() = default;
+};
+
+REGISTER_ATTRIBUTE(payload_iterator);
+DEFINE_ATTRIBUTE_TYPE(payload_iterator)
 
 static const size_t DEFAULT_BUFFER_SIZE = 512; // arbitrary value
 
@@ -238,6 +250,9 @@ class store_reader_impl final: public irs::sub_reader {
     return *this;
   }
   virtual size_t size() const override { return 1; } // only 1 segment
+  virtual const irs::columnstore_reader::column_reader* sort() const override {
+    return nullptr;
+  }
 
  private:
   friend irs::store_reader irs::store_reader::reopen() const;

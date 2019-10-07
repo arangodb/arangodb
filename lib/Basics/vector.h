@@ -24,18 +24,21 @@
 #ifndef ARANGODB_BASICS_VECTOR_H
 #define ARANGODB_BASICS_VECTOR_H 1
 
+#include <cstdint>
+#include <cstdlib>
+
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pod vector
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vector_s {
+struct TRI_vector_t {
   char* _buffer;
   uint32_t _lengthX;       // private. do not access from outside!
   uint32_t _capacityX;     // private. do not access from outside!
   uint32_t _elementSizeX;  // private. do not access from outside!
-} TRI_vector_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a vector

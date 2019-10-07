@@ -25,11 +25,14 @@
 #include "QueryCursor.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -43,15 +46,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase, CursorId id,
-                                     aql::QueryResult&& result,
+QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
                                      size_t batchSize, double ttl, bool hasCount)
-    : Cursor(id, batchSize, ttl, hasCount),
+    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _iterator(_result.result->slice()),
+      _iterator(_result.data->slice()),
       _cached(_result.cached) {
-  TRI_ASSERT(_result.result->slice().isArray());
+  TRI_ASSERT(_result.data->slice().isArray());
 }
 
 VPackSlice QueryResultCursor::extra() const {
@@ -73,7 +75,7 @@ bool QueryResultCursor::hasNext() {
 
 /// @brief return the next element
 VPackSlice QueryResultCursor::next() {
-  TRI_ASSERT(_result.result != nullptr);
+  TRI_ASSERT(_result.data != nullptr);
   TRI_ASSERT(_iterator.valid());
   VPackSlice slice = _iterator.value();
   _iterator.next();
@@ -146,12 +148,12 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
-                                     std::string const& query,
+QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
                                      std::shared_ptr<VPackBuilder> bindVars,
                                      std::shared_ptr<VPackBuilder> opts, size_t batchSize,
-                                     double ttl, bool contextOwnedByExterior)
-    : Cursor(id, batchSize, ttl, /*hasCount*/ false),
+                                     double ttl, bool contextOwnedByExterior,
+                                     std::shared_ptr<transaction::Context> ctx)
+    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _guard(vocbase),
       _exportCount(-1),
       _queryResultPos(0) {
@@ -161,7 +163,8 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
   _query = std::make_unique<Query>(contextOwnedByExterior, _guard.database(),
                                    aql::QueryString(query), std::move(bindVars),
                                    std::move(opts), arangodb::aql::PART_MAIN);
-  _query->prepare(registry);
+  _query->setTransactionContext(std::move(ctx));
+  _query->prepare(registry, SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query
@@ -180,17 +183,19 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
     }
   }
 
-  if (contextOwnedByExterior) {
-    // things break if the Query outlives a V8 transaction
-    _stateChangeCb = [this](transaction::Methods& trx, transaction::Status status) {
-      if ((status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED) &&
-          !this->isUsed()) {
-        this->setDeleted();
-      }
-    };
-    if (!_query->trx()->addStatusChangeCallback(&_stateChangeCb)) {
-      _stateChangeCb = nullptr;
+  // ensures the cursor is cleaned up as soon as the outer transaction ends
+  // otherwise we just get issues because we might still try to use the trx
+  TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
+  int level = _query->trx()->state()->nestingLevel();  // should be level 0 or 1
+  // things break if the Query outlives a V8 transaction
+  _stateChangeCb = [this, level](transaction::Methods& trx, transaction::Status status) {
+    if (trx.state()->nestingLevel() == level &&
+        (status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED)) {
+      this->setDeleted();
     }
+  };
+  if (!_query->trx()->addStatusChangeCallback(&_stateChangeCb)) {
+    _stateChangeCb = nullptr;
   }
 }
 
@@ -199,7 +204,6 @@ QueryStreamCursor::~QueryStreamCursor() {
     cleanupStateCallback();
 
     while (!_queryResults.empty()) {
-      _query->engine()->_itemBlockManager.returnBlock(std::move(_queryResults.front()));
       _queryResults.pop_front();
     }
 
@@ -219,8 +223,9 @@ void QueryStreamCursor::kill() {
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
                                                           std::function<void()> const& ch) {
   TRI_ASSERT(batchSize() > 0);
-  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
-                                    << _query->queryString().extract(1024) << "'";
+  LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
+      << "executing query " << _id << ": '"
+      << _query->queryString().extract(1024) << "'";
 
   // We will get a different RestHandler on every dump, so we need to update the
   // Callback
@@ -266,8 +271,9 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
-  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
-                                    << _query->queryString().extract(1024) << "'";
+  LOG_TOPIC("9dada", TRACE, Logger::QUERIES)
+      << "executing query " << _id << ": '"
+      << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   // We will get a different RestHandler on every dump, so we need to update the
@@ -278,7 +284,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     aql::ExecutionEngine* engine = _query->engine();
     TRI_ASSERT(engine != nullptr);
 
-    std::unique_ptr<AqlItemBlock> value;
+    SharedAqlItemBlockPtr value;
 
     ExecutionState state = ExecutionState::WAITING;
 
@@ -331,7 +337,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     size_t rowsWritten = 0;
     while (rowsWritten < batchSize() && !_queryResults.empty()) {
-      std::unique_ptr<AqlItemBlock>& block = _queryResults.front();
+      SharedAqlItemBlockPtr& block = _queryResults.front();
       TRI_ASSERT(_queryResultPos < block->size());
 
       while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
@@ -346,7 +352,6 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       if (_queryResultPos == block->size()) {
         // get next block
         TRI_ASSERT(_queryResultPos == block->size());
-        engine->_itemBlockManager.returnBlock(std::move(block));
         _queryResults.pop_front();
         _queryResultPos = 0;
       }
@@ -431,7 +436,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   while (state != ExecutionState::DONE && numBufferedRows <= batchSize()) {
-    std::unique_ptr<AqlItemBlock> resultBlock;
+    SharedAqlItemBlockPtr resultBlock;
     std::tie(state, resultBlock) = engine->getSome(batchSize());
     if (state == ExecutionState::WAITING) {
       break;

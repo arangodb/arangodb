@@ -26,6 +26,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
@@ -87,9 +88,7 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack(VPackOptions c
 
 // Default case
 std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  return getBodyVelocyPack(options);
+  return getBodyVelocyPack(*VelocyPackHelper::optionsWithUniquenessCheck());
 }
 
 std::string SimpleHttpResult::getResultTypeMessage() const {

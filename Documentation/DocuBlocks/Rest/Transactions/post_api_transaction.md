@@ -2,7 +2,7 @@
 @startDocuBlock post_api_transaction
 @brief execute a server-side transaction
 
-@RESTHEADER{POST /_api/transaction, Execute transaction}
+@RESTHEADER{POST /_api/transaction, Execute transaction, executeCommit}
 
 @RESTBODYPARAM{collections,string,required,string}
 *collections* must be a JSON object that can have one or all sub-attributes
@@ -29,6 +29,9 @@ attribute if the transaction committed successfully.
 @RESTBODYPARAM{waitForSync,boolean,optional,boolean}
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
+
+@RESTBODYPARAM{allowImplicit,boolean,optional,boolean}
+Allow reading from undeclared collections.
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
 an optional numeric value that can be used to set a

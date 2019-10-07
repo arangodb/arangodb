@@ -21,6 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
+#define ARANGOD_AGENCY_AGENCY_STRINGS_H
+
 #include <string>
 
 namespace arangodb {
@@ -41,5 +44,9 @@ constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
+constexpr char const* TARGET_HOTBACKUP = "Target/HotBackup";
+
 }  // namespace consensus
 }  // namespace arangodb
+
+#endif

@@ -24,10 +24,10 @@
 #ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
 #define ARANGOD_CLUSTER_SHARDING_INFO_H 1
 
-#include "Basics/Common.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace arangodb {
 class LogicalCollection;
@@ -59,6 +59,12 @@ class ShardingInfo {
 
   size_t replicationFactor() const;
   void replicationFactor(size_t);
+
+  size_t minReplicationFactor() const;
+  void minReplicationFactor(size_t);
+
+  void setMinAndMaxReplicationFactor(size_t minimal, size_t maximal);
+
   bool isSatellite() const;
 
   size_t numberOfShards() const;
@@ -75,13 +81,16 @@ class ShardingInfo {
 
   std::shared_ptr<ShardMap> shardIds() const;
 
+  // return a sorted vector of ShardIDs
+  std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
+
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           ShardID& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "");
+                          arangodb::velocypack::StringRef const&);
 
  private:
   // @brief the logical collection we are working for
@@ -92,6 +101,10 @@ class ShardingInfo {
 
   // @brief replication factor (1 = no replication, 0 = smart edge collection)
   size_t _replicationFactor;
+
+  // @brief min replication factor (_minReplicationFactor <= _replicationFactor)
+  // Writes will be disallowed if we know we cannot fulfill minReplicationFactor.
+  size_t _minReplicationFactor;
 
   // @brief name of other collection this collection's shards should be
   // distributed like

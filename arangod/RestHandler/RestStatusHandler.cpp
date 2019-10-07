@@ -23,11 +23,12 @@
 
 #include "RestStatusHandler.h"
 
+#include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 
@@ -46,16 +47,26 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatusHandler::RestStatusHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+
+  if (!security.canAccessHardenedApi()) {
+    // dont leak information about server internals here
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
-  result.add("pid", VPackValue(Thread::currentProcessId()));
+  result.add("pid", VPackValue(static_cast<TRI_vpack_pid_t>(Thread::currentProcessId())));
 
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
@@ -63,13 +74,9 @@ RestStatus RestStatusHandler::execute() {
   result.add("license", VPackValue("community"));
 #endif
 
-  if (application_features::ApplicationServer::server != nullptr) {
-    auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
-        "Server");
-    result.add("mode",
-               VPackValue(server->operationModeString()));  // to be deprecated - 3.3 compat
-    result.add("operationMode", VPackValue(server->operationModeString()));
-  }
+  auto& serverFeature = server.getFeature<ServerFeature>();
+  result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
+  result.add("operationMode", VPackValue(serverFeature.operationModeString()));
 
   std::string host = ServerState::instance()->getHost();
 

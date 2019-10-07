@@ -23,8 +23,9 @@
 
 #include "RocksDBTransactionCollection.h"
 #include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/TransactionState.h"
@@ -38,8 +39,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType),
-      _nestingLevel(nestingLevel),
+    : TransactionCollection(trx, cid, accessType, nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
@@ -72,29 +72,6 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
-      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-    }
-
-    TRI_ASSERT(nestingLevel == 0);
-
-    // upgrade collection type to write-access
-    _accessType = accessType;
-  }
-
-  if (nestingLevel < _nestingLevel) {
-    _nestingLevel = nestingLevel;
-  }
-
-  // all correct
-  return TRI_ERROR_NO_ERROR;
-}
-
 int RocksDBTransactionCollection::use(int nestingLevel) {
   if (_nestingLevel != nestingLevel) {
     // only process our own collections
@@ -110,7 +87,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
 
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      LOG_TRX("b72bb", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
       TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
                                           // error below
       _collection = _transaction->vocbase().useCollection(_cid, status);
@@ -150,9 +127,9 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
   }
 
   if (doSetup) {
-    RocksDBCollection* rc = static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _initialNumberDocuments = rc->numberDocuments();
-    _revision = rc->revision();
+    RocksDBMetaCollection* rc = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->meta().numberDocuments();
+    _revision = rc->meta().revisionId();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -163,6 +140,14 @@ void RocksDBTransactionCollection::unuse(int nestingLevel) {
 }
 
 void RocksDBTransactionCollection::release() {
+  // questionable, but seems to work
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    TRI_ASSERT(!_usageLocked);
+    _collection = nullptr;
+    return;
+  }
+
   if (isLocked()) {
     // unlock our own r/w locks
     doUnlock(_accessType, 0);
@@ -172,13 +157,12 @@ void RocksDBTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+    LOG_TRX("67a6b", TRACE, _transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
       _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
-
     _collection = nullptr;
   } else {
     TRI_ASSERT(!_usageLocked);
@@ -210,8 +194,7 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedIndexOperations.empty()) {
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().placeBlocker(trxId, preCommitSeq);
   }
 }
@@ -219,30 +202,26 @@ void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCom
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedIndexOperations.empty()) {
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().removeBlocker(trxId);
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
-
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  
   // Update the collection count
-  int64_t const adjustment = _numInserts - _numRemoves;
+  int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
     TRI_ASSERT(_revision != 0 && commitSeq != 0);
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
-    coll->adjustNumberDocuments(_revision, adjustment);  // update online count
-    coll->meta().adjustNumberDocuments(commitSeq, _revision,
-                                       adjustment);  // buffer for recovery
+    rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
-    if (idx == nullptr) {
+    if (ADB_UNLIKELY(idx == nullptr)) {
       TRI_ASSERT(false);  // Index reported estimates, but does not exist
       continue;
     }
@@ -257,26 +236,24 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitS
   }
 
   if (hasOperations() || !_trackedIndexOperations.empty()) {
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
-    coll->meta().removeBlocker(trxId);
+    rcoll->meta().removeBlocker(trxId);
   }
 
-  _initialNumberDocuments += adjustment;
+  _initialNumberDocuments += adj; // needed for intermediate commits
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
   _trackedIndexOperations.clear();
 }
 
-void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].inserts.emplace_back(hash);
+  _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
-void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].removals.emplace_back(hash);
+  _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
 /// @brief lock a collection
@@ -295,16 +272,9 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   TRI_ASSERT(_collection != nullptr);
-
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(!isLocked());
 
-  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
+  auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -313,7 +283,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     timeout = 0.00000001;
   }
 
-  LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX("f1246", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
   int res;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
@@ -333,7 +303,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC(WARN, Logger::QUERIES)
+    LOG_TOPIC("4512c", WARN, Logger::QUERIES)
         << "timed out after " << timeout << " s waiting for "
         << AccessMode::typeString(type) << "-lock on collection '"
         << _collection->name() << "'";
@@ -355,13 +325,6 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   }
 
   TRI_ASSERT(_collection != nullptr);
-
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(isLocked());
 
   if (_nestingLevel < nestingLevel) {
@@ -376,17 +339,17 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
+    LOG_TOPIC("2b651", ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
 
   TRI_ASSERT(_collection);
 
-  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
+  auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
+  LOG_TRX("372c0", TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode

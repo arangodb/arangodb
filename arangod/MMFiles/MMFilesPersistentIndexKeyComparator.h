@@ -40,7 +40,7 @@ class MMFilesPersistentIndexKeyComparator final : public rocksdb::Comparator {
   ~MMFilesPersistentIndexKeyComparator() = default;
 
   static inline arangodb::velocypack::Slice extractKeySlice(rocksdb::Slice const& slice) {
-    return arangodb::velocypack::Slice(slice.data() + MMFilesPersistentIndex::keyPrefixSize());
+    return arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.data() + MMFilesPersistentIndex::keyPrefixSize()));
   }
 
   int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override;

@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
@@ -76,9 +77,6 @@ struct MMFilesDocumentOperation {
 
   void setVPack(uint8_t const* vpack);
 
-  void setTick(TRI_voc_tick_t tick) { _tick = tick; }
-  TRI_voc_tick_t tick() const { return _tick; }
-
   TRI_voc_document_operation_e type() const { return _type; }
 
   LogicalCollection* collection() const { return _collection; }
@@ -101,7 +99,6 @@ struct MMFilesDocumentOperation {
   LogicalCollection* _collection;
   MMFilesDocumentDescriptor _oldRevision;
   MMFilesDocumentDescriptor _newRevision;
-  TRI_voc_tick_t _tick;
   TRI_voc_document_operation_e _type;
   StatusType _status;
 };

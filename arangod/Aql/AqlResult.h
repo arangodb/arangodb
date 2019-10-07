@@ -24,8 +24,9 @@
 #ifndef ARANGOD_AQL_AQL_RESULT_H
 #define ARANGOD_AQL_AQL_RESULT_H 1
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
+
+#include <string>
 
 namespace arangodb {
 
@@ -33,7 +34,7 @@ namespace aql {
 
 class ExecutionEngine;
 
-class ExecutionEngineResult : public Result {
+class ExecutionEngineResult {
  public:
   ExecutionEngineResult();
   explicit ExecutionEngineResult(int errorNumber);
@@ -41,6 +42,7 @@ class ExecutionEngineResult : public Result {
   ExecutionEngineResult(int errorNumber, std::string&& errorMessage);
 
   // This is not explicit on purpose
+  // cppcheck-suppress noExplicitConstructor
   // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
   ExecutionEngineResult(Result const& result);
   explicit ExecutionEngineResult(ExecutionEngine*);
@@ -49,7 +51,14 @@ class ExecutionEngineResult : public Result {
 
   ExecutionEngine* engine() const;
 
+  // forwarded methods
+  bool ok() const;
+  bool fail() const;
+  int errorNumber() const;
+  std::string errorMessage() const;
+
  private:
+  Result _result;
   ExecutionEngine* _engine;
 };
 

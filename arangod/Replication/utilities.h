@@ -25,6 +25,7 @@
 #ifndef ARANGOD_REPLICATION_UTILITIES_H
 #define ARANGOD_REPLICATION_UTILITIES_H 1
 
+#include <map>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -45,6 +46,7 @@ class SimpleHttpResult;
 
 class Endpoint;
 class ReplicationApplierConfiguration;
+struct SyncerId;
 class Syncer;
 
 namespace replutils {
@@ -63,6 +65,9 @@ struct Connection {
 
   /// @brief identifier for local server
   std::string const& localServerId() const;
+
+  /// @brief short informative string about the client
+  std::string const& clientInfo() const;
 
   /// @brief Thread-safe aborted status
   void setAborted(bool value);
@@ -86,6 +91,7 @@ struct Connection {
  private:
   std::string const _endpointString;
   std::string const _localServerId;
+  std::string const _clientInfo;
 
   /// lock to protect client connection
   mutable std::mutex _mutex;
@@ -146,15 +152,15 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection& connection, ProgressInfo& progress,
-               std::string const& patchCount = "");
+  Result start(Connection const& connection, ProgressInfo& progress,
+               SyncerId syncerId, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection& connection, ProgressInfo& progress);
+  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress);
+  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 };
 
 struct MasterInfo {

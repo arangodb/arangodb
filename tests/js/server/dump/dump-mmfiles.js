@@ -30,6 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var analyzers = require("@arangodb/analyzers");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -474,7 +475,7 @@ function dumpTestSuite () {
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 

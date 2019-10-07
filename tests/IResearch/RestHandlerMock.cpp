@@ -32,13 +32,14 @@ GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase) {
   _context->vocbase().forceUse(); // must be called or ~VocbaseContext() will fail at '_vocbase.release()'
   _requestContext = _context.get(); // do not use setRequestContext(...) since '_requestContext' has not been initialized and contains garbage
 }
+GeneralRequestMock::~GeneralRequestMock() = default;
 
 size_t GeneralRequestMock::contentLength() const {
   return _contentLength;
 }
 
-arangodb::StringRef GeneralRequestMock::rawPayload() const {
-  return arangodb::StringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
+arangodb::velocypack::StringRef GeneralRequestMock::rawPayload() const {
+  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 }
 
 arangodb::velocypack::Slice GeneralRequestMock::payload(
@@ -75,6 +76,10 @@ void GeneralResponseMock::addPayload(
            ? arangodb::velocypack::Builder(slice, options)
            : arangodb::velocypack::Builder(slice)
            ;
+}
+
+void GeneralResponseMock::addRawPayload(arangodb::velocypack::StringRef payload) {
+  TRI_ASSERT(false);
 }
 
 void GeneralResponseMock::reset(arangodb::ResponseCode code) {

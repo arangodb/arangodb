@@ -22,13 +22,19 @@
 
 #include "TransactionCollection.h"
 
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
-std::string TransactionCollection::collectionName() const {
+TransactionCollection::~TransactionCollection() {
+  TRI_ASSERT(_collection == nullptr);
+}
+
+std::string const& TransactionCollection::collectionName() const {
   TRI_ASSERT(_collection != nullptr);
   return _collection->name();
 }
@@ -42,7 +48,7 @@ static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
 bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
   if (accessType > _accessType) {
     // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("39ef2", WARN, arangodb::Logger::ENGINES)
         << "logic error. checking wrong lock type";
     return false;
   }
@@ -53,10 +59,6 @@ bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLev
 bool TransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
-  }
-  std::string const& collName{_collection->name()};
-  if (_transaction->isLockedShard(collName)) {
-    return true;
   }
   return _lockType > AccessMode::Type::NONE;
 }
@@ -103,3 +105,28 @@ int TransactionCollection::unlockRecursive(AccessMode::Type accessType, int nest
 
   return doUnlock(accessType, nestingLevel);
 }
+
+Result TransactionCollection::updateUsage(AccessMode::Type accessType, 
+                                          int nestingLevel) {
+  if (AccessMode::isWriteOrExclusive(accessType) &&
+      !AccessMode::isWriteOrExclusive(_accessType)) {
+    if (nestingLevel > 0) {
+      // trying to write access a collection that is only marked with
+      // read-access
+      return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                    std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName() + 
+                    " [" + AccessMode::typeString(accessType) + "]");
+    }
+
+    TRI_ASSERT(nestingLevel == 0);
+
+    // upgrade collection type to write-access
+    _accessType = accessType;
+  }
+    
+  adjustNestingLevel(nestingLevel); 
+
+  // all correct
+  return {};
+}
+

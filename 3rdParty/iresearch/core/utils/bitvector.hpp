@@ -40,6 +40,18 @@ class bitvector final {
   bitvector(const bitvector& other) { *this = other; }
   bitvector(bitvector&& other) NOEXCEPT { *this = std::move(other); }
 
+  bool operator==(const bitvector& rhs) const NOEXCEPT {
+    if (this->size() != rhs.size()) {
+      return false;
+    }
+
+    return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
+  }
+
+  bool operator!=(const bitvector& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
   operator const bitset&() const { return set_; }
 
   bitvector& operator=(const bitvector& other) {
@@ -181,7 +193,10 @@ class bitvector final {
   bool any() const NOEXCEPT { return set_.any(); }
   const word_t* begin() const NOEXCEPT { return set_.data(); }
   size_t capacity() const NOEXCEPT { return set_.capacity(); }
-  void clear() NOEXCEPT { set_.clear(); }
+  void clear() NOEXCEPT {
+    set_.clear();
+    size_ = 0;
+  }
   word_t count() const NOEXCEPT { return set_.count(); }
   const word_t* data() const NOEXCEPT { return set_.data(); }
   const word_t* end() const NOEXCEPT { return set_.end(); }
@@ -292,6 +307,7 @@ class bitvector final {
 
   void set(size_t i) { reset(i, true); }
   size_t size() const NOEXCEPT { return size_; }
+  bool empty() const NOEXCEPT { return 0 == size_; }
 
   bool test(size_t i) const NOEXCEPT {
     return bitset::word(i) < set_.words() && set_.test(i);
@@ -300,6 +316,16 @@ class bitvector final {
   void unset(size_t i) { reset(i, false); }
 
   size_t words() const NOEXCEPT { return set_.words(); }
+
+  template<typename Visitor>
+  bool visit(Visitor visitor) const {
+    for (size_t i = 0; i < size_; ++i) {
+      if (set_.test(i) && !visitor(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
  private:
   bitset set_;

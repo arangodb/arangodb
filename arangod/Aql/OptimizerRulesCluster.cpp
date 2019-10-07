@@ -21,15 +21,17 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "OptimizerRules.h"
+
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
-#include "OptimizerRules.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -136,7 +138,9 @@ bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
       return false;
     }
 
-    if (!node->getVariablesUsedHere().empty()) {
+    arangodb::HashSet<Variable const*> used;
+    node->getVariablesUsedHere(used);
+    if (!used.empty()) {
       return false;
     }
   }
@@ -177,7 +181,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 }
 
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                    OptimizerRule const* rule) {
+                                                    OptimizerRule const& rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -208,19 +212,29 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 
       if (parentModification) {
         auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
-        auto parentType = parentModification->getType();
-        auto const& vec = mod->getVariablesUsedHere();
+        
+        if (!::parentIsReturnOrConstCalc(mod)) {
+          continue;
+        }
 
+        if (mod->collection() != indexNode->collection()) {
+          continue;
+        }
+        
+        auto parentType = parentModification->getType();
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
 
-        if (parentType == EN::REMOVE) {
-          keyVar = vec.front();
-          TRI_ASSERT(vec.size() == 1);
+        if (parentType == EN::INSERT) {
+          continue;
+        } else if (parentType == EN::REMOVE) {
+          keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
         } else {
-          update = vec.front();
-          if (vec.size() > 1) {
-            keyVar = vec.back();
+          // update / replace
+          auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
+          update = updateReplaceNode->inDocVariable();
+          if (updateReplaceNode->inKeyVariable() != nullptr) {
+            keyVar = updateReplaceNode->inKeyVariable();
           }
         }
 
@@ -236,10 +250,6 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           } else {
             continue;
           }
-        }
-
-        if (!::parentIsReturnOrConstCalc(mod)) {
-          continue;
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
@@ -267,7 +277,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 }
 
 bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                      OptimizerRule const* rule) {
+                                                      OptimizerRule const& rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -291,18 +301,17 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
     auto depType = mod->getType();
     Variable const* update = nullptr;
     Variable const* keyVar = nullptr;
-    std::string key = "";
-    auto const& vec = mod->getVariablesUsedHere();
-
+    std::string key;
+        
     if (depType == EN::REMOVE) {
-      keyVar = vec.front();
-      TRI_ASSERT(vec.size() == 1);
+      keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
+    } else if (depType == EN::INSERT) {
+      update = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
     } else {
-      update = vec.front();  // this can be same as keyvar!
-                             // this use is possible because we
-                             // not delete the variable's setter
-      if (vec.size() > 1) {
-        keyVar = vec.back();
+      auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
+      update = updateReplaceNode->inDocVariable();
+      if (updateReplaceNode->inKeyVariable() != nullptr) {
+        keyVar = updateReplaceNode->inKeyVariable();
       }
     }
 
@@ -310,7 +319,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
     CalculationNode* calc = nullptr;
 
     if (keyVar) {
-      std::unordered_set<Variable const*> keySet;
+      arangodb::HashSet<Variable const*> keySet;
       keySet.emplace(keyVar);
 
       while (cursor) {
@@ -381,8 +390,11 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
 
 }  // namespace
 
-void arangodb::aql::substituteClusterSingleDocumentOperations(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
+namespace arangodb {
+namespace aql {
+
+void substituteClusterSingleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
   bool modified = false;
 
   for (auto const& fun : {&::substituteClusterSingleDocumentOperationsIndex,
@@ -394,4 +406,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(
   }
 
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+}
 }

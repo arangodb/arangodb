@@ -31,9 +31,7 @@
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
 
-NS_BEGIN(tests)
-
-class index_test_case_base: public index_test_base {
+class index_profile_test_case : public tests::index_test_base {
  public:
   void profile_bulk_index(
       size_t num_insert_threads,
@@ -462,242 +460,83 @@ class index_test_case_base: public index_test_base {
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(docs_count, reader[0].docs_count());
   }
-}; // index_test_case
+}; // index_profile_test_case
 
-class memory_test_case_base: public index_test_case_base {
- protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // memory_test_case_base
-
-class fs_test_case_base: public index_test_case_base {
- protected:
-  virtual void SetUp() override {
-    index_test_case_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
-  }
-
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // fs_test_case_base
-
-class mmap_test_case_base: public index_test_case_base {
- protected:
-  virtual void SetUp() override {
-    index_test_case_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
-  }
-
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::mmap_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // mmap_test_case_base
-
-NS_END // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                            memory_directory + iresearch_format_10
-// -----------------------------------------------------------------------------
-
-class memory_index_profile_test: public tests::memory_test_case_base {
-}; // memory_index_test
-
-TEST_F(memory_index_profile_test, profile_bulk_index_singlethread_full_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_singlethread_full_mt) {
   profile_bulk_index(0, 0, 0, 0);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_singlethread_batched_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_singlethread_batched_mt) {
   profile_bulk_index(0, 0, 0, 10000);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_cleanup_mt) {
-  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_cleanup_mt) {
+  tests::dir_factory_f factory;
+  std::tie(factory, std::ignore) = GetParam();
+
+  if (factory == &tests::memory_directory) {
+    profile_bulk_index_dedicated_cleanup(16, 10000, 100);
+  } else {
+    // a lot of threads cause a lot of contention for the segment pool
+    // small consolidate_interval causes too many policies to be added and slows down test
+    profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
+  }
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_consolidate_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_consolidate_mt) {
   // a lot of threads cause a lot of contention for the segment pool
   profile_bulk_index_dedicated_consolidate(8, 10000, 500);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_dedicated_commit_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_dedicated_commit_mt) {
   profile_bulk_index_dedicated_commit(16, 1, 1000);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_full_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_full_mt) {
   profile_bulk_index(16, 0, 0, 0);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_batched_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_batched_mt) {
   profile_bulk_index(16, 0, 0, 10000);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_import_full_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_import_full_mt) {
   profile_bulk_index(12, 4, 0, 0);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_import_batched_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_import_batched_mt) {
   profile_bulk_index(12, 4, 0, 10000);
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_import_update_full_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_import_update_full_mt) {
   profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_import_update_batched_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_import_update_batched_mt) {
   profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_update_full_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_update_full_mt) {
   profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
 }
 
-TEST_F(memory_index_profile_test, profile_bulk_index_multithread_update_batched_mt) {
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_update_batched_mt) {
   profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                fs_directory + iresearch_format_10
-// -----------------------------------------------------------------------------
-
-class fs_index_profile_test: public tests::fs_test_case_base {
-}; // fs_index_test
-
-TEST_F(fs_index_profile_test, profile_bulk_index_singlethread_full_mt) {
-  profile_bulk_index(0, 0, 0, 0);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_singlethread_batched_mt) {
-  profile_bulk_index(0, 0, 0, 10000);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_cleanup_mt) {
-  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_consolidate_mt) {
-  // a lot of threads cause a lot of contention for the segment pool
-  // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_dedicated_commit_mt) {
-  profile_bulk_index_dedicated_commit(16, 1, 1000);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_full_mt) {
-  profile_bulk_index(16, 0, 0, 0);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_batched_mt) {
-  profile_bulk_index(16, 0, 0, 10000);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_import_full_mt) {
-  profile_bulk_index(12, 4, 0, 0);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_import_batched_mt) {
-  profile_bulk_index(12, 4, 0, 10000);
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_import_update_full_mt) {
-  profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_import_update_batched_mt) {
-  profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_update_full_mt) {
-  profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
-}
-
-TEST_F(fs_index_profile_test, profile_bulk_index_multithread_update_batched_mt) {
-  profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                              mmap_directory + iresearch_format_10
-// -----------------------------------------------------------------------------
-
-class mmap_index_profile_test: public tests::mmap_test_case_base {
-}; // mmap_index_test
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_singlethread_full_mt) {
-  profile_bulk_index(0, 0, 0, 0);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_singlethread_batched_mt) {
-  profile_bulk_index(0, 0, 0, 10000);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_cleanup_mt) {
-  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_consolidate_mt) {
-  // a lot of threads cause a lot of contention for the segment pool
-  // small consolidate_interval causes too many policies to be added and slows down test
-  profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_dedicated_commit_mt) {
-  profile_bulk_index_dedicated_commit(16, 1, 1000);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_full_mt) {
-  profile_bulk_index(16, 0, 0, 0);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_batched_mt) {
-  profile_bulk_index(16, 0, 0, 10000);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_import_full_mt) {
-  profile_bulk_index(12, 4, 0, 0);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_import_batched_mt) {
-  profile_bulk_index(12, 4, 0, 10000);
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_import_update_full_mt) {
-  profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_import_update_batched_mt) {
-  profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_update_full_mt) {
-  profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
-}
-
-TEST_F(mmap_index_profile_test, profile_bulk_index_multithread_update_batched_mt) {
-  profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
-}
+INSTANTIATE_TEST_CASE_P(
+  index_profile_test,
+  index_profile_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

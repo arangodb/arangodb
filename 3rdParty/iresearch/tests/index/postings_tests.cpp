@@ -36,27 +36,6 @@ using namespace iresearch;
 namespace tests {
 namespace detail {
 
-bool utf8_less(const bytes_ref& lhs, const bytes_ref& rhs) {
-  const size_t len = std::min(lhs.size(), rhs.size());
-  auto lhs_cstr = lhs.c_str();
-  auto rhs_cstr = rhs.c_str();
-
-  for (uint32_t i = 0; i < len; ++i) {
-    const uint8_t lhs_b = *lhs_cstr; ++lhs_cstr;
-    const uint8_t rhs_b = *rhs_cstr; ++rhs_cstr;
-
-    if (lhs_b < rhs_b) {
-      return true;
-    }
-
-    if (lhs_b > rhs_b) {
-      return false;
-    }
-  }
-
-  return lhs.size() < rhs.size();
-}
-
 bytes_ref to_bytes_ref(const std::string& s) {
   return bytes_ref(reinterpret_cast<const byte_type*>(s.c_str()), s.size());
 }

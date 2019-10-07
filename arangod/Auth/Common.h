@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AUTHENTICATION_COMMON_H
 #define ARANGOD_AUTHENTICATION_COMMON_H 1
 
+#include "Basics/Common.h"
 #include <velocypack/Slice.h>
-#include "Basics/Result.h"
 
 namespace arangodb {
 namespace auth {

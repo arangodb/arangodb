@@ -30,6 +30,7 @@
 namespace arangodb {
 
 namespace rocksutils {
+extern RocksDBEndianness rocksDBEndianness;
 
 /* function pointers to serialization implementation */
 extern uint16_t (*uint16FromPersistent)(char const* p);

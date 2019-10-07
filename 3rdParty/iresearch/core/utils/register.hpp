@@ -62,7 +62,7 @@ class generic_register: public singleton<RegisterType> {
   typedef std::unordered_map<key_type, entry_type> register_map_t;
   typedef std::function<bool(const key_type& key)> visitor_t;
 
-  virtual ~generic_register() { }
+  virtual ~generic_register() = default;
 
   // @return the entry registered under the key and inf an insertion took place
   std::pair<entry_type, bool> set(
@@ -74,9 +74,20 @@ class generic_register: public singleton<RegisterType> {
     return std::make_pair(itr.first->second, itr.second);
   }
 
-  entry_type get(const key_type& key) const {
+  entry_type get(const key_type& key, bool load_library) const {
     const entry_type* entry = lookup(key);
-    return entry ? *entry : load_entry_from_so(key);
+
+    if (entry) {
+      return *entry;
+    }
+
+    if (load_library) {
+      return load_entry_from_so(key);
+    }
+
+    IR_FRMT_ERROR("%s : key not found", __FUNCTION__);
+
+    return entry_type();
   }
 
   bool visit(const visitor_t& visitor) {
@@ -169,8 +180,6 @@ class tagged_generic_register: public generic_register<KeyType, EntryType, Regis
   typedef typename parent_type::key_type key_type;
   typedef typename parent_type::entry_type entry_type;
   typedef TagType tag_type;
-
-  virtual ~tagged_generic_register() { }
 
   // @return the entry registered under the key and if an insertion took place
   std::pair<entry_type, bool> set(

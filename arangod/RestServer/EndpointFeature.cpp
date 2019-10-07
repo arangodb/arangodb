@@ -23,7 +23,11 @@
 
 #include "EndpointFeature.h"
 
+#include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
@@ -36,12 +40,12 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 EndpointFeature::EndpointFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
+    : HttpEndpointProvider(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("AQLPhase");
+  startsAfter<application_features::AqlFeaturePhase>();
 
-  startsAfter("Server");
+  startsAfter<ServerFeature>();
 
   // if our default value is too high, we'll use half of the max value provided
   // by the system
@@ -75,7 +79,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_backlogSize > SOMAXCONN) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("b4d44", WARN, arangodb::Logger::FIXME)
         << "value for --tcp.backlog-size exceeds default system "
            "header SOMAXCONN value "
         << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
@@ -86,7 +90,7 @@ void EndpointFeature::prepare() {
   buildEndpointLists();
 
   if (_endpointList.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("2c5f0", FATAL, arangodb::Logger::FIXME)
         << "no endpoints have been specified, giving up, please use the "
            "'--server.endpoint' option";
     FATAL_ERROR_EXIT();
@@ -116,7 +120,7 @@ void EndpointFeature::buildEndpointLists() {
     bool ok = _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid endpoint '" << (*i) << "'";
+      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME) << "invalid endpoint '" << (*i) << "'";
       FATAL_ERROR_EXIT();
     }
   }

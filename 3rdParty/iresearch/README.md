@@ -147,7 +147,7 @@ point LZ4_ROOT at the source directory to build together with IResearch
 
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=<install-path> -DBUILD_LIBS=on -g "Visual studio 12" -Ax64 ../cmake_unofficial
+cmake -DCMAKE_INSTALL_PREFIX=<install-path> -DBUILD_STATIC_LIBS=on -g "Visual studio 17" -Ax64 ../contrib/cmake_unofficial
 cmake --build .
 cmake --build . --target install
 ```
@@ -553,7 +553,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 ```
 
 ## License
-Copyright (c) 2017-2018 ArangoDB GmbH
+Copyright (c) 2017-2019 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 

@@ -251,7 +251,7 @@ class StreamRepairOperationVisitor : public boost::static_visitor<std::ostream&>
   StreamRepairOperationVisitor() = delete;
 
   explicit StreamRepairOperationVisitor(std::ostream& stream_)
-      : _stream(stream_){};
+      : _stream(stream_) {}
 
   std::ostream& operator()(BeginRepairsOperation const& op) {
     return _stream << op;
@@ -550,8 +550,8 @@ VPackBufferPtr RepairOperationToTransactionVisitor::createShardDbServerArray(
   return builder.steal();
 }
 
-RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor()
-    : _getJobId([]() { return ClusterInfo::instance()->uniqid(); }),
+RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(ClusterInfo& ci)
+    : _getJobId([&ci]() { return ci.uniqid(); }),
       _getJobCreationTimestamp([]() { return std::chrono::system_clock::now(); }) {}
 
 RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(

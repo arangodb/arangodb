@@ -23,29 +23,16 @@
 
 #include "RegexCache.h"
 #include "Basics/Utf8Helper.h"
+#include <Basics/StringUtils.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+
 using namespace arangodb::aql;
 
-namespace {
-
-static void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
-  for (size_t i = 0; i < length; ++i) {
-    char const c = ptr[i];
-    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
-        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
-      // character with special meaning in a regex
-      out.push_back('\\');
-    }
-    out.push_back(c);
-  }
-}
-
-}  // namespace
 
 RegexCache::~RegexCache() { clear(); }
 
@@ -89,12 +76,12 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
 
       arangodb::velocypack::ValueLength length;
       char const* str = it.getString(length);
-      ::escapeRegexParams(rx, str, length);
+      basics::StringUtils::escapeRegexParams(rx, str, length);
     }
   } else if (splitExpression.isString()) {
     arangodb::velocypack::ValueLength length;
     char const* str = slice.getString(length);
-    ::escapeRegexParams(rx, str, length);
+    basics::StringUtils::escapeRegexParams(rx, str, length);
     if (rx.empty()) {
       isEmptyExpression = true;
     }

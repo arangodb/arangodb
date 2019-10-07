@@ -1,7 +1,7 @@
-#!/bin/sh
-echo --------- mkpeephole ------------
-echo $0
-echo $1
-#qemu-arm /build/build-deb-arm-linux-gnueabihf/3rdParty/V8/v5.7.0.0/arm.release/mkpeephole $1
+#!/ bin / sh
+echo-- -------mkpeephole-- ----------echo $0 echo $1
+#qemu - arm / build / build - deb - arm - linux - \
+    gnueabihf / 3rdParty / V8 / v5 .7.0.0 / arm.release / mkpeephole $1
 
-@QEMU_ARCH@ @V8_TARGET_DIR@/@V8_PROC_ARCH@.release/mkpeephole $1
+    @QEMU_ARCH @ @V8_TARGET_DIR @ /
+    @V8_PROC_ARCH @.release / mkpeephole $1

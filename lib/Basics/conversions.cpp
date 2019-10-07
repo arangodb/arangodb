@@ -21,8 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <time.h>
+#include <cmath>
+#include <cstring>
+
 #include "conversions.h"
+
+#include "Basics/error.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 
 static char const* const HEX = "0123456789ABCDEF";
 

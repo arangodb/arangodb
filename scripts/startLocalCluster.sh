@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 params=("$@")
 
 rm -rf cluster
@@ -109,6 +109,13 @@ else
   AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
+if [ -z "$ENCRYPTION_SECRET" ];then
+  ENCRYPTION=""
+else
+  echo -n $ENCRYPTION_SECRET > cluster/encryption-secret.txt
+  ENCRYPTION="--rocksdb.encryption-keyfile cluster/encryption-secret.txt"
+fi
+
 if [ "$TRANSPORT" == "ssl" ]; then
   SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
   CURL="curl --insecure $CURL_AUTHENTICATION -s -f -X GET https:"
@@ -156,12 +163,13 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --server.statistics false \
           --log.file cluster/$PORT.log \
-        --log.force-direct true \
+          --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
+          $ENCRYPTION \
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
@@ -183,12 +191,13 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
         --log.file cluster/$PORT.log \
-        --log.force-direct true \
+        --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
+        $ENCRYPTION \
         2>&1 | tee cluster/$PORT.stdout &
 done
 
@@ -233,12 +242,13 @@ start() {
           --javascript.startup-directory $SRC_DIR/js \
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
-          --log.force-direct true \
+          --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
+          $ENCRYPTION \
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
@@ -255,13 +265,14 @@ start() {
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
-        --log.force-direct true \
+        --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
+        $ENCRYPTION \
         2>&1 | tee cluster/$PORT.stdout &
 }
 
@@ -304,4 +315,3 @@ echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
 done
-

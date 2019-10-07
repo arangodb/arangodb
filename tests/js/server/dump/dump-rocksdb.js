@@ -30,6 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var analyzers = require("@arangodb/analyzers");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -417,7 +418,20 @@ function dumpTestSuite () {
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
-      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+      // After a restore, the ArangoSearch index needs to be rebuilt, therefore
+      // we cannot expect that the data is immediately visible. We can only
+      // hope that the data will be there in due course:
+
+      var startTime = new Date();
+      var res;
+      while (new Date() - startTime < 60000) {
+        res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+        if (res.length === 5000) {
+          break;
+        }
+        console.log("Waiting for arangosearch index to be built...");
+        internal.wait(1);
+      }
       assertEqual(5000, res.length);
 
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
@@ -426,7 +440,7 @@ function dumpTestSuite () {
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 

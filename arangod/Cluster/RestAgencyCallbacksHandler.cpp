@@ -24,18 +24,19 @@
 #include "RestAgencyCallbacksHandler.h"
 
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
-                                                       GeneralResponse* response,
-                                                       arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-    : RestVocbaseBaseHandler(request, response),
+RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
 RestStatus RestAgencyCallbacksHandler::execute() {
@@ -58,7 +59,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || body.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
+                  "invalid agency callback body");
     return RestStatus::DONE;
   }
 
@@ -68,16 +69,14 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     // no entry by this id!
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   } else {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("76a8a", DEBUG, Logger::CLUSTER)
         << "Agency callback has been triggered. refetching!";
 
-    // SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
     try {
       cb->refetchAndUpdate(true, false);
     } catch (arangodb::basics::Exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
+      LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
     }
-    //});
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }
 

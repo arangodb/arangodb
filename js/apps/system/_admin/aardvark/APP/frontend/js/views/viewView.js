@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global $, arangoHelper, frontendConfig, JSONEditor, Backbone, templateEngine, window, _, localStorage */
+/* global $, arangoHelper, document, frontendConfig, JSONEditor, Backbone, templateEngine, window, _, localStorage */
 
 (function () {
   'use strict';
@@ -323,11 +323,11 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'View: ' + self.name
+          'View: ' + arangoHelper.escapeHtml(self.name)
         );
         window.setTimeout(function () {
           $('#subNavigationBar .breadcrumb').html(
-            'View: ' + self.name
+            'View: ' + arangoHelper.escapeHtml(self.name)
           );
           self.checkIfInProgress();
         }, 100);

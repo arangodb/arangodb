@@ -28,11 +28,8 @@
 
 NS_ROOT
 
-bitset_doc_iterator::bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& order /*= order::prepared::unordered()*/
-) : doc_iterator_base(order),
-    begin_(set.begin()),
+bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
+  : begin_(set.begin()),
     end_(set.end()),
     size_(set.size()) {
   auto docs_count = set.count();
@@ -40,36 +37,31 @@ bitset_doc_iterator::bitset_doc_iterator(
   // make doc_id accessible via attribute
   attrs_.emplace(doc_);
   doc_.value = docs_count
-    ? type_limits<type_t::doc_id_t>::invalid()
-    : type_limits<type_t::doc_id_t>::eof(); // seal iterator
+    ? doc_limits::invalid()
+    : doc_limits::eof(); // seal iterator
 
   // set estimation value
   estimate(docs_count);
 }
 
 bitset_doc_iterator::bitset_doc_iterator(
-    const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
-    const bitset& set,
-    const order::prepared& order
-): bitset_doc_iterator(set, order) {
-  if (!order.empty()) {
-    // set scorers
-    scorers_ = ord_->prepare_scorers(
-      reader,
-      empty_term_reader(cost_.estimate()),
-      prepared_filter_attrs,
-      attributes() // doc_iterator attributes
-    );
-
-    prepare_score([this](irs::byte_type* score) {
-      scorers_.score(*ord_, score);
-    });
-  }
+      const sub_reader& reader,
+      const byte_type* stats,
+      const bitset& set,
+      const order::prepared& order,
+      boost_t boost)
+  : bitset_doc_iterator(set) {
+  prepare_score(order, order.prepare_scorers(
+    reader,
+    empty_term_reader(cost_.estimate()),
+    stats,
+    attributes(), // doc_iterator attributes
+    boost
+  ));
 }
 
 bool bitset_doc_iterator::next() NOEXCEPT {
-  return !type_limits<type_t::doc_id_t>::eof(
+  return !doc_limits::eof(
     seek(doc_.value + irs::doc_id_t(doc_.value < size_))
   );
 }
@@ -78,7 +70,7 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
   const auto* pword = begin_ + bitset::word(target);
 
   if (pword >= end_) {
-    doc_.value = type_limits<type_t::doc_id_t>::eof();
+    doc_.value = doc_limits::eof();
 
     return doc_.value;
   }
@@ -102,7 +94,7 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
 
   doc_.value = word
     ? bitset::bit_offset(std::distance(begin_, pword)) + math::math_traits<word_t>::ctz(word)
-    : type_limits<type_t::doc_id_t>::eof();
+    : doc_limits::eof();
 
   return doc_.value;
 }

@@ -165,10 +165,6 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "ViewDrop";
     case arangodb::RocksDBLogType::ViewChange:
       return "ViewChange";
-#ifdef USE_IRESEARCH
-    case arangodb::RocksDBLogType::IResearchLinkDrop:
-      return "IResearchLinkDrop";
-#endif
     case arangodb::RocksDBLogType::BeginTransaction:
       return "BeginTransaction";
     case arangodb::RocksDBLogType::CommitTransaction:
@@ -187,6 +183,12 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "SingleRemove";
     case arangodb::RocksDBLogType::SingleRemoveV2:
       return "SingleRemoveV2";
+    case arangodb::RocksDBLogType::FlushSync:
+      return "FlushSync";
+    case RocksDBLogType::TrackedDocumentInsert:
+      return "TrackedDocumentInsert";
+    case RocksDBLogType::TrackedDocumentRemove:
+      return "TrackedDocumentRemove";
     case arangodb::RocksDBLogType::Invalid:
       return "Invalid";
   }

@@ -23,8 +23,7 @@ retrieved by the following shell command:
 ```
 
 A description of the options can be found online in the
-[OpenSSL
-documentation](http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html)
+[OpenSSL documentation](http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html)
 
 **Note**: this option is only relevant if at least one SSL endpoint is
 used.

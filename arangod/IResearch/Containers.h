@@ -28,6 +28,7 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
@@ -35,15 +36,15 @@
 #include "utils/memory.hpp"
 #include "utils/string.hpp"
 
-NS_LOCAL
+namespace {
 
 template <typename...>
 struct typelist;
 
-NS_END
+}
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource
@@ -369,7 +370,7 @@ class UnorderedRefKeyMap : public UnorderedRefKeyMapBase<CharType, V>,
   }
 };
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

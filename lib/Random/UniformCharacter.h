@@ -24,6 +24,9 @@
 #ifndef ARANGODB_RANDOM_UNIFORM_CHARACTER_H
 #define ARANGODB_RANDOM_UNIFORM_CHARACTER_H 1
 
+#include <cstdlib>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -38,11 +41,12 @@ class UniformCharacter {
   UniformCharacter(size_t length, std::string const& characters);
 
  public:
-  std::string random();
-  std::string random(size_t length);
+  std::string random() const;
+  std::string random(size_t length) const;
+  char randomChar() const;
 
  private:
-  size_t _length;
+  size_t const _length;
   std::string const _characters;
 };
 }  // namespace arangodb

@@ -23,6 +23,6 @@ Mount path of the installed service.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the request was sucessful.
+Returned if the request was successful.
 
 @endDocuBlock

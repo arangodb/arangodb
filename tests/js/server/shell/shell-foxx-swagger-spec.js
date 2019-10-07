@@ -234,7 +234,8 @@ describe('Foxx Swagger', function () {
           .that.is.eql({
           type: 'object',
           properties: {},
-          additionalProperties: false
+          additionalProperties: false,
+          patterns: []
         });
       });
     });

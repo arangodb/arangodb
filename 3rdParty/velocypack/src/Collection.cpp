@@ -128,7 +128,7 @@ bool Collection::contains(Slice const& slice, Slice const& other) {
   ArrayIterator it(slice);
 
   while (it.valid()) {
-    if (it.value().equals(other)) {
+    if (it.value().binaryEquals(other)) {
       return true;
     }
     it.next();
@@ -142,7 +142,7 @@ ValueLength Collection::indexOf(Slice const& slice, Slice const& other) {
   ValueLength index = 0;
 
   while (it.valid()) {
-    if (it.value().equals(other)) {
+    if (it.value().binaryEquals(other)) {
       return index;
     }
     it.next();
@@ -359,7 +359,8 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
   {
     ObjectIterator it(right);
     while (it.valid()) {
-      rightValues.emplace(it.key(true).stringRef(), it.value());
+      auto current = (*it);
+      rightValues.emplace(current.key.stringRef(), current.value);
       it.next();
     }
   }
@@ -368,19 +369,20 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
     ObjectIterator it(left);
 
     while (it.valid()) {
-      auto key = it.key(true).stringRef();
+      auto current = (*it);
+      auto key = current.key.stringRef();
       auto found = rightValues.find(key);
 
       if (found == rightValues.end()) {
         // use left value
-        builder.add(key, it.value());
-      } else if (mergeValues && it.value().isObject() &&
+        builder.add(key, current.value);
+      } else if (mergeValues && current.value.isObject() &&
                  (*found).second.isObject()) {
         // merge both values
         auto& value = (*found).second;
         if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
           builder.add(ValuePair(key, ValueType::String));
-          Collection::merge(builder, it.value(), value, true, nullMeansRemove);
+          Collection::merge(builder, current.value, value, true, nullMeansRemove);
         }
         // clear the value in the map so its not added again
         (*found).second = Slice();
@@ -425,8 +427,9 @@ static bool visitObject(
   ObjectIterator it(value);
 
   while (it.valid()) {
+    auto current = (*it);
     // sub-object?
-    Slice v = it.value();
+    Slice v = current.value;
     bool const isCompound = (v.isObject() || v.isArray());
 
     if (isCompound && order == Collection::PreOrder) {
@@ -435,7 +438,7 @@ static bool visitObject(
       }
     }
 
-    if (!func(it.key(true), v)) {
+    if (!func(current.key, v)) {
       return false;
     }
 

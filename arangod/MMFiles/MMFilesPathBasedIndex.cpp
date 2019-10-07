@@ -27,7 +27,9 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesIndexElement.h"
 
 #include <velocypack/Iterator.h>
@@ -82,7 +84,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
                                        LocalDocumentId const& documentId,
                                        VPackSlice const& doc) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("e5ac9", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }

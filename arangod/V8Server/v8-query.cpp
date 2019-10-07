@@ -21,13 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-query.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
@@ -42,6 +42,7 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "v8-query.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -58,9 +59,10 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
+  
+  auto queryRegistry = QueryRegistryFeature::registry();
+  TRI_ASSERT(queryRegistry != nullptr);
 
-  TRI_GET_GLOBALS();
-  // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -70,7 +72,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
   aql::QueryResultV8 queryResult;
   while (true) {
     auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
                         queryResult);
     if (state != aql::ExecutionState::WAITING) {
       break;
@@ -78,13 +80,13 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
     ss->waitForAsyncResponse();
   }
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        queryResult.code == TRI_ERROR_QUERY_KILLED) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        queryResult.result.is(TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
   return queryResult;
@@ -97,6 +99,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
 static void EdgesQuery(TRI_edge_direction_e direction,
                        v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   // first and only argument should be a list of document idenfifier
@@ -127,7 +130,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
                                    "invalid edge index direction");
   };
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -137,15 +140,17 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
-  auto addOne = [](v8::Isolate* isolate, VPackBuilder* builder,
+  auto addOne = [isolate, &context](VPackBuilder* builder,
                    v8::Handle<v8::Value> const val) {
     if (val->IsString() || val->IsStringObject()) {
-      builder->add(VPackValue(TRI_ObjectToString(val)));
+      builder->add(VPackValue(TRI_ObjectToString(isolate, val)));
     } else if (val->IsObject()) {
-      v8::Handle<v8::Object> obj = val->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))) {
+      v8::Handle<v8::Object> obj =
+          val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_HasProperty(context, isolate, obj, StaticStrings::IdString.c_str())) {
         builder->add(VPackValue(TRI_ObjectToString(
-            obj->Get(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString)))));
+            isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))
+                         .FromMaybe(v8::Local<v8::Value>()))));
       } else {
         builder->add(VPackValue(""));
       }
@@ -166,11 +171,11 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(args[0]);
     uint32_t n = arr->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      addOne(isolate, bindVars.get(), arr->Get(i));
+      addOne(bindVars.get(), arr->Get(i));
     }
     bindVars->close();
   } else {
-    addOne(isolate, bindVars.get(), args[0]);
+    addOne(bindVars.get(), args[0]);
   }
   bindVars->close();
 
@@ -186,8 +191,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       "FOR doc IN @@collection " + filter + " RETURN doc";
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  if (!queryResult.result.IsEmpty()) {
-    TRI_V8_RETURN(queryResult.result);
+  if (!queryResult.data.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.data);
   }
 
   TRI_V8_RETURN_NULL();
@@ -201,7 +206,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -218,17 +223,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // We directly read the entire cursor. so batchsize == limit
-  std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
-
-  if (opCursor->fail()) {
-    TRI_V8_THROW_EXCEPTION(opCursor->code);
-  }
-
-  if (!opCursor->hasMore()) {
-    // OUT OF MEMORY. initial hasMore should return true even if index is empty
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  OperationCursor opCursor(trx.indexScan(collectionName, transaction::Methods::CursorType::ALL));
 
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
@@ -237,7 +232,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  opCursor->allDocuments(
+  opCursor.allDocuments(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
       },
@@ -280,7 +275,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* col = UnwrapCollection(args.Holder());
+  auto* col = UnwrapCollection(isolate, args.Holder());
 
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -331,7 +326,7 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* col = UnwrapCollection(args.Holder());
+  auto* col = UnwrapCollection(isolate, args.Holder());
 
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -343,16 +338,16 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   bool withData = false;
 
   if (args.Length() > 0) {
-    withRevisions = TRI_ObjectToBoolean(args[0]);
+    withRevisions = TRI_ObjectToBoolean(isolate, args[0]);
     if (args.Length() > 1) {
-      withData = TRI_ObjectToBoolean(args[1]);
+      withData = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
 
   auto result = col->checksum(withRevisions, withData);
 
   if (!result.ok()) {
-    TRI_V8_THROW_EXCEPTION(result);
+    TRI_V8_THROW_EXCEPTION(std::move(result).result());
   }
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.builder().slice()));
@@ -400,7 +395,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -432,8 +427,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (!queryResult.result.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.result);
+  if (!queryResult.data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.data);
   }
 
   TRI_V8_RETURN(result);
@@ -448,7 +443,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");

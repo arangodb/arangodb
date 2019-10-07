@@ -57,7 +57,7 @@ std::vector<std::string> field_reader::features() const {
 
 /*static*/ index_reader index_reader::open(const char* path) {
   auto dir = std::make_shared<irs::mmap_directory>(path);
-  auto index = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
+  auto index = irs::directory_reader::open(*dir);
 
   return std::shared_ptr<const irs::index_reader>(
     static_cast<irs::index_reader::ptr>(index).get(),

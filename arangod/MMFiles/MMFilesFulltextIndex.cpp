@@ -25,15 +25,17 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
 #include "StorageEngine/TransactionState.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -46,7 +48,7 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     // extract the string value for the indexed attribute
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringRef(),
-                                                             _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH,
+                                                             _minWordLength, FulltextIndexLimits::maxWordLength,
                                                              true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
@@ -66,7 +68,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
                                            arangodb::velocypack::Slice const& info)
     : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
-      _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
+      _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid != 0);
 
   VPackSlice const value = info.get("minLength");
@@ -105,7 +107,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "destroying fulltext index";
+    LOG_TOPIC("a5f64", TRACE, arangodb::Logger::ENGINES) << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
@@ -131,7 +133,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -143,7 +145,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -192,7 +194,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
@@ -238,8 +240,8 @@ void MMFilesFulltextIndex::unload() {
   TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
 }
 
-IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, aql::AstNode const* condNode,
+std::unique_ptr<IndexIterator> MMFilesFulltextIndex::iteratorForCondition(
+    transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
@@ -259,7 +261,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
     limit = args->getMember(3)->getIntValue();
   }
   TRI_fulltext_query_t* ft =
-      TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, limit);
+      TRI_CreateQueryMMFilesFulltextIndex(FulltextIndexLimits::maxSearchWords, limit);
   if (ft == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -274,7 +276,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   // note: the following call will free "ft"!
   std::set<TRI_voc_rid_t> results = TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
 
-  return new MMFilesFulltextIndexIterator(&_collection, trx, std::move(results));
+  return std::make_unique<MMFilesFulltextIndexIterator>(&_collection, trx, std::move(results));
 }
 
 /// @brief callback function called by the fulltext index to determine the

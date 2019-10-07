@@ -26,15 +26,20 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
-FlushThread::FlushThread(uint64_t flushInterval)
-    : Thread("FlushThread"), _condition(), _flushInterval(flushInterval) {}
+FlushThread::FlushThread(FlushFeature& feature, uint64_t flushInterval)
+    : Thread(feature.server(), "FlushThread"),
+      _condition(),
+      _feature(feature),
+      _flushInterval(flushInterval) {}
 
 /// @brief begin shutdown sequence
 void FlushThread::beginShutdown() {
@@ -52,35 +57,25 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
-  FlushFeature* flushFeature =
-      application_features::ApplicationServer::getFeature<FlushFeature>(
-          "Flush");
-  TRI_ASSERT(flushFeature != nullptr);
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  size_t count = 0;
+  TRI_voc_tick_t tick = 0;
 
   while (!isStopping()) {
     try {
       TRI_IF_FAILURE("FlushThreadDisableAll") {
         CONDITION_LOCKER(guard, _condition);
         guard.wait(_flushInterval);
+
         continue;
       }
 
-      TRI_voc_tick_t toRelease = engine->currentTick();
-      LOG_TOPIC(TRACE, Logger::FLUSH)
-          << "flush thread initiating sync for tick '" << toRelease << "'";
-      engine->waitForSyncTick(toRelease);
-      TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
-        TRI_SegfaultDebugging("crashing before flush thread callbacks");
-      }
-      flushFeature->executeCallbacks();
-      TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
-        TRI_SegfaultDebugging("crashing before releasing tick");
-      }
-      engine->waitForSyncTick(engine->currentTick());  // wait for callback trx
-      engine->releaseTick(toRelease);
-      LOG_TOPIC(TRACE, Logger::FLUSH)
-          << "released tick " << toRelease << " for garbage collection";
+      _feature.releaseUnusedTicks(count, tick);
+
+      LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
+          << "Flush subscription(s) released: '" << count;
+
+      LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+          << "Tick released: '" << tick << "'";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
@@ -89,13 +84,13 @@ void FlushThread::run() {
       if (ex.code() == TRI_ERROR_SHUTTING_DOWN) {
         break;
       }
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("2b211", ERR, arangodb::Logger::FLUSH)
           << "caught exception in FlushThread: " << ex.what();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("a3cfc", ERR, arangodb::Logger::FLUSH)
           << "caught exception in FlushThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("40b52", ERR, arangodb::Logger::FLUSH)
           << "caught unknown exception in FlushThread";
     }
   }

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_applier_state
 @brief output the current status of the replication
 
-@RESTHEADER{GET /_api/replication/applier-state, State of the replication applier}
+@RESTHEADER{GET /_api/replication/applier-state, State of the replication applier,handleCommandApplierGetState}
 
 @RESTDESCRIPTION
 Returns the state of the replication applier, regardless of whether the

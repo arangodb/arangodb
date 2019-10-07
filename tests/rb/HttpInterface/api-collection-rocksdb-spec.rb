@@ -147,7 +147,7 @@ describe ArangoDB do
       it "creating a collection with a null body" do
         cmd = api
         body = "null"
-              doc = ArangoDB.log_post("#{prefix}-create-null-body", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-create-null-body", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -196,7 +196,12 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].should include(doc.parsed_response['status'])
+        # effectively the status does not play any role for the RocksDB engine,
+        # so it is ok if any of the following statuses gets returned
+        # 2 = unloaded, 3 = loaded, 4 = unloading
+        # additionally, in a cluster there is no such thing as one status for a
+        # collection, as each shard can have a different status
+        [2, 3, 4].should include(doc.parsed_response['status'])
       end
 
       # get
@@ -223,7 +228,12 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].should include(doc.parsed_response['status'])
+        # effectively the status does not play any role for the RocksDB engine,
+        # so it is ok if any of the following statuses gets returned
+        # 2 = unloaded, 3 = loaded, 4 = unloading
+        # additionally, in a cluster there is no such thing as one status for a
+        # collection, as each shard can have a different status
+        [2, 3, 4].should include(doc.parsed_response['status'])
       end
 
       # get count

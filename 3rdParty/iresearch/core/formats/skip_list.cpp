@@ -157,7 +157,7 @@ skip_reader::level::level(
     uint64_t end,
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
-    doc_id_t doc /*= type_limits<type_t::doc_id_t>::invalid()*/
+    doc_id_t doc /*= doc_limits::invalid()*/
 ) NOEXCEPT
   : stream(std::move(stream)), // thread-safe input
     begin(begin), 
@@ -251,7 +251,7 @@ void skip_reader::read_skip(skip_reader::level& level) {
   const auto doc = read_(size_t(std::distance(&level, &levels_.back())), level);
 
   // read pointer to child level if needed
-  if (!type_limits<type_t::doc_id_t>::eof(doc) && level.child != UNDEFINED) {
+  if (!doc_limits::eof(doc) && level.child != UNDEFINED) {
     level.child = level.stream->read_vlong();
   }
 
@@ -339,7 +339,7 @@ void skip_reader::reset() {
       level.child = 0;
     }
     level.skipped = 0;
-    level.doc = type_limits<type_t::doc_id_t>::invalid();
+    level.doc = doc_limits::invalid();
   };
 
   std::for_each(levels_.begin(), levels_.end(), reset);

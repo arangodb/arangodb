@@ -2,7 +2,7 @@
 @startDocuBlock post_api_cursor
 @brief create a cursor and return the first results
 
-@RESTHEADER{POST /_api/cursor, Create cursor}
+@RESTHEADER{POST /_api/cursor, Create cursor, createQueryCursor}
 
 A JSON object describing the query and query parameters.
 
@@ -26,7 +26,7 @@ not set, a server-controlled default value will be used. A *batchSize* value of
 The time-to-live for the cursor (in seconds). The cursor will be
 removed on the server automatically after the specified amount of time. This
 is useful to ensure garbage collection of cursors that are not fully fetched
-by clients. If not set, a server-defined value will be used.
+by clients. If not set, a server-defined value will be used (default: 30 seconds).
 
 @RESTBODYPARAM{cache,boolean,optional,}
 flag to determine whether the AQL query results cache

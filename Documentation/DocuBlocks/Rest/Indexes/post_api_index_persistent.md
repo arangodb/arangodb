@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_persistent
 @brief creates a persistent index
 
-@RESTHEADER{POST /_api/index#persistent, Create a persistent index}
+@RESTHEADER{POST /_api/index#persistent, Create a persistent index, createIndex:persistent}
 
 @RESTQUERYPARAMETERS
 

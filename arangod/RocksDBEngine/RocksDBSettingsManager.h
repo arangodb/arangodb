@@ -68,14 +68,11 @@ class RocksDBSettingsManager {
   bool lockForSync(bool force);
 
  private:
-  /// @brief protect _syncing and _counters
-  mutable basics::ReadWriteLock _rwLock;
-
   /// @brief a reusable builder, used inside sync() to serialize objects
   arangodb::velocypack::Builder _tmpBuilder;
 
   /// @brief last sync sequence number
-  rocksdb::SequenceNumber _lastSync;
+  std::atomic<rocksdb::SequenceNumber> _lastSync;
 
   /// @brief currently syncing
   std::atomic<bool> _syncing;

@@ -40,7 +40,7 @@ NS_ROOT
 struct IRESEARCH_API data_output
     : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
 
-  virtual ~data_output();
+  virtual ~data_output() = default;
 
   // TODO: remove close method
   virtual void close() = 0;
@@ -84,11 +84,8 @@ struct IRESEARCH_API data_output
 struct IRESEARCH_API index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
-  DEFINE_FACTORY_INLINE(index_output);
+  DEFINE_FACTORY_INLINE(index_output)
 
-  virtual ~index_output();
-
-  /* deprecated */
   virtual void flush() = 0;
 
   virtual size_t file_pointer() const = 0;
@@ -122,11 +119,9 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
-  static const size_t DEF_BUFFER_SIZE = 1024;
+  static const size_t DEFAULT_BUFFER_SIZE = 1024;
 
-  buffered_index_output(size_t buf_size = DEF_BUFFER_SIZE);
-
-  virtual ~buffered_index_output();
+  buffered_index_output(size_t buf_size = DEFAULT_BUFFER_SIZE);
 
   virtual void flush() override;
 
@@ -149,18 +144,18 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
  protected:
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
- private:
   // returns number of reamining bytes in the buffer
   FORCE_INLINE size_t remain() const {
-    return std::distance(pos, end);
+    return std::distance(pos_, end_);
   }
 
+ private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr<byte_type[]> buf;
-  size_t start; // position of buffer in a file
-  byte_type* pos;   // position in buffer
-  byte_type* end;
-  size_t buf_size;
+  std::unique_ptr<byte_type[]> buf_;
+  size_t start_; // position of buffer in a file
+  byte_type* pos_;   // position in buffer
+  byte_type* end_;
+  const size_t buf_size_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 

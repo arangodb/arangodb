@@ -1,7 +1,7 @@
 @startDocuBlock get_api_views
 @brief returns all views
 
-@RESTHEADER{GET /_api/view, List all views}
+@RESTHEADER{GET /_api/view, List all views, getViews:AllViews}
 
 @RESTDESCRIPTION
 Returns an object containing an array of all view descriptions.

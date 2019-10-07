@@ -62,18 +62,8 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
 
-  virtual bool hasBatchInsert() const override {
-    return IResearchLink::hasBatchInsert();
-  }
-
   virtual bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
-  }
-
-  virtual arangodb::Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                                  VPackSlice const& doc, OperationMode mode) override {
-    TRI_ASSERT(false);  // should not be called
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   bool isHidden() const override {
@@ -83,14 +73,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   // IResearch does not provide a fixed default sort order
   virtual bool isSorted() const override { return IResearchLink::isSorted(); }
 
-  virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
-      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
-      arangodb::IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);  // should not be called
-    return nullptr;
-  }
-
   virtual void load() override { IResearchLink::load(); }
 
   virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
@@ -99,17 +81,11 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
 
   virtual size_t memory() const override { return IResearchLink::memory(); }
 
-  arangodb::Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                          VPackSlice const& doc, OperationMode mode) override {
-    TRI_ASSERT(false);  // should not be called
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack;  // for Index::toVelocyPack(bool, unsigned)
+  using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
   virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
                             std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 

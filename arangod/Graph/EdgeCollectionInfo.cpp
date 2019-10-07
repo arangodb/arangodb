@@ -36,7 +36,6 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
       _collectionName(collectionName),
       _searchBuilder(),
       _weightAttribute(weightAttribute),
-      _defaultWeight(defaultWeight),
       _dir(direction) {
   TRI_ASSERT(_dir == TRI_EDGE_OUT || _dir == TRI_EDGE_IN);
 
@@ -47,21 +46,25 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   auto var = _searchBuilder.getVariable();
   if (_dir == TRI_EDGE_OUT) {
     auto cond = _searchBuilder.getOutboundCondition();
-    bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                             var, 1000, _forwardIndexId);
+    bool worked =
+        _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var, 1000,
+                                                   aql::IndexHint(), _forwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
     cond = _searchBuilder.getInboundCondition();
     worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var,
-                                                        1000, _backwardIndexId);
+                                                        1000, aql::IndexHint(),
+                                                        _backwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
   } else {
     auto cond = _searchBuilder.getInboundCondition();
-    bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                             var, 1000, _forwardIndexId);
+    bool worked =
+        _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var, 1000,
+                                                   aql::IndexHint(), _forwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
     cond = _searchBuilder.getOutboundCondition();
     worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond, var,
-                                                        1000, _backwardIndexId);
+                                                        1000, aql::IndexHint(),
+                                                        _backwardIndexId);
     TRI_ASSERT(worked);  // We always have an edge Index
   }
 }
@@ -71,96 +74,19 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
-  std::unique_ptr<arangodb::OperationCursor> res;
-  IndexIteratorOptions opts;
+  arangodb::aql::AstNode const* cond;
   if (_dir == TRI_EDGE_OUT) {
-    res.reset(_trx->indexScanForCondition(_forwardIndexId,
-                                          _searchBuilder.getOutboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
+    cond = _searchBuilder.getOutboundCondition();
   } else {
-    res.reset(_trx->indexScanForCondition(_forwardIndexId, _searchBuilder.getInboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
+    cond = _searchBuilder.getInboundCondition();
   }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. On Coordinator.
-////////////////////////////////////////////////////////////////////////////////
-
-int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId, VPackBuilder& result) {
-  TRI_ASSERT(result.isEmpty());
-  arangodb::rest::ResponseCode responseCode;
-
-  result.openObject();
-
-  int res = getFilteredEdgesOnCoordinator(_trx->vocbase().name(), _collectionName,
-                                          *_trx, vertexId.copyString(), _dir,
-                                          responseCode, result);
-
-  result.close();
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
-    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
-  _searchBuilder.setVertexId(vertexId);
-  std::unique_ptr<arangodb::OperationCursor> res;
+    
   IndexIteratorOptions opts;
-  if (_dir == TRI_EDGE_OUT) {
-    res.reset(_trx->indexScanForCondition(_backwardIndexId,
-                                          _searchBuilder.getInboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
-  } else {
-    res.reset(_trx->indexScanForCondition(_backwardIndexId,
-                                          _searchBuilder.getOutboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get edges for the given direction and start vertex. Reverse version
-/// on Coordinator.
-////////////////////////////////////////////////////////////////////////////////
-
-int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
-                                                   VPackBuilder& result) {
-  TRI_ASSERT(result.isEmpty());
-  arangodb::rest::ResponseCode responseCode;
-
-  result.openObject();
-
-  TRI_edge_direction_e dir = TRI_EDGE_OUT;
-
-  if (_dir == TRI_EDGE_OUT) {
-    dir = TRI_EDGE_IN;
-  }
-
-  int res = getFilteredEdgesOnCoordinator(_trx->vocbase().name(), _collectionName,
-                                          *_trx, vertexId.copyString(), dir,
-                                          responseCode, result);
-
-  result.close();
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Compute the weight of an edge
-////////////////////////////////////////////////////////////////////////////////
-
-double EdgeCollectionInfo::weightEdge(VPackSlice const edge) {
-  TRI_ASSERT(!_weightAttribute.empty());
-  return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      edge, _weightAttribute.c_str(), _defaultWeight);
+  opts.enableCache = false;
+  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
+      _forwardIndexId, cond, _searchBuilder.getVariable(), opts));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

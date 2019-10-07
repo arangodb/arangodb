@@ -128,9 +128,9 @@ class Dumper {
   void dumpValue(Slice const*, Slice const* = nullptr);
 
   void indent() {
-    size_t n = _indentation;
+    std::size_t n = _indentation;
     _sink->reserve(2 * n);
-    for (size_t i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
       _sink->append("  ", 2);
     }
   }

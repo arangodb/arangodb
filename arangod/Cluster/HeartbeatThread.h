@@ -31,12 +31,14 @@
 #include "Basics/Mutex.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "Logger/Logger.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 struct AgencyVersions {
   uint64_t plan;
@@ -55,8 +57,8 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
-                  uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
+                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -111,6 +113,9 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
 
   static void logThreadDeaths(bool force = false);
+
+  /// @brief Reference to agency sync job
+  DBServerAgencySync& agencySync();
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -282,6 +287,14 @@ class HeartbeatThread : public CriticalThread,
   /// code. Only created on dbservers.
   //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief number of subsequent failed version updates
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t _failedVersionUpdates;
+
+  /// @brief Sync job
+  DBServerAgencySync _agencySync;
 };
 }  // namespace arangodb
 

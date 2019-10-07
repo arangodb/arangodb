@@ -102,19 +102,16 @@ VertexComputation<HITSValue, int8_t, SenderMessage<double>>* HITS::createComputa
 struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
   const std::string _resultField;
 
-  explicit HITSGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit HITSGraphFormat(application_features::ApplicationServer& server,
+                           std::string const& result)
+      : GraphFormat<HITSValue, int8_t>(server), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        HITSValue* targetPtr, size_t maxSize) override {
-    return sizeof(HITSValue);
-  }
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        HITSValue& targetPtr) override {}
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const HITSValue* value, size_t size) const override {
@@ -130,7 +127,7 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
 };
 
 GraphFormat<HITSValue, int8_t>* HITS::inputFormat() const {
-  return new HITSGraphFormat(_resultField);
+  return new HITSGraphFormat(_server, _resultField);
 }
 
 WorkerContext* HITS::workerContext(VPackSlice userParams) const {

@@ -26,17 +26,14 @@
 NS_BEGIN(tests)
 NS_BEGIN(sort)
 
-DEFINE_SORT_TYPE(boost);
-DEFINE_FACTORY_DEFAULT(boost);
+DEFINE_SORT_TYPE(boost)
+DEFINE_FACTORY_DEFAULT(boost)
 
-DEFINE_SORT_TYPE(custom_sort);
-DEFINE_FACTORY_DEFAULT(custom_sort);
+DEFINE_SORT_TYPE(custom_sort)
+DEFINE_FACTORY_DEFAULT(custom_sort)
 
-DEFINE_SORT_TYPE(frequency_sort);
-DEFINE_FACTORY_DEFAULT(frequency_sort);
-
-DEFINE_ATTRIBUTE_TYPE(frequency_sort::prepared::count);
-DEFINE_FACTORY_DEFAULT(frequency_sort::prepared::count);
+DEFINE_SORT_TYPE(frequency_sort)
+DEFINE_FACTORY_DEFAULT(frequency_sort)
 
 NS_END // NS_BEGIN(sort)
 NS_END // NS_BEGIN(tests)

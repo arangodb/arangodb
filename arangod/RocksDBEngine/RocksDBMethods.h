@@ -70,32 +70,39 @@ class RocksDBSavePoint {
 class RocksDBMethods {
  public:
   explicit RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
-  virtual ~RocksDBMethods() {}
-
-  /// @brief current sequence number
-  rocksdb::SequenceNumber sequenceNumber();
+  virtual ~RocksDBMethods() = default;
 
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();
+
+  virtual bool isIndexingDisabled() const { return false; }
 
   /// @brief returns true if indexing was disabled by this call
   /// the default implementation is to do nothing
   virtual bool DisableIndexing() { return false; }
 
   // the default implementation is to do nothing
-  virtual void EnableIndexing() {}
+  virtual bool EnableIndexing() { return false; }
 
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                              rocksdb::Slice const&, std::string*) = 0;
-  virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                               rocksdb::Slice const&, rocksdb::PinnableSlice*) = 0;
+  virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                                       rocksdb::Slice const&,
+                                       rocksdb::PinnableSlice*) = 0;
+  /// assume_tracked=true will assume you used GetForUpdate on this key earlier.
+  /// it will still verify this, so it is slower than PutUntracked
   virtual rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
-                              rocksdb::Slice const&) = 0;
+                              rocksdb::Slice const&, bool assume_tracked) = 0;
+  /// Like Put, but will not perform any write-write conflict checks
+  virtual rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
+                                       rocksdb::Slice const&) = 0;
 
   virtual rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   /// contrary to Delete, a SingleDelete may only be used
   /// when keys are inserted exactly once (and never overwritten)
   virtual rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
+  
+  virtual void PutLogData(rocksdb::Slice const&) = 0;
 
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                          rocksdb::ColumnFamilyHandle*) = 0;
@@ -118,13 +125,17 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
   explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state);
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      std::string* val) override;
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
+                               rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
+                      rocksdb::Slice const& val, bool assume_tracked) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  void PutLogData(rocksdb::Slice const&) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
@@ -144,19 +155,25 @@ class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
 
+  virtual bool isIndexingDisabled() const override{ return _indexingDisabled; }
+
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() override;
 
-  void EnableIndexing() override;
+  bool EnableIndexing() override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      std::string* val) override;
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
+                               rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
+                      rocksdb::Slice const& val, bool assume_tracked) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  void PutLogData(rocksdb::Slice const&) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
@@ -168,17 +185,6 @@ class RocksDBTrxMethods : public RocksDBMethods {
   bool _indexingDisabled;
 };
 
-/// transaction wrapper, uses the current rocksdb transaction and non-tracking
-/// methods
-class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
- public:
-  explicit RocksDBTrxUntrackedMethods(RocksDBTransactionState* state);
-
-  rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
-};
 
 /// wraps a writebatch - non transactional
 class RocksDBBatchedMethods final : public RocksDBMethods {
@@ -186,13 +192,18 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   RocksDBBatchedMethods(RocksDBTransactionState*, rocksdb::WriteBatch*);
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      std::string* val) override;
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
+                               rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
+                      rocksdb::Slice const& val, bool assume_tracked) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  void PutLogData(rocksdb::Slice const&) override;
+
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
 
@@ -212,13 +223,17 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   RocksDBBatchedWithIndexMethods(RocksDBTransactionState*, rocksdb::WriteBatchWithIndex*);
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      std::string* val) override;
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
+                               rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
+                      rocksdb::Slice const& val, bool assume_tracked) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  void PutLogData(rocksdb::Slice const&) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
@@ -232,38 +247,6 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
  private:
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
-};
-
-/// transaction wrapper, uses the provided rocksdb transaction
-class RocksDBSideTrxMethods final : public RocksDBMethods {
- public:
-  explicit RocksDBSideTrxMethods(RocksDBTransactionState* state, rocksdb::Transaction* trx);
-
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      std::string* val) override;
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice* val) override;
-  rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
-
-  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
-                                                 rocksdb::ColumnFamilyHandle*) override {
-    return nullptr;
-  }
-
-  void SetSavePoint() override {}
-  rocksdb::Status RollbackToSavePoint() override {
-    return rocksdb::Status::OK();
-  }
-  void PopSavePoint() override {}
-
-  bool DisableIndexing() override;
-
- private:
-  rocksdb::Transaction* _trx;
-  rocksdb::ReadOptions _ro;
 };
 
 // INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
@@ -291,6 +274,35 @@ struct IndexingDisabler {
   ~IndexingDisabler() {
     if (_meth) {
       _meth->EnableIndexing();
+    }
+  }
+
+ private:
+  RocksDBMethods* _meth;
+};
+
+// if only single indices should be enabled during operations
+struct IndexingEnabler {
+  // will only be active if condition is true
+
+  IndexingEnabler() = delete;
+  IndexingEnabler(IndexingEnabler&&) = delete;
+  IndexingEnabler(IndexingEnabler const&) = delete;
+  IndexingEnabler& operator=(IndexingEnabler const&) = delete;
+  IndexingEnabler& operator=(IndexingEnabler&&) = delete;
+
+  IndexingEnabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+    if (condition) {
+      bool enableHere = meth->EnableIndexing();
+      if (enableHere) {
+        _meth = meth;
+      }
+    }
+  }
+
+  ~IndexingEnabler() {
+    if (_meth) {
+      _meth->DisableIndexing();
     }
   }
 

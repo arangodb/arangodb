@@ -48,7 +48,7 @@ function runSetup () {
 
   internal.wal.flush(true, true, true);
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ function recoverySuite () {
         view.properties(meta);
         fail();
       } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_ARANGO_INDEX_CREATION_FAILED.code);
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_ILLEGAL_STATE.code);
       }
 
       var links = view.properties().links;

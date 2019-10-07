@@ -20,22 +20,26 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "OptimizerRules.h"
+
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
-#include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
-#include "OptimizerRules.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
@@ -173,6 +177,12 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   // return reference to outVariable
   return ast->createNodeReference(subqueryOutVariable);
 }
+  
+bool isGeoIndex(arangodb::Index::IndexType type) {
+  return type == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+         type == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
+         type == arangodb::Index::TRI_IDX_TYPE_GEO_INDEX;
+}
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef,
                                                           NearOrWithinParams& params) {
@@ -183,10 +193,9 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   bool indexFound = false;
 
   // figure out index to use
-  std::vector<basics::AttributeName> field;
   auto indexes = trx->indexesForCollection(params.collection);
   for (auto& idx : indexes) {
-    if (Index::isGeoIndex(idx->type())) {
+    if (::isGeoIndex(idx->type())) {
       // we take the first index that is found
       bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
       bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
@@ -260,7 +269,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   ExecutionNode* eEnumerate = plan->registerNode(
       // link output of index with the return node
       new EnumerateCollectionNode(plan, plan->nextId(), aqlCollection,
-                                  enumerateOutVariable, false));
+                                  enumerateOutVariable, false, IndexHint()));
 
   //// build sort condition - DISTANCE(d.lat, d.long, param.lat, param.lon)
   auto* docRef = ast->createNodeReference(enumerateOutVariable);
@@ -291,12 +300,12 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 
   //// create calculation node used in SORT or FILTER
   // Calculation Node will acquire ownership
-  Expression* calcExpr = new Expression(plan, ast, expressionAst);
+  auto calcExpr = std::make_unique<Expression>(plan, ast, expressionAst);
 
   // put condition into calculation node
   Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eCalc = plan->registerNode(
-      new CalculationNode(plan, plan->nextId(), calcExpr, nullptr, calcOutVariable));
+      new CalculationNode(plan, plan->nextId(), std::move(calcExpr), calcOutVariable));
   eCalc->addDependency(eEnumerate);
 
   //// create SORT or FILTER
@@ -346,10 +355,10 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
         ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge);
 
     Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
-    Expression* calcMergeExpr = new Expression(plan, ast, funMerge);
+    auto calcMergeExpr = std::make_unique<Expression>(plan, ast, funMerge);
     ExecutionNode* eCalcMerge =
-        plan->registerNode(new CalculationNode(plan, plan->nextId(), calcMergeExpr,
-                                               nullptr, calcMergeOutVariable));
+        plan->registerNode(new CalculationNode(plan, plan->nextId(), std::move(calcMergeExpr),
+                                               calcMergeOutVariable));
     plan->insertAfter(eSortOrFilter, eCalcMerge);
 
     //// wrap plan part into subquery
@@ -392,7 +401,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   std::shared_ptr<arangodb::Index> index;
   // we should not access the LogicalCollection directly
   for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
-    if (Index::isGeoIndex(idx->type())) {
+    if (::isGeoIndex(idx->type())) {
       index = idx;
       break;
     }
@@ -543,9 +552,9 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 }  // namespace
 
 //! @brief replace legacy JS Functions with pure AQL
-void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
-                                              std::unique_ptr<ExecutionPlan> plan,
-                                              OptimizerRule const* rule) {
+void arangodb::aql::replaceNearWithinFulltextRule(Optimizer* opt,
+                                                  std::unique_ptr<ExecutionPlan> plan,
+                                                  OptimizerRule const& rule) {
   bool modified = false;
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -555,8 +564,8 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
   for (auto const& node : nodes) {
     auto visitor = [&modified, &node, &plan](AstNode* astnode) {
       auto* fun = getFunction(astnode);  // if fun != nullptr -> astnode->type NODE_TYPE_FCALL
-      AstNode* replacement = nullptr;
       if (fun) {
+        AstNode* replacement = nullptr;
         if (fun->name == "NEAR") {
           replacement = replaceNearOrWithin(astnode, node, plan.get(), true /*isNear*/);
           TRI_ASSERT(replacement);
@@ -570,11 +579,13 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
           replacement = replaceFullText(astnode, node, plan.get());
           TRI_ASSERT(replacement);
         }
+      
+        if (replacement) {
+          modified = true;
+          return replacement;
+        }
       }
-      if (replacement) {
-        modified = true;
-        return replacement;
-      }
+
       return astnode;
     };
 
@@ -590,5 +601,4 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
   }
 
   opt->addPlan(std::move(plan), rule, modified);
-
-};  // replaceJSFunctions
+}  // replaceJSFunctions

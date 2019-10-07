@@ -35,7 +35,7 @@ function optimizerProducesResultTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -48,7 +48,7 @@ function optimizerProducesResultTestSuite () {
       c.ensureIndex({ type: "skiplist", fields: ["x"] });
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -62,6 +62,10 @@ function optimizerProducesResultTestSuite () {
       
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+      if (nodes.length === 0) {
+        // rocksdb
+        nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      }
       assertEqual(1, nodes.length);
       assertFalse(nodes[0].producesResult);
     },

@@ -24,6 +24,7 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -44,6 +45,7 @@ using namespace arangodb;
 /// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   bool waitForSync = false;
@@ -52,32 +54,36 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
-      v8::Handle<v8::Object> obj = args[0]->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
+      v8::Handle<v8::Object> obj =
+          args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
         waitForSync = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
+      if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
         waitForCollector = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxWaitTime"))) {
+      if (TRI_HasProperty(context, isolate, obj, "maxWaitTime")) {
         maxWaitTime = TRI_ObjectToDouble(
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
       }
     } else {
-      waitForSync = TRI_ObjectToBoolean(args[0]);
+      waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
-        waitForCollector = TRI_ObjectToBoolean(args[1]);
+        waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
         if (args.Length() > 3) {  // ignore writeShutdownFile
-          maxWaitTime = TRI_ObjectToDouble(args[3]);
+          maxWaitTime = TRI_ObjectToDouble(isolate, args[3]);
         }
       }
     }
   }
 
-  int res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+  auto& server = application_features::ApplicationServer::server();
+  auto& feature = server.getFeature<ClusterFeature>();
+  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -138,7 +144,7 @@ static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");

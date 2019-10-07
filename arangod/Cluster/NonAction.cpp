@@ -25,6 +25,10 @@
 #include "NonAction.h"
 #include "MaintenanceFeature.h"
 
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
@@ -33,16 +37,16 @@ NonAction::NonAction(MaintenanceFeature& feature, ActionDescription const& desc)
     : ActionBase(feature, desc) {
   std::string const error =
       std::string("Unknown maintenance action '") + desc.name() + "'";
-  LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
+  LOG_TOPIC("a0895", ERR, Logger::MAINTENANCE) << error;
   _result = arangodb::Result(TRI_ERROR_INTERNAL, error);
 }
 
 bool NonAction::first() {
   std::string const error =
       std::string("Unknown maintenance action '") + _description.name() + "'";
-  LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
+  LOG_TOPIC("68a3b", ERR, Logger::MAINTENANCE) << error;
   _result = arangodb::Result(TRI_ERROR_INTERNAL, error);
   return false;
 }
 
-NonAction::~NonAction() {}
+NonAction::~NonAction() = default;

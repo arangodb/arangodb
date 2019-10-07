@@ -165,6 +165,20 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL literal and options
+////////////////////////////////////////////////////////////////////////////////
+
+    testAQLWithLiteralAndOptions : function () {
+      var aql = require("@arangodb").aql;
+      var result = internal.db._query(
+        aql`${aql.literal('RETURN 1')}`,
+        {fullCount: true}
+      );
+      assertEqual([ 1 ], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _executeTransaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -321,6 +335,9 @@ function DatabaseSuite () {
       assertFalse(user.active);
       assertEqual("f", user.extra.gender);
 
+      assertEqual("rw", userManager.permission("admin")["UnitTestsDatabase0"]);
+      assertEqual("rw", userManager.permission("foo")["UnitTestsDatabase0"]);
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
@@ -348,6 +365,8 @@ function DatabaseSuite () {
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);
+      
+      assertEqual("rw", userManager.permission("admin")["UnitTestsDatabase0"]);
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
@@ -693,4 +712,3 @@ function DatabaseSuite () {
 jsunity.run(DatabaseSuite);
 
 return jsunity.done();
-

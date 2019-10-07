@@ -1,0 +1,12 @@
+{"type":2300,"data":{"_key":"2010076","_id":"_iresearch_analyzers/2010076","_rev":"_YYVHLCS---","name":"text_de","properties":"{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010077","_id":"_iresearch_analyzers/2010077","_rev":"_YYVHLCi---","name":"text_en","properties":"{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010078","_id":"_iresearch_analyzers/2010078","_rev":"_YYVHLCy---","name":"text_es","properties":"{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010079","_id":"_iresearch_analyzers/2010079","_rev":"_YYVHLDC---","name":"text_fi","properties":"{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010080","_id":"_iresearch_analyzers/2010080","_rev":"_YYVHLDS---","name":"text_fr","properties":"{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010081","_id":"_iresearch_analyzers/2010081","_rev":"_YYVHLDi---","name":"text_it","properties":"{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010082","_id":"_iresearch_analyzers/2010082","_rev":"_YYVHLD2---","name":"text_nl","properties":"{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010083","_id":"_iresearch_analyzers/2010083","_rev":"_YYVHLEG---","name":"text_no","properties":"{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010084","_id":"_iresearch_analyzers/2010084","_rev":"_YYVHLES---","name":"text_pt","properties":"{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010085","_id":"_iresearch_analyzers/2010085","_rev":"_YYVHLEi---","name":"text_ru","properties":"{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010086","_id":"_iresearch_analyzers/2010086","_rev":"_YYVHLEy---","name":"text_sv","properties":"{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}
+{"type":2300,"data":{"_key":"2010087","_id":"_iresearch_analyzers/2010087","_rev":"_YYVHLFG---","name":"text_zh","properties":"{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] }","type":"text"}}

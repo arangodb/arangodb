@@ -25,7 +25,10 @@
 #define ARANGODB_BASICS_PERFORMANCE_LOG_SCOPE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 
@@ -36,14 +39,14 @@ class PerformanceLogScope {
 
   explicit PerformanceLogScope(std::string const& message, double minElapsedTime = 0.0)
       : _message(message), _start(TRI_microtime()), _minElapsedTime(minElapsedTime) {
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << _message;
+    LOG_TOPIC("f2a96", TRACE, Logger::PERFORMANCE) << _message;
   }
 
   ~PerformanceLogScope() {
     double const elapsed = TRI_microtime() - _start;
 
     if (elapsed >= _minElapsedTime) {
-      LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      LOG_TOPIC("4ada1", TRACE, Logger::PERFORMANCE)
           << "[timer] " << Logger::FIXED(elapsed) << " s, " << _message;
     }
   }

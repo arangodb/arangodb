@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, print */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if indexes are used correctly
@@ -58,7 +58,7 @@ function useIndexesTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(colName1);
       internal.db._drop(colName2);
       collection1 = internal.db._create(colName1);
@@ -87,13 +87,13 @@ function useIndexesTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(colName1);
       internal.db._drop(colName2);
     },
 
     testRuleBasics : function () {
-      if(enabled.basics){
+      if (enabled.basics) {
         let query1 = 'for doc in @@col FILTER 25 < doc.value && doc.value < 75 return doc';
         let query2 = 'for doc in @@col FILTER 25 < doc.value && 75 > doc.value return doc';
 
@@ -120,7 +120,7 @@ function useIndexesTestSuite() {
             var last_rv;
 
             let loop = 2;
-            for(var i=0; i < loop; i++){
+            for (var i=0; i < loop; i++){
               rv = db._query(t.query , bindvars);
               rv = rv.toArray().map(doc => { return doc.value; } );
 

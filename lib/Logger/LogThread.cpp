@@ -31,7 +31,8 @@ using namespace arangodb;
 arangodb::basics::ConditionVariable* LogThread::CONDITION = nullptr;
 boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
 
-LogThread::LogThread(std::string const& name) : Thread(name), _messages(0) {
+LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
+    : Thread(server, name), _messages(0) {
   MESSAGES = &_messages;
   CONDITION = &_condition;
 }
@@ -40,7 +41,6 @@ LogThread::~LogThread() {
   Logger::_threaded = false;
   Logger::_active = false;
 
-  beginShutdown();
   shutdown();
 }
 
@@ -60,12 +60,14 @@ void LogThread::flush() {
       break;
     }
 
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(guard, *CONDITION);
     guard.signal();
   }
 }
 
 void LogThread::wakeup() {
+  // cppcheck-suppress redundantPointerOp
   CONDITION_LOCKER(guard, *CONDITION);
   guard.signal();
 }
@@ -85,6 +87,7 @@ void LogThread::run() {
       delete msg;
     }
 
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(guard, *CONDITION);
     guard.wait(25 * 1000);
   }

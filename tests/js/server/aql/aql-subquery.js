@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
+const { db } = require("@arangodb");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,10 +41,6 @@ var findExecutionNodes = helper.findExecutionNodes;
 function ahuacatlSubqueryTestSuite () {
 
   return {
-
-    setUp : function () {},
-
-    tearDown : function () {},
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery evaluation
@@ -304,9 +301,63 @@ function ahuacatlSubqueryTestSuite () {
 
       var actual = getQueryResults("LET a = (FOR i IN 1..2000 RETURN i) FOR i IN 1..10000 FILTER i IN a RETURN i");
       assertEqual(expected, actual);
-    }
+    },
 
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test limit with offset in a subquery
+/// This test was introduced due to a bug (that never made it into devel) where
+/// the offset in the LimitBlock was mutated during a subquery run and not reset
+/// in between.
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueriesWithLimitAndOffset: function () {
+      const query = `
+        FOR i IN 2..4
+        LET a = (FOR j IN [0, i, i+10] LIMIT 1, 1 RETURN j)
+        RETURN FIRST(a)`;
+      const expected = [ 2, 3, 4 ];
+
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this tests a rather complex interna of AQL execution combinations
+/// A subquery should only be executed if it has an input row
+/// A count collect block will produce an output even if it does not get an input
+/// specifically it will rightfully count 0.
+/// The insert block will write into the collection if it gets an input.
+/// So the assertion here is, that if a subquery has no input, than all it's
+/// Parts do not have side-effects, but the subquery still prduces valid results
+////////////////////////////////////////////////////////////////////////////////
+    testCollectWithinEmptyNestedSubquery: function () {
+      const colName = "UnitTestSubqueryCollection";
+      try {
+        db._create(colName);
+        const query = `
+          FOR k IN 1..2
+            LET sub1 = (
+              FOR x IN []
+                LET sub2 = (
+                  COLLECT WITH COUNT INTO q
+                  INSERT {counted: q} INTO ${colName}
+                  RETURN NEW
+                )
+                RETURN sub2
+            )
+            RETURN [k, sub1]
+        `;
+        const expected = [ [1, []], [2, []]];
+
+        var actual = getQueryResults(query);
+        assertEqual(expected, actual);
+        assertEqual(db[colName].count(), 0);
+      } finally {
+        db._drop(colName);
+      }
+      
+    }
+  }; 
 }
 
 jsunity.run(ahuacatlSubqueryTestSuite);

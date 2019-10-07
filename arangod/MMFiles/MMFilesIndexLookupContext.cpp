@@ -28,23 +28,22 @@
 
 using namespace arangodb;
 
-MMFilesIndexLookupContext::MMFilesIndexLookupContext(transaction::Methods* trx,
-                                                     LogicalCollection* collection,
+MMFilesIndexLookupContext::MMFilesIndexLookupContext(LogicalCollection* collection,
                                                      ManagedDocumentResult* result,
                                                      size_t numFields)
-    : _trx(trx), _collection(collection), _result(result), _numFields(numFields) {
-  TRI_ASSERT(_trx != nullptr);
+    : _collection(collection), _result(result), _numFields(numFields) {
   TRI_ASSERT(_collection != nullptr);
   // note: _result can be a nullptr
 }
 
 uint8_t const* MMFilesIndexLookupContext::lookup(LocalDocumentId token) const {
-  TRI_ASSERT(_result != nullptr);
   try {
-    if (static_cast<MMFilesCollection*>(_collection->getPhysical())->readDocument(_trx, token, *_result)) {
-      return _result->vpack();
+    uint8_t const* vpack = static_cast<MMFilesCollection*>(_collection->getPhysical())->lookupDocumentVPack(token);
+    if (vpack != nullptr && _result != nullptr) {
+      _result->setUnmanaged(vpack);
     }
+    return vpack;
   } catch (...) {
+    return nullptr;
   }
-  return nullptr;
 }

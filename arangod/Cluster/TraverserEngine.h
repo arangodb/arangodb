@@ -24,6 +24,9 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
 
+#include <memory>
+#include <unordered_map>
+
 #include "Aql/Collections.h"
 #include "Basics/Common.h"
 
@@ -94,7 +97,7 @@ class BaseEngine {
 
  protected:
   arangodb::aql::Query* _query;
-  transaction::Methods* _trx;
+  std::shared_ptr<transaction::Methods> _trx;
   arangodb::aql::Collections _collections;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };

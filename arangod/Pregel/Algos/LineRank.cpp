@@ -38,8 +38,9 @@ static std::string const kLastIteration = "lastIteration";
 static const float RESTART_PROB = 0.15f;
 static const float EPS = 0.0000001f;
 
-LineRank::LineRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("LineRank", params) {
+LineRank::LineRank(application_features::ApplicationServer& server,
+                   arangodb::velocypack::Slice params)
+    : SimpleAlgorithm(server, "LineRank", params) {
   // VPackSlice t = params.get("convergenceThreshold");
   //_threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
 }
@@ -51,7 +52,7 @@ struct LRMasterContext : MasterContext {
     TRI_ASSERT(!_stopNext || *diff == 0);
     if (_stopNext) {
       // return false;
-      LOG_TOPIC(INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
+      LOG_TOPIC("cc466", INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
     } else if (globalSuperstep() > 0 && *diff < EPS) {
       aggregate<bool>(kLastIteration, true);
       _stopNext = true;

@@ -46,9 +46,18 @@
       var self = this;
 
       var continueFunction = function (data) {
+        /* filter out index aliases */
+        var aliases = data.supports.aliases;
+        if (!aliases) {
+          aliases = {};
+        } else {
+          aliases = aliases.indexes;
+        }
         $(self.el).html(self.template.render({
           model: self.model,
-          supported: data.supports.indexes
+          supported: data.supports.indexes.filter(function (type) {
+            return !aliases.hasOwnProperty(type);
+          })
         }));
 
         self.breadcrumb();
@@ -119,16 +128,35 @@
       var unique;
       var sparse;
       var deduplicate;
+      var background;
+      var name;
 
       switch (indexType) {
+        case 'Ttl':
+          fields = $('#newTtlFields').val();
+          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          background = self.checkboxToValue('#newTtlBackground');
+          name = $('#newTtlName').val();
+          postParameter = {
+            type: 'ttl',
+            fields: self.stringToArray(fields),
+            expireAfter: expireAfter,
+            inBackground: background,
+            name: name
+          };
+          break;
         case 'Geo':
           // HANDLE ARRAY building
           fields = $('#newGeoFields').val();
+          background = self.checkboxToValue('#newGeoBackground');
           var geoJson = self.checkboxToValue('#newGeoJson');
+          name = $('#newGeoName').val();
           postParameter = {
             type: 'geo',
             fields: self.stringToArray(fields),
-            geoJson: geoJson
+            geoJson: geoJson,
+            inBackground: background,
+            name: name
           };
           break;
         case 'Persistent':
@@ -136,12 +164,16 @@
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
+          background = self.checkboxToValue('#newPersistentBackground');
+          name = $('#newPersistentName').val();
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background,
+            name: name
           };
           break;
         case 'Hash':
@@ -149,21 +181,29 @@
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
+          background = self.checkboxToValue('#newHashBackground');
+          name = $('#newHashName').val();
           postParameter = {
             type: 'hash',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background,
+            name: name
           };
           break;
         case 'Fulltext':
           fields = $('#newFulltextFields').val();
           var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
+          background = self.checkboxToValue('#newFulltextBackground');
+          name = $('#newFulltextName').val();
           postParameter = {
             type: 'fulltext',
             fields: self.stringToArray(fields),
-            minLength: minLength
+            minLength: minLength,
+            inBackground: background,
+            name: name
           };
           break;
         case 'Skiplist':
@@ -171,12 +211,16 @@
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
+          background = self.checkboxToValue('#newSkiplistBackground');
+          name = $('#newSkiplistName').val();
           postParameter = {
             type: 'skiplist',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background,
+            name: name
           };
           break;
       }
@@ -185,9 +229,9 @@
         if (error) {
           if (msg) {
             var message = JSON.parse(msg.responseText);
-            arangoHelper.arangoError('Document error', message.errorMessage);
+            arangoHelper.arangoError('Index error', message.errorMessage);
           } else {
-            arangoHelper.arangoError('Document error', 'Could not create index.');
+            arangoHelper.arangoError('Index error', 'Could not create index.');
           }
         } else {
           arangoHelper.arangoNotification('Index', 'Creation in progress. This may take a while.');
@@ -401,6 +445,7 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(deduplicate) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.name) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
           );
@@ -441,10 +486,9 @@
           $('#createIndex').detach().appendTo(elem);
         }
 
-        arangoHelper.createTooltips('.index-tooltip');
-        arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
         this.resetIndexForms();
       }
+      arangoHelper.createTooltips('.index-tooltip');
     },
 
     stringToArray: function (fieldString) {

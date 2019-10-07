@@ -351,28 +351,46 @@ stats::Descriptions::Descriptions()
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics info = ServerStatistics::statistics();
+  ServerStatistics const& info = ServerStatistics::statistics();
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
-  if (dealer->isEnabled()) {
+  b.add("transactions", VPackValue(VPackValueType::Object));
+  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted));
+  b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted));
+  b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted));
+  b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));
+  b.close();
+
+  auto& server = application_features::ApplicationServer::server();
+  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer->getCurrentContextNumbers();
+    auto v8Counters = dealer.getCurrentContextNumbers();
+    auto memoryStatistics = dealer.getCurrentMemoryNumbers();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));
     b.add("free", VPackValue(v8Counters.free));
     b.add("max", VPackValue(v8Counters.max));
+    {
+      b.add("memory", VPackValue(VPackValueType::Array));
+      for (auto memStatistic : memoryStatistics) {
+        b.add(VPackValue(VPackValueType::Object));
+        b.add("contextId", VPackValue(memStatistic.id));
+        b.add("tMax", VPackValue(memStatistic.tMax));
+        b.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
+        b.add("heapMax", VPackValue(memStatistic.heapMax));
+        b.add("heapMin", VPackValue(memStatistic.heapMin));
+        b.close();
+      }
+      b.close();
+    }
     b.close();
   }
 
   b.add("threads", VPackValue(VPackValueType::Object, true));
-
-  SchedulerFeature::SCHEDULER->addQueueStatistics(b);
-
+  SchedulerFeature::SCHEDULER->toVelocyPack(b);
   b.close();
 }
 

@@ -25,11 +25,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/StringRef.h"
 #include "ClusterEngine/ClusterSelectivityEstimates.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/StringRef.h>
 
 namespace rocksdb {
 class Transaction;
@@ -48,8 +49,7 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
-
+  
  public:
   explicit ClusterCollection(LogicalCollection& collection, ClusterEngineType sengineType,
                              arangodb::velocypack::Slice const& info);
@@ -61,10 +61,10 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const override;
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
 
   /// @brief sets the current index selectivity estimates
-  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) override;
+  void setClusterIndexEstimates(IndexEstMap&& estimates) override;
 
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
@@ -81,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  std::shared_ptr<velocypack::Builder> figures() override;
+  futures::Future<std::shared_ptr<velocypack::Builder>> figures() override;
 
   /// @brief closes an open collection
   int close() override;
@@ -119,17 +119,20 @@ class ClusterCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
+  
+  /// @brief compact-data operation
+  Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
-  Result read(transaction::Methods*, arangodb::StringRef const& key,
+  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
   Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool locked) override {
-    return this->read(trx, arangodb::StringRef(key), result, locked);
+    return this->read(trx, arangodb::velocypack::StringRef(key), result, locked);
   }
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -140,27 +143,21 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId, KeyLockInfo* /*keyLockInfo*/,
-                std::function<Result(void)> callbackDuringLock) override;
+                bool lock, KeyLockInfo* /*keyLockInfo*/,
+                std::function<void()> const& callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous, arangodb::velocypack::Slice const key,
-                std::function<Result(void)> callbackDuringLock) override;
+                bool lock, ManagedDocumentResult& previous) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
-                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 std::function<Result(void)> callbackDuringLock) override;
+                 bool lock, ManagedDocumentResult& previous) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 ManagedDocumentResult& previous, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock) override;
+                bool lock, KeyLockInfo* keyLockInfo,
+                std::function<void()> const& callbackDuringLock) override;
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
@@ -169,7 +166,7 @@ class ClusterCollection final : public PhysicalCollection {
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  // keep locks just to adhere to behaviour in other collections
+  // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
   velocypack::Builder _info;

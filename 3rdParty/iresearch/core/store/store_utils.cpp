@@ -300,28 +300,6 @@ NS_END // bitpack
 NS_END // encode
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                      I/O streams
-// ----------------------------------------------------------------------------
-
-/* bytes_output */
-
-bytes_output::bytes_output(size_t capacity) {
-  buf_.reserve(capacity);
-}
-
-bytes_output::bytes_output(bytes_output&& other) NOEXCEPT
-  : buf_(std::move(other.buf_)) {
-}
-
-bytes_output& bytes_output::operator=(bytes_output&& other) NOEXCEPT {
-  if (this != &other) {
-    buf_ = std::move(other.buf_);
-  }
-
-  return *this;
-}
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                   bytes_ref_input implementation
 // ----------------------------------------------------------------------------
 
@@ -425,7 +403,6 @@ void bytes_input::read_from(data_input& in, size_t size) {
   }
 
   string_utils::oversize(buf_, size);
-
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(buf_[0]), size);
   assert(read == size);

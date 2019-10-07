@@ -41,9 +41,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-MMFilesRestExportHandler::MMFilesRestExportHandler(GeneralRequest* request,
+MMFilesRestExportHandler::MMFilesRestExportHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _restrictions() {}
+    : RestVocbaseBaseHandler(server, request, response), _restrictions() {}
 
 RestStatus MMFilesRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
@@ -257,17 +258,12 @@ void MMFilesRestExportHandler::createCursor() {
   auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  Cursor* c = nullptr;
+  auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(),
+                                                      std::move(collectionExport),
+                                                      batchSize, ttl, count);
 
-  {
-    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(),
-                                                        collectionExport.get(),
-                                                        batchSize, ttl, count);
-
-    collectionExport.release();
-    cursor->use();
-    c = cursors->addCursor(std::move(cursor));
-  }
+  cursor->use();
+  Cursor* c = cursors->addCursor(std::move(cursor));
 
   TRI_ASSERT(c != nullptr);
   TRI_DEFER(cursors->release(c));

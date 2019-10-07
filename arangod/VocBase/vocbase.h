@@ -24,31 +24,45 @@
 #ifndef ARANGOD_VOC_BASE_VOCBASE_H
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
+#include <stddef.h>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
 #include "Basics/DeadlockDetector.h"
-#include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
-
-#include <functional>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 class QueryList;
 }
-class CollectionNameResolver;
+namespace velocypack {
+class Builder;
+class Slice;
+class StringRef;
+}  // namespace velocypack
 class CollectionKeysRepository;
+class CreateDatabaseInfo;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
+class ReplicationClientsProgressTracker;
 class StorageEngine;
 }  // namespace arangodb
 
@@ -124,11 +138,11 @@ struct TRI_vocbase_t {
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo const&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
-  // explicitly document implicit behaviour (due to presence of locks)
+  // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;
   TRI_vocbase_t(TRI_vocbase_t const&) = delete;
   TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
@@ -144,12 +158,18 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
+  arangodb::application_features::ApplicationServer& _server;
+
   TRI_voc_tick_t const _id;  // internal database id
-  std::string _name;         // database name
+  std::string  _name; // database name
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   State _state;
   bool _isOwnAppsDirectory;
+
+  std::uint32_t _replicationFactor; // 0 is satellite, 1 disabled
+  std::uint32_t _minReplicationFactor;
+  std::string _sharding; // "flexible" (same as "") or "single"
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _deadCollections;  // collections dropped that can be removed later
@@ -169,9 +189,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
-
-  arangodb::basics::ReadWriteLock _replicationClientsLock;
-  std::unordered_map<TRI_server_id_t, std::tuple<double, double, TRI_voc_tick_t>> _replicationClients;
+  std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
   arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
@@ -192,24 +210,24 @@ struct TRI_vocbase_t {
   /// @brief determine whether a data-source name is a system data-source name
   static bool IsSystemName(std::string const& name) noexcept;
 
+  arangodb::application_features::ApplicationServer& server() const {
+    return _server;
+  }
+
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
+  std::uint32_t replicationFactor() const;
+  std::uint32_t minReplicationFactor() const;
+  std::string const& sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
   void setState(State state) { _state = state; }
-  // return all replication clients registered
-  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> getReplicationClients();
 
-  // the ttl value is amount of seconds after which the client entry will
-  // expire and may be garbage-collected
-  void updateReplicationClient(TRI_server_id_t, double ttl);
-  // the ttl value is amount of seconds after which the client entry will
-  // expire and may be garbage-collected
-  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t, double ttl);
-  // garbage collect replication clients that have an expire date later
-  // than the specified timetamp
-  void garbageCollectReplicationClients(double expireStamp);
+  arangodb::Result toVelocyPack(arangodb::velocypack::Builder& result) const;
+  arangodb::ReplicationClientsProgressTracker& replicationClients() {
+    return *_replicationClients;
+  }
 
   arangodb::DatabaseReplicationApplier* replicationApplier() const {
     return _replicationApplier.get();
@@ -238,7 +256,7 @@ struct TRI_vocbase_t {
   void forceUse();
 
   /// @brief decrease the reference counter for a database
-  void release();
+  void release() noexcept;
 
   /// @brief returns whether the database is dangling
   bool isDangling() const;
@@ -251,6 +269,10 @@ struct TRI_vocbase_t {
 
   /// @brief returns whether the database is the system database
   bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
+
+  /// @brief stop operations in this vocbase. must be called prior to
+  /// shutdown to clean things up
+  void stop();
 
   /// @brief closes a database and all collections
   void shutdown();
@@ -346,13 +368,6 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
                                                              TRI_vocbase_col_status_e&);
 
-  /// @brief locks a collection for usage by uuid
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-  /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollectionByUuid(std::string const& uuid,
-                                                                   TRI_vocbase_col_status_e&);
-
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
 
@@ -400,9 +415,6 @@ struct TRI_vocbase_t {
 
 /// @brief extract the _rev attribute from a slice
 TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
-
-/// @brief extract the _rev attribute from a slice as a slice
-arangodb::velocypack::Slice TRI_ExtractRevisionIdAsSlice(arangodb::velocypack::Slice const slice);
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open

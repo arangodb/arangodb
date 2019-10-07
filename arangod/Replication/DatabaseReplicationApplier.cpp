@@ -30,7 +30,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseTailingSyncer.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -46,7 +48,7 @@ namespace arangodb {
 
 /// @brief replication applier for a single database, without configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t& vocbase)
-    : DatabaseReplicationApplier(ReplicationApplierConfiguration(), vocbase) {}
+    : DatabaseReplicationApplier(ReplicationApplierConfiguration(vocbase.server()), vocbase) {}
 
 /// @brief replication applier for a single database, with configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
@@ -57,7 +59,7 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfigu
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   try {
-    stop();
+    stopAndJoin();
   } catch (...) {
   }
 }
@@ -121,12 +123,13 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TR
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
     TRI_ASSERT(builder.isEmpty());
-    return ReplicationApplierConfiguration();
+    return ReplicationApplierConfiguration(vocbase.server());
   }
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(),
+  return ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(),
+                                                         builder.slice(),
                                                          vocbase.name());
 }
 
@@ -141,7 +144,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+  LOG_TOPIC("3407a", DEBUG, Logger::REPLICATION)
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 

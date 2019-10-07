@@ -23,23 +23,25 @@
 
 #include "StringUtils.h"
 
-#include <ctype.h>
-#include <stdio.h>
 #include <algorithm>
+#include <ctype.h>
+#include <math.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
 #include <limits>
+#include <memory>
+#include <utility>
 #include <vector>
 
-#include <math.h>
-#include <time.h>
-
 #include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 #include "Basics/fpconv.h"
-#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include "zconf.h"
-#include "zlib.h"
+#include "Logger/LoggerStream.h"
 
 // -----------------------------------------------------------------------------
 // helper functions
@@ -258,14 +260,15 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
     return name;
   }
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 6) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   bool corrupted = false;
 
-  char* buffer = new char[6 * len + 1];
-  char* qtr = buffer;
+  auto buffer = std::make_unique<char[]>(6 * len + 1);
+  char* qtr = buffer.get();
   char const* ptr = name.c_str();
   char const* end = ptr + len;
 
@@ -431,12 +434,10 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
 
   *qtr = '\0';
 
-  std::string result(buffer, qtr - buffer);
-
-  delete[] buffer;
+  std::string result(buffer.get(), qtr - buffer.get());
 
   if (corrupted) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("4c231", DEBUG, arangodb::Logger::FIXME)
         << "escaped corrupted unicode string";
   }
 
@@ -450,8 +451,8 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
     return result;
   }
 
-  char* buffer = new char[source.size() + 1];
-  char* p = buffer;
+  auto buffer = std::make_unique<char[]>(source.size() + 1);
+  char* p = buffer.get();
 
   char const* q = source.c_str();
   char const* e = source.c_str() + source.size();
@@ -459,9 +460,8 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
   if (quote == '\0') {
     for (; q < e; ++q) {
       if (*q == delim) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
@@ -473,20 +473,15 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
           *p++ = *++q;
         }
       } else if (*q == delim) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
     }
   }
 
-  *p = '\0';
-  result.push_back(std::string(buffer, p - buffer));
-
-  delete[] buffer;
-
+  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
@@ -498,8 +493,8 @@ std::vector<std::string> split(std::string const& source,
     return result;
   }
 
-  char* buffer = new char[source.size() + 1];
-  char* p = buffer;
+  auto buffer = std::make_unique<char[]>(source.size() + 1);
+  char* p = buffer.get();
 
   char const* q = source.c_str();
   char const* e = source.c_str() + source.size();
@@ -507,9 +502,8 @@ std::vector<std::string> split(std::string const& source,
   if (quote == '\0') {
     for (; q < e; ++q) {
       if (delim.find(*q) != std::string::npos) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
@@ -521,20 +515,15 @@ std::vector<std::string> split(std::string const& source,
           *p++ = *++q;
         }
       } else if (delim.find(*q) != std::string::npos) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
     }
   }
 
-  *p = '\0';
-  result.push_back(std::string(buffer, p - buffer));
-
-  delete[] buffer;
-
+  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
@@ -655,6 +644,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // the max amount of memory is:
   size_t mt = (std::max)(static_cast<size_t>(1), toLength);
 
+  // cppcheck-suppress unsignedPositive
   if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -665,7 +655,8 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // is length of sourceStr
   maxLength = (std::max)(maxLength, sourceLength) + 1;
 
-  char* result = new char[maxLength];
+  auto result = std::make_unique<char[]>(maxLength);
+  char* ptr = result.get();
   size_t k = 0;
 
   for (size_t j = 0; j < sourceLength; ++j) {
@@ -679,32 +670,25 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
     }
 
     if (!match) {
-      result[k] = sourceStr[j];
+      ptr[k] = sourceStr[j];
       ++k;
       continue;
     }
 
     for (size_t i = 0; i < toLength; ++i) {
-      result[k] = toStr[i];
+      ptr[k] = toStr[i];
       ++k;
     }
 
     j += (fromLength - 1);
   }
 
-  result[k] = '\0';
-
-  std::string retStr(result);
-
-  delete[] result;
-
-  return retStr;
+  return std::string(ptr, k);
 }
 
 void tolowerInPlace(std::string* str) {
-  size_t len = str->length();
 
-  if (len == 0) {
+  if (str->empty()) {
     return;
   }
 
@@ -714,16 +698,15 @@ void tolowerInPlace(std::string* str) {
 }
 
 std::string tolower(std::string&& str) {
-  size_t const len = str.size();
 
-  for (size_t i = 0; i < len; ++i) {
-    str[i] = static_cast<char>(::tolower(str[i]));
-  }
+  std::transform(
+    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
 
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
+
   size_t len = str.length();
 
   if (len == 0) {
@@ -913,7 +896,8 @@ std::string urlEncode(char const* src, size_t const len) {
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-
+  
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -959,6 +943,7 @@ std::string encodeURIComponent(std::string const& str) {
 std::string encodeURIComponent(char const* src, size_t const len) {
   char const* end = src + len;
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1466,7 +1451,7 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int64_t int64(std::string const& value) {
   try {
     return std::stoll(value, nullptr, 10);
@@ -1552,7 +1537,7 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;
@@ -2091,79 +2076,22 @@ std::string decodeHex(std::string const& value) {
   return decodeHex(value.data(), value.size());
 }
 
-bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed) {
-  uncompressed.clear();
-
-  if (compressedLength == 0) {
-    /* empty input */
-    return true;
-  }
-
-  z_stream strm;
-  memset(&strm, 0, sizeof(strm));
-  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = (uInt)compressedLength;
-
-  if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
-    return false;
-  }
-
-  int ret;
-  char outbuffer[32768];
-
-  do {
-    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
-    strm.avail_out = sizeof(outbuffer);
-
-    ret = inflate(&strm, 0);
-
-    if (uncompressed.size() < strm.total_out) {
-      uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
+void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
+        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
+      // character with special meaning in a regex
+      out.push_back('\\');
     }
-  } while (ret == Z_OK);
-
-  inflateEnd(&strm);
-
-  return (ret == Z_STREAM_END);
-}
-
-bool gzipUncompress(std::string const& compressed, std::string& uncompressed) {
-  return gzipUncompress(compressed.c_str(), compressed.size(), uncompressed);
-}
-
-bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed) {
-  uncompressed.clear();
-
-  z_stream strm;
-  memset(&strm, 0, sizeof(strm));
-  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = (uInt)compressedLength;
-
-  if (inflateInit(&strm) != Z_OK) {
-    return false;
+    out.push_back(c);
   }
-
-  int ret;
-  char outbuffer[32768];
-
-  do {
-    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
-    strm.avail_out = sizeof(outbuffer);
-
-    ret = inflate(&strm, 0);
-
-    if (uncompressed.size() < strm.total_out) {
-      uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
-    }
-  } while (ret == Z_OK);
-
-  inflateEnd(&strm);
-
-  return (ret == Z_STREAM_END);
 }
 
-bool gzipDeflate(std::string const& compressed, std::string& uncompressed) {
-  return gzipDeflate(compressed.c_str(), compressed.size(), uncompressed);
+std::string escapeRegexParams(std::string const& in) {
+  std::string out;
+  escapeRegexParams(out, in.data(), in.size());
+  return out;
 }
 
 }  // namespace StringUtils

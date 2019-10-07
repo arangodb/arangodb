@@ -40,19 +40,17 @@ NS_LOCAL
 class all_iterator final : public irs::doc_iterator {
  public:
   explicit all_iterator(irs::doc_id_t docs_count) NOEXCEPT
-    : max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
+    : max_doc_(irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)) {
   }
 
   virtual bool next() NOEXCEPT override {
-    return !irs::type_limits<irs::type_t::doc_id_t>::eof(
-      seek(doc_.value + 1)
-    );
+    return !irs::doc_limits::eof(seek(doc_.value + 1));
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) NOEXCEPT override {
     doc_.value = target <= max_doc_
       ? target
-      : irs::type_limits<irs::type_t::doc_id_t>::eof();
+      : irs::doc_limits::eof();
 
     return doc_.value;
   }
@@ -122,7 +120,7 @@ class masked_docs_iterator
     irs::doc_id_t end,
     const irs::document_mask& docs_mask
   ) :
-    current_(irs::type_limits<irs::type_t::doc_id_t>::invalid()),
+    current_(irs::doc_limits::invalid()),
     docs_mask_(docs_mask),
     end_(end),
     next_(begin) {
@@ -139,7 +137,7 @@ class masked_docs_iterator
       }
     }
 
-    current_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+    current_ = irs::doc_limits::eof();
 
     return false;
   }
@@ -264,6 +262,10 @@ class segment_reader_impl : public sub_reader {
   virtual doc_iterator::ptr docs_iterator() const override;
 
   virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+    if (!it) {
+      return nullptr;
+    }
+
     if (docs_mask_.empty()) {
       return std::move(it);
     }
@@ -298,6 +300,10 @@ class segment_reader_impl : public sub_reader {
     return 1; // only 1 segment
   }
 
+  virtual const columnstore_reader::column_reader* sort() const NOEXCEPT override {
+    return sort_;
+  }
+
   virtual const columnstore_reader::column_reader* column_reader(
     field_id field
   ) const override;
@@ -306,6 +312,7 @@ class segment_reader_impl : public sub_reader {
   DECLARE_SHARED_PTR(segment_reader_impl); // required for NAMED_PTR(...)
   std::vector<column_meta> columns_;
   columnstore_reader::ptr columnstore_reader_;
+  const columnstore_reader::column_reader* sort_{};
   const directory& dir_;
   uint64_t docs_count_;
   document_mask docs_mask_;
@@ -422,8 +429,8 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 
   // the implementation generates doc_ids sequentially
   return memory::make_shared<masked_docs_iterator>(
-    type_limits<type_t::doc_id_t>::min(),
-    doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count_),
+    doc_limits::min(),
+    doc_id_t(doc_limits::min() + docs_count_),
     docs_mask_
   );
 }
@@ -452,6 +459,17 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         "failed to find existing (according to meta) columnstore in segment '%s'",
         meta.name.c_str()
       ));
+    }
+
+    if (field_limits::valid(meta.sort)) {
+      reader->sort_ = columnstore_reader->column(meta.sort);
+
+      if (!reader->sort_) {
+        throw index_error(string_utils::to_string(
+          "failed to find sort column '" IR_UINT64_T_SPECIFIER "' (according to meta) in columnstore in segment '%s'",
+          meta.sort, meta.name.c_str()
+        ));
+      }
     }
   }
 

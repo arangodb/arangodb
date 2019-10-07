@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_applier
 @brief fetch the current replication configuration
 
-@RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier}
+@RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier, handleCommandApplierGetConfig}
 
 @RESTDESCRIPTION
 Returns the configuration of the replication applier.

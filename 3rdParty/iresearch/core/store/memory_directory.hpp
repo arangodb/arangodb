@@ -41,7 +41,7 @@ MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
   memory_allocator::allocator_type::SIZE, // total number of levels
   8, // size of the first level 2^8
   memory_allocator::allocator_type
->);
+>;)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_file
@@ -239,6 +239,8 @@ class IRESEARCH_API memory_index_output : public index_output {
   virtual void write_vint(uint32_t v) override final;
 
   virtual void write_vlong(uint64_t v) override final;
+
+  void seek(size_t pos);
 
  protected:
   virtual void switch_buffer();

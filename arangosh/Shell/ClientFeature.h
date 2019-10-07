@@ -38,8 +38,7 @@ struct SimpleHttpClientParams;
 
 }  // namespace httpclient
 
-class ClientFeature final : public application_features::ApplicationFeature,
-                            public HttpEndpointProvider {
+class ClientFeature final : public HttpEndpointProvider {
  public:
   constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
@@ -67,6 +66,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::string const& jwtSecret() const { return _jwtSecret; }
   double connectionTimeout() const { return _connectionTimeout; }
   double requestTimeout() const { return _requestTimeout; }
+  void requestTimeout(double value) { _requestTimeout = value; }
   uint64_t maxPacketSize() const { return _maxPacketSize; }
   uint64_t sslProtocol() const { return _sslProtocol; }
 
@@ -92,12 +92,22 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   bool getWarnConnect() { return _warnConnect; }
 
+  static std::string buildConnectedMessage(
+    std::string const& endpointSpecification,
+    std::string const& version,
+    std::string const& role,
+    std::string const& mode,
+    std::string const& databaseName,
+    std::string const& user
+  );
+
   static int runMain(int argc, char* argv[],
                      std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
   void readPassword();
   void readJwtSecret();
+  void loadJwtSecretFile();
 
   std::string _databaseName;
   bool _authentication;
@@ -106,6 +116,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::string _username;
   std::string _password;
   std::string _jwtSecret;
+  std::string _jwtSecretFile;
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;

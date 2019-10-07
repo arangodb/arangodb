@@ -77,7 +77,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   virtual void optimize(
       std::vector<const filter*>& /*incl*/,
       std::vector<const filter*>& /*excl*/,
-      irs::boost::boost_t& /*boost*/) const {
+      boost_t& /*boost*/) const {
     // noop
   }
 
@@ -117,7 +117,7 @@ class IRESEARCH_API And: public boolean_filter {
   virtual void optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    irs::boost::boost_t& boost
+    boost_t& boost
   ) const override;
 
   virtual filter::prepared::ptr prepare(

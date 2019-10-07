@@ -29,6 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class HeartbeatThread;
 
 struct DBServerAgencySyncResult {
@@ -45,11 +48,6 @@ struct DBServerAgencySyncResult {
 
   DBServerAgencySyncResult(bool s, std::string const& e, uint64_t p, uint64_t c)
       : success(s), errorMessage(e), planVersion(p), currentVersion(c) {}
-
-  DBServerAgencySyncResult(const DBServerAgencySyncResult& other)
-      : success(other.success),
-        planVersion(other.planVersion),
-        currentVersion(other.currentVersion) {}
 };
 
 class DBServerAgencySync {
@@ -57,7 +55,8 @@ class DBServerAgencySync {
   DBServerAgencySync& operator=(DBServerAgencySync const&) = delete;
 
  public:
-  explicit DBServerAgencySync(HeartbeatThread* heartbeat);
+  explicit DBServerAgencySync(application_features::ApplicationServer& server,
+                              HeartbeatThread* heartbeat);
 
  public:
   void work();
@@ -66,12 +65,13 @@ class DBServerAgencySync {
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
-  static arangodb::Result getLocalCollections(VPackBuilder& collections);
+  arangodb::Result getLocalCollections(VPackBuilder& collections);
 
  private:
   DBServerAgencySyncResult execute();
 
  private:
+  application_features::ApplicationServer& _server;
   HeartbeatThread* _heartbeat;
 };
 }  // namespace arangodb

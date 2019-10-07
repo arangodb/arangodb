@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, document, Backbone, $, arangoHelper, templateEngine, Joi */
+/* global window, Backbone, $, arangoHelper, templateEngine, Joi, frontendConfig */
 (function () {
   'use strict';
 
@@ -182,16 +182,28 @@
     },
 
     submitCreateDatabase: function () {
+      console.log("submit create database");
       var self = this; // userPassword,
       var dbname = $('#newDatabaseName').val();
       var userName = $('#newUser').val();
 
+      var sharding = $('#newSharding').val();
+      var replicationFactor = $('#new-replication-factor').val();
+      var minReplicationFactor = $('#new-min-replication-factor').val();
+
       var options = {
         name: dbname,
+        "options" : {
+          "sharding" : sharding,
+          "replicationFactor" : Number(replicationFactor),
+          "minReplicationFactor" : Number(minReplicationFactor),
+        },
         users: [{
           username: userName
         }]
       };
+
+      console.log("options when creating " + dbname + " "  + JSON.stringify(options));
 
       this.collection.create(options, {
         error: function (data, err) {
@@ -250,7 +262,7 @@
         reducedCollection;
 
       searchInput = $('#databaseSearchInput');
-      searchString = $('#databaseSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('name').indexOf(searchString) !== -1;
@@ -326,9 +338,28 @@
     },
 
     createAddDatabaseModal: function () {
+      var self = this;
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_admin/server/databaseDefaults'), //get default properties
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          self.createAddDatabaseModalReal(data);
+        },
+        error: function () {
+          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Database defaults.');
+        }
+      });
+    },
+
+    createAddDatabaseModalReal: function (data) {
+      var dbDefaultProperties = data;
       var buttons = [];
       var tableContent = [];
 
+      // Database Name
       tableContent.push(
         window.modalView.createTextEntry(
           'newDatabaseName',
@@ -354,6 +385,69 @@
         )
       );
 
+      if (window.App.isCluster) {
+        // (id, label, value, info, placeholder, mandatory, regexp) 
+        // ReplicationFactor
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-replication-factor',
+            'Replication factor',
+            dbDefaultProperties.replicationFactor,
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+            'Default replication factor',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                msg: 'Must be a number between 1 and 10.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-min-replication-factor',
+            'Mininum replication factor',
+            dbDefaultProperties.minReplicationFactor,
+            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            'Default minimum replication factor',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+              }
+              // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
+              // So we cannot easily verify if minReplication > replicationFactor...
+            ]
+          )
+        );
+      }
+
+      // OneShard
+      //if enterprise
+      if (window.App.isCluster && frontendConfig.isEnterprise) {
+        var sharding = [ { value : "",
+                           label : "flexible"
+                         },
+                         { value : "single",
+                           label : "single"
+                         }
+                       ];
+
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            'newSharding',
+            'Sharding',
+            'flexible',
+            'some nice description TODO',
+            sharding
+          )
+        );
+      }
+
+      // User Set-UP
       var users = [];
       window.App.userCollection.each(function (user) {
         users.push({
@@ -376,6 +470,7 @@
           users
         )
       );
+
       buttons.push(
         window.modalView.createSuccessButton(
           'Create',

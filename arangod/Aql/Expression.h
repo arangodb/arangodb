@@ -24,15 +24,14 @@
 #ifndef ARANGOD_AQL_EXPRESSION_H
 #define ARANGOD_AQL_EXPRESSION_H 1
 
-#include "Aql/AstNode.h"
-#include "Aql/Range.h"
-#include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/HashSet.h"
 
 #include <v8.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <cstdint>
+#include <unordered_map>
 
 namespace arangodb {
 namespace transaction {
@@ -43,14 +42,20 @@ namespace basics {
 class StringBuffer;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 class AqlItemBlock;
 struct AqlValue;
 class Ast;
+struct AstNode;
 class AttributeAccessor;
 class ExecutionPlan;
 class ExpressionContext;
 class Query;
+struct Variable;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
@@ -67,88 +72,48 @@ class Expression {
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(ExecutionPlan* plan, Ast*, AstNode*);
+  Expression(ExecutionPlan const* plan, Ast*, AstNode*);
 
   /// @brief constructor, using VPack
-  Expression(ExecutionPlan* plan, Ast*, arangodb::velocypack::Slice const&);
+  Expression(ExecutionPlan const* plan, Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
 
   /// @brief replace the root node
-  void replaceNode(AstNode* node) {
-    if (node != _node) {
-      _node = node;
-      invalidateAfterReplacements();
-    }
-  }
+  void replaceNode(AstNode* node);
+
+  /// @brief get the underlying AST
+  Ast* ast() const noexcept;
 
   /// @brief get the underlying AST node
-  inline AstNode const* node() const { return _node; }
+  AstNode const* node() const;
 
   /// @brief get the underlying AST node
-  inline AstNode* nodeForModification() const { return _node; }
+  AstNode* nodeForModification() const;
 
   /// @brief whether or not the expression can safely run on a DB server
-  inline bool canRunOnDBServer() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _canRunOnDBServer;
-  }
+  bool canRunOnDBServer();
 
   /// @brief whether or not the expression is deterministic
-  inline bool isDeterministic() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _isDeterministic;
-  }
+  bool isDeterministic();
 
   /// @brief whether or not the expression will use V8
-  inline bool willUseV8() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _willUseV8;
-  }
+  bool willUseV8();
 
   /// @brief clone the expression, needed to clone execution plans
-  Expression* clone(ExecutionPlan* plan, Ast* ast) {
-    // We do not need to copy the _ast, since it is managed by the
-    // query object and the memory management of the ASTs
-    return new Expression(plan, ast != nullptr ? ast : _ast, _node);
-  }
+  std::unique_ptr<Expression> clone(ExecutionPlan* plan, Ast* ast);
 
   /// @brief return all variables used in the expression
-  void variables(std::unordered_set<Variable const*>&) const;
+  void variables(arangodb::HashSet<Variable const*>&) const;
 
   /// @brief return a VelocyPack representation of the expression
-  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {
-    _node->toVelocyPack(builder, verbose);
-  }
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
   /// @brief execute the expression
   AqlValue execute(transaction::Methods* trx, ExpressionContext* ctx, bool& mustDestroy);
 
   /// @brief get expression type as string
-  std::string typeString() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-
-    switch (_type) {
-      case JSON:
-        return "json";
-      case SIMPLE:
-        return "simple";
-      case ATTRIBUTE_ACCESS:
-        return "attribute";
-      case UNPROCESSED: {
-      }
-    }
-    TRI_ASSERT(false);
-    return "unknown";
-  }
+  std::string typeString();
 
   // @brief invoke JavaScript aql functions with args as param.
   static AqlValue invokeV8Function(arangodb::aql::ExpressionContext* expressionContext,
@@ -194,26 +159,21 @@ class Expression {
   /// multiple V8 contexts, it must be invalidated in between
   void invalidate();
 
-  void setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
-    _variables.emplace(variable, value);
-  }
+  void setVariable(Variable const* variable, arangodb::velocypack::Slice value);
 
-  void clearVariable(Variable const* variable) { _variables.erase(variable); }
-
- private:
-  /// @brief free the internal data structures
-  void freeInternals() noexcept;
+  void clearVariable(Variable const* variable);
 
   /// @brief reset internal attributes after variables in the expression were
   /// changed
   void invalidateAfterReplacements();
 
+ private:
+  /// @brief free the internal data structures
+  void freeInternals() noexcept;
+
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&, transaction::Methods*,
                    AstNode const*) const;
-
-  void initConstantExpression();
-  void initSimpleExpression();
 
   /// @brief analyze the expression (determine its type etc.)
   void initExpression();
@@ -312,7 +272,7 @@ class Expression {
  private:
   /// @brief the query execution plan. note: this may be a nullptr for
   /// expressions created in the early optimization stage!
-  ExecutionPlan* _plan;
+  ExecutionPlan const* _plan;
 
   /// @brief the AST
   Ast* _ast;
@@ -328,19 +288,6 @@ class Expression {
 
   /// @brief type of expression
   ExpressionType _type;
-
-  /// @brief whether or not the expression can be run safely on a DB server
-  bool _canRunOnDBServer;
-
-  /// @brief whether or not the expression is deterministic
-  bool _isDeterministic;
-
-  /// @brief whether or not the expression will make use of V8
-  bool _willUseV8;
-
-  /// @brief the top-level attributes used in the expression, grouped
-  /// by variable name
-  std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;
 
   /// @brief variables only temporarily valid during execution
   std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;

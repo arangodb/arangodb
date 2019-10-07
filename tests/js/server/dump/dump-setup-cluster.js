@@ -38,7 +38,7 @@ const isEnterprise = require("internal").isEnterprise();
  *        That has 100 orphans (value 0 -> 99)
  *        That has 300 edges, for each value i:
  *          Connect i -> i
- *          Connect i - 1 -> i
+ *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
 const setupSmartGraph = function () {
@@ -96,6 +96,7 @@ function setupSatelliteCollections() {
 }
 
 (function () {
+  var analyzers = require("@arangodb/analyzers");
   var i, c;
 
   try {
@@ -182,11 +183,9 @@ function setupSatelliteCollections() {
   c.ensureUniqueSkiplist("a_su");
   c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
   c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
-
   c.ensureFulltextIndex("a_f");
-  if (db._engine().name !== "rocksdb") {
-    c.ensureGeoIndex("a_la", "a_lo");
-  }
+
+  c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
@@ -245,9 +244,7 @@ function setupSatelliteCollections() {
       }
     });
 
-    for (i = 0; i < 5000; ++i) {
-      c.save({ _key: "test" + i, value: i});
-    }
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 

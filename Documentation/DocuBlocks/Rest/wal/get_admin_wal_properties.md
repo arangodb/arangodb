@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_wal_properties
 @brief fetch the current configuration.
 
-@RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log}
+@RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log, RestWalHandler:properties:get}
 
 @RESTDESCRIPTION
 Retrieves the configuration of the write-ahead log. The result is a JSON
@@ -32,7 +32,7 @@ is returned when an invalid HTTP method is used.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestWalPropertiesGet}
+@EXAMPLE_ARANGOSH_RUN{RestWalPropertiesGet_mmfiles}
     var url = "/_admin/wal/properties";
     var response = logCurlRequest('GET', url);
 

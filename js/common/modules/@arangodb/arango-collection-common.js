@@ -166,6 +166,23 @@ ArangoCollection.prototype.toString = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief qualifies a given document key
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.documentId = function (documentKey) {
+  if (documentKey && typeof documentKey !== "string") {
+    documentKey = String(documentKey);
+  }
+  if (!arangodb.isValidDocumentKey(documentKey)) {
+    throw new ArangoError({
+      errorNum: arangodb.errors.ERROR_ARANGO_DOCUMENT_KEY_BAD.code,
+      errorMessage: arangodb.errors.ERROR_ARANGO_DOCUMENT_KEY_BAD.message
+    });
+  }
+  return `${this.name()}/${documentKey}`;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock collectionAll
 // //////////////////////////////////////////////////////////////////////////////
 

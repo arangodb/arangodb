@@ -29,12 +29,21 @@
 #include <chrono>
 #include <thread>
 
-#include "Agency/GossipCallback.h"
+#include "Agency/AgentCallback.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -51,13 +60,15 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(config_t const& config)
-    : Thread("Agent"),
+Agent::Agent(ApplicationServer& server, config_t const& config)
+    : Thread(server, "Agent"),
+      _constituent(server),
+      _supervision(server),
       _config(config),
       _commitIndex(0),
-      _spearhead(this),
-      _readDB(this),
-      _transient(this),
+      _spearhead(server, this),
+      _readDB(server, this),
+      _transient(server, this),
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
@@ -65,7 +76,7 @@ Agent::Agent(config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
-    _inception = std::make_unique<Inception>(this);
+    _inception = std::make_unique<Inception>(*this);
   } else {
     _leaderSince = 0;
   }
@@ -78,9 +89,9 @@ std::string Agent::id() const { return _config.id(); }
 bool Agent::id(std::string const& id) {
   bool success;
   if ((success = _config.setId(id))) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "My id is " << id;
+    LOG_TOPIC("32d95", DEBUG, Logger::AGENCY) << "My id is " << id;
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Cannot reassign id once set: My id is "
+    LOG_TOPIC("37f6b", ERR, Logger::AGENCY) << "Cannot reassign id once set: My id is "
                                    << _config.id() << " reassignment to " << id;
   }
   return success;
@@ -99,6 +110,7 @@ Agent::~Agent() {
   // multiple times, and we do it just in case the Agent object was
   // created but never really started. Here, we exit with a fatal error
   // if the threads do not stop in time.
+  shutdown();  // wait for the main Agent thread to terminate
 }
 
 /// Wait until threads are terminated:
@@ -109,15 +121,17 @@ void Agent::waitForThreadsStop() {
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // fail fatally after 5 mins:
     if (++counter >= 10 * 60 * 5) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "some agency thread did not finish";
+      LOG_TOPIC("b8ad5", FATAL, Logger::AGENCY) << "some agency thread did not finish";
       FATAL_ERROR_EXIT();
     }
   }
-  shutdown();  // wait for the main Agent thread to terminate
+  // initiate shutdown of main Agent thread, but do not wait for it yet
+  // -> this happens in the destructor
+  beginShutdown();
 }
 
 /// State machine
@@ -125,7 +139,7 @@ State const& Agent::state() const { return _state; }
 
 /// Start all agent thread
 bool Agent::start() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency comm worker.";
+  LOG_TOPIC("9a90e", DEBUG, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
   return true;
 }
@@ -148,7 +162,7 @@ priv_rpc_ret_t Agent::requestVote(term_t termOfPeer, std::string const& id,
                                   query_t const& query, int64_t timeoutMult) {
   if (timeoutMult != -1 && timeoutMult != _config.timeoutMult()) {
     adjustTimeoutMult(timeoutMult);
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Voter: setting timeout multiplier to "
+    LOG_TOPIC("81f2a", WARN, Logger::AGENCY) << "Voter: setting timeout multiplier to "
                                     << timeoutMult << " for next term.";
   }
 
@@ -212,7 +226,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
     duration<double> d = steady_clock::now() - startTime;
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("37e05", DEBUG, Logger::AGENCY)
         << "waitFor: index: " << index << " _commitIndex: " << _commitIndex
         << " _lastCommitIndex: " << lastCommitIndex << " elapsedTime: " << d.count();
 
@@ -249,6 +263,18 @@ bool Agent::isCommitted(index_t index) {
   }
 }
 
+index_t Agent::index() {
+
+  if (challengeLeadership()) {
+    resign();
+    return 0;
+  }
+
+  MUTEX_LOCKER(tiLocker, _tiLock);
+  return _confirmed[id()];
+
+}
+
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
@@ -263,11 +289,11 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     auto secsSince = d.count();
     if (secsSince < 1.5e9 && peerId != id() &&
         secsSince > _config.minPing() * _config.timeoutMult()) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("6fe73", WARN, Logger::AGENCY)
           << "Last confirmation from peer " << peerId
           << " was received more than minPing ago: " << secsSince;
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("9ee0b", DEBUG, Logger::AGENCY)
         << "Setting _lastAcked[" << peerId << "] to time "
         << std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch())
                .count();
@@ -276,7 +302,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
       if (toLog > 0) {  // We want to reset the wait time only if a package callback
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC("ba4d2", DEBUG, Logger::AGENCY)
             << "Got call back of " << toLog
             << " logs, resetting _earliestPackage to now for id " << peerId;
         _earliestPackage[peerId] = steady_clock::now();
@@ -287,7 +313,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
   duration<double> reportInTime = steady_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("b4854", DEBUG, Logger::AGENCY)
         << "reportIn took longer than 0.1s: " << reportInTime.count();
   }
 }
@@ -300,7 +326,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     // main thread tries again immediately: and for that agent starting at 0
     // which effectively will be _state.firstIndex().
     MUTEX_LOCKER(guard, _tiLock);
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("9e856", DEBUG, Logger::AGENCY)
         << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
     _confirmed[slaveId] = 0;
@@ -322,12 +348,12 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
                                            index_t prevIndex, term_t prevTerm,
                                            index_t leaderCommitIndex,
                                            query_t const& queries) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("62f43", DEBUG, Logger::AGENCY)
       << "Got AppendEntriesRPC from " << leaderId << " with term " << term;
 
   term_t t(this->term());
   if (!ready()) {  // We have not been able to put together our configuration
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agent is not ready yet.";
+    LOG_TOPIC("7e96c", DEBUG, Logger::AGENCY) << "Agent is not ready yet.";
     return priv_rpc_ret_t(false, t);
   }
 
@@ -335,7 +361,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("449b2", DEBUG, Logger::AGENCY)
         << "Received malformed entries for appending. Discarding!";
     return priv_rpc_ret_t(false, t);
   }
@@ -351,7 +377,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
   // Leadership claim plausibility check
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Not accepting appendEntries from " << leaderId;
+    LOG_TOPIC("fc654", DEBUG, Logger::AGENCY) << "Not accepting appendEntries from " << leaderId;
     return priv_rpc_ret_t(false, t);
   }
 
@@ -362,15 +388,12 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   if (nqs == 0) {
     auto lastIndex = _state.lastIndex();
     if (lastIndex > 0) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("b0b19", DEBUG, Logger::AGENCY)
           << "Finished empty AppendEntriesRPC from " << leaderId
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
         _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
-        if (_commitIndex >= _state.nextCompactionAfter()) {
-          _compactor.wakeUp();
-        }
       }
       return priv_rpc_ret_t(true, t);
     } else {
@@ -388,7 +411,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       ok = false;
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Exception during log append: " << __FILE__
+    LOG_TOPIC("bedb8", DEBUG, Logger::AGENCY) << "Exception during log append: " << __FILE__
                                      << __LINE__ << " " << e.what();
   }
 
@@ -397,12 +420,13 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
     CONDITION_LOCKER(guard, _waitForCV);
     _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
     _waitForCV.broadcast();
-    if (_commitIndex >= _state.nextCompactionAfter()) {
+    if (leaderCommitIndex >= _state.nextCompactionAfter() &&
+        payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
       _compactor.wakeUp();
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("83504", DEBUG, Logger::AGENCY)
       << "Finished AppendEntriesRPC from " << leaderId << " with term " << term;
 
   return priv_rpc_ret_t(ok, t);
@@ -410,11 +434,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
+  
+  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   // _lastSent only accessed in main thread
   std::string const myid = id();
@@ -450,13 +472,13 @@ void Agent::sendAppendEntriesRPC() {
 
       if ((steady_clock::now() - earliestPackage).count() < 0 ||
           _state.lastIndex() <= lastConfirmed) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
+        LOG_TOPIC("cfeed", DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
 
       duration<double> lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.1) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
+        LOG_TOPIC("b8f60", WARN, Logger::AGENCY)
             << "Reading lastConfirmed took too long: " << lockTime.count();
       }
 
@@ -467,14 +489,13 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // If the follower is behind our first log entry send last snapshot and
-      // following logs. Else try to have the follower catch up in regular
-      // order.
+      // following logs. Else try to have the follower catch up in regular order.
       bool needSnapshot = lastConfirmed < _state.firstIndex();
       if (needSnapshot) {
         lastConfirmed = _state.lastCompactionAt() - 1;
       }
 
-      LOG_TOPIC(TRACE, Logger::AGENCY) << "Getting unconfirmed from " << lastConfirmed
+      LOG_TOPIC("7c578", TRACE, Logger::AGENCY) << "Getting unconfirmed from " << lastConfirmed
                                        << " to " << lastConfirmed + 99;
       // If lastConfirmed is one minus the first log entry, then this is
       // corrected in _state::get and we only get from the beginning of the
@@ -483,7 +504,7 @@ void Agent::sendAppendEntriesRPC() {
 
       lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
+        LOG_TOPIC("03cb9", WARN, Logger::AGENCY)
             << "Finding unconfirmed entries took too long: " << lockTime.count();
       }
 
@@ -491,7 +512,7 @@ void Agent::sendAppendEntriesRPC() {
       // any compaction keeps at least one active log entry!
 
       if (unconfirmed.empty()) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
+        LOG_TOPIC("0b993", ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
                                        << "lastConfirmed=" << lastConfirmed
                                        << " commitIndex=" << commitIndex;
         TRI_ASSERT(false);
@@ -506,7 +527,7 @@ void Agent::sendAppendEntriesRPC() {
 
       if (m.count() > _config.minPing() &&
           _lastSent[followerId].time_since_epoch().count() != 0) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC("0ddbd", DEBUG, Logger::AGENCY)
             << "Note: sent out last AppendEntriesRPC "
             << "to follower " << followerId
             << " more than minPing ago: " << m.count() << " lastAcked: "
@@ -514,7 +535,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(this, "snapshot");
+      Store snapshot(_server, this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -526,11 +547,11 @@ void Agent::sendAppendEntriesRPC() {
         try {
           success = _state.loadLastCompactedSnapshot(snapshot, snapshotIndex, snapshotTerm);
         } catch (std::exception const& e) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
+          LOG_TOPIC("f2287", WARN, Logger::AGENCY)
               << "Exception thrown by loadLastCompactedSnapshot: " << e.what();
         }
         if (!success) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
+          LOG_TOPIC("6e2b8", WARN, Logger::AGENCY)
               << "Could not load last compacted snapshot, not sending "
                  "appendEntriesRPC!";
           continue;
@@ -557,7 +578,8 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // Body
-      Builder builder;
+      VPackBufferUInt8 buffer;
+      Builder builder(buffer);
       builder.add(VPackValue(VPackValueType::Array));
 
       if (needSnapshot) {
@@ -589,6 +611,7 @@ void Agent::sendAppendEntriesRPC() {
           builder.add("term", VPackValue(entry.term));
           builder.add("query", VPackSlice(entry.entry->data()));
           builder.add("clientId", VPackValue(entry.clientId));
+          builder.add("timestamp", VPackValue(entry.timestamp.count()));
           builder.close();
           highest = entry.index;
           ++toLog;
@@ -609,16 +632,16 @@ void Agent::sendAppendEntriesRPC() {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
       }
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       // Send request
-      std::unordered_map<std::string, std::string> headerFields;
-      cc->asyncRequest(1, _config.poolAt(followerId),
-                       arangodb::rest::RequestType::POST, path.str(),
-                       std::make_shared<std::string>(builder.toJson()), headerFields,
-                       std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-                       150.0, true);
+      auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
+      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+                           std::move(buffer), network::Timeout(150)).thenValue([=](network::Response r) {
+        ac->operator()(r);
+      });
+      
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
@@ -628,7 +651,7 @@ void Agent::sendAppendEntriesRPC() {
       // take a very long time, so this must not disturb the empty ones
       // being sent out.
 
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("2d80d", DEBUG, Logger::AGENCY)
           << "Appending (" << (uint64_t)(TRI_microtime() * 1000000000.0) << ") "
           << unconfirmed.size() - 1 << " entries up to index " << highest
           << (needSnapshot ? " and a snapshot" : "") << " to follower "
@@ -641,7 +664,7 @@ void Agent::sendAppendEntriesRPC() {
 }
 
 void Agent::resign(term_t otherTerm) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Resigning in term " << _constituent.term()
+  LOG_TOPIC("494a7", DEBUG, Logger::AGENCY) << "Resigning in term " << _constituent.term()
                                    << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm, NO_LEADER);
   endPrepareLeadership();
@@ -649,14 +672,9 @@ void Agent::resign(term_t otherTerm) {
 
 /// Leader's append entries, empty ones for heartbeat, triggered by Constituent
 void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
 
   if (!leading()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("95220", DEBUG, Logger::AGENCY)
         << "Not sending empty appendEntriesRPC to follower " << followerId
         << " because we are no longer leading.";
     return;
@@ -679,26 +697,33 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
 
   // Just check once more:
   if (!leading()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("99dc2", DEBUG, Logger::AGENCY)
         << "Not sending empty appendEntriesRPC to follower " << followerId
         << " because we are no longer leading.";
     return;
   }
+  
+  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   // Send request
-  std::unordered_map<std::string, std::string> headerFields;
-  cc->asyncRequest(1, _config.poolAt(followerId), arangodb::rest::RequestType::POST,
-                   path.str(), std::make_shared<std::string>("[]"), headerFields,
-                   std::make_shared<AgentCallback>(this, followerId, 0, 0),
-                   3 * _config.minPing() * _config.timeoutMult(), true);
+  VPackBufferUInt8 buffer;
+  buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
+  auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
+  network::Timeout timeout(3 * _config.minPing() * _config.timeoutMult());
+  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+                       std::move(buffer), timeout).thenValue([=](network::Response r) {
+    ac->operator()(r);
+  });
+  
   _constituent.notifyHeartbeatSent(followerId);
 
   double now = TRI_microtime();
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("54798", DEBUG, Logger::AGENCY)
       << "Sending empty appendEntriesRPC to follower " << followerId;
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("cfb7b", DEBUG, Logger::AGENCY)
         << "Logging of a line took more than 1/100 of a second, this is bad:" << diff;
   }
 }
@@ -717,7 +742,7 @@ void Agent::advanceCommitIndex() {
 
   index_t quorum = size() / 2 + 1;
   if (temp.size() < quorum) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC("47f8c", WARN, Logger::AGENCY)
         << "_confirmed not populated, quorum: " << quorum << ".";
     return;
   }
@@ -729,7 +754,7 @@ void Agent::advanceCommitIndex() {
     WRITE_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
       CONDITION_LOCKER(guard, _waitForCV);
-      LOG_TOPIC(TRACE, Logger::AGENCY)
+      LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
@@ -738,6 +763,9 @@ void Agent::advanceCommitIndex() {
                               _commitIndex, t, true);
 
       _commitIndex = index;
+      LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
+          << "Critical mass for commiting " << _commitIndex + 1 << " through "
+          << index << " to read db, done";
       // Wake up rest handlers:
       _waitForCV.broadcast();
 
@@ -760,21 +788,21 @@ void Agent::activateAgency() {
   try {
     _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
   } catch (std::exception const& e) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "Failed to persist active agency: " << e.what();
+    LOG_TOPIC("6578d", FATAL, Logger::AGENCY) << "Failed to persist active agency: " << e.what();
     FATAL_ERROR_EXIT();
   }
 }
 
 /// Load persistent state called once
 void Agent::load() {
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
+      _server.hasFeature<SystemDatabaseFeature>()
+          ? _server.getFeature<SystemDatabaseFeature>().use()
+          : nullptr;
   auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
+    LOG_TOPIC("63e36", FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
@@ -784,10 +812,10 @@ void Agent::load() {
     // Note that _state.loadCollections eventually does a callback to the
     // setPersistedState method, which acquires _outputLock and _waitForCV.
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
+    LOG_TOPIC("c07e1", DEBUG, Logger::AGENCY) << "Loading persistent state.";
 
     if (!_state.loadCollections(vocbase.get(), queryRegistry, _config.waitForSync())) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("9b680", FATAL, Logger::AGENCY)
           << "Failed to load persistent state on startup.";
       FATAL_ERROR_EXIT();
     }
@@ -805,13 +833,13 @@ void Agent::load() {
 
   _compactor.start();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
+  LOG_TOPIC("6e997", DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
 
   _constituent.start(vocbase.get(), queryRegistry);
   persistConfiguration(term());
 
   if (_config.supervision()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
+    LOG_TOPIC("7658f", DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
   }
 
@@ -835,7 +863,7 @@ bool Agent::challengeLeadership() {
   for (auto const& i : _lastAcked) {
     if (i.first != myid) {  // do not count ourselves
       duration<double> m = steady_clock::now() - i.second;
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("22f78", DEBUG, Logger::AGENCY)
           << "challengeLeadership: found "
              "_lastAcked["
           << i.first << "] to be " << m.count() << " seconds in the past.";
@@ -844,21 +872,20 @@ bool Agent::challengeLeadership() {
       // ensure that a leader resigns before another one even starts an
       // election. However, the Raft paper does not mention this at all. Rather,
       // in the paper it is written that the leader should resign immediately if
-      // it sees a higher term from another server. Currently we have not
-      // implemented to return the follower's term with a response to
-      // AppendEntriesRPC, so the leader cannot find out a higher term this
-      // way. The leader can, however, see a higher term in the incoming
-      // AppendEntriesRPC a new leader sends out, and it will immediately
-      // resign if it sees that. For the moment, this value here can stay.
-      // We should soon implement sending the follower's term back with
-      // each response and probably get rid of this method altogether,
-      // but this requires a bit more thought.
+      // it sees a higher term from another server. Currently we have not implemented
+      // to return the follower's term with a response to AppendEntriesRPC, so
+      // the leader cannot find out a higher term this way. The leader can,
+      // however, see a higher term in the incoming AppendEntriesRPC a new
+      // leader sends out, and it will immediately resign if it sees that. For
+      // the moment, this value here can stay. We should soon implement sending
+      // the follower's term back with each response and probably get rid of
+      // this method altogether, but this requires a bit more thought.
       if (_config.maxPing() * _config.timeoutMult() > m.count()) {
         ++good;
       }
     }
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: good=" << good;
+  LOG_TOPIC("0e75d", DEBUG, Logger::AGENCY) << "challengeLeadership: good=" << good;
 
   return (good < size() / 2);  // not counting myself
 }
@@ -950,7 +977,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // own conclusions. The map of ongoing trxs is only to cover the time
     // from when we receive the request until we have appended the trxs
     // ourselves.
-    ret = std::make_shared<arangodb::velocypack::Builder>();
     failed = 0;
     ret->openArray();
     // Only leader else redirect
@@ -959,16 +985,27 @@ trans_ret_t Agent::transact(query_t const& queries) {
       return trans_ret_t(false, NO_LEADER);
     }
 
+    term_t currentTerm = term();   // this is the term we will be working with
+
+    // Check that we are actually still the leader:
+    if (!leading()) {
+      return trans_ret_t(false, NO_LEADER);
+    }
+
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
 
     for (const auto& query : VPackArrayIterator(qs)) {
+      // Check that we are actually still the leader:
+      if (!leading()) {
+        return trans_ret_t(false, NO_LEADER);
+      }
       if (query[0].isObject()) {
         check_ret_t res = _spearhead.applyTransaction(query);
         if (res.successful()) {
           maxind = (query.length() == 3 && query[2].isString())
-                       ? _state.logLeaderSingle(query[0], term(), query[2].copyString())
-                       : _state.logLeaderSingle(query[0], term());
+                       ? _state.logLeaderSingle(query[0], currentTerm, query[2].copyString())
+                       : _state.logLeaderSingle(query[0], currentTerm);
           ret->add(VPackValue(maxind));
         } else {
           _spearhead.read(res.failed->slice(), *ret);
@@ -1118,6 +1155,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       npacks++;
     }
 
+    term_t currentTerm = term();   // this is the term we will be working with
+
+    // Check that we are actually still the leader:
+    if (!leading()) {
+      return write_ret_t(false, NO_LEADER);
+    }
+
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
     for (size_t i = 0, l = 0; i < npacks; ++i) {
@@ -1135,11 +1179,16 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
         return write_ret_t(false, NO_LEADER);
       }
 
+      // Check that we are actually still the leader:
+      if (!leading()) {
+        return write_ret_t(false, NO_LEADER);
+      }
+
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
 
       applied = _spearhead.applyTransactions(chunk, wmode);
-      auto tmp = _state.logLeaderMulti(chunk, applied, term());
+      auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
   }
@@ -1184,14 +1233,15 @@ read_ret_t Agent::read(query_t const& query) {
     return read_ret_t(false, NO_LEADER);
   }
 
-  std::string leaderId = _constituent.leaderID();
+  leader = _constituent.leaderID();
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
+
   READ_LOCKER(oLocker, _outputLock);
 
   // Retrieve data from readDB
-  auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
 
-  return read_ret_t(true, leaderId, success, result);
+  return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
 /// Send out append entries to followers regularly or on event
@@ -1248,6 +1298,9 @@ void Agent::run() {
 
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
+
+      // Empty store callback trash bin
+      emptyCbTrashBin();
 
       bool commenceService = false;
       {
@@ -1365,7 +1418,7 @@ bool Agent::prepareLead() {
   try {
     rebuildDBs();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to rebuild key value stores." << e.what();
+    LOG_TOPIC("aa3cd", ERR, Logger::AGENCY) << "Failed to rebuild key value stores." << e.what();
     return false;
   }
 
@@ -1424,7 +1477,7 @@ void Agent::updatePeerEndpoint(query_t const& message) {
 
   if (!slice.isObject() || slice.length() == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
-                                   std::string("Inproper greeting: ") + slice.toJson());
+                                   std::string("Improper greeting: ") + slice.toJson());
   }
 
   std::string uuid, endpoint;
@@ -1519,7 +1572,7 @@ void Agent::rebuildDBs() {
   _waitForCV.broadcast();
 
   // Apply logs from last applied index to leader's commit index
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
       << "Rebuilding key-value stores from index " << lastCompactionIndex
       << " to " << _commitIndex << " " << _state;
 
@@ -1529,7 +1582,7 @@ void Agent::rebuildDBs() {
   }
   _spearhead = _readDB;
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << id() << " rebuilt key-value stores - serving.";
+  LOG_TOPIC("a66dc", INFO, Logger::AGENCY) << id() << " rebuilt key-value stores - serving.";
 }
 
 /// Compact read db
@@ -1551,7 +1604,7 @@ void Agent::compact() {
     // up every 5 seconds.
     // Note that it is OK to compact anywhere before or at _commitIndex.
     if (!_state.compact(commitIndex, _config.compactionKeepSize())) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("70234", WARN, Logger::AGENCY)
           << "Compaction for index " << commitIndex << " with keep size "
           << _config.compactionKeepSize() << " did not work.";
     }
@@ -1581,6 +1634,29 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
   return _commitIndex;
 }
 
+/// Get readdb
+arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  uint64_t commitIndex = 0;
+
+  { READ_LOCKER(oLocker, _outputLock);
+
+    commitIndex = _commitIndex;
+    // commit index
+    builder.add("index", VPackValue(commitIndex));
+    builder.add("term", VPackValue(term()));
+
+    // key-value store {}
+    builder.add(VPackValue("agency"));
+    _readDB.get().toBuilder(builder, true); }
+
+  // replicated log []
+  _state.toVelocyPack(commitIndex, builder);
+
+  return commitIndex;
+}
+
 void Agent::executeLockedRead(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
@@ -1608,18 +1684,18 @@ Store const& Agent::transient() const {
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice const& compaction) {
   // Catch up with compacted state, this is only called at startup
-  _spearhead = compaction.get("readDB");
+  _spearhead = compaction;
 
   // Catch up with commit
   try {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _readDB = compaction.get("readDB");
+    _readDB = compaction;
     _commitIndex =
         arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -1632,10 +1708,9 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Add whatever is missing in our list.
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
-query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: " << in->slice().toJson();
+query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
+  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << slice.toJson();
 
-  VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20001,
@@ -1645,11 +1720,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
   if (slice.hasKey(StaticStrings::Error)) {
     if (slice.get(StaticStrings::Code).getNumber<int>() == 403) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("6591b", FATAL, Logger::AGENCY)
           << "Gossip peer does not have us in their pool " << slice.toJson();
       FATAL_ERROR_EXIT();  /// We don't belong here
     } else {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC("949bb", DEBUG, Logger::AGENCY)
           << "Received gossip error. We'll retry " << slice.toJson();
     }
     query_t out = std::make_shared<Builder>();
@@ -1686,7 +1761,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     _inception->reportVersionForEp(endpoint, version);
   }
 
-  LOG_TOPIC(TRACE, Logger::AGENCY)
+  LOG_TOPIC("9d2d9", TRACE, Logger::AGENCY)
       << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
 
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
@@ -1695,7 +1770,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
   VPackSlice pslice = slice.get("pool");
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
+  LOG_TOPIC("65dd8", TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
   for (auto const& pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1713,7 +1788,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       try {
         _config.eraseGossipPeer(endpoint);
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
+        LOG_TOPIC("58f08", ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
       }
     }
 
@@ -1724,7 +1799,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
       upsert = _config.upsertPool(pslice, id);
       if (upsert == config_t::WRONG) {
-        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+        LOG_TOPIC("32973", FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
         FATAL_ERROR_EXIT();  /// disagreement over pool membership are fatal!
       }
 
@@ -1768,7 +1843,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           }
         }
 
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC("e85f0", DEBUG, Logger::AGENCY)
             << "persisting new agency configuration via RAFT: " << query->toJson();
 
         // Do write
@@ -1799,7 +1874,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           }
         } catch (std::exception const& e) {
           err = std::string("failed to write new agency to RAFT") + e.what();
-          LOG_TOPIC(ERR, Logger::AGENCY) << err;
+          LOG_TOPIC("17dc2", ERR, Logger::AGENCY) << err;
         }
       }
 
@@ -1818,7 +1893,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   if (!isCallback) {
-    LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip " << out->slice().toJson();
+    LOG_TOPIC("1e95f", TRACE, Logger::AGENCY) << "Answering with gossip " << out->slice().toJson();
   }
 
   return out;
@@ -1841,8 +1916,86 @@ bool Agent::ready() const {
   return _ready;
 }
 
+
+
+void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
+
+  TRI_ASSERT(slice.isObject());
+
+  // body consists of object holding keys index, term and the observed keys
+  // we'll remove observation on every key and according observer url
+  for (auto const& i : VPackObjectIterator(slice)) {
+    if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
+      MUTEX_LOCKER(lock, _cbtLock);
+      _callbackTrashBin[i.key.copyString()].emplace(url);
+    }
+  }
+}
+
+
+void Agent::emptyCbTrashBin() {
+
+  using clock = std::chrono::steady_clock;
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    _cbtLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(lock, _cbtLock);
+
+    auto early =
+      std::chrono::duration_cast<std::chrono::seconds>(
+        clock::now() - _callbackLastPurged).count() < 10;
+
+    if (early || _callbackTrashBin.empty()) {
+      return;
+    }
+
+    {
+      VPackArrayBuilder trxs(envelope.get());
+      for (auto const& i : _callbackTrashBin) {
+        for (auto const& j : i.second) {
+          {
+            VPackArrayBuilder trx(envelope.get());
+            {
+              VPackObjectBuilder ak(envelope.get());
+              envelope->add(VPackValue(i.first));
+              {
+                VPackObjectBuilder oper(envelope.get());
+                envelope->add("op", VPackValue("unobserve"));
+                envelope->add("url", VPackValue(j));
+              }
+            }
+          }
+        }
+      }
+    }
+    _callbackTrashBin.clear();
+    _callbackLastPurged = std::chrono::steady_clock::now();
+  }
+
+  LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
+
+  // This is a best effort attempt. If either the queueing or the write fail,
+  // while above _callbackTrashBin has been cleaned, entries will repopulate with
+  // future 404 errors, when they are triggered again. So either way these attempts
+  // are repeated until such time, when the callbacks are gone successfully through
+  // queue + write.
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler != nullptr) {
+    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+        auto* agent = server.getFeature<AgencyFeature>().agent();
+        if (!server.isStopping() && agent) {
+          agent->write(envelope);
+        }
+      });
+    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
+  }
+
+}
+
+
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(this);
+  Store store(_server, this);
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {
@@ -1852,11 +2005,11 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   {
     READ_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
+      LOG_TOPIC("88754", INFO, Logger::AGENCY)
           << "Cannot snapshot beyond leaderCommitIndex: " << _commitIndex;
       index = _commitIndex;
     } else if (index < oldIndex) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
+      LOG_TOPIC("cb67b", INFO, Logger::AGENCY)
           << "Cannot snapshot before last compaction index: " << oldIndex;
       index = oldIndex;
     }

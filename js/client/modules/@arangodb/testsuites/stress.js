@@ -83,11 +83,12 @@ function runStressTest (options, command, testname) {
     print('cannot execute command: (' +
           reply.code + ') ' + reply.message);
 
-    pu.shutdownInstance(instanceInfo, options);
+    let shutdownStatus = pu.shutdownInstance(instanceInfo, options);
 
     return {
       status: false,
-      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply),
+      shutdown: shutdownStatus
     };
   }
 
@@ -117,19 +118,24 @@ function runStressTest (options, command, testname) {
 
     print(yaml.safeDump(check));
 
-    pu.shutdownInstance(instanceInfo, options);
+    let shutdownStatus = pu.shutdownInstance(instanceInfo, options);
 
     return {
       status: false,
-      message: check.hasOwnProperty('body') ? check.body : yaml.safeDump(check)
+      message: check.hasOwnProperty('body') ? check.body : yaml.safeDump(check),
+      shutdown: shutdownStatus
     };
   }
 
   print('Shutting down...');
-  pu.shutdownInstance(instanceInfo, options);
+  let shutdownStatus = pu.shutdownInstance(instanceInfo, options);
   print('done.');
 
-  return {};
+  return {
+    status: true,
+    message: "",
+    shutdown: shutdownStatus
+  };
 }
 
 // //////////////////////////////////////////////////////////////////////////////

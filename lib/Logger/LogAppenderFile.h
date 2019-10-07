@@ -24,7 +24,14 @@
 #ifndef ARANGODB_LOGGER_LOG_APPENDER_FILE_H
 #define ARANGODB_LOGGER_LOG_APPENDER_FILE_H 1
 
+#include <stddef.h>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <vector>
+
 #include "Logger/LogAppender.h"
+#include "Logger/LogLevel.h"
 
 namespace arangodb {
 class LogAppenderStream : public LogAppender {
@@ -91,8 +98,13 @@ class LogAppenderFile : public LogAppenderStream {
   }
   static void clear();
 
+  static void setFileMode(int mode) { _fileMode = mode; }
+  static void setFileGroup(int group) { _fileGroup = group; }
+
  private:
   static std::vector<std::tuple<int, std::string, LogAppenderFile*>> _fds;
+  static int _fileMode;
+  static int _fileGroup;
 
   std::string _filename;
 };
@@ -113,14 +125,12 @@ class LogAppenderStdStream : public LogAppenderStream {
 
 class LogAppenderStderr final : public LogAppenderStdStream {
  public:
-  explicit LogAppenderStderr(std::string const& filter)
-      : LogAppenderStdStream("+", filter, STDERR_FILENO) {}
+  explicit LogAppenderStderr(std::string const& filter);
 };
 
 class LogAppenderStdout final : public LogAppenderStdStream {
  public:
-  explicit LogAppenderStdout(std::string const& filter)
-      : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}
+  explicit LogAppenderStdout(std::string const& filter);
 };
 
 }  // namespace arangodb

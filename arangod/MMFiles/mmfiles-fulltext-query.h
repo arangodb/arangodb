@@ -24,16 +24,14 @@
 #ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_QUERY_H
 #define ARANGOD_MMFILES_MMFILES_FULLTEXT_QUERY_H 1
 
-#include "Basics/Common.h"
+#include <cstdlib>
 
-/// @brief maximum number of search words in a query
-#define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
+#include "Basics/Common.h"
 
 /// @brief fulltext query match options
 typedef enum {
   TRI_FULLTEXT_COMPLETE,
   TRI_FULLTEXT_PREFIX,
-  TRI_FULLTEXT_SUBSTRING  // currently not implemented, maybe later
 } TRI_fulltext_query_match_e;
 
 /// @brief fulltext query logical operators

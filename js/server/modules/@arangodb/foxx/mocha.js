@@ -29,10 +29,10 @@ const mocha = require('@arangodb/mocha');
 
 const isNotPattern = (pattern) => pattern.indexOf('*') === -1;
 
-exports.run = function runFoxxTests (service, reporterName) {
-  const run = (file, context) => service.run(file, {context: context});
-  const result = mocha.run(run, exports.findTests(service), reporterName);
-  if (reporterName === 'xunit' && Array.isArray(result) && result[1]) {
+exports.run = function runFoxxTests (service, {filter, reporter}) {
+  const run = (file, context) => service.run(file, {context});
+  const result = mocha.run(run, exports.findTests(service), reporter, filter);
+  if (reporter === 'xunit' && Array.isArray(result) && result[1]) {
     result[1].name = service.mount;
   }
   return result;

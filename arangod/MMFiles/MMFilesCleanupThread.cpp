@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -39,8 +40,8 @@
 
 using namespace arangodb;
 
-MMFilesCleanupThread::MMFilesCleanupThread(TRI_vocbase_t* vocbase)
-    : Thread("MMFilesCleanup"), _vocbase(vocbase) {}
+MMFilesCleanupThread::MMFilesCleanupThread(TRI_vocbase_t& vocbase)
+    : Thread(vocbase.server(), "MMFilesCleanup"), _vocbase(vocbase) {}
 
 MMFilesCleanupThread::~MMFilesCleanupThread() { shutdown(); }
 
@@ -56,9 +57,9 @@ void MMFilesCleanupThread::run() {
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   while (true) {
-    // keep initial _state value as vocbase->_state might change during cleanup
+    // keep initial _state value as vocbase._state might change during cleanup
     // loop
-    TRI_vocbase_t::State state = _vocbase->state();
+    TRI_vocbase_t::State state = _vocbase.state();
 
     ++iterations;
 
@@ -68,19 +69,19 @@ void MMFilesCleanupThread::run() {
         // cursors must be cleaned before collections are handled
         // otherwise the cursors may still hold barriers on collections
         // and collections cannot be closed properly
-        auto cursors = _vocbase->cursorRepository();
+        auto cursors = _vocbase.cursorRepository();
         TRI_ASSERT(cursors != nullptr);
         try {
           cursors->garbageCollect(true);
         } catch (...) {
-          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+          LOG_TOPIC("55a31", WARN, arangodb::Logger::ENGINES)
               << "caught exception during cursor cleanup";
         }
       }
 
       // check if we can get the compactor lock exclusively
       // check if compaction is currently disallowed
-      engine->tryPreventCompaction(_vocbase,
+      engine->tryPreventCompaction(&_vocbase,
                                    [this, &collections](TRI_vocbase_t* vocbase) {
                                      try {
                                        // copy all collections
@@ -111,7 +112,7 @@ void MMFilesCleanupThread::run() {
       // server is still running, clean up unused cursors
       if (iterations % cleanupCursorIterations() == 0) {
         // clean up expired compactor locks
-        engine->cleanupCompactionBlockers(_vocbase);
+        engine->cleanupCompactionBlockers(&_vocbase);
       }
 
       if (state == TRI_vocbase_t::State::NORMAL) {
@@ -119,7 +120,7 @@ void MMFilesCleanupThread::run() {
         locker.wait(cleanupInterval());
       } else {
         // prevent busy waiting
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
 
     } catch (...) {
@@ -132,7 +133,7 @@ void MMFilesCleanupThread::run() {
     }
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "shutting down cleanup thread";
+  LOG_TOPIC("01007", TRACE, arangodb::Logger::ENGINES) << "shutting down cleanup thread";
 }
 
 /// @brief checks all datafiles of a collection
@@ -142,7 +143,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   bool unloadChecked = false;
 
   // but if we are in server shutdown, we can force unloading of collections
-  bool isInShutdown = application_features::ApplicationServer::isStopping();
+  bool isInShutdown = _vocbase.server().isStopping();
 
   // loop until done
 
@@ -281,7 +282,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else {
       // unknown type
-      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "unknown ditch type '" << type << "'";
+      LOG_TOPIC("8f8a6", FATAL, arangodb::Logger::ENGINES) << "unknown ditch type '" << type << "'";
       FATAL_ERROR_EXIT();
     }
 

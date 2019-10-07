@@ -88,9 +88,10 @@ class phrase_query : public filter::prepared {
   phrase_query(
       states_t&& states,
       positions_t&& positions,
-      attribute_store&& stats
+      bstring&& stats,
+      boost_t boost
   ) NOEXCEPT
-    : prepared(std::move(stats)),
+    : prepared(std::move(stats), boost),
       states_(std::move(states)),
       positions_(std::move(positions)) {
   }
@@ -150,8 +151,9 @@ class phrase_query : public filter::prepared {
       std::move(positions),
       rdr,
       *phrase_state->reader,
-      attributes(),
-      ord
+      stats(),
+      ord,
+      boost()
     );
   }
 
@@ -169,8 +171,8 @@ class phrase_query : public filter::prepared {
   return req;
 }
 
-DEFINE_FILTER_TYPE(by_phrase);
-DEFINE_FACTORY_DEFAULT(by_phrase);
+DEFINE_FILTER_TYPE(by_phrase)
+DEFINE_FACTORY_DEFAULT(by_phrase)
 
 by_phrase::by_phrase(): filter(by_phrase::type()) {
 }
@@ -216,12 +218,7 @@ filter::prepared::ptr by_phrase::prepare(
   phrase_terms.reserve(phrase_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::stats> term_stats;
-  term_stats.reserve(phrase_.size());
-
-  for(auto size = phrase_.size(); size; --size) {
-    term_stats.emplace_back(ord.prepare_stats());
-  }
+  auto collectors = ord.prepare_collectors(phrase_.size());
 
   // iterate over the segments
   const string_ref field = fld_;
@@ -239,11 +236,13 @@ filter::prepared::ptr by_phrase::prepare(
       continue;
     }
 
+    collectors.collect(sr, *tr); // collect field statistics once per segment
+
     // find terms
     seek_term_iterator::ptr term = tr->iterator();
     // get term metadata
     auto& meta = term->attributes().get<term_meta>();
-    auto term_itr = term_stats.begin();
+    size_t term_itr = 0;
 
     for(auto& word: phrase_) {
       auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
@@ -259,7 +258,7 @@ filter::prepared::ptr by_phrase::prepare(
       }
 
       term->read(); // read term attributes
-      term_itr->collect(sr, *tr, term->attributes()); // collect statistics
+      collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
 
       // estimate phrase & term
       const cost::cost_t term_estimation = meta ? meta->docs_count : cost::MAX;
@@ -283,27 +282,27 @@ filter::prepared::ptr by_phrase::prepare(
   size_t base_offset = first_pos();
 
   // finish stats
-  attribute_store attrs; // aggregated phrase stats
-  phrase_query::positions_t positions(phrase_.size());
 
-  auto term_itr = term_stats.begin();
+
+  phrase_query::positions_t positions(phrase_.size());
   auto pos_itr = positions.begin();
-  assert(term_stats.size() == phrase_.size()); // initialized above
 
   for(auto& term: phrase_) {
-    term_itr->finish(attrs, rdr);
     *pos_itr = position::value_t(term.first - base_offset);
     ++pos_itr;
-    ++term_itr;
   }
 
-  // apply boost
-  irs::boost::apply(attrs, this->boost() * boost);
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+
+  ord.prepare_stats(stats_buf);
+  collectors.finish(stats_buf, rdr);
 
   return memory::make_shared<phrase_query>(
     std::move(phrase_states),
     std::move(positions),
-    std::move(attrs)
+    std::move(stats),
+    this->boost() * boost
   );
 }
 

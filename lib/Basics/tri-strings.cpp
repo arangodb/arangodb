@@ -21,11 +21,17 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tri-strings.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/conversions.h"
+#include <cstring>
 
 #include <openssl/sha.h>
+
+#include "tri-strings.h"
+
+#include "Basics/Utf8Helper.h"
+#include "Basics/conversions.h"
+#include "Basics/debugging.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes UTF-8 range U+0000 to U+007F
@@ -522,18 +528,6 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
   SHA256((unsigned char const*)source, sourceLen, dst);
 
   return (char*)dst;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeControlsCString(char const* in, size_t inLength,
-                                size_t* outLength, bool appendNewline) {
-  char* buffer =
-      static_cast<char*>(TRI_Allocate(TRI_MaxLengthEscapeControlsCString(inLength)));
-
-  return TRI_EscapeControlsCString(in, inLength, buffer, outLength, appendNewline);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

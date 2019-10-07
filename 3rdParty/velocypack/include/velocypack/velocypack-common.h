@@ -78,6 +78,13 @@
 #define VELOCYPACK_UNUSED /* unused */
 #endif
 
+// attribute used to force inlining of functions
+#if defined(__GNUC__) || defined(__clang__)
+#define VELOCYPACK_FORCE_INLINE inline __attribute__((__always_inline__))
+#elif _WIN32
+#define VELOCYPACK_FORCE_INLINE __forceinline
+#endif
+
 #ifndef VELOCYPACK_XXHASH
 #ifndef VELOCYPACK_FASTHASH
 #define VELOCYPACK_XXHASH
@@ -86,14 +93,14 @@
 
 #ifdef VELOCYPACK_XXHASH
 // forward for XXH64 function declared elsewhere
-extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
+extern "C" unsigned long long XXH64(void const*, std::size_t, unsigned long long);
 
 #define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
 #endif
 
 #ifdef VELOCYPACK_FASTHASH
 // forward for fasthash64 function declared elsewhere
-uint64_t fasthash64(void const*, size_t, uint64_t);
+uint64_t fasthash64(void const*, std::size_t, uint64_t);
 
 #define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
 #endif
@@ -118,7 +125,7 @@ bool assemblerFunctionsDisabled();
 std::size_t checkOverflow(ValueLength);
 #else
 // on a 64 bit platform, the following function is probably a no-op
-static inline constexpr std::size_t checkOverflow(ValueLength length) noexcept {
+static VELOCYPACK_FORCE_INLINE constexpr std::size_t checkOverflow(ValueLength length) noexcept {
   return static_cast<std::size_t>(length);
 }
 #endif

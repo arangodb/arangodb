@@ -44,7 +44,6 @@ class GlobalInitialSyncer final : public InitialSyncer {
   Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
- private:
   /// @brief run method, performs a full synchronization
   /// internal method, may throw exceptions
   arangodb::Result runInternal(bool incremental);

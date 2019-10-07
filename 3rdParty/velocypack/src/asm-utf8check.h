@@ -21,17 +21,17 @@
 #ifndef VELOCYPACK_ASM_UTF8CHECK_H
 #define VELOCYPACK_ASM_UTF8CHECK_H
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace arangodb {
 namespace velocypack {
 
 #if ASM_OPTIMIZATIONS == 1
-bool validate_utf8_fast_sse42(uint8_t const* src, size_t len);
+bool validate_utf8_fast_sse42(uint8_t const* src, std::size_t len);
 #ifdef __AVX2__
-bool validate_utf8_fast_avx_asciipath(const char *src, size_t len);
-bool validate_utf8_fast_avx(uint8_t const* src, size_t len);
+bool validate_utf8_fast_avx_asciipath(const char *src, std::size_t len);
+bool validate_utf8_fast_avx(uint8_t const* src, std::size_t len);
 #endif // __AVX2__
 #endif // ASM_OPTIMIZATIONS
   
