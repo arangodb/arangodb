@@ -456,7 +456,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       return arangodb::Result();
     }
     
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, "
       << postres->result->getHttpReturnMessage() << ", giving up.";
   
@@ -468,7 +468,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     }
     
   } else {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("600aa", DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, giving up.";
   }
   
@@ -484,7 +484,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url,
     body.toJson(), std::unordered_map<std::string, std::string>(), timeLeft);
   if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("dcddd", DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: cancelation error for shard - " << collection
       << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
   }
@@ -1051,16 +1051,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     }
     lastLogTick = tickReached;
     if (didTimeout) {
-      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("7531f", INFO, Logger::MAINTENANCE)
         << "Renewing softLock for " << shard << " on leader: " << leader;
-    }
-  }
-  if (didTimeout) {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "Could not catchup under softLock for " << shard << " on leader: " << leader
-      << " now activating hardLock. This is expected under high load.";
-      LOG_TOPIC("e516e", INFO, Logger::MAINTENANCE)
-          << "Renewing softLock for " << shard << " on leader: " << leader;
     }
   }
   if (didTimeout) {
@@ -1139,7 +1131,7 @@ void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
     auto const& shard = _description.get("shard");
     if (COMPLETE == state) {
-      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronization completed for shard " << shard;
     }
     _feature.incShardVersion(shard);
