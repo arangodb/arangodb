@@ -46,7 +46,7 @@ class CollectionAccessingNode {
   CollectionAccessingNode(ExecutionPlan* plan, arangodb::velocypack::Slice slice);
 
  public:
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
 
   /// @brief dumps the primary index
   void toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const;

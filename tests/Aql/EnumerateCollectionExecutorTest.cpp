@@ -73,6 +73,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   arangodb::LogicalCollection collection;
   fakeit::Mock<ExecutionEngine> mockEngine;
   fakeit::Mock<transaction::Methods> mockTrx;  // fake transaction::Methods
+  fakeit::Mock<Query> mockQuery;
 
   Variable outVariable;
   bool varUsedLater;
@@ -106,7 +107,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
         useRawPointers(false),
         random(false),
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
-              &engine, &abc, &outVariable, varUsedLater, projections, &trx,
+              &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     // fake indexScan
@@ -115,6 +116,10 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
             [this](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
               return std::make_unique<EmptyIndexIterator>(&collection, &(mockTrx.get()));
             }));
+    
+    Query& query = mockQuery.get();
+    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&(mockTrx.get()));
+    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
   }
 };
 

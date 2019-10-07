@@ -332,7 +332,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(builder);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
 
   // serialize clients
   writeClientsToVelocyPack(builder);
@@ -592,7 +592,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(nodes);
+  CollectionAccessingNode::toVelocyPack(nodes, flags);
 
   nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
   nodes.add("replaceIndexNode", VPackValue(_replaceIndexNode));

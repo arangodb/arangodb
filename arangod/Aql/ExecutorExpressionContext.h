@@ -45,10 +45,6 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
 
   size_t numRegisters() const override;
 
-  AqlValue const& getRegisterValue(size_t registerId) const override;
-
-  Variable const* getVariable(size_t variableIndex) const override;
-
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 

@@ -74,7 +74,8 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
                                                              IndexExecutorInfos& infos) {
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      infos.getProjections(), infos.getTrxPtr(),
+      infos.getQuery(), infos.getFilter(),
+      infos.getProjections(), 
       infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
 }
@@ -87,7 +88,8 @@ IndexExecutorInfos::IndexExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
@@ -105,9 +107,9 @@ IndexExecutorInfos::IndexExecutorInfos(
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
+      _filter(filter),
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _trxPtr(trxPtr),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
@@ -183,8 +185,16 @@ std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexc
   return _projections;
 }
 
+Query* IndexExecutorInfos::getQuery() const noexcept {
+  return _engine->getQuery();
+}
+
 transaction::Methods* IndexExecutorInfos::getTrxPtr() const noexcept {
-  return _trxPtr;
+  return _engine->getQuery()->trx();
+}
+
+Expression* IndexExecutorInfos::getFilter() const noexcept {
+  return _filter;
 }
 
 std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePositions() const noexcept {
