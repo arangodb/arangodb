@@ -68,7 +68,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(config.numIOThreads),
+      _numIOThreads(2),
       _maxOpenConnections(config.maxOpenConnections),
       _connectionTtlMilli(config.connectionTtlMilli),
       _verifyHosts(config.verifyHosts) {

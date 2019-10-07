@@ -63,7 +63,9 @@ struct MessageHeader {
   // content type accessors
   inline ContentType contentType() const { return _contentType; }
   void contentType(std::string const& type);
-  void contentType(ContentType type);
+  void contentType(ContentType type) {
+    _contentType = type;
+  }
 
  protected:
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
@@ -87,8 +89,8 @@ struct RequestHeader final : public MessageHeader {
 
  public:
   // accept header accessors
-  ContentType acceptType() const;
-  void acceptType(ContentType type);
+  ContentType acceptType() const { return _acceptType; }
+  void acceptType(ContentType type) { _acceptType = type; }
 
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
