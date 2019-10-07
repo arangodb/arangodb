@@ -37,6 +37,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Cluster/RebootTracker.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -272,7 +273,8 @@ TEST(EngineInfoContainerTest,
 
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
-      .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
+    .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
+            std::unique_ptr<arangodb::cluster::CallbackGuard>&&) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_TRUE(isPrepared);

@@ -36,6 +36,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
@@ -69,6 +70,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::cluster;
 
 namespace {
 std::string const dataString("data");
@@ -1955,8 +1957,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     if (view) {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " +
                       TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
@@ -2554,16 +2556,29 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  if (!body.isObject()) {
+  VPackSlice collection, ttlSlice, idSlice;
+  std::string rebootId;
+
+  if (body.isObject() && body.hasKey("collection") && body.hasKey("ttl") && body.hasKey("id")) {
+    collection = body.get("collection");
+    ttlSlice = body.get("ttl");
+    idSlice = body.get("id");
+  } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'collection', "
                   "'ttl' and 'id'");
     return;
   }
 
-  VPackSlice const collection = body.get("collection");
-  VPackSlice const ttlSlice = body.get("ttl");
-  VPackSlice const idSlice = body.get("id");
+  if (body.hasKey("rebootId")) {
+    if (body.get("rebootId").isString()) {
+      rebootId = body.get("rebootId").copyString();
+    } else {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "'rebootId' must be a string attribute");
+      return;
+    }
+  }
 
   if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2609,7 +2624,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
-  Result res = createBlockingTransaction(id, *col, ttl, lockType);
+  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2943,7 +2958,7 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col, double ttl,
-                                                         AccessMode::Type access) const {
+                                                         AccessMode::Type access, std::string const& rebootId) const {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -2965,6 +2980,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
+
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
     query->injectTransaction(std::move(trx));
@@ -2976,7 +2992,18 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
   try {
-    queryRegistry->insert(id, query.get(), ttl, true, true);
+    std::function<void(void)> f =
+      [=]() {
+        try {
+          // Code does not matter, read only access, so we can roll back.
+          queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, false);
+        } catch (...) {
+          // All errors that show up here can only be
+          // triggered if the query is destroyed in between.
+        }
+      };
+    auto rGuard = std::make_unique<CallbackGuard>(f);
+    queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};

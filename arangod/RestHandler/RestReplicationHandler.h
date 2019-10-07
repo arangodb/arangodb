@@ -474,7 +474,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
   Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col,
-                                   double ttl, AccessMode::Type access) const;
+                                   double ttl, AccessMode::Type access,
+                                   std::string const& rebootId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock
