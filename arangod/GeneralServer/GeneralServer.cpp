@@ -58,7 +58,7 @@ GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThread
   }
 }
 
-GeneralServer::~GeneralServer() {}
+GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   auto& server = application_features::ApplicationServer::server();

@@ -856,7 +856,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
         analyzerFeature(server.addFeatureUntracked<arangodb::iresearch::IResearchAnalyzerFeature>()),
         dbName("testVocbase") {}
 
-  ~IResearchAnalyzerFeatureGetTest() {}
+  ~IResearchAnalyzerFeatureGetTest() = default;
 
   // Need Setup inorder to alow ASSERTs
   void SetUp() override {

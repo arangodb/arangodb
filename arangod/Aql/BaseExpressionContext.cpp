@@ -31,13 +31,17 @@
 
 using namespace arangodb::aql;
 
-AqlValue const& BaseExpressionContext::getRegisterValue(size_t i) const {
-  return _argv->getValueReference(_startPos, (*_regs)[i]);
-}
+BaseExpressionContext::BaseExpressionContext(Query* query, size_t startPos,
+                                             AqlItemBlock const* argv,
+                                             std::vector<Variable const*> const& vars,
+                                             std::vector<RegisterId> const& regs)
+    : QueryExpressionContext(query),
+      _startPos(startPos),
+      _argv(argv),
+      _vars(&vars),
+      _regs(&regs) {}
 
-Variable const* BaseExpressionContext::getVariable(size_t i) const {
-  return (*_vars)[i];
-}
+size_t BaseExpressionContext::numRegisters() const { return _regs->size(); }
 
 AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                  bool& mustDestroy) const {
@@ -64,15 +68,3 @@ AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool 
   msg.append("' in executeSimpleExpression()");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
-
-BaseExpressionContext::BaseExpressionContext(Query* query, size_t startPos,
-                                             AqlItemBlock const* argv,
-                                             std::vector<Variable const*> const& vars,
-                                             std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(query),
-      _startPos(startPos),
-      _argv(argv),
-      _vars(&vars),
-      _regs(&regs) {}
-
-size_t BaseExpressionContext::numRegisters() const { return _regs->size(); }

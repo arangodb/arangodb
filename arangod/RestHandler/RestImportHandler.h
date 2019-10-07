@@ -41,7 +41,7 @@ struct RestImportResult {
   RestImportResult()
       : _numErrors(0), _numEmpty(0), _numCreated(0), _numIgnored(0), _numUpdated(0), _errors() {}
 
-  ~RestImportResult() {}
+  ~RestImportResult() = default;
 
   size_t _numErrors;
   size_t _numEmpty;

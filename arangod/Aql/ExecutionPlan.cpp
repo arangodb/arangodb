@@ -470,7 +470,7 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
 }
 
 /// @brief creates a calculation node for an arbitrary expression
-ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* conditionVariable,
+ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
                                                 AstNode const* expression,
                                                 ExecutionNode* previous) {
   TRI_ASSERT(out != nullptr);
@@ -582,14 +582,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* c
 
   // generate a temporary calculation node
   auto expr = std::make_unique<Expression>(this, _ast, node);
-
-  CalculationNode* en;
-  if (conditionVariable != nullptr) {
-    en = new CalculationNode(this, nextId(), expr.get(), conditionVariable, out);
-  } else {
-    en = new CalculationNode(this, nextId(), expr.get(), out);
-  }
-  expr.release();
+  CalculationNode* en = new CalculationNode(this, nextId(), std::move(expr), out);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
 
@@ -859,7 +852,7 @@ ExecutionNode* ExecutionPlan::createTemporaryCalculation(AstNode const* expressi
   auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
 
-  return createCalculation(out, nullptr, expression, previous);
+  return createCalculation(out, expression, previous);
 }
 
 /// @brief adds "previous" as dependency to "plan", returns "plan"
@@ -1254,15 +1247,6 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
   AstNode const* variable = node->getMember(0);
   AstNode const* expression = node->getMember(1);
 
-  Variable const* conditionVariable = nullptr;
-
-  if (node->numMembers() > 2) {
-    // a LET with an IF condition
-    auto condition = createTemporaryCalculation(node->getMember(2), previous);
-    previous = condition;
-    conditionVariable = getOutVariable(condition);
-  }
-
   auto v = static_cast<Variable*>(variable->getData());
 
   ExecutionNode* en = nullptr;
@@ -1297,7 +1281,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
 
     // operand is some misc expression, potentially including references to
     // other variables
-    return createCalculation(v, conditionVariable, expression, previous);
+    return createCalculation(v, expression, previous);
   }
 
   return addDependency(previous, en);
@@ -2426,7 +2410,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   Shower() : indent(0) {}
 
-  ~Shower() {}
+  ~Shower() = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     indent++;

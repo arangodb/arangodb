@@ -486,7 +486,19 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   // if we filter, we don't care about the other filters below:
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';
-    return testname.search(options.test) >= 0;
+    if (typeof options.test === 'string') {
+      return testname.search(options.test) >= 0;
+    } else {
+      let found = false;
+      options.test.forEach(
+        filter => {
+          if (testname.search(filter) >= 0) {
+            found = true;
+          }
+        }
+      );
+      return found;
+    }
   }
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
@@ -972,7 +984,9 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
+  let start = Date();
   const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
+  let end = Date();
 
   if (!res.status && res.timeout) {
     return {
@@ -987,6 +1001,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   let result = {
     total: 0,
     failed: 0,
+    duration: end - start,
     status: res.status
   };
 

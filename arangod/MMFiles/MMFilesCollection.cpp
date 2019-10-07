@@ -653,7 +653,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   //  _revisionsCache;
 }
 
-MMFilesCollection::~MMFilesCollection() {}
+MMFilesCollection::~MMFilesCollection() = default;
 
 TRI_voc_rid_t MMFilesCollection::revision(arangodb::transaction::Methods*) const {
   return _lastRevision;

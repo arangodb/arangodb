@@ -32,6 +32,7 @@
 
 namespace arangodb {
 namespace aql {
+class Condition;
 class ExecutionPlan;
 class SortCondition;
 struct Variable;

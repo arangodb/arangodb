@@ -41,7 +41,7 @@ GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, char const* name,
     : CommTask(server, name, std::move(info)), _protocol(std::move(socket)) {}
 
 template <SocketType T>
-GeneralCommTask<T>::~GeneralCommTask() {}
+GeneralCommTask<T>::~GeneralCommTask() = default;
 
 template <SocketType T>
 void GeneralCommTask<T>::start() {

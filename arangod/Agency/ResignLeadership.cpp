@@ -57,7 +57,7 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-ResignLeadership::~ResignLeadership() {}
+ResignLeadership::~ResignLeadership() = default;
 
 void ResignLeadership::run(bool& aborts) { runHelper(_server, "", aborts); }
 

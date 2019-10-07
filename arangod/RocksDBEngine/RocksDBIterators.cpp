@@ -76,7 +76,7 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || ADB_UNLIKELY(!_iterator->Valid()) || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -85,7 +85,9 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     return false;
   }
 
-  while (limit > 0) {
+  TRI_ASSERT(limit > 0);
+
+  do {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
@@ -94,12 +96,14 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     --limit;
     _iterator->Next();
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (ADB_UNLIKELY(!_iterator->Valid())) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
+    } else if (outOfRange()) {
+      return false;
     }
-  }
+  } while (limit > 0);
 
   return true;
 }
