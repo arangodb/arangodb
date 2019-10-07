@@ -352,8 +352,9 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
       if (haveCluster) {
         vocbaseOptions.writeConcern = server.getFeature<ClusterFeature>().writeConcern();
       } else {
+        // note: writeConcern is named "minReplicationFactor" in the APIs for historical reasons
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
-            << "Cannot access ClusterFeature to determine writeConcern";
+            << "Cannot access ClusterFeature to determine minReplicationFactor";
       }
     } else if (isNumber) {
       vocbaseOptions.writeConcern = 

@@ -822,7 +822,7 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'writeConcern',
-              'Write concern',
+              'Minimum replication factor',
               graph.get('minReplicationFactor'),
               'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
             )
@@ -895,9 +895,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-writeConcern',
-            'Write concern',
+            'Minimum replication factor',
             '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
             '',
             false,
             [
@@ -965,9 +965,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-writeConcern',
-            'Write concern',
+            'Minimum replication factor',
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [

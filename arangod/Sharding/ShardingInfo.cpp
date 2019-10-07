@@ -145,20 +145,22 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       if (writeConcernSlice.isNumber()) {
         _writeConcern = writeConcernSlice.getNumber<size_t>();
         if (!isSatellite() && _writeConcern > _replicationFactor) {
+          // note: writeConcern is named minReplicationFactor in the API for historical reasons
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              "writeConcern cannot be larger than replicationFactor (" +
+              "minReplicationFactor cannot be larger than replicationFactor (" +
                   basics::StringUtils::itoa(_writeConcern) + " > " +
                   basics::StringUtils::itoa(_replicationFactor) + ")");
         }
         if (!isSatellite() && _writeConcern == 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "writeConcern cannot be 0");
+                                         "minReplicationFactor cannot be 0");
         }
       } else {
+        // note: writeConcern is named minReplicationFactor in the API for historical reasons
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "writeConcern needs to be an integer number");
+            "minReplicationFactor needs to be an integer number");
       }
     }
   }
@@ -379,9 +381,10 @@ size_t ShardingInfo::replicationFactor() const {
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
   if (!isSatellite() && replicationFactor < _writeConcern) {
+    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "replicationFactor cannot be smaller than writeConcern (" +
+        "replicationFactor cannot be smaller than minReplicationFactor (" +
             basics::StringUtils::itoa(_replicationFactor) + " < " +
             basics::StringUtils::itoa(_writeConcern) + ")");
   }
@@ -395,9 +398,10 @@ size_t ShardingInfo::writeConcern() const {
 
 void ShardingInfo::writeConcern(size_t writeConcern) {
   if (!isSatellite() && writeConcern > _replicationFactor) {
+    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "writeConcern cannot be larger than replicationFactor (" +
+        "minReplicationFactor cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(_writeConcern) + " > " +
             basics::StringUtils::itoa(_replicationFactor) + ")");
   }
@@ -406,9 +410,10 @@ void ShardingInfo::writeConcern(size_t writeConcern) {
 
 void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor) {
   if (writeConcern > replicationFactor) {
+    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "writeConcern cannot be larger than replicationFactor (" +
+        "minReplicationFactor cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(writeConcern) + " > " +
             basics::StringUtils::itoa(replicationFactor) + ")");
   }

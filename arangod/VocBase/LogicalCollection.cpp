@@ -806,34 +806,34 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       if (wcTest < 0) {
         // negative value for writeConcern... not good
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for writeConcern");
+                      "bad value for minReplicationFactor");
       }
 
       wc = wcSl.getNumber<size_t>();
       if (wc > rf) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for writeConcern");
+                      "bad value for minReplicationFactor");
       }
 
       if (ServerState::instance()->isCoordinator() &&
           rf != _sharding->writeConcern()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change writeConcern, please change " +
+                        "Cannot change minReplicationFactor, please change " +
                             _sharding->distributeShardsLike());
         } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                        "Changing writeConcern "
+                        "Changing minReplicationFactor "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "Satellite collection, "
-                        "cannot change writeConcern");
+                        "cannot change minReplicationFactor");
         }
       }
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER,
-                    "bad value for writeConcern");
+                    "bad value for minReplicationFactor");
     }
     TRI_ASSERT((wc <= rf && !isSatellite()) || (wc == 0 && isSatellite()));
   }
