@@ -80,7 +80,6 @@ std::string const RESTRICT_TYPE("restrictType");
 std::string const RESTRICT_COLLECTIONS("restrictCollections");
 std::string const SKIP_CREATE_DROP("skipCreateDrop");
 std::string const TTL("ttl");
-std::string const REBOOT_ID("rebootId");
 
 using namespace std::chrono;
 
@@ -441,7 +440,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
-    body.add(REBOOT_ID, VPackValue(ServerState::instance()->getRebootId()));
+    body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId()));
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
 
   auto const url = DB + database + REPL_HOLD_READ_LOCK;
