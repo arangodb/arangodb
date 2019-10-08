@@ -245,21 +245,16 @@ void HttpConnection<ST>::startWriting() {
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
     if (!_active.exchange(true)) {  // we are the only ones here now
-//      auto cb = [self = Connection::shared_from_this()] {
-//        auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-
-        // we might get in a race with shutdownConnection
-        Connection::State state = this->_state.load();
-        if (state != Connection::State::Connected) {
-          this->_active.store(false);
-          if (state == Connection::State::Disconnected) {
-            this->startConnection();
-          }
-          return;
+      // we might get in a race with shutdownConnection
+      Connection::State state = this->_state.load();
+      if (state != Connection::State::Connected) {
+        this->_active.store(false);
+        if (state == Connection::State::Disconnected) {
+          this->startConnection();
         }
-        this->asyncWriteNextRequest();
-//      };
-//      asio_ns::post(*this->_io_context, std::move(cb));
+        return;
+      }
+      this->asyncWriteNextRequest();
     }
   }
 }

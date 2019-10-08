@@ -63,25 +63,22 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
                                   url, VPackBufferUInt8(), network::Timeout(120)));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
-          if (r.response->statusCode() == fuerte::StatusOK) {
-            out += r.slice().get("result");
-          } else {
-            int code = network::errorCodeFromBody(r.slice());
-            if (code != TRI_ERROR_NO_ERROR) {
-              return code;
-            }
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
+    
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
+    if (r.response->statusCode() == fuerte::StatusOK) {
+      out += r.slice().get("result");
+    } else {
+      int code = network::errorCodeFromBody(r.slice());
+      if (code != TRI_ERROR_NO_ERROR) {
+        return code;
+      }
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief get TTL properties from all DBservers
@@ -100,26 +97,23 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
                                   url, VPackBufferUInt8(), network::Timeout(120)));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
-          if (r.response->statusCode() == fuerte::StatusOK) {
-            out.add(r.slice().get("result"));
-            break;
-          } else {
-            int code = network::errorCodeFromBody(r.slice());
-            if (code != TRI_ERROR_NO_ERROR) {
-              return code;
-            }
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
+    
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
+    if (r.response->statusCode() == fuerte::StatusOK) {
+      out.add(r.slice().get("result"));
+      break;
+    } else {
+      int code = network::errorCodeFromBody(r.slice());
+      if (code != TRI_ERROR_NO_ERROR) {
+        return code;
+      }
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief set TTL properties on all DBservers
@@ -142,27 +136,24 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
                                                    buffer, network::Timeout(120)));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
+    
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
 
-          if (r.response->statusCode() == fuerte::StatusOK) {
-            out.add(r.slice().get("result"));
-            break;
-          } else {
-            int code = network::errorCodeFromBody(r.slice());
-            if (code != TRI_ERROR_NO_ERROR) {
-              return code;
-            }
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+    if (r.response->statusCode() == fuerte::StatusOK) {
+      out.add(r.slice().get("result"));
+      break;
+    } else {
+      int code = network::errorCodeFromBody(r.slice());
+      if (code != TRI_ERROR_NO_ERROR) {
+        return code;
+      }
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 }  // namespace arangodb
