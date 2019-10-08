@@ -27,7 +27,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
@@ -54,9 +58,10 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
-RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response),
+RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response),
       _manager(globalRocksEngine()->replicationManager()) {}
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
@@ -220,7 +225,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -374,7 +379,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     builder.add(VPackValue("databases"));
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
-    grantTemporaryRights();
+    ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -676,10 +681,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

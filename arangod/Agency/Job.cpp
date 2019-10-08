@@ -21,11 +21,23 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Job.h"
-#include "Basics/StringUtils.h"
-#include "Random/RandomGenerator.h"
-
+#include <chrono>
+#include <cstdint>
+#include <iterator>
 #include <numeric>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
+
+#include "Job.h"
+
+#include "Agency/Node.h"
+#include "Agency/Supervision.h"
+#include "Agency/TimeString.h"
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
+#include "Random/RandomGenerator.h"
 
 static std::string const DBServer = "DBServer";
 
@@ -41,6 +53,8 @@ std::string const cleanedPrefix = "/Target/CleanedServers";
 std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
+std::string const planDBPrefix = "/Plan/Databases/";
+std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
@@ -65,7 +79,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
       _creator(creator),
       _jb(nullptr) {}
 
-Job::~Job() {}
+Job::~Job() = default;
 
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";
@@ -156,7 +170,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
         for (auto const& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
         }
-      }  // -- preconditions
+      } // -- preconditions
     }
 
     write_ret_t res = singleWriteTransaction(_agent, finished, false);
@@ -561,7 +575,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
       type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
-             type == "cleanOutServer") {
+             type == "cleanOutServer" || type == "resignLeadership") {
     return true;
   }
 

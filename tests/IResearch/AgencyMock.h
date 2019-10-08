@@ -26,6 +26,8 @@
 
 #include "AgencyCommManagerMock.h"
 
+#include "Basics/debugging.h"
+
 namespace arangodb {
 namespace consensus {
 

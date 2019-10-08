@@ -36,17 +36,12 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesSkiplistIndex.h"
 #include "MMFiles/MMFilesTtlIndex.h"
-#include "MMFiles/mmfiles-fulltext-index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "IResearch/IResearchMMFilesLink.h"
 
 using namespace arangodb;
 

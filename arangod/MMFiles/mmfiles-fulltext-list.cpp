@@ -23,6 +23,8 @@
 
 #include "mmfiles-fulltext-list.h"
 
+#include "Basics/memory.h"
+
 /// @brief we'll set this bit (the highest of a uint32_t) if the list is sorted
 /// if the list is not sorted, this bit is cleared
 /// This is done as a space optimization. A big index will contain a lot of
@@ -336,14 +338,4 @@ TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(TRI_fulltext_list_t* lis
   }
 
   return list;
-}
-
-/// @brief return the number of entries
-uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
-  return GetNumEntries(list);
-}
-
-/// @brief return a pointer to the first list entry
-TRI_fulltext_list_entry_t* TRI_StartListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
-  return GetStart(list);
 }

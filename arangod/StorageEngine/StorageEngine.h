@@ -28,13 +28,19 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 
@@ -50,6 +56,10 @@ enum class RecoveryState : uint32_t {
   /// @brief recovery is done
   DONE
 };
+
+namespace aql {
+class OptimizerRulesFeature;
+}
 
 class DatabaseInitialSyncer;
 class LogicalCollection;
@@ -70,6 +80,7 @@ namespace transaction {
 class Context;
 class ContextData;
 class Manager;
+class ManagerFeature;
 struct Options;
 
 }  // namespace transaction
@@ -88,17 +99,17 @@ class StorageEngine : public application_features::ApplicationFeature {
     // startup
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
+    startsAfter<application_features::BasicFeaturePhaseServer>();
 
-    startsAfter("BasicsPhase");
-    startsAfter("CacheManager");
-    startsBefore("StorageEngine");
-    startsAfter("TransactionManager");
-    startsAfter("ViewTypes");
+    startsAfter<CacheManagerFeature>();
+    startsBefore<StorageEngineFeature>();
+    startsAfter<transaction::ManagerFeature>();
+    startsAfter<ViewTypesFeature>();
   }
 
   virtual bool supportsDfdb() const = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager() = 0;
+  virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
@@ -113,9 +124,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) = 0;
-
-  // minimum timeout for the synchronous replication
-  virtual double minimumSyncReplicationTimeout() const = 0;
 
   // status functionality
   // --------------------
@@ -147,6 +155,9 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
+
+  // return the path for the actual data
+  virtual std::string dataPath() const = 0;
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
@@ -345,7 +356,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() {}
+  virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() {}

@@ -20,12 +20,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ConstFetcher.h"
-
-#include "Aql/AqlItemBlock.h"
-#include "Aql/DependencyProxy.h"
-#include "Aql/FilterExecutor.h"
 #include "ConstFetcher.h"
+
+#include "Aql/DependencyProxy.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -41,7 +40,8 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
   _rowIndex = 0;
 }
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow(size_t) {
+  // This fetcher does not use atMost
   // This fetcher never waits because it can return only its
   // injected block and does not have the ability to pull.
   if (!indexIsValid()) {
@@ -49,7 +49,7 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
   }
   TRI_ASSERT(_currentBlock != nullptr);
 
-  //set state
+  // set state
   ExecutionState rowState = ExecutionState::HASMORE;
   if (isLastRowInBlock()) {
     rowState = ExecutionState::DONE;
@@ -66,7 +66,7 @@ std::pair<ExecutionState, size_t> ConstFetcher::skipRows(size_t) {
   }
   TRI_ASSERT(_currentBlock != nullptr);
 
-  //set state
+  // set state
   ExecutionState rowState = ExecutionState::HASMORE;
   if (isLastRowInBlock()) {
     rowState = ExecutionState::DONE;
@@ -92,4 +92,10 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPass
   // time to track them down. Thus the following assert is commented out.
   // TRI_ASSERT(_blockForPassThrough != nullptr);
   return {ExecutionState::DONE, std::move(_blockForPassThrough)};
+}
+
+std::pair<ExecutionState, size_t> ConstFetcher::preFetchNumberOfRows(size_t) {
+  // This is not implemented for this fetcher
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

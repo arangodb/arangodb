@@ -29,6 +29,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -42,10 +43,13 @@ NS_ROOT
 segment_writer::stored_column::stored_column(
     const string_ref& name, 
     columnstore_writer& columnstore,
-    bool cache
-) : name(name.c_str(), name.size()) {
+    const column_info_provider_t& column_info,
+    bool cache)
+  : name(name.c_str(), name.size()),
+    stream(column_info(name)) {
   if (!cache) {
-    std::tie(id, writer) = columnstore.push_column();
+    auto& info = stream.info();
+    std::tie(id, writer) = columnstore.push_column(info);
   } else {
     writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
       this->stream.prepare(doc);
@@ -77,8 +81,11 @@ doc_id_t segment_writer::begin(
   return doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 }
 
-segment_writer::ptr segment_writer::make(directory& dir, const comparer* comparator) {
-  return memory::maker<segment_writer>::make(dir, comparator);
+segment_writer::ptr segment_writer::make(
+    directory& dir,
+    const column_info_provider_t& column_info,
+    const comparer* comparator) {
+  return memory::maker<segment_writer>::make(dir, column_info, comparator);
 }
 
 size_t segment_writer::memory_active() const NOEXCEPT {
@@ -130,9 +137,11 @@ bool segment_writer::remove(doc_id_t doc_id) {
 
 segment_writer::segment_writer(
     directory& dir,
-    const comparer* comparator
-) NOEXCEPT
-  : fields_(comparator),
+    const column_info_provider_t& column_info,
+    const comparer* comparator) NOEXCEPT
+  : sort_(column_info),
+    fields_(comparator),
+    column_info_(&column_info),
     dir_(dir),
     initialized_(false) {
 }
@@ -170,6 +179,7 @@ columnstore_writer::column_output& segment_writer::stream(
     const hashed_string_ref& name,
     const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
+  assert(column_info_);
 
   auto generator = [](
       const hashed_string_ref& key,
@@ -181,10 +191,10 @@ columnstore_writer::column_output& segment_writer::stream(
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    columns_,                                           // container
-    generator,                                          // key generator
-    name,                                               // key
-    name, *col_writer_, nullptr != fields_.comparator() // value // FIXME
+    columns_,                                                          // container
+    generator,                                                         // key generator
+    name,                                                              // key
+    name, *col_writer_, *column_info_, nullptr != fields_.comparator() // value // FIXME
   ).first->second.writer(doc_id);
 }
 
@@ -206,8 +216,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   struct less_t {
     bool operator()(
         const stored_column* lhs,
-        const stored_column* rhs
-    ) const NOEXCEPT {
+        const stored_column* rhs) const NOEXCEPT {
       return lhs->name < rhs->name;
     }
   };

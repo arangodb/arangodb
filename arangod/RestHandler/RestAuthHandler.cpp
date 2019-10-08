@@ -28,7 +28,9 @@
 
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
 
@@ -36,8 +38,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _validFor(60 * 60 * 24 * 30) {}
+RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _validFor(60 * 60 * 24 * 30) {}
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {

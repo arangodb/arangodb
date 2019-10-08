@@ -26,6 +26,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "Basics/Common.h"
 
 #include "gtest/gtest.h"
@@ -109,7 +111,7 @@ TEST(CStringBufferTest, tst_char_append) {
   l1 = STRLEN(TWNTYA);
   l2 = STRLEN(sb._buffer);
   
-  EXPECT_TRUE((l1) == l2);
+  EXPECT_TRUE(l1 == l2);
   
   EXPECT_TRUE(std::string(TWNTYA, l1) == std::string(sb._buffer, l2));
 
@@ -161,12 +163,12 @@ TEST(CStringBufferTest, tst_begin_end_empty_clear) {
   
   ptr = TRI_BeginStringBuffer(&sb);
 
-  EXPECT_TRUE((void*) sb._buffer == (void*) ptr);
+  EXPECT_TRUE(sb._buffer == ptr);
 
   l1 = STRLEN(STR);
   ptr = TRI_EndStringBuffer(&sb);
 
-  EXPECT_TRUE((void*)(sb._buffer + l1) == (void*) ptr);
+  EXPECT_TRUE(sb._buffer + l1 == ptr);
 
   EXPECT_TRUE(! TRI_EmptyStringBuffer(&sb));
 
@@ -197,7 +199,7 @@ TEST(CStringBufferTest, tst_cpy) {
 
   l1 = STRLEN(STR);
 
-  EXPECT_TRUE((l1) == STRLEN(sb1._buffer));
+  EXPECT_TRUE(l1 == STRLEN(sb1._buffer));
 
   EXPECT_TRUE(std::string(STR, l1) == std::string(sb2._buffer, l1));
 
@@ -247,18 +249,18 @@ TEST(CStringBufferTest, tst_erase_frnt2) {
 
   l = STRLEN(sb._buffer);
 
-  EXPECT_TRUE((1UL) == l);
-  EXPECT_TRUE((1UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(1UL == l);
+  EXPECT_TRUE(1UL == TRI_LengthStringBuffer(&sb));
   EXPECT_TRUE(std::string("f") == sb._buffer);
 
   // clang 5.1 failes without the cast
-  EXPECT_TRUE(((unsigned int) 'f') == (unsigned int) sb._buffer[0]);
-  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
-  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[2]);
-  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[3]);
-  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[4]);
-  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[5]);
-  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[6]);
+  EXPECT_TRUE('f' == sb._buffer[0]);
+  EXPECT_TRUE('\0' == sb._buffer[1]);
+  EXPECT_TRUE('\0' == sb._buffer[2]);
+  EXPECT_TRUE('\0' == sb._buffer[3]);
+  EXPECT_TRUE('\0' == sb._buffer[4]);
+  EXPECT_TRUE('\0' == sb._buffer[5]);
+  EXPECT_TRUE('\0' == sb._buffer[6]);
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -394,7 +396,7 @@ TEST(CStringBufferTest, tst_length) {
 
   TRI_InitStringBuffer(&sb);
 
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, ONETWOTHREE);
 
@@ -415,21 +417,21 @@ TEST(CStringBufferTest, tst_clear) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
 
   // clear an empty buffer
   TRI_ClearStringBuffer(&sb);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "foo bar baz");
-  EXPECT_TRUE((11UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(11UL == TRI_LengthStringBuffer(&sb));
 
   const char* ptr = TRI_BeginStringBuffer(&sb);
   TRI_ClearStringBuffer(&sb);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
 
   // buffer should still point to ptr
-  EXPECT_TRUE(((void*) ptr) == (void*) TRI_BeginStringBuffer(&sb));
+  EXPECT_TRUE(ptr == TRI_BeginStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -450,18 +452,18 @@ TEST(CStringBufferTest, tst_steal) {
   char* stolen = TRI_StealStringBuffer(&sb);
   
   // buffer is now empty
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
-  EXPECT_TRUE(((void*) nullptr) == (void*) TRI_BeginStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(nullptr == TRI_BeginStringBuffer(&sb));
 
   // stolen should still point to ptr
-  EXPECT_TRUE(((void*) stolen) == (void*) ptr);
-  EXPECT_TRUE((0) == strcmp(stolen, ptr));
+  EXPECT_TRUE(stolen == ptr);
+  EXPECT_TRUE(0 == strcmp(stolen, ptr));
 
   TRI_DestroyStringBuffer(&sb);
 
   // destroying the string buffer should not affect us
-  EXPECT_TRUE(((void*) stolen) == (void*) ptr);
-  EXPECT_TRUE((0) == strcmp(stolen, ptr));
+  EXPECT_TRUE(stolen == ptr);
+  EXPECT_TRUE(0 == strcmp(stolen, ptr));
 
   // must manually free the string
   TRI_Free(stolen);
@@ -477,23 +479,23 @@ TEST(CStringBufferTest, tst_last_char) {
   TRI_InitStringBuffer(&sb);
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  EXPECT_TRUE(((unsigned int) 'f') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE('f' == TRI_LastCharStringBuffer(&sb));
 
   TRI_AppendCharStringBuffer(&sb, '1');
-  EXPECT_TRUE(((unsigned int) '1') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE('1' == TRI_LastCharStringBuffer(&sb));
   
   TRI_AppendCharStringBuffer(&sb, '\n');
-  EXPECT_TRUE(((unsigned int) '\n') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE('\n' == TRI_LastCharStringBuffer(&sb));
 
   TRI_ClearStringBuffer(&sb);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
   
   for (size_t i = 0; i < 100; ++i) {
     TRI_AppendStringStringBuffer(&sb, "the quick brown fox jumped over the lazy dog");
-    EXPECT_TRUE(((unsigned int) 'g') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+    EXPECT_TRUE('g' == TRI_LastCharStringBuffer(&sb));
   }
   TRI_AppendCharStringBuffer(&sb, '.');
-  EXPECT_TRUE(((unsigned int) '.') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE('.' == TRI_LastCharStringBuffer(&sb));
   
   TRI_AnnihilateStringBuffer(&sb);
 
@@ -508,81 +510,27 @@ TEST(CStringBufferTest, tst_reserve) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
  
   TRI_ReserveStringBuffer(&sb, 0);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
 
   TRI_ReserveStringBuffer(&sb, 1000);
-  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(0UL == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  EXPECT_TRUE((1UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(1UL == TRI_LengthStringBuffer(&sb));
 
   for (size_t i = 0; i < 5000; ++i) {
     TRI_AppendCharStringBuffer(&sb, '.');
   }
-  EXPECT_TRUE((5001UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(5001UL == TRI_LengthStringBuffer(&sb));
   
   TRI_ReserveStringBuffer(&sb, 1000);
-  EXPECT_TRUE((5001UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(5001UL == TRI_LengthStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tst_timing
-////////////////////////////////////////////////////////////////////////////////
-
-/*TEST(CStringBufferTest, tst_timing) {
-  char buffer[1024];
-  size_t const repeats = 100;
-
-  size_t const loop1 =  25 * 10000;
-  size_t const loop2 = 200 * 10000;
-
-  TRI_string_buffer_t sb;
-  size_t i;
-  size_t j;
-
-  double t1 = TRI_microtime();
-
-  // integer
-  for (j = 0;  j < repeats;  ++j) {
-    TRI_InitStringBuffer(&sb);
-
-    for (i = 0;  i < loop1;  ++i) {
-      TRI_AppendInt32StringBuffer(&sb, 12345678);
-    }
-
-    EXPECT_TRUE((loop1 * 8) == TRI_LengthStringBuffer(&sb));
-
-    TRI_DestroyStringBuffer(&sb);
-  }
-
-  t1 = TRI_microtime() - t1;
-
-  snprintf(buffer, sizeof(buffer), "time for integer append: %f msec", t1 * 1000);
-
-  // character
-  t1 = TRI_microtime();
-
-  for (j = 0;  j < repeats;  ++j) {
-    TRI_InitStringBuffer(&sb);
-
-    for (i = 0;  i < loop2;  ++i) {
-      TRI_AppendCharStringBuffer(&sb, 'A');
-    }
-
-    EXPECT_TRUE((loop2) == TRI_LengthStringBuffer(&sb));
-
-    TRI_DestroyStringBuffer(&sb);
-  }
-
-  t1 = TRI_microtime() - t1;
-
-  snprintf(buffer, sizeof(buffer), "time for character append: %f msec", t1 * 1000);
-}*/ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tst_doubles

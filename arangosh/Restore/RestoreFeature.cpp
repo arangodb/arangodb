@@ -39,7 +39,13 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -177,7 +183,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 }
 
 /// @brief Sort collections for proper recreation order
-bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
+bool sortCollectionsForCreation(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
   
@@ -265,7 +271,8 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 }
 
 /// @brief Create the database to restore to, connecting manually
-arangodb::Result tryCreateDatabase(std::string const& name) {
+arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationServer& server,
+                                   std::string const& name) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
   using arangodb::rest::RequestType;
@@ -274,19 +281,17 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   using arangodb::velocypack::ObjectBuilder;
 
   // get client feature for configuration info
-  auto client =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::ClientFeature>(
-          "Client");
-  TRI_ASSERT(nullptr != client);
+  arangodb::ClientFeature& client =
+      server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
 
   // get httpclient by hand rather than using manager, to bypass any built-in
   // checks which will fail if the database doesn't exist
   std::unique_ptr<SimpleHttpClient> httpClient;
   try {
-    httpClient = client->createHttpClient();
-    httpClient->params().setLocationRewriter(static_cast<void*>(client),
+    httpClient = client.createHttpClient();
+    httpClient->params().setLocationRewriter(static_cast<void*>(&client),
                                              arangodb::ClientManager::rewriteLocation);
-    httpClient->params().setUserNamePassword("/", client->username(), client->password());
+    httpClient->params().setUserNamePassword("/", client.username(), client.password());
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -301,8 +306,8 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
       ArrayBuilder users(&builder, "users");
       {
         ObjectBuilder user(&builder);
-        user->add("username", VPackValue(client->username()));
-        user->add("passwd", VPackValue(client->password()));
+        user->add("username", VPackValue(client.username()));
+        user->add("passwd", VPackValue(client.password()));
       }
     }
   }
@@ -355,8 +360,11 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
 }
 
 /// @brief Check the database name specified by the dump file
-arangodb::Result checkDumpDatabase(arangodb::ManagedDirectory& directory, bool forceSameDatabase) {
+arangodb::Result checkDumpDatabase(arangodb::application_features::ApplicationServer& server,
+                                   arangodb::ManagedDirectory& directory,
+                                   bool forceSameDatabase) {
   using arangodb::ClientFeature;
+  using arangodb::HttpEndpointProvider;
   using arangodb::Logger;
   using arangodb::application_features::ApplicationServer;
 
@@ -374,13 +382,12 @@ arangodb::Result checkDumpDatabase(arangodb::ManagedDirectory& directory, bool f
         << "Database name in source dump is '" << databaseName << "'";
   }
 
-  ClientFeature* client =
-      ApplicationServer::getFeature<ClientFeature>("Client");
-  if (forceSameDatabase && databaseName != client->databaseName()) {
+  ClientFeature& client = server.getFeature<HttpEndpointProvider, ClientFeature>();
+  if (forceSameDatabase && databaseName != client.databaseName()) {
     return {TRI_ERROR_BAD_PARAMETER,
             std::string("database name in dump.json ('") + databaseName +
                 "') does not match specified database name ('" +
-                client->databaseName() + "')"};
+                client.databaseName() + "')"};
   }
 
   return {};
@@ -898,24 +905,28 @@ arangodb::Result processInputDirectory(
         }
       }
     }
-    std::sort(collections.begin(), collections.end(), ::sortCollections);
 
-    std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(
-        collections.size());
+    // order collections so that prototypes for distributeShardsLike come first
+    std::sort(collections.begin(), collections.end(), ::sortCollectionsForCreation);
+
+    std::unique_ptr<arangodb::RestoreFeature::JobData> usersData;
+    std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs;
+    jobs.reserve(collections.size());
 
     bool didModifyFoxxCollection = false;
     // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
       VPackSlice params = collection.get("parameters");
+      VPackSlice name = VPackSlice::emptyStringSlice();
       if (params.isObject()) {
-        params = params.get("name");
+        name = params.get("name");
         // Only these two are relevant for FOXX.
-        if (params.isString() && (params.isEqualString("_apps") ||
-                                  params.isEqualString("_appbundles"))) {
+        if (name.isString() && (name.isEqualString("_apps") ||
+                                name.isEqualString("_appbundles"))) {
           didModifyFoxxCollection = true;
         }
-      };
+      }
 
       auto jobData =
           std::make_unique<arangodb::RestoreFeature::JobData>(directory, feature, options,
@@ -928,11 +939,19 @@ arangodb::Result processInputDirectory(
           return result;
         }
       }
-      stats.totalCollections++;
-
-      jobs.push_back(std::move(jobData));
+      
+      if (name.isString() && name.stringRef() == "_users") {
+        // special treatment for _users collection - this must be the very last, 
+        // and run isolated from all previous data loading operations - the
+        // reason is that loading into the users collection may change the
+        // credentials for the current arangorestore connection!
+        usersData = std::move(jobData);
+      } else {
+        stats.totalCollections++;
+        jobs.push_back(std::move(jobData));
+      }
     }
-
+    
     // Step 4: fire up data transfer
     for (auto& job : jobs) {
       if (!jobQueue.queueJob(std::move(job))) {
@@ -976,8 +995,8 @@ arangodb::Result processInputDirectory(
       }
     }
 
-    // should instantly return
     jobQueue.waitForIdle();
+    jobs.clear();
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
@@ -989,10 +1008,10 @@ arangodb::Result processInputDirectory(
       Result res = ::triggerFoxxHeal(httpClient);
       if (res.fail()) {
         LOG_TOPIC("47cd7", WARN, Logger::RESTORE)
-            << "Reloading of Foxx services failed. In the cluster Foxx "
-               "services will be available eventually, On single servers send "
-               "a POST to '/_api/foxx/_local/heal' on the current database, "
-               "with an empty body.";
+            << "Reloading of Foxx services failed: " << res.errorMessage()
+            << "- in the cluster Foxx services will be available eventually, On single servers send "
+            << "a POST to '/_api/foxx/_local/heal' on the current database, "
+            << "with an empty body.";
       }
     }
 
@@ -1011,6 +1030,22 @@ arangodb::Result processInputDirectory(
         if (!res.ok()) {
           return res;
         }
+      }
+    }
+
+    // Last step: reload data into _users. Note: this can change the credentials
+    // of the arangorestore user itself
+    if (usersData) {
+      TRI_ASSERT(jobs.empty());
+      if (!jobQueue.queueJob(std::move(usersData))) {
+        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
+      }
+      jobQueue.waitForIdle();
+      jobs.clear();
+
+      Result firstError = feature.getFirstError();
+      if (firstError.fail()) {
+        return firstError;
       }
     }
   } catch (std::exception const& ex) {
@@ -1085,12 +1120,12 @@ RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, RestoreFeature::featureName()),
-      _clientManager{Logger::RESTORE},
-      _clientTaskQueue{::processJob, ::handleJobResult},
+      _clientManager{server, Logger::RESTORE},
+      _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -1326,7 +1361,8 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(_options.inputPath, false, false);
+  _directory =
+      std::make_unique<ManagedDirectory>(server(), _options.inputPath, false, false);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_NOT_FOUND:
@@ -1341,8 +1377,7 @@ void RestoreFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   _exitCode = EXIT_SUCCESS;
 
@@ -1357,12 +1392,16 @@ void RestoreFeature::start() {
       }
     }
 
-    // sort by name, with _system first
+    // sort by name, with _system last
+    // this is necessary because in the system database there is the _users collection,
+    // and we have to process users last of all. otherwise we risk updating the
+    // credentials for the user which users the current arangorestore connection, and
+    // this will make subsequent arangorestore calls to the server fail with "unauthorized"
     std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
       if (lhs == "_system" && rhs != "_system") {
-        return true;
-      } else if (rhs == "_system" && lhs != "_system") {
         return false;
+      } else if (rhs == "_system" && lhs != "_system") {
+        return true;
       }
       return lhs < rhs;
     });
@@ -1371,7 +1410,7 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
   } else {
-    databases.push_back(client->databaseName());
+    databases.push_back(client.databaseName());
   }
 
   std::unique_ptr<SimpleHttpClient> httpClient;
@@ -1380,31 +1419,31 @@ void RestoreFeature::start() {
   Result result;
 
   result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                             true, !_options.createDatabase);
+                                             true, !_options.createDatabase, false);
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
   if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-    std::string dbName = client->databaseName();
+    std::string dbName = client.databaseName();
     if (_options.createDatabase) {
       // database not found, but database creation requested
       LOG_TOPIC("9b5a6", INFO, Logger::RESTORE) << "Creating database '" << dbName << "'";
 
-      client->setDatabaseName("_system");
+      client.setDatabaseName("_system");
 
-      Result res = ::tryCreateDatabase(dbName);
+      Result res = ::tryCreateDatabase(server(), dbName);
       if (res.fail()) {
         LOG_TOPIC("b19db", FATAL, Logger::RESTORE) << "Could not create database '" << dbName << "': " << httpClient->getErrorMessage();
         FATAL_ERROR_EXIT();
       }
 
       // restore old database name
-      client->setDatabaseName(dbName);
+      client.setDatabaseName(dbName);
 
       // re-check connection and version
-      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
     } else {
       LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
     }
@@ -1460,12 +1499,13 @@ void RestoreFeature::start() {
 
     if (_options.allDatabases) {
       // inject current database
-      client->setDatabaseName(db);
+      client.setDatabaseName(db);
       LOG_TOPIC("36075", INFO, Logger::RESTORE) << "Restoring database '" << db << "'";
-      _directory = std::make_unique<ManagedDirectory>(basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
+      _directory = std::make_unique<ManagedDirectory>(
+          server(), basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                 false, !_options.createDatabase);
+                                                 false, !_options.createDatabase, false);
       if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
             << "cannot create server connection, giving up!";
@@ -1477,19 +1517,19 @@ void RestoreFeature::start() {
           // database not found, but database creation requested
           LOG_TOPIC("080f3", INFO, Logger::RESTORE) << "Creating database '" << db << "'";
 
-          client->setDatabaseName("_system");
+          client.setDatabaseName("_system");
 
-          result = ::tryCreateDatabase(db);
+          result = ::tryCreateDatabase(server(), db);
           if (result.fail()) {
             LOG_TOPIC("7a35f", ERR, Logger::RESTORE) << "Could not create database '" << db << "': " << httpClient->getErrorMessage();
             break;
           }
 
           // restore old database name
-          client->setDatabaseName(db);
+          client.setDatabaseName(db);
 
           // re-check connection and version
-          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true);
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true, false);
         } else {
           LOG_TOPIC("be594", WARN, Logger::RESTORE) << "Database '" << db << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
         }
@@ -1512,7 +1552,7 @@ void RestoreFeature::start() {
     ::checkEncryption(*_directory);
 
     // read dump info
-    result = ::checkDumpDatabase(*_directory, _options.forceSameDatabase);
+    result = ::checkDumpDatabase(server(), *_directory, _options.forceSameDatabase);
     if (result.fail()) {
       LOG_TOPIC("0cbdf", FATAL, arangodb::Logger::RESTORE) << result.errorMessage();
       FATAL_ERROR_EXIT();

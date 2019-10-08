@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -25,12 +24,15 @@
 #include "Store.h"
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "StoreCallback.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -110,8 +112,9 @@ inline static bool endpointPathFromUrl(std::string const& url,
 }
 
 /// Ctor with name
-Store::Store(Agent* agent, std::string const& name)
-    : _agent(agent), _node(name, this) {}
+Store::Store(arangodb::application_features::ApplicationServer& server, Agent* agent,
+             std::string const& name)
+    : _server(server), _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -142,7 +145,7 @@ Store& Store::operator=(Store&& rhs) {
 }
 
 /// Default dtor
-Store::~Store() {}
+Store::~Store() = default;
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
@@ -323,21 +326,31 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     for (auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
       urls.push_back(it->first);
     }
+    
+    auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+    network::ConnectionPool* cp = nf.pool();
 
     // Callback
 
     for (auto const& url : urls) {
-      Builder body;  // host
+
+      auto buffer = std::make_shared<VPackBufferUInt8>();
+      VPackBuilder body(*buffer);  // host
       {
         VPackObjectBuilder b(&body);
         body.add("term", VPackValue(term));
         body.add("index", VPackValue(index));
+
         auto ret = in.equal_range(url);
-        std::map<std::string,std::map<std::string, std::string>> result;
+
         // key -> (modified -> op)
+        // using the map to make sure no double key entries end up in document
+        std::map<std::string,std::map<std::string, std::string>> result;
         for (auto it = ret.first; it != ret.second; ++it) {
           result[it->second->key][it->second->modified] = it->second->oper;
         }
+
+        // Work the map into JSON
         for (auto const& m : result) {
           body.add(VPackValue(m.first));
           {
@@ -355,14 +368,23 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-        std::unordered_map<std::string, std::string> hf;
+        
+        Agent* agent = _agent;
+        network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
+                             *buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+          if (r.fail() || r.response->statusCode() >= 400) {
+            LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
+              << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
+              << "): " << r.slice().toJson();
 
-        arangodb::ClusterComm::instance()->asyncRequest(
-            coordinatorTransactionID, endpoint, rest::RequestType::POST, path,
-            std::make_shared<std::string>(body.toString()), hf,
-            std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
-
+            if (r.ok() && r.response->statusCode() == 404 && _agent != nullptr) {
+              LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << url;
+              agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+            }
+          }
+          
+        });
+        
       } else {
         LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
       }
@@ -453,7 +475,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               }
               if (found) {
                 continue;
-              } 
+              }
               ret.push_back(precond.key);
             }
           }
@@ -464,7 +486,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else if (oper == "notin") {  // in
           if (!found) {
             continue;
-          } 
+          }
           if (node->slice().isArray()) {
             bool found = false;
             for (auto const& i : VPackArrayIterator(node->slice())) {
@@ -639,7 +661,7 @@ void Store::dumpToBuilder(Builder& builder) const {
       clean[i.second] = ts;
     } else if (ts < it->second) {
       it->second = ts;
-    }      
+    }
   }
   {
     VPackObjectBuilder guard(&builder);
@@ -690,7 +712,51 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
 
     if (value.isObject() && value.hasKey("op")) {
-      _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      if (value.get("op").isEqualString("delete") ||
+          value.get("op").isEqualString("replace") ||
+          value.get("op").isEqualString("erase")) {
+        if (!_node.has(abskeys.at(i))) {
+          continue;
+        }
+      }
+      auto uri = Node::normalize(abskeys.at(i));
+      if (value.get("op").isEqualString("observe")) {
+        bool found = false;
+        if (value.hasKey("url") && value.get("url").isString()) {
+          auto url = value.get("url").copyString();
+          auto ret = _observerTable.equal_range(url);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == uri) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            _observerTable.emplace(std::pair<std::string, std::string>(url, uri));
+            _observedTable.emplace(std::pair<std::string, std::string>(uri, url));
+          }
+        }
+      } else if (value.get("op").isEqualString("unobserve")) {
+        if (value.hasKey("url") && value.get("url").isString()) {
+          auto url = value.get("url").copyString();
+          auto ret = _observerTable.equal_range(url);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == uri) {
+              _observerTable.erase(it);
+              break;
+            }
+          }
+          ret = _observedTable.equal_range(uri);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == url) {
+              _observedTable.erase(it);
+              break;
+            }
+          }
+        }
+      } else {
+        _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      }
     } else {
       _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
     }
@@ -731,7 +797,7 @@ Store& Store::operator=(VPackSlice const& s) {
       }
     }
   }
-  
+
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());

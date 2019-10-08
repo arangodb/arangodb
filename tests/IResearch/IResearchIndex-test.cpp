@@ -24,21 +24,23 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
-
 #include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "utils/utf8_path.hpp"
+
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
+
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -62,11 +64,14 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
-#include "utils/utf8_path.hpp"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -166,122 +171,42 @@ REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normaliz
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchIndexTest : public ::testing::Test {
+class IResearchIndexTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AQL, arangodb::LogLevel::ERR> {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
 
-  IResearchIndexTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+ private:
+  TRI_vocbase_t* _vocbase;
 
+ protected:
+  IResearchIndexTest() : server(false) {
     arangodb::tests::init(true);
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.startFeatures();
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR);  // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    features.emplace_back(new arangodb::FlushFeature(server), false);
-    features.emplace_back(new arangodb::AqlFeature(server),
-                          true);  // required for arangodb::aql::Query(...)
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ExecContext in Collections::create(...)
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for LogicalViewStorageEngine::modify(...)
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);  // requires for IResearchView::open()
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          true);  // required by TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required by TRI_vocbase_t(...)
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // required for AQLFeature
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);  // required for arangodb::aql::Query::execute(...)
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server),
-                          true);  // required for use of iresearch analyzers
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);  // required for creating views of type 'iresearch'
-
-#if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases->slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
-    analyzers->emplace(result, "testVocbase::test_A", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
-    analyzers->emplace(result, "testVocbase::test_B", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
+    analyzers.emplace(
+        result, "testVocbase::test_A", "TestInsertAnalyzer",
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
+    analyzers.emplace(
+        result, "testVocbase::test_B", "TestInsertAnalyzer",
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
 
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
-  ~IResearchIndexTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
+  TRI_vocbase_t& vocbase() { return *_vocbase; }
 };
 
 }  // namespace
@@ -298,14 +223,12 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
-  ASSERT_TRUE((nullptr != collection0));
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
-  ASSERT_TRUE((nullptr != collection1));
-  auto viewImpl = vocbase.createView(createView->slice());
-  ASSERT_TRUE((nullptr != viewImpl));
+  auto collection0 = vocbase().createCollection(createCollection0->slice());
+  ASSERT_NE(nullptr, collection0);
+  auto collection1 = vocbase().createCollection(createCollection1->slice());
+  ASSERT_NE(nullptr, collection1);
+  auto viewImpl = vocbase().createView(createView->slice());
+  ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
   {
@@ -315,7 +238,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
         "{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name(), collection1->name()};
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                        EMPTY, collections, EMPTY,
                                        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -346,7 +269,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc', 'test_A'), "
         "'test_B') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
         nullptr);
@@ -360,16 +283,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_A') OPTIONS { "
         "waitForSync: true } SORT d.seq RETURN d",
         nullptr);
@@ -383,16 +306,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc'), 'test_A') "
         "OPTIONS { waitForSync: true } SORT d.seq RETURN d",
         nullptr);
@@ -406,16 +329,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
   {
     auto result =
-        arangodb::tests::executeQuery(vocbase,
+        arangodb::tests::executeQuery(vocbase(),
                                       "FOR d IN testView SEARCH PHRASE(d.X, "
                                       "'abc', 'test_B') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -428,16 +351,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT "
         "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -450,16 +373,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
   {
     auto result =
-        arangodb::tests::executeQuery(vocbase,
+        arangodb::tests::executeQuery(vocbase(),
                                       "FOR d IN testView SEARCH PHRASE(d.Y, "
                                       "'def', 'test_A') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -472,16 +395,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def', 'test_A'), "
         "'test_B') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -494,16 +417,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
   {
     auto result =
-        arangodb::tests::executeQuery(vocbase,
+        arangodb::tests::executeQuery(vocbase(),
                                       "FOR d IN testView SEARCH PHRASE(d.Y, "
                                       "'def', 'test_A') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -516,16 +439,16 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT "
         "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -538,10 +461,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 }
 
@@ -553,14 +476,13 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
-  ASSERT_TRUE((nullptr != collection0));
+  ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
-  ASSERT_TRUE((nullptr != collection1));
+  ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice());
-  ASSERT_TRUE((nullptr != viewImpl));
+  ASSERT_NE(nullptr, viewImpl);
 
   // link collections with view
   {
@@ -694,10 +616,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -722,10 +644,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -750,10 +672,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -774,10 +696,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -798,10 +720,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -822,10 +744,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -844,10 +766,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -866,10 +788,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -888,10 +810,10 @@ TEST_F(IResearchIndexTest, test_async_index) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 }
 
@@ -903,14 +825,13 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
-  ASSERT_TRUE((nullptr != collection0));
+  ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
-  ASSERT_TRUE((nullptr != collection1));
+  ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice());
-  ASSERT_TRUE((nullptr != viewImpl));
+  ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
   {
@@ -964,10 +885,10 @@ TEST_F(IResearchIndexTest, test_fields) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 
   // docs match from collection0
@@ -984,9 +905,9 @@ TEST_F(IResearchIndexTest, test_fields) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE(expected[i++] == key.getNumber<size_t>());
+      EXPECT_EQ(expected[i++], key.getNumber<size_t>());
     }
 
-    EXPECT_TRUE(i == expected.size());
+    EXPECT_EQ(i, expected.size());
   }
 }

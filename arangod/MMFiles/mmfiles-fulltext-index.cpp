@@ -25,8 +25,11 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/memory.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/mmfiles-fulltext-list.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
 
@@ -78,7 +81,7 @@ typedef void followers_t;
 /// contains a byte stream consisting of the following values:
 /// - uint32_t numAllocated: number of handles allocated for the node
 /// - uint32_t numEntries: number of handles currently in use
-/// - TRI_fulltext_handle_t* handles: all the handle values subsequently
+/// - void* handles: all the handle values subsequently
 /// Note that the highest bit of the numAllocated value contains a flag whether
 /// the handles list is sorted or not. It is therefore not safe to access the
 /// properties directly, but instead always the special functions provided in
@@ -1267,24 +1270,6 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
   }
 
   return result;
-}
-
-/// @brief return stats about the index
-TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
-  index__t* idx = static_cast<index__t*>(ftx);
-
-  TRI_fulltext_stats_t stats;
-  stats._memoryTotal = TRI_MemoryMMFilesFulltextIndex(idx);
-#if TRI_FULLTEXT_DEBUG
-  stats._memoryOwn = idx->_memoryAllocated;
-  stats._memoryBase = idx->_memoryBase;
-  stats._memoryNodes = idx->_memoryNodes;
-  stats._memoryFollowers = idx->_memoryFollowers;
-  stats._memoryDocuments = idx->_memoryAllocated - idx->_memoryNodes - idx->_memoryBase;
-  stats._numNodes = idx->_nodesAllocated;
-#endif
-
-  return stats;
 }
 
 /// @brief return the total memory used by the index

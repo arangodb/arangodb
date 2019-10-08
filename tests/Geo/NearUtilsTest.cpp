@@ -26,7 +26,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Geo/GeoJson.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
 #include "VocBase/voc-types.h"
@@ -39,7 +39,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <cmath>
 
-#ifdef WIN32
+#ifdef _WIN32
 #undef near
 #endif
 
@@ -139,16 +139,16 @@ protected:
         // geocol.insert({lat,lon});
         S2LatLng cc = S2LatLng::FromDegrees(lat, lon);
         S2CellId cell(cc.ToPoint());
-        EXPECT_TRUE(cell.level() == S2::kMaxCellLevel);
+        EXPECT_EQ(cell.level(), S2::kMaxCellLevel);
 
         LocalDocumentId rev(counter++);
         index.emplace(cell, rev);
         docs.emplace(rev, cc);
       }
     }
-    EXPECT_TRUE(65341 == counter);
-    EXPECT_TRUE(docs.size() == counter);
-    EXPECT_TRUE(index.size() == counter);
+    EXPECT_EQ(65341, counter);
+    EXPECT_EQ(docs.size(), counter);
+    EXPECT_EQ(index.size(), counter);
 
     params.sorted = true;
     params.origin = S2LatLng::FromDegrees(0, 0);
@@ -161,12 +161,12 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_ascending) {
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_MAX);
   std::set<LocalDocumentId> unique;
-  ASSERT_TRUE(result.size() == counter);
+  ASSERT_EQ(result.size(), counter);
 
   double lastRad = 0;
   for (LocalDocumentId rev : result) {
     // check that we get every document exactly once
-    ASSERT_TRUE(unique.find(rev) == unique.end());
+    ASSERT_EQ(unique.find(rev), unique.end());
     unique.insert(rev);
 
     // check sort order
@@ -177,7 +177,7 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_ascending) {
     ASSERT_TRUE(eq);  // rad >= lastRad
     lastRad = rad;
   }
-  ASSERT_TRUE(lastRad != 0);
+  ASSERT_NE(lastRad, 0);
 }
 
 TEST_F(SimpleNearQueriesTest, query_all_sorted_ascending_with_limit) {
@@ -185,15 +185,15 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_ascending_with_limit) {
   AscIterator near(std::move(params));
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
-  ASSERT_TRUE(result.size() == 5);
+  ASSERT_EQ(result.size(), 5);
 
   std::vector<S2LatLng> coords = convert(docs, result);
   std::sort(coords.begin(), coords.end());
-  ASSERT_TRUE(coords[0] == S2LatLng::FromDegrees(-1, 0));
-  ASSERT_TRUE(coords[1] == S2LatLng::FromDegrees(0, -1));
-  ASSERT_TRUE(coords[2] == S2LatLng::FromDegrees(0, 0));
-  ASSERT_TRUE(coords[3] == S2LatLng::FromDegrees(0, 1));
-  ASSERT_TRUE(coords[4] == S2LatLng::FromDegrees(1, 0));
+  ASSERT_EQ(coords[0], S2LatLng::FromDegrees(-1, 0));
+  ASSERT_EQ(coords[1], S2LatLng::FromDegrees(0, -1));
+  ASSERT_EQ(coords[2], S2LatLng::FromDegrees(0, 0));
+  ASSERT_EQ(coords[3], S2LatLng::FromDegrees(0, 1));
+  ASSERT_EQ(coords[4], S2LatLng::FromDegrees(1, 0));
 }
 
 TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_limit_and_max_distance) {
@@ -202,15 +202,15 @@ TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_limit_and_max_distance
   AscIterator near(std::move(params));
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
-  ASSERT_TRUE(result.size() == 5);
+  ASSERT_EQ(result.size(), 5);
 
   std::vector<S2LatLng> coords = convert(docs, result);
   std::sort(coords.begin(), coords.end());
-  ASSERT_TRUE(coords[0] == S2LatLng::FromDegrees(-1, 0));
-  ASSERT_TRUE(coords[1] == S2LatLng::FromDegrees(0, -1));
-  ASSERT_TRUE(coords[2] == S2LatLng::FromDegrees(0, 0));
-  ASSERT_TRUE(coords[3] == S2LatLng::FromDegrees(0, 1));
-  ASSERT_TRUE(coords[4] == S2LatLng::FromDegrees(1, 0));
+  ASSERT_EQ(coords[0], S2LatLng::FromDegrees(-1, 0));
+  ASSERT_EQ(coords[1], S2LatLng::FromDegrees(0, -1));
+  ASSERT_EQ(coords[2], S2LatLng::FromDegrees(0, 0));
+  ASSERT_EQ(coords[3], S2LatLng::FromDegrees(0, 1));
+  ASSERT_EQ(coords[4], S2LatLng::FromDegrees(1, 0));
 }
 
 TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_different_initial_delta) {
@@ -221,15 +221,15 @@ TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_different_initial_delt
   near.estimateDensity(S2LatLng::FromDegrees(0, 1).ToPoint());
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
-  ASSERT_TRUE(result.size() == 5);
+  ASSERT_EQ(result.size(), 5);
 
   std::vector<S2LatLng> coords = convert(docs, result);
   std::sort(coords.begin(), coords.end());
-  ASSERT_TRUE(coords[0] == S2LatLng::FromDegrees(-1, 0));
-  ASSERT_TRUE(coords[1] == S2LatLng::FromDegrees(0, -1));
-  ASSERT_TRUE(coords[2] == S2LatLng::FromDegrees(0, 0));
-  ASSERT_TRUE(coords[3] == S2LatLng::FromDegrees(0, 1));
-  ASSERT_TRUE(coords[4] == S2LatLng::FromDegrees(1, 0));
+  ASSERT_EQ(coords[0], S2LatLng::FromDegrees(-1, 0));
+  ASSERT_EQ(coords[1], S2LatLng::FromDegrees(0, -1));
+  ASSERT_EQ(coords[2], S2LatLng::FromDegrees(0, 0));
+  ASSERT_EQ(coords[3], S2LatLng::FromDegrees(0, 1));
+  ASSERT_EQ(coords[4], S2LatLng::FromDegrees(1, 0));
 }
 
 TEST_F(SimpleNearQueriesTest, query_all_sorted_descending) {
@@ -238,12 +238,12 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_descending) {
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_MAX);
   std::set<LocalDocumentId> unique;
-  ASSERT_TRUE(result.size() == counter);
+  ASSERT_EQ(result.size(), counter);
 
   double lastRad = geo::kEarthRadiusInMeters;
   for (LocalDocumentId rev : result) {
     // check that we get every document exactly once
-    ASSERT_TRUE(unique.find(rev) == unique.end());
+    ASSERT_EQ(unique.find(rev), unique.end());
     unique.insert(rev);
 
     // check sort order
@@ -253,7 +253,7 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_descending) {
     ASSERT_TRUE(eq);  // rad <= lastRad
     lastRad = rad;
   }
-  ASSERT_TRUE(lastRad == 0);
+  ASSERT_EQ(lastRad, 0);
 }
 
 TEST_F(SimpleNearQueriesTest, query_all_sorted_descending_with_limit) {
@@ -262,13 +262,13 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_descending_with_limit) {
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
   std::set<LocalDocumentId> unique;
-  ASSERT_TRUE(result.size() == 5);
+  ASSERT_EQ(result.size(), 5);
 
   std::vector<S2LatLng> coords = convert(docs, result);
   // [0,180], [0,-180] in any order
   for (size_t i = 0; i < 2; i++) {
-    ASSERT_TRUE(coords[i].lat().degrees() == 0.0);
-    ASSERT_TRUE(std::abs(coords[i].lng().degrees()) == 180.0);
+    ASSERT_EQ(coords[i].lat().degrees(), 0.0);
+    ASSERT_EQ(std::abs(coords[i].lng().degrees()), 180.0);
   }
 }
 
@@ -279,15 +279,15 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_descending_with_limit_and_max_dis
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
   std::set<LocalDocumentId> unique;
-  ASSERT_TRUE(result.size() == 5);
+  ASSERT_EQ(result.size(), 5);
 
   std::vector<S2LatLng> coords = convert(docs, result);
-  ASSERT_TRUE(coords[4] == S2LatLng::FromDegrees(0, 0));
+  ASSERT_EQ(coords[4], S2LatLng::FromDegrees(0, 0));
 
   for (size_t i = 0; i < 4; i++) {
     double lat = std::abs(coords[i].lat().degrees()),
            lng = std::abs(coords[i].lng().degrees());
-    ASSERT_TRUE(lat + lng == 1);  // lat == 1 => lng == 0, etc
+    ASSERT_EQ(lat + lng, 1);  // lat == 1 => lng == 0, etc
   }
 }
 
@@ -312,7 +312,7 @@ protected:
         S2LatLng cc = S2LatLng::FromDegrees(lat, lon);
 
         S2CellId cell(cc);
-        EXPECT_TRUE(cell.level() == S2::kMaxCellLevel);
+        EXPECT_EQ(cell.level(), S2::kMaxCellLevel);
 
         LocalDocumentId rev(counter++);
         index.emplace(cell, rev);
@@ -335,7 +335,7 @@ protected:
       ASSERT_TRUE(rad >= lastRad);
       lastRad = rad;
     }
-    ASSERT_TRUE(lastRad != 0);
+    ASSERT_NE(lastRad, 0);
   };
 };
 
@@ -344,7 +344,7 @@ TEST_F(QueryPointAroundTest, southpole_1) {
   AscIterator near(std::move(params));
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 7);
-  ASSERT_TRUE(result.size() == 7);
+  ASSERT_EQ(result.size(), 7);
   checkResult(near.origin(), result);
 }
 
@@ -353,7 +353,7 @@ TEST_F(QueryPointAroundTest, southpole_2) {
   AscIterator near(std::move(params));
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
-  ASSERT_TRUE(result.size() == 100);
+  ASSERT_EQ(result.size(), 100);
   checkResult(near.origin(), result);
 }
 
@@ -362,7 +362,7 @@ TEST_F(QueryPointAroundTest, southpole_3) {
   AscIterator near(std::move(params));
 
   std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
-  ASSERT_TRUE(result.size() == 100);
+  ASSERT_EQ(result.size(), 100);
   checkResult(near.origin(), result);
 }
 
@@ -394,16 +394,16 @@ protected:
         // geocol.insert({lat,lon});
         S2LatLng cc = S2LatLng::FromDegrees(lat, lon);
         S2CellId cell(cc.ToPoint());
-        EXPECT_TRUE(cell.level() == S2::kMaxCellLevel);
+        EXPECT_EQ(cell.level(), S2::kMaxCellLevel);
 
         LocalDocumentId rev(counter++);
         index.emplace(cell, rev);
         docs.emplace(rev, cc);
       }
     }
-    EXPECT_TRUE(6561 == counter);
-    EXPECT_TRUE(docs.size() == counter);
-    EXPECT_TRUE(index.size() == counter);
+    EXPECT_EQ(6561, counter);
+    EXPECT_EQ(docs.size(), counter);
+    EXPECT_EQ(index.size(), counter);
 
     params.sorted = true;
     params.ascending = true;
@@ -412,7 +412,7 @@ protected:
 
   void checkResult(std::vector<LocalDocumentId> const& result,
                    std::vector<std::pair<double, double>> expected) {
-    ASSERT_TRUE(result.size() == expected.size());
+    ASSERT_EQ(result.size(), expected.size());
 
     std::vector<std::pair<double, double>> latLngResult;
     for (LocalDocumentId const& rev : result) {
@@ -454,7 +454,7 @@ TEST_F(QueryPointsContainedInTest, polygon) {
 TEST_F(QueryPointsContainedInTest, rectangle) {
   auto rect = createBuilder(R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
   geo::geojson::parsePolygon(rect->slice(), params.filterShape);
-  ASSERT_TRUE(params.filterShape.type() == geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_EQ(params.filterShape.type(), geo::ShapeContainer::Type::S2_LATLNGRECT);
   params.filterShape.updateBounds(params);
 
   AscIterator near(std::move(params));

@@ -293,7 +293,7 @@ MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true) {}
 
 /// @brief destroy the index
-MMFilesPersistentIndex::~MMFilesPersistentIndex() {}
+MMFilesPersistentIndex::~MMFilesPersistentIndex() = default;
 
 size_t MMFilesPersistentIndex::memory() const {
   return 0;  // TODO

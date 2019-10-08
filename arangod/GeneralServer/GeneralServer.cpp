@@ -25,16 +25,20 @@
 #include "GeneralServer.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Ssl/SslServerFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -46,13 +50,19 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _endpointList(nullptr), _contexts(numIoThreads) {}
+GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
+    : _feature(feature), _endpointList(nullptr), _contexts() {
+  auto& server = feature.server();
+  for (size_t i = 0; i < numIoThreads; ++i) {
+    _contexts.emplace_back(server);
+  }
+}
 
-GeneralServer::~GeneralServer() {}
+GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();
@@ -162,4 +172,8 @@ asio_ns::ssl::context& GeneralServer::sslContext() {
     _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
   }
   return *_sslContext;
+}
+
+application_features::ApplicationServer& GeneralServer::server() const {
+  return _feature.server();
 }

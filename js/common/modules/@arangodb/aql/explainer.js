@@ -162,17 +162,18 @@ function pad(n) {
 /* print functions */
 
 /* print query string */
-function printQuery(query) {
+function printQuery(query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
-  var maxLength = 4096;
+  var maxLength = 4096, headline = 'Query String (' + query.length + ' chars';
   if (query.length > maxLength) {
-    stringBuilder.appendLine(section('Query String (truncated):'));
+    headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
-  } else {
-    stringBuilder.appendLine(section('Query String:'));
   }
+  headline += ', cacheable: ' + (cacheable ? 'true' : 'false');
+  headline += '):';
+  stringBuilder.appendLine(section(headline));
   stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
@@ -700,7 +701,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-
+  
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -1084,6 +1085,7 @@ function processQuery(query, explain, planIndex) {
     var rc, v, e, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
+    var filter = '';
     // index in this array gives the traversal direction
     const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
     switch (node.type) {
@@ -1093,7 +1095,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1124,9 +1129,12 @@ function processQuery(query, explain, planIndex) {
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */`;
-      //`
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */` + filter;
+      
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1718,7 +1726,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   if (planIndex === undefined) {
-    printQuery(query);
+    printQuery(query, explain.cacheable);
   }
 
   stringBuilder.appendLine(section('Execution plan:'));
@@ -2056,7 +2064,8 @@ function inspectDump(filename, outfile) {
     for (let i = keys.length; i > 0; --i) {
       let collection = keys[i - 1];
       let details = data.collections[collection];
-      if (details.name[0] === '_') {
+      let name = details.name || collection;
+      if (name[0] === '_') {
         // system collection
         print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
       } else {

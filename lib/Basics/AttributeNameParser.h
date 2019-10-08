@@ -24,13 +24,18 @@
 #ifndef ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H
 #define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
+#include <cstdint>
+#include <functional>
 #include <iosfwd>
-#include "Common.h"
-#include "Basics/fasthash.h"
-
-#include <velocypack/StringRef.h>
+#include <string>
+#include <system_error>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
 
 namespace basics {
 
@@ -114,15 +119,6 @@ void TRI_ParseAttributeString(std::string const& input,
 
 void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
                                 std::string& result, bool excludeExpansion = false);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transform a vector of AttributeNames into joined nested strings
-///        The onlyFirst parameter is used to define if we only have to join the
-///        first attribute
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
-                                  std::vector<std::string>& result, bool onlyFirst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator

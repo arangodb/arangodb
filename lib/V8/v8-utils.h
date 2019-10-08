@@ -24,9 +24,11 @@
 #ifndef ARANGODB_V8_V8__UTILS_H
 #define ARANGODB_V8_V8__UTILS_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <cstdint>
+#include <string>
 
-#include "V8/v8-globals.h"
+#include <v8.h>
 
 namespace arangodb {
 class Result;
@@ -117,12 +119,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all files from a directory into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all files from a directory in a local context

@@ -24,6 +24,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_COMMON_H
 #define ARANGOD_IRESEARCH__IRESEARCH_COMMON_H 1
 
+#include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
 #include "VocBase/LogicalDataSource.h"
 
@@ -34,7 +35,7 @@ arangodb::LogicalDataSource::Type const& dataSourceType();
 arangodb::LogTopic& logTopic();
 
 ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
+ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current implementation version of the iresearch interface

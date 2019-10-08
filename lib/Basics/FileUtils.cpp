@@ -21,7 +21,19 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
+#include <functional>
+#include <memory>
+#include <utility>
+
 #include "FileUtils.h"
+
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -35,17 +47,18 @@
 #endif
 #include <sys/stat.h>
 
-#include <fcntl.h>
 #include <unicode/unistr.h>
 
-#include <functional>
-
 #include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/files.h"
-#include "Basics/tri-strings.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace {
 std::function<bool(std::string const&)> const passAllFilter =
@@ -115,7 +128,10 @@ std::string buildFilename(char const* path, char const* name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
+    result = removeTrailingSeparator(result);
+    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
+      result += TRI_DIR_SEPARATOR_CHAR;
+    }
   }
 
   if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
@@ -134,7 +150,10 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
+    result = removeTrailingSeparator(result);
+    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
+      result += TRI_DIR_SEPARATOR_CHAR;
+    }
   }
 
   if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
@@ -328,27 +347,80 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
 }
 
 /// @brief will not copy files/directories for which the filter function
-/// returns true
+/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
 bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
-  if (isDirectory(source)) {
-    return copyDirectoryRecursive(source, target, filter, error);
-  }
 
-  if (filter(source)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  return TRI_CopyFile(source, target, error);
-}
+  // "auto lambda" will not work here
+  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
+    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
+    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
+  };
+
+  return copyRecursive(source, target, lambda, error);
+
+} // copyRecursive (bool filter())
+
+
+/// @brief will not copy files/directories for which the filter function
+/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
+                   std::function<bool(std::string const&)> const& filter,
+                   std::string& error) {
+
+  // "auto lambda" will not work here
+  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
+    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
+    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
+  };
+
+  return copyDirectoryRecursive(source, target, lambda, error);
+
+} // copyDirectoryRecursive (bool filter())
+
+
+/// @brief will not copy files/directories for which the filter function
+/// returns true
+bool copyRecursive(std::string const& source, std::string const& target,
+                   std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                   std::string& error) {
+
+  bool ret_bool = false;
+
+  if (isDirectory(source)) {
+    ret_bool = copyDirectoryRecursive(source, target, filter, error);
+  } else {
+    switch (filter(source)) {
+      case TRI_COPY_IGNORE:
+        ret_bool = true;  // original TRI_ERROR_NO_ERROR implies "false", seems wrong
+        break;
+
+      case TRI_COPY_COPY:
+        ret_bool = TRI_CopyFile(source, target, error);
+        break;
+
+      case TRI_COPY_LINK:
+        ret_bool = TRI_CreateHardlink(source, target, error);
+        break;
+
+      default:
+        ret_bool = false; // TRI_ERROR_BAD_PARAMETER seems wrong since returns "true"
+        break;
+    } // switch
+  } // else
+
+  return ret_bool;
+} // copyRecursive (TRI_copy_recursive_e filter())
+
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
 bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                            std::function<bool(std::string const&)> const& filter,
+                            std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                             std::string& error) {
   char* fn = nullptr;
-  bool rc = true;
+  bool rc_bool = true;
 
   auto isSubDirectory = [](std::string const& name) -> bool {
     return isDirectory(name);
@@ -360,9 +432,9 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   std::string rcs;
   std::string flt = source + "\\*";
 
-  icu::UnicodeString f(flt.c_str());
+  UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst(reinterpret_cast<const wchar_t*>(f.getTerminatedBuffer()), &oneItem);
+  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -371,7 +443,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   do {
     rcs.clear();
-    icu::UnicodeString d(reinterpret_cast<const wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
+    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 #else
@@ -390,7 +462,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   // the man page recommends to use plain readdir() because it can be expected
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
-  while ((oneItem = (readdir(filedir))) != nullptr) {
+  while ((oneItem = (readdir(filedir))) != nullptr && rc_bool) {
     fn = oneItem->d_name;
 #endif
 
@@ -402,36 +474,48 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
     std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
     std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
-    if (filter(src)) {
-      continue;
-    }
+    switch (filter(src)) {
+      case TRI_COPY_IGNORE:
+        break;
 
-    // Handle subdirectories:
-    if (isSubDirectory(src)) {
-      long systemError;
-      int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
-      if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
-        break;
-      }
-      if (!copyDirectoryRecursive(src, dst, filter, error)) {
-        break;
-      }
-      if (!TRI_CopyAttributes(src, dst, error)) {
-        break;
-      }
+      case TRI_COPY_COPY:
+        // Handle subdirectories:
+        if (isSubDirectory(src)) {
+          long systemError;
+          int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+          if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
+            rc_bool = false;
+            break;
+          }
+          if (!copyDirectoryRecursive(src, dst, filter, error)) {
+            rc_bool = false;
+            break;
+          }
+          if (!TRI_CopyAttributes(src, dst, error)) {
+            rc_bool = false;
+            break;
+          }
 #ifndef _WIN32
-    } else if (isSymbolicLink(src)) {
-      if (!TRI_CopySymlink(src, dst, error)) {
-        break;
-      }
+        } else if (isSymbolicLink(src)) {
+          if (!TRI_CopySymlink(src, dst, error)) {
+            rc_bool = false;
+          }
 #endif
-    } else {
-      if (!TRI_CopyFile(src, dst, error)) {
+        } else {
+          if (!TRI_CopyFile(src, dst, error)) {
+            rc_bool = false;
+          }
+        }
         break;
-      }
-    }
+
+      case TRI_COPY_LINK:
+        if (!TRI_CreateHardlink(src, dst, error)) {
+          rc_bool = false;
+        } // if
+        break;
+    } // switch
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  } while (_wfindnext(handle, &oneItem) != -1);
+  } while (_wfindnext(handle, &oneItem) != -1 && rc_bool);
 
   _findclose(handle);
 
@@ -440,7 +524,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   closedir(filedir);
 
 #endif
-  return rc;
+  return rc_bool;
 }
 
 std::vector<std::string> listFiles(std::string const& directory) {
@@ -454,8 +538,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::string rcs;
 
   std::string filter = directory + "\\*";
-  icu::UnicodeString f(filter.c_str());
-  handle = _wfindfirst(reinterpret_cast<const wchar_t*>(f.getTerminatedBuffer()), &oneItem);
+  UnicodeString f(filter.c_str());
+  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -468,7 +552,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   do {
     rcs.clear();
-    icu::UnicodeString d(reinterpret_cast<const wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
+    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 
@@ -626,9 +710,12 @@ void makePathAbsolute(std::string& path) {
   std::string cwd = FileUtils::currentDirectory().result();
 
   if (path.empty()) {
-    path = std::move(cwd);
+    path = cwd;
   } else {
-    path = TRI_GetAbsolutePath(path, cwd);
+    std::string p = TRI_GetAbsolutePath(path, cwd);
+    if (!p.empty()) {
+      path = p;
+    }
   }
 }
 
@@ -644,8 +731,8 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(reinterpret_cast<const wchar_t*>(uprog.getTerminatedBuffer()), L"r");
+  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif
@@ -675,6 +762,39 @@ std::string slurpProgram(std::string const& program) {
 
   return std::string(buffer.data(), buffer.length());
 }
+
+int slurpProgramWithExitcode(std::string const& program, std::string& output) {
+#ifdef _WIN32
+  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+#else
+  FILE* fp = popen(program.c_str(), "r");
+#endif
+
+  constexpr size_t chunkSize = 8192;
+  StringBuffer buffer(chunkSize, false);
+
+  if (fp) {
+    int c;
+
+    while ((c = getc(fp)) != EOF) {
+      buffer.appendChar((char)c);
+    }
+
+#ifdef _WIN32
+    int res = _pclose(fp);
+#else
+    int res = pclose(fp);
+#endif
+
+    output = std::string(buffer.data(), buffer.length());
+    return res;
+  }
+
+  throwProgramError(program);
+  return 1;   // Just to please the compiler.
+};
+
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb

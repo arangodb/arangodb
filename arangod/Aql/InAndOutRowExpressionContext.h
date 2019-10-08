@@ -45,45 +45,35 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
                                std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
                                size_t edgeVarIdx, size_t pathVarIdx);
 
-  ~InAndOutRowExpressionContext() {}
+  ~InAndOutRowExpressionContext() override = default;
 
   void setInputRow(InputAqlItemRow input);
 
   void invalidateInputRow();
 
-  size_t numRegisters() const override { return _regs.size(); }
-
-  AqlValue const& getRegisterValue(size_t i) const override;
-
-  Variable const* getVariable(size_t i) const override { return _vars[i]; }
+  size_t numRegisters() const override;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
-  bool needsVertexValue() const { return _vertexVarIdx < _regs.size(); }
-  bool needsEdgeValue() const { return _edgeVarIdx < _regs.size(); }
-  bool needsPathValue() const { return _pathVarIdx < _regs.size(); }
+  bool needsVertexValue() const;
+  bool needsEdgeValue() const;
+  bool needsPathValue() const;
 
   /// @brief inject the result value when asked for the Vertex data
   /// This will not copy ownership of slice content. caller needs to make sure
   /// that the buffer stays valid until evaluate is called
-  void setVertexValue(velocypack::Slice v) {
-    _vertexValue = AqlValue(AqlValueHintDocumentNoCopy(v.begin()));
-  }
+  void setVertexValue(velocypack::Slice v);
 
   /// @brief inject the result value when asked for the Edge data
   /// This will not copy ownership of slice content. caller needs to make sure
   /// that the buffer stays valid until evaluate is called
-  void setEdgeValue(velocypack::Slice e) {
-    _edgeValue = AqlValue(AqlValueHintDocumentNoCopy(e.begin()));
-  }
+  void setEdgeValue(velocypack::Slice e);
 
   /// @brief inject the result value when asked for the Path data
   /// This will not copy ownership of slice content. caller needs to make sure
   /// that the buffer stays valid until evaluate is called
-  void setPathValue(velocypack::Slice p) {
-    _pathValue = AqlValue(AqlValueHintDocumentNoCopy(p.begin()));
-  }
+  void setPathValue(velocypack::Slice p);
 
  private:
   InputAqlItemRow _input;

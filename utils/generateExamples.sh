@@ -10,6 +10,8 @@ else
     PS='/'
 fi;
 
+export PORT=`expr 1024 + $RANDOM`
+
 SCRIPT="utils${PS}generateExamples.js"
 LOGFILE="out${PS}log-$PID"
 DBDIR="out${PS}data-$PID"
@@ -49,7 +51,7 @@ fi
 [ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 if "${ARANGOSH}" --version | grep -q "^enterprise-version: enterprise$"; then
-    ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
+    ALLPROGRAMS="arangobackup arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
     for HELPPROGRAM in ${ALLPROGRAMS}; do
         echo "Dumping program options of ${HELPPROGRAM}"
         "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
@@ -61,7 +63,7 @@ fi
 
 "${ARANGOSH}" \
     --configuration none \
-    --server.endpoint none \
+    --server.endpoint tcp://127.0.0.1:${PORT} \
     --log.file ${LOGFILE} \
     --javascript.startup-directory js \
     --javascript.module-directory enterprise/js \

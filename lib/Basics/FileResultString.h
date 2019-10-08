@@ -23,18 +23,19 @@
 #ifndef ARANGODB_BASICS_FILE_RESULT_STRING_H
 #define ARANGODB_BASICS_FILE_RESULT_STRING_H 1
 
+#include "Basics/FileResult.h"
 #include "Basics/Result.h"
 
 namespace arangodb {
 class FileResultString : public FileResult {
  public:
-  FileResultString(std::string const& result)
+  explicit FileResultString(std::string const& result)
       : FileResult(), _message(result) {}
 
   FileResultString(int sysErrorNumber, std::string const& result)
       : FileResult(sysErrorNumber), _message(result) {}
 
-  FileResultString(int sysErrorNumber)
+  explicit FileResultString(int sysErrorNumber)
       : FileResult(sysErrorNumber), _message() {}
 
  public:

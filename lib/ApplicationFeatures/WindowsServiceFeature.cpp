@@ -24,9 +24,12 @@
 
 #include <Winsvc.h>
 #include <signal.h>
+#include <windows.h>
 #include <iostream>
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Common.h"
+#include "Basics/win-utils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
@@ -484,7 +487,7 @@ WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationSe
       _shutdownNoted(false) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
   ArangoInstance = this;
 
   if (!TRI_InitWindowsEventLog()) {

@@ -2228,6 +2228,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, { isSystem: true });
+      db._dropView("UnitTestsSyncView");
 
       connectToSlave();
       replication.applier.stop();
@@ -2235,6 +2236,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, { isSystem: true });
+      db._dropView("UnitTestsSyncView");
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');

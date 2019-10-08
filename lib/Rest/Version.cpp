@@ -45,6 +45,7 @@
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
 
@@ -182,6 +183,13 @@ void Version::initialize() {
   Values["asan"] = "true";
 #endif
 #endif
+#endif
+  
+#if defined(__SANITIZE_THREAD__) || \
+(defined(__has_feature) && __has_feature(thread_sanitizer))
+  Values["tsan"] = "true";
+#else
+  Values["tsan"] = "false";
 #endif
 
 #if defined(__SSE4_2__) && !defined(NO_SSE42)

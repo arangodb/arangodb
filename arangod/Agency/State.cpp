@@ -37,8 +37,11 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -68,7 +71,7 @@ State::State()
       _cur(0) {}
 
 /// Default dtor
-State::~State() {}
+State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
@@ -375,7 +378,7 @@ index_t State::logFollower(query_t const& transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent, "snapshot");
+      Store snapshot(_agent->server(), _agent, "snapshot");
       snapshot = slices[0];
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
@@ -393,7 +396,6 @@ index_t State::logFollower(query_t const& transactions) {
     VPackSlice slices = transactions->slice();
     TRI_ASSERT(slices.isArray());
     size_t nqs = slices.length();
-    std::string clientId;
 
     for (size_t i = ndups; i < nqs; ++i) {
       VPackSlice const& slice = slices[i];
@@ -1111,7 +1113,7 @@ bool State::compact(index_t cind, index_t keep) {
   _nextCompactionAfter = (std::max)(_nextCompactionAfter.load(),
                                     cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent, "snapshot");
+  Store snapshot(_agent->server(), _agent, "snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1453,12 +1455,10 @@ std::vector<index_t> State::inquire(query_t const& query) const {
 
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     index_t index = 0;
+    // Look for the maximum index:
     for (auto it = ret.first; it != ret.second; ++it) {
-      if (it->second < _log[0].index) {
-        continue;
-      }
-      if (index < _log.at(it->second - _cur).index) {
-        index = _log.at(it->second - _cur).index;
+      if (it->second > index) {
+        index = it->second;
       }
     }
     result.push_back(index);
@@ -1502,7 +1502,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   VPackSlice result = queryResult.data->slice();
 
-  Store store(nullptr);
+  Store store(vocbase.server(), nullptr);
   index = 0;
   term = 0;
   if (result.isArray() && result.length() == 1) {

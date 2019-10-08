@@ -34,8 +34,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAqlReloadHandler::RestAqlReloadHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestAqlReloadHandler::RestAqlReloadHandler(application_features::ApplicationServer& server,
+                                           GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAqlReloadHandler::execute() {
   V8DealerFeature::DEALER->addGlobalContextMethod("reloadAql");

@@ -24,7 +24,10 @@
 #define ARANGOD_AQL_SHARED_QUERY_STATE_H 1
 
 #include <condition_variable>
+#include <functional>
+
 #include "Basics/Common.h"
+#include "Basics/system-compiler.h"
 
 namespace arangodb {
 namespace aql {
@@ -60,7 +63,7 @@ class SharedQueryState {
       return false;
     }
 
-    bool res = std::forward<F>(cb)();
+    std::forward<F>(cb)();
     if (_hasHandler) {
       if (ADB_UNLIKELY(!executeContinueCallback())) {
         return false;  // likely shutting down
@@ -70,8 +73,7 @@ class SharedQueryState {
       // simon: bad experience on macOS guard.unloack();
       _condition.notify_one();
     }
-
-    return res;
+    return true;
   }
 
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).

@@ -23,6 +23,10 @@
 #include "ClientFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -31,7 +35,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
-#include "Basics/FileUtils.h"
 
 #include <chrono>
 #include <iostream>
@@ -45,7 +48,7 @@ namespace arangodb {
 
 ClientFeature::ClientFeature(application_features::ApplicationServer& server,
                              bool allowJwtSecret, double connectionTimeout, double requestTimeout)
-    : ApplicationFeature(server, "Client"),
+    : HttpEndpointProvider(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
       _askJwtSecret(false),
@@ -70,8 +73,8 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
 {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("CommunicationPhase");
-  startsAfter("GreetingsPhase");
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -230,11 +233,10 @@ void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature* console =
-        ApplicationServer::getFeature<ConsoleFeature>("Console");
+    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
-    if (console->isEnabled()) {
-      _password = console->readPassword("Please specify a password: ");
+    if (console.isEnabled()) {
+      _password = console.readPassword("Please specify a password: ");
       return;
     }
   } catch (...) {
@@ -249,11 +251,10 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature* console =
-        ApplicationServer::getFeature<ConsoleFeature>("Console");
+    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
-    if (console->isEnabled()) {
-      _jwtSecret = console->readPassword("Please specify the JWT secret: ");
+    if (console.isEnabled()) {
+      _jwtSecret = console.readPassword("Please specify the JWT secret: ");
       return;
     }
   } catch (...) {

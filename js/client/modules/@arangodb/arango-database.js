@@ -42,7 +42,7 @@ function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
   this._viewConstructor = ArangoView;
-  this._properties = null;
+  this._dbProperties = null;
 
   this._registerCollection = function (name, obj) {
     // store the collection in our own list
@@ -494,7 +494,7 @@ ArangoDatabase.prototype._flushCache = function () {
     this._collections();
   } catch (err) {}
 
-  this._properties = null;
+  this._dbProperties = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -502,15 +502,15 @@ ArangoDatabase.prototype._flushCache = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._queryProperties = function (force) {
-  if (force || this._properties === null) {
+  if (force || this._dbProperties === null) {
     var url = '/_api/database/current';
     var requestResult = this._connection.GET(url);
 
     arangosh.checkRequestResult(requestResult);
-    this._properties = requestResult.result;
+    this._dbProperties = requestResult.result;
   }
 
-  return this._properties;
+  return this._dbProperties;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1056,6 +1056,15 @@ ArangoDatabase.prototype._databases = function () {
 
   return requestResult.result;
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief show properties
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._properties = function () {
+  return this._queryProperties(true);
+};
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief uses a database

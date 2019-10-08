@@ -27,11 +27,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
-#include "Basics/encoding.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
+#include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -60,10 +62,10 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
       _flushInterval(1000000),
       _stopped(false) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("StorageEngine");
-  startsAfter("MMFilesLogfileManager");
+  startsAfter<StorageEngineFeature>();
+  startsAfter<MMFilesLogfileManager>();
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -124,19 +126,19 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   TRI_ASSERT(minTick <= engine->currentTick());
 
   TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
-    TRI_SegfaultDebugging("crashing before syncing min tick");
+    TRI_TerminateDebugging("crashing before syncing min tick");
   }
 
   engine->waitForSyncTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
-    TRI_SegfaultDebugging("crashing after syncing min tick");
+    TRI_TerminateDebugging("crashing after syncing min tick");
   }
 
   engine->releaseTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
-    TRI_SegfaultDebugging("crashing after releasing min tick");
+    TRI_TerminateDebugging("crashing after releasing min tick");
   }
 
   return {};
@@ -164,7 +166,7 @@ void FlushFeature::prepare() {
 void FlushFeature::start() {
   {
     WRITE_LOCKER(lock, _threadLock);
-    _flushThread.reset(new FlushThread(_flushInterval));
+    _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback([this]() -> Result {

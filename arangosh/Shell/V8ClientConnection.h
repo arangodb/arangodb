@@ -37,6 +37,10 @@
 namespace arangodb {
 class ClientFeature;
 
+namespace application_features {
+class ApplicationServer;
+}
+
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -56,7 +60,7 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  V8ClientConnection();
+  explicit V8ClientConnection(application_features::ApplicationServer&);
   ~V8ClientConnection();
 
  public:
@@ -80,6 +84,8 @@ class V8ClientConnection {
   std::string const& mode() const { return _mode; }
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
+
+  application_features::ApplicationServer& server();
 
   v8::Handle<v8::Value> getData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                 std::unordered_map<std::string, std::string> const& headerFields,
@@ -118,6 +124,7 @@ class V8ClientConnection {
 
  private:
   std::shared_ptr<fuerte::Connection> createConnection();
+  std::shared_ptr<fuerte::Connection> acquireConnection();
 
   v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
                                    arangodb::velocypack::StringRef const& location,
@@ -139,6 +146,8 @@ class V8ClientConnection {
   void shutdownConnection();
 
  private:
+  application_features::ApplicationServer& _server;
+
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
 

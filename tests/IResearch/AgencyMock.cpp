@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+
 #include "Agency/Store.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
@@ -44,16 +45,12 @@ namespace consensus {
 //            the feature stack are static still to make the changes right now
 // FIXME TODO for some reason the implementation of this function is missing in the arangodb code
 void Store::notifyObservers() const {
-  auto* clusterFeature =
-    arangodb::application_features::ApplicationServer::getFeature<
-      arangodb::ClusterFeature
-    >("Cluster");
-
-  if (!clusterFeature) {
+  if (!_server.hasFeature<arangodb::ClusterFeature>()) {
     return;
   }
+  auto& clusterFeature = _server.getFeature<arangodb::ClusterFeature>();
 
-  auto* callbackRegistry = clusterFeature->agencyCallbackRegistry();
+  auto* callbackRegistry = clusterFeature.agencyCallbackRegistry();
 
   if (!callbackRegistry) {
     return;

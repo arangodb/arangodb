@@ -25,6 +25,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
@@ -33,16 +34,12 @@
 
 namespace {
 bool authorized(std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  arangodb::ExecContext const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
 
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (job.first == context->user());
+  return (job.first == exec.user());
 }
 }  // namespace
 
@@ -61,7 +58,7 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
       _status(status),
       _handler(std::move(handler)) {}
 
-AsyncJobResult::~AsyncJobResult() {}
+AsyncJobResult::~AsyncJobResult() = default;
 
 AsyncJobManager::AsyncJobManager() : _lock(), _jobs() {}
 

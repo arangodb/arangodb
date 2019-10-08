@@ -24,14 +24,21 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Thread.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -48,10 +55,11 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0) {
   setOptional(true);
-  startsAfter("BasicsPhase");
-  startsAfter("Database");
-  startsAfter("StorageEngine");
-  startsAfter("SystemDatabase");
+  startsAfter<BasicFeaturePhaseServer>();
+
+  startsAfter<DatabaseFeature>();
+  startsAfter<StorageEngineFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -82,8 +90,8 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
-  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  if (_enableActiveFailover && feature.agencyEndpoints().empty()) {
     LOG_TOPIC("68fcb", FATAL, arangodb::Logger::REPLICATION)
         << "automatic failover needs to be started with agency endpoint "
            "configured";

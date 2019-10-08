@@ -27,19 +27,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/Mutex.h"
+#include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
+#include "Utils/ManagedDirectory.h"
 
 namespace arangodb {
 namespace httpclient {
 class SimpleHttpResult;
 }
-
-namespace maskings {
-class Maskings;
-}
-
-class ManagedDirectory;
 
 class DumpFeature : public application_features::ApplicationFeature {
  public:

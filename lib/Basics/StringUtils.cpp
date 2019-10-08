@@ -23,20 +23,25 @@
 
 #include "StringUtils.h"
 
-#include <ctype.h>
-#include <stdio.h>
 #include <algorithm>
-#include <limits>
-#include <vector>
-#include <cstring>
-
+#include <ctype.h>
 #include <math.h>
-#include <time.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/fpconv.h"
-#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 // -----------------------------------------------------------------------------
 // helper functions
@@ -255,6 +260,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
     return name;
   }
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 6) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -638,6 +644,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // the max amount of memory is:
   size_t mt = (std::max)(static_cast<size_t>(1), toLength);
 
+  // cppcheck-suppress unsignedPositive
   if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -680,9 +687,8 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
 }
 
 void tolowerInPlace(std::string* str) {
-  size_t len = str->length();
 
-  if (len == 0) {
+  if (str->empty()) {
     return;
   }
 
@@ -692,16 +698,15 @@ void tolowerInPlace(std::string* str) {
 }
 
 std::string tolower(std::string&& str) {
-  size_t const len = str.size();
 
-  for (size_t i = 0; i < len; ++i) {
-    str[i] = static_cast<char>(::tolower(str[i]));
-  }
+  std::transform(
+    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
 
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
+
   size_t len = str.length();
 
   if (len == 0) {
@@ -891,7 +896,8 @@ std::string urlEncode(char const* src, size_t const len) {
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-
+  
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -937,6 +943,7 @@ std::string encodeURIComponent(std::string const& str) {
 std::string encodeURIComponent(char const* src, size_t const len) {
   char const* end = src + len;
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1444,7 +1451,7 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int64_t int64(std::string const& value) {
   try {
     return std::stoll(value, nullptr, 10);
@@ -1530,7 +1537,7 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;

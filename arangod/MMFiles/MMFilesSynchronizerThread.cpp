@@ -26,6 +26,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/memory-map.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesWalSlots.h"
@@ -45,9 +46,9 @@ static constexpr inline uint64_t syncWaitersMask() {
 /// for use in _waiters only
 static constexpr inline int asyncWaitersBits() { return 32; }
 
-MMFilesSynchronizerThread::MMFilesSynchronizerThread(MMFilesLogfileManager* logfileManager,
+MMFilesSynchronizerThread::MMFilesSynchronizerThread(MMFilesLogfileManager& logfileManager,
                                                      uint64_t syncInterval)
-    : Thread("WalSynchronizer"),
+    : Thread(logfileManager.server(), "WalSynchronizer"),
       _logfileManager(logfileManager),
       _condition(),
       _syncInterval(syncInterval),
@@ -145,7 +146,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   checkMore = false;
 
   // get region to sync
-  MMFilesWalSyncRegion region = _logfileManager->slots()->getSyncRegion();
+  MMFilesWalSyncRegion region = _logfileManager.slots()->getSyncRegion();
   MMFilesWalLogfile::IdType const id = region.logfileId;
 
   // an id of 0 means an empty region...
@@ -209,13 +210,13 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 
     if (region.canSeal) {
       // only seal the logfile if it is safe to do so
-      _logfileManager->setLogfileSealed(id);
+      _logfileManager.setLogfileSealed(id);
     }
   }
 
   checkMore = region.checkMore;
 
-  _logfileManager->slots()->returnSyncRegion(region);
+  _logfileManager.slots()->returnSyncRegion(region);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -223,7 +224,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 int MMFilesSynchronizerThread::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
   if (id != _logfileCache.id || _logfileCache.id == 0) {
     _logfileCache.id = id;
-    _logfileCache.fd = _logfileManager->getLogfileDescriptor(id);
+    _logfileCache.fd = _logfileManager.getLogfileDescriptor(id);
   }
 
   return _logfileCache.fd;

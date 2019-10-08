@@ -25,12 +25,12 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
+#include "Replication/GlobalReplicationApplier.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class GlobalReplicationApplier;
 class GeneralResponse;
 
 class ReplicationFeature final : public application_features::ApplicationFeature {

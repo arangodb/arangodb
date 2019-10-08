@@ -22,7 +22,9 @@
 
 #include "TransactionCollection.h"
 
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -32,7 +34,7 @@ TransactionCollection::~TransactionCollection() {
   TRI_ASSERT(_collection == nullptr);
 }
 
-std::string TransactionCollection::collectionName() const {
+std::string const& TransactionCollection::collectionName() const {
   TRI_ASSERT(_collection != nullptr);
   return _collection->name();
 }

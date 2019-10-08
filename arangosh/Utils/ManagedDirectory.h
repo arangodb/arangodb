@@ -24,25 +24,27 @@
 #ifndef ARANGOSH_UTILS_MANAGED_DIRECTORY_H
 #define ARANGOSH_UTILS_MANAGED_DIRECTORY_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Result.h"
-
-#include "zlib.h"
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "zlib.h"
+
+#include "Basics/Result.h"
+#include "Basics/operating-system.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 #ifndef USE_ENTERPRISE
 class EncryptionFeature;  // to reduce number of #ifdef
 #endif
@@ -166,12 +168,15 @@ class ManagedDirectory {
    * directory was opened successfully. If `status().fail()`, the directory
    * cannot be used safely.
    *
+   * @param server       The underlying application server, for access to the
+   *                     EncryptionFeature
    * @param path         The path to the directory
    * @param requireEmpty If `true`, opening a non-empty directory will fail
    * @param create       If `true` and directory does not exist, create it
    * @param writeGzip    True if writes should use gzip (reads autodetect .gz)
    */
-  ManagedDirectory(std::string const& path, bool requireEmpty, bool create, bool writeGzip = true);
+  ManagedDirectory(application_features::ApplicationServer& server, std::string const& path,
+                   bool requireEmpty, bool create, bool writeGzip = true);
   ~ManagedDirectory();
 
  public:

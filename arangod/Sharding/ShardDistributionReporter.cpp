@@ -20,17 +20,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShardDistributionReporter.h"
-#include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
+#include <queue>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <queue>
+#include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "ShardDistributionReporter.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -42,7 +44,7 @@ struct SyncCountInfo {
   std::vector<ServerID> followers;
 
   SyncCountInfo() : insync(false), total(1), current(0) {}
-  ~SyncCountInfo() {}
+  ~SyncCountInfo() = default;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -265,13 +267,14 @@ ShardDistributionReporter::ShardDistributionReporter(std::shared_ptr<ClusterComm
   TRI_ASSERT(_ci != nullptr);
 }
 
-ShardDistributionReporter::~ShardDistributionReporter() {}
+ShardDistributionReporter::~ShardDistributionReporter() = default;
 
-std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance() {
+std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
+    application_features::ApplicationServer& server) {
   if (_theInstance == nullptr) {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     _theInstance =
-        std::make_shared<ShardDistributionReporter>(ClusterComm::instance(),
-                                                    ClusterInfo::instance());
+        std::make_shared<ShardDistributionReporter>(ClusterComm::instance(), &ci);
   }
   return _theInstance;
 }

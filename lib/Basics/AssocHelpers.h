@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_ASSOC_HELPERS_H
 #define ARANGODB_BASICS_ASSOC_HELPERS_H 1
 
+#include <cstdint>
+
 #include "Basics/Common.h"
 
 /// @brief incrementing a uint64_t modulo a number with wraparound
@@ -34,13 +36,6 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
   uint64_t dummy;
   dummy = (++i) - len;
   return i < len ? i : dummy;
-}
-
-static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
-  if ((i--) != 0) {
-    return i;
-  }
-  return len - 1;
 }
 
 /// @brief a trivial hash function for uint64_t to uint32_t

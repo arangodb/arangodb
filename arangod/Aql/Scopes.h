@@ -24,8 +24,12 @@
 #ifndef ARANGOD_AQL_SCOPES_H
 #define ARANGOD_AQL_SCOPES_H 1
 
+#include <memory>
+#include <vector>
+
 #include "Aql/Variable.h"
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {
@@ -40,7 +44,7 @@ enum ScopeType {
 class Scope {
  public:
   /// @brief create a scope
-  Scope(ScopeType);
+  explicit Scope(ScopeType);
 
   /// @brief destroy the scope
   ~Scope();

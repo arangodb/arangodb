@@ -24,18 +24,22 @@
 #ifndef ARANGOD_AQL_AQL_TRANSACTION_H
 #define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
-#include "Aql/Collection.h"
-#include "Basics/Common.h"
-#include "Basics/Result.h"
 #include "Transaction/Methods.h"
-#include "Transaction/Options.h"
-#include "Transaction/StandaloneContext.h"
-#include "VocBase/vocbase.h"
 
 #include <map>
+#include <memory>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
+namespace transaction {
+struct Options;
+}
+
 namespace aql {
+struct Collection;
 
 class AqlTransaction : public transaction::Methods {
  public:
@@ -49,7 +53,7 @@ class AqlTransaction : public transaction::Methods {
                                     std::unordered_set<std::string>());
 
   /// @brief end the transaction
-  ~AqlTransaction() {}
+  ~AqlTransaction() override = default;
 
   /// @brief add a list of collections to the transaction
   Result addCollections(std::map<std::string, aql::Collection*> const& collections);

@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/Optimizer.h"
@@ -35,16 +36,17 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
-#include "IResearch/IResearchView.h"
-#include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "utils/misc.hpp"
+#include <utils/misc.hpp>
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
@@ -162,6 +164,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         current->getType() == EN::ENUMERATE_COLLECTION ||
         current->getType() == EN::TRAVERSAL ||
         current->getType() == EN::SHORTEST_PATH ||
+        current->getType() == EN::K_SHORTEST_PATHS ||
         current->getType() == EN::INDEX ||
         current->getType() == EN::COLLECT) {
       // any of these node types will lead to more/less results in the output,
@@ -239,6 +242,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           current->getType() == EN::ENUMERATE_COLLECTION ||
           current->getType() == EN::TRAVERSAL ||
           current->getType() == EN::SHORTEST_PATH ||
+          current->getType() == EN::K_SHORTEST_PATHS ||
           current->getType() == EN::INDEX ||
           current->getType() == EN::COLLECT ||
           current->getType() == EN::SORT) {
@@ -274,7 +278,7 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -404,7 +408,7 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
 
     // insert a scatter node
     auto scatterNode =
-        plan->registerNode(std::make_unique<ScatterNode>(plan.get(), plan->nextId()));
+        plan->registerNode(std::make_unique<ScatterNode>(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
 

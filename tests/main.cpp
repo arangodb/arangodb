@@ -2,13 +2,15 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Thread.h"
+#include "Rest/Version.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/ServerIdFeature.h"
 #include "gtest/gtest.h"
-#include "tests/Basics/icu-helper.h"
+
+#include "Basics/icu-helper.h"
 
 #include <chrono>
 #include <thread>
@@ -16,8 +18,9 @@
 template <class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(Function&& f, int i, char* c[])
-      : arangodb::Thread("gtest"), _f(f), _i(i), _c(c), _done(false) {
+  TestThread(arangodb::application_features::ApplicationServer& server,
+             Function&& f, int i, char* c[])
+      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     CONDITION_LOCKER(guard, _wait);
     while (true) {
@@ -49,6 +52,11 @@ class TestThread : public arangodb::Thread {
 
 char const* ARGV0 = "";
 
+namespace arangodb {
+  // Only to please the linker, this is not used in the tests.
+  std::function<int()>* restartAction;
+}
+
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
 
@@ -59,6 +67,13 @@ int main(int argc, char* argv[]) {
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
   for (int i = 0; i < argc; i++) {
+    if (strcmp(argv[i], "--version") == 0) {
+      arangodb::rest::Version::initialize();
+      std::cout << arangodb::rest::Version::getServerVersion() << std::endl
+                << std::endl
+                << arangodb::rest::Version::getDetailed() << std::endl;
+      exit(EXIT_SUCCESS);
+    }
     if (strcmp(argv[i], "--log.line-number") == 0) {
       if (i < argc) {
         i++;
@@ -76,16 +91,15 @@ int main(int argc, char* argv[]) {
   }
 
   ARGV0 = subargv[0];
-  arangodb::Logger::setShowLineNumber(logLineNumbers);
-  arangodb::Logger::initialize(false);
-  arangodb::LogAppender::addAppender("-");
 
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::ShellColorsFeature sc(server);
 
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
+  arangodb::Logger::setShowLineNumber(logLineNumbers);
+  arangodb::Logger::initialize(server, false);
+  arangodb::LogAppender::addAppender("-");
+
   sc.prepare();
 
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
@@ -101,7 +115,7 @@ int main(int argc, char* argv[]) {
   auto tests = [](int argc, char* argv[]) -> int {
     return RUN_ALL_TESTS();
   };
-  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
+  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();

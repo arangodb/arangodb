@@ -23,12 +23,15 @@
 
 #include "Aql/BindParameters.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <utility>
 
 using namespace arangodb::aql;
 
@@ -101,4 +104,19 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
     result.add(element);
   }
   result.close();
+}
+
+BindParameters::BindParameters()
+    : _builder(nullptr), _parameters(), _processed(false) {}
+
+BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder>  builder)
+    : _builder(std::move(builder)), _parameters(), _processed(false) {}
+
+BindParametersType& BindParameters::get() {
+  process();
+  return _parameters;
+}
+
+std::shared_ptr<arangodb::velocypack::Builder> BindParameters::builder() const {
+  return _builder;
 }

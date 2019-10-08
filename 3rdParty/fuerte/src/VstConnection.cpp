@@ -91,6 +91,7 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
     this->startConnection();
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
+    drainQueue(fuerte::Error::ConnectionClosed);
   }
   return mid;
 }
@@ -118,15 +119,13 @@ void VstConnection<ST>::finishConnect() {
   auto self = Connection::shared_from_this();
   asio_ns::async_write(
       this->_protocol.socket, asio_ns::buffer(vstHeader, strlen(vstHeader)),
-      [self](asio_ns::error_code const& ec, std::size_t transferred) {
+      [self](asio_ns::error_code const& ec, std::size_t nsend) {
         auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
         if (ec) {
           FUERTE_LOG_ERROR << ec.message() << "\n";
-          thisPtr->shutdownConnection(Error::CouldNotConnect);
+          thisPtr->shutdownConnection(Error::CouldNotConnect,
+                                      "unable to connect: " + ec.message());
           thisPtr->drainQueue(Error::CouldNotConnect);
-          thisPtr->onFailure(
-              Error::CouldNotConnect,
-              "unable to initialize connection: error=" + ec.message());
           return;
         }
         FUERTE_LOG_CALLBACKS << "VST connection established\n";
@@ -150,22 +149,23 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   auto item = std::make_shared<RequestItem>();
   item->_messageID = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   item->_expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
-  item->_request = nullptr;  // should not break anything
-
   auto self = Connection::shared_from_this();
   item->_callback = [self](Error error, std::unique_ptr<Request>,
                            std::unique_ptr<Response> resp) {
+    auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
     if (error != Error::NoError || resp->statusCode() != StatusOK) {
-      auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
       thisPtr->_state.store(Connection::State::Failed,
                             std::memory_order_release);
-      thisPtr->shutdownConnection(Error::CouldNotConnect);
-      thisPtr->onFailure(error, "authentication failed");
+      thisPtr->shutdownConnection(Error::VstUnauthorized,
+                                  "could not authenticate");
+      thisPtr->drainQueue(Error::VstUnauthorized);
+    } else {
+      thisPtr->_state.store(Connection::State::Connected);
+      thisPtr->startWriting();
     }
   };
 
   _messageStore.add(item);  // add message to store
-  setTimeout();             // set request timeout
 
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     vst::message::authBasic(this->_config._user, this->_config._password,
@@ -176,25 +176,23 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   assert(item->_buffer.size() < defaultMaxChunkSize);
 
   // actually send auth request
-  asio_ns::post(*this->_io_context, [this, self, item] {
-    auto cb = [self, item, this](asio_ns::error_code const& ec,
-                                 std::size_t transferred) {
-      if (ec) {
-        asyncWriteCallback(ec, transferred, std::move(item));  // error handling
-        return;
-      }
-      this->_state.store(Connection::State::Connected,
-                         std::memory_order_release);
-      asyncWriteCallback(ec, transferred,
-                         std::move(item));  // calls startReading()
-      startWriting();  // start writing if something was queued
-    };
-    std::vector<asio_ns::const_buffer> buffers;
-    vst::message::prepareForNetwork(
-        _vstVersion, item->messageID(), item->_buffer,
-        /*payload*/ asio_ns::const_buffer(), buffers);
-    asio_ns::async_write(this->_protocol.socket, buffers, std::move(cb));
-  });
+  auto cb = [this, self, item](asio_ns::error_code const& ec,
+                               std::size_t nsend) {
+    if (ec) {
+      this->_state.store(Connection::State::Failed);
+      this-> shutdownConnection(Error::CouldNotConnect,
+                                "authorization message failed");
+      this->drainQueue(Error::CouldNotConnect);
+    } else {
+      asyncWriteCallback(ec, nsend, item);
+    }
+  };
+  std::vector<asio_ns::const_buffer> buffers;
+  vst::message::prepareForNetwork(_vstVersion, item->messageID(), item->_buffer,
+                                  /*payload*/ asio_ns::const_buffer(), buffers);
+  asio_ns::async_write(this->_protocol.socket, buffers, std::move(cb));
+  
+  setTimeout();
 }
 
 // ------------------------------------
@@ -268,7 +266,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
 // callback of async_write function that is called in sendNextRequest.
 template <SocketType ST>
 void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
-                                           std::size_t transferred,
+                                           std::size_t nsend,
                                            std::shared_ptr<RequestItem> item) {
   // auto pendingAsyncCalls = --_connection->_async_calls;
   if (ec) {
@@ -288,7 +286,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   }
   // Send succeeded
   FUERTE_LOG_CALLBACKS << "asyncWriteCallback (vst): send succeeded, "
-                       << transferred << " bytes transferred\n";
+                       << nsend << " bytes send\n";
 
   // request is written we no longer need data for that
   item->resetSendData();
@@ -389,8 +387,8 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     if (parser::ChunkState::Incomplete == state) {
       break;
     } else if (parser::ChunkState::Invalid == state) {
-      FUERTE_LOG_ERROR << "Invalid VST chunk";
-      this->shutdownConnection(Error::ProtocolError);
+      this->shutdownConnection(Error::ProtocolError,
+                               "Invalid VST chunk");
       return;
     }
 
@@ -496,12 +494,12 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
 // adjust the timeouts (only call from IO-Thread)
 template <SocketType ST>
 void VstConnection<ST>::setTimeout() {
-  asio_ns::error_code ec;
-  this->_timeout.cancel(ec);
-  if (ec) {
-    FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
-    return;  // bail out
-  }
+//  asio_ns::error_code ec;
+//  this->_timeout.cancel(ec);
+//  if (ec) {
+//    FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
+//    return;  // bail out
+//  }
 
   // set to smallest point in time
   auto expires = std::chrono::steady_clock::time_point::max();

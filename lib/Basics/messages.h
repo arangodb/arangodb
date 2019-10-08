@@ -41,8 +41,6 @@
 /// }
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_UNICODE_LRM "\xE2\x80\x8E"
-#define TRI_UNICODE_RLM "\xE2\x80\x8F"
 #define TRI_BYE_MESSAGE_CH "Uf wiederluege!"
 #define TRI_BYE_MESSAGE_CN "\xE5\x86\x8D\xE8\xA7\x81\xEF\xBC\x81"
 #define TRI_BYE_MESSAGE_CZ "Na shledanou!"
@@ -74,6 +72,8 @@
   "\xd0\x94\xd0\xbe\x20\xd1\x81\xd0\xb2\xd0\xb8\xd0\xb4\xd0\xb0\xd0\xbd\xd0" \
   "\xb8\xd1\x8f\x21"
 #define TRI_BYE_MESSAGE_SV "\x41\x64\x6a\xc3\xb6\x21"
+#define TRI_BYE_MESSAGE_SY \
+  "\xd8\xa1\xd8\xa7\xd9\x82\xd9\x84\xd9\x84\xd8\xa7\x20\xd9\x89\xd9\x84\xd8\xa5"
 #define TRI_BYE_MESSAGE_PT "\x41\x74\xc3\xa9\x20\x42\x72\x65\x76\x65\x21"
 #define TRI_BYE_MESSAGE_FA \
   "\xd8\xae\xd8\xaf\xd8\xa7\xd8\xad\xd8\xa7\xd9\x81\xd8\xb8\x21"
@@ -85,9 +85,9 @@
   TRI_BYE_MESSAGE_CH                                                    \
   " " TRI_BYE_MESSAGE_CN " " TRI_BYE_MESSAGE_CZ " " TRI_BYE_MESSAGE_DE  \
   " " TRI_BYE_MESSAGE_EN " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES  \
-  " " TRI_BYE_MESSAGE_GR "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT \
-  " " TRI_BYE_MESSAGE_NL " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_FR  \
-  " " TRI_BYE_MESSAGE_JP " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT  \
-  " " TRI_BYE_MESSAGE_FA " " TRI_BYE_MESSAGE_LV " " TRI_BYE_MESSAGE_GE  \
-  " " TRI_BYE_MESSAGE_KR
+  " " TRI_BYE_MESSAGE_GR " " TRI_BYE_MESSAGE_SY "\n" TRI_BYE_MESSAGE_IL \
+  " " TRI_BYE_MESSAGE_IT " " TRI_BYE_MESSAGE_NL " " TRI_BYE_MESSAGE_SV  \
+  " " TRI_BYE_MESSAGE_FR " " TRI_BYE_MESSAGE_JP " " TRI_BYE_MESSAGE_RU  \
+  " " TRI_BYE_MESSAGE_PT " " TRI_BYE_MESSAGE_FA " " TRI_BYE_MESSAGE_LV  \
+  " " TRI_BYE_MESSAGE_GE " " TRI_BYE_MESSAGE_KR
 #endif

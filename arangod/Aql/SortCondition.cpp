@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SortCondition.h"
+
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
@@ -147,7 +149,7 @@ SortCondition::SortCondition(
 }
 
 /// @brief destroy the sort condition
-SortCondition::~SortCondition() {}
+SortCondition::~SortCondition() = default;
   
 bool SortCondition::onlyUsesNonNullSortAttributes(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {

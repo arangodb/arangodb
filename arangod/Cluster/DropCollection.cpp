@@ -28,6 +28,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -60,7 +63,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
   }
 }
 
-DropCollection::~DropCollection() {}
+DropCollection::~DropCollection() = default;
 
 bool DropCollection::first() {
   auto const& database = _description.get(DATABASE);
@@ -77,7 +80,7 @@ bool DropCollection::first() {
           TRI_ASSERT(coll);
           LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
               << "Dropping local collection " + collection;
-          _result = Collections::drop(*coll, false, 120);
+          _result = Collections::drop(*coll, false, 2.5);
         });
 
     if (found.fail()) {

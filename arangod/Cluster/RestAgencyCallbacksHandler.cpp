@@ -24,16 +24,19 @@
 #include "RestAgencyCallbacksHandler.h"
 
 #include "Cluster/AgencyCallbackRegistry.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
-                                                       GeneralResponse* response,
-                                                       arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-    : RestVocbaseBaseHandler(request, response),
+RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
 RestStatus RestAgencyCallbacksHandler::execute() {

@@ -24,6 +24,7 @@
 
 #include "Basics/HashSet.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -222,7 +223,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-    if (application_features::ApplicationServer::isStopping()) {
+    if (ridx.collection().vocbase().server().isStopping()) {
       res.reset(TRI_ERROR_SHUTTING_DOWN);
       break;
     }
@@ -236,6 +237,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
     if (numDocsWritten % 200 == 0) {  // commit buffered writes
       commitLambda();
+      // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
       }
@@ -296,7 +298,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       : _objectId(oid), _index(idx), _trx(trx), _methods(methods) {}
 
   bool Continue() override {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_index.collection().vocbase().server().isStopping()) {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
     }
     return tmpRes.ok();
@@ -496,9 +498,10 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   s = iterator->status();
-  // we can ignore it if we get a try again when we have exclusive access,
-  // because that indicates a write to another collection
-  if (!s.ok() && res.ok() && !(haveExclusiveAccess && s.IsTryAgain())) {
+  // we can ignore it if we get a try again return value, because that either
+  // indicates a write to another collection, or a write to this collection if
+  // we are not in exclusive mode, in which case we will call catchup again
+  if (!s.ok() && res.ok() && !s.IsTryAgain()) {
     LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
       s.ToString() << "'";
     res = rocksutils::convertStatus(s);

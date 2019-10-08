@@ -20,15 +20,28 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include <stdlib.h>
+#include <string.h>
+#include <limits>
+#include <type_traits>
+#include <utility>
 
-#include "Basics/system-functions.h"
+#include <libplatform/libplatform.h>
+
+#include "V8PlatformFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "V8/v8-globals.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "V8/v8-globals.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -144,7 +157,6 @@ static void fatalCallback(char const* location, char const* message) {
 V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
-  startsAfter("ClusterPhase");
 }
 
 void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -170,7 +182,9 @@ void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 
   if (0 < _v8MaxHeap) {
-    if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
+    // we have to compare against INT_MAX here, because the value is an int
+    // inside V8
+    if (_v8MaxHeap > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
       LOG_TOPIC("81a63", FATAL, arangodb::Logger::FIXME)
           << "value for '--javascript.v8-max-heap' exceeds maximum value "
           << (std::numeric_limits<int>::max)();

@@ -79,7 +79,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedLeader::~FailedLeader() {}
+FailedLeader::~FailedLeader() = default;
 
 void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -401,11 +401,18 @@ JOB_STATUS FailedLeader::status() {
 
   // Timedout after 77 minutes
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
-    rollback();
+    finish("", (_status != PENDING) ? "" : _shard, false, "Timed out.");
+    return FAILED;
   }
 
   if (_status != PENDING) {
     return _status;
+  }
+
+  std::string toServerHealth = checkServerHealth(_snapshot, _to);
+  if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
+    finish("", _shard, false, "_to server not health");
+    return FAILED;
   }
 
   std::string database, shard;

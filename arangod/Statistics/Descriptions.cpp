@@ -351,17 +351,23 @@ stats::Descriptions::Descriptions()
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics info = ServerStatistics::statistics();
+  ServerStatistics const& info = ServerStatistics::statistics();
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
-  if (dealer->isEnabled()) {
+  b.add("transactions", VPackValue(VPackValueType::Object));
+  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted));
+  b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted));
+  b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted));
+  b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));
+  b.close();
+
+  auto& server = application_features::ApplicationServer::server();
+  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer->getCurrentContextNumbers();
-    auto memoryStatistics = dealer->getCurrentMemoryNumbers();
+    auto v8Counters = dealer.getCurrentContextNumbers();
+    auto memoryStatistics = dealer.getCurrentMemoryNumbers();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));

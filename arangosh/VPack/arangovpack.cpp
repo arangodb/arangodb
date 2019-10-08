@@ -24,14 +24,17 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
@@ -52,17 +55,18 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(server, true));
-    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<GreetingsFeaturePhase>(true);
 
     // default is to use no config file
-    server.addFeature(new ConfigFeature(server, "arangovpack", "none"));
-    server.addFeature(new LoggerFeature(server, false));
-    server.addFeature(new RandomFeature(server));
-    server.addFeature(new ShellColorsFeature(server));
-    server.addFeature(new ShutdownFeature(server, {"VPack"}));
-    server.addFeature(new VPackFeature(server, &ret));
-    server.addFeature(new VersionFeature(server));
+    server.addFeature<ConfigFeature>("arangovpack", "none");
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(VPackFeature))});
+    server.addFeature<VPackFeature>(&ret);
+    server.addFeature<VersionFeature>();
 
     try {
       server.run(argc, argv);

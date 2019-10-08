@@ -26,10 +26,16 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 //
 // structure used to store expected states of action properties
@@ -98,7 +104,7 @@ public:
     as.addReporter(_progressHandler);
   }
 
-  virtual ~TestMaintenanceFeature() {}
+  virtual ~TestMaintenanceFeature() = default;
 
   void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 

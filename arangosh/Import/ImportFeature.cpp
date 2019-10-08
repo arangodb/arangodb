@@ -25,6 +25,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -68,7 +71,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
       _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 }
 
 void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -245,8 +248,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void ImportFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -273,29 +275,32 @@ void ImportFeature::start() {
   }
 
   try {
-    _httpClient = client->createHttpClient();
+    _httpClient = client.createHttpClient();
   } catch (...) {
     LOG_TOPIC("8477c", FATAL, arangodb::Logger::FIXME)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
+  _httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client.username(), client.password());
 
   // must stay here in order to establish the connection
 
   int err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
-  auto dbName = client->databaseName();
+  auto dbName = client.databaseName();
   bool createdDatabase = false;
 
   auto successfulConnection = [&]() {
-    std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(), versionString, /*role*/ "", /*mode*/ "", client->databaseName(), client->username()) << std::endl;
+    std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(),
+                                                      versionString, /*role*/ "",
+                                                      /*mode*/ "", client.databaseName(),
+                                                      client.username())
+              << std::endl;
 
     std::cout << "----------------------------------------" << std::endl;
-    std::cout << "database:               " << client->databaseName() << std::endl;
+    std::cout << "database:               " << client.databaseName() << std::endl;
     std::cout << "collection:             " << _collectionName << std::endl;
     if (!_fromCollectionPrefix.empty()) {
       std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
@@ -318,8 +323,8 @@ void ImportFeature::start() {
     }
     std::cout << "threads:                " << _threadCount << std::endl;
 
-    std::cout << "connect timeout:        " << client->connectionTimeout() << std::endl;
-    std::cout << "request timeout:        " << client->requestTimeout() << std::endl;
+    std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
+    std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
     std::cout << "----------------------------------------" << std::endl;
   };
 
@@ -327,7 +332,7 @@ void ImportFeature::start() {
     // database not found, but database creation requested
     std::cout << "Creating database '" << dbName << "'" << std::endl;
 
-    client->setDatabaseName("_system");
+    client.setDatabaseName("_system");
 
     int res = tryCreateDatabase(client, dbName);
 
@@ -341,15 +346,15 @@ void ImportFeature::start() {
     successfulConnection();
 
     // restore old database name
-    client->setDatabaseName(dbName);
+    client.setDatabaseName(dbName);
     versionString = _httpClient->getServerVersion(nullptr);
     createdDatabase = true;
   }
 
   if (!_httpClient->isConnected()) {
     LOG_TOPIC("541c6", ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
-        << client->databaseName() << "', username: '" << client->username() << "'";
+        << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
+        << client.databaseName() << "', username: '" << client.username() << "'";
     LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
@@ -361,7 +366,7 @@ void ImportFeature::start() {
   _httpClient->disconnect();  // we do not reuse this anymore
 
   SimpleHttpClientParams params = _httpClient->params();
-  arangodb::import::ImportHelper ih(client, client->endpoint(), params,
+  arangodb::import::ImportHelper ih(client, client.endpoint(), params,
                                     _chunkSize, _threadCount, _autoChunkSize);
 
   // create colletion
@@ -526,14 +531,14 @@ void ImportFeature::start() {
   *_result = ret;
 }
 
-int ImportFeature::tryCreateDatabase(ClientFeature* client, std::string const& name) {
+int ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
-  builder.add("username", VPackValue(client->username()));
-  builder.add("passwd", VPackValue(client->password()));
+  builder.add("username", VPackValue(client.username()));
+  builder.add("passwd", VPackValue(client.password()));
   builder.close();
   builder.close();
   builder.close();

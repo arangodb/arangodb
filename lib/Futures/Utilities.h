@@ -23,6 +23,8 @@
 #ifndef ARANGOD_FUTURES_UTILITIES_H
 #define ARANGOD_FUTURES_UTILITIES_H 1
 
+#include <vector>
+
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 
@@ -152,8 +154,8 @@ Future<std::vector<Try<typename std::iterator_traits<InputIterator>::value_type:
 }
 
 template <class Collection>
-auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
-  return collectAll(c.begin(), c.end());
+auto collectAll(Collection&& c) -> decltype(collectAll(std::begin(c), std::end(c))) {
+  return collectAll(std::begin(c), std::end(c));
 }
 
 }  // namespace futures

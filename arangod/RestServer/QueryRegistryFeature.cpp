@@ -25,7 +25,12 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -54,7 +59,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryCacheIncludeSystem(false),
       _queryRegistryTTL(0) {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;

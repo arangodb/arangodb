@@ -28,7 +28,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
@@ -50,7 +49,7 @@ struct NearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  ~NearIterator() {}
+  ~NearIterator() = default;
 
   char const* typeName() const override { return "s2-index-iterator"; }
 

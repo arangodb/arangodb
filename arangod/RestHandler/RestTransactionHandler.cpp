@@ -46,8 +46,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
+RestTransactionHandler::RestTransactionHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr), _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
     
@@ -86,11 +88,7 @@ RestStatus RestTransactionHandler::execute() {
 void RestTransactionHandler::executeGetState() {
   if (_request->suffixes().empty()) {
     // no transaction id given - so list all the transactions
-    auto context = arangodb::ExecContext::CURRENT;
-    std::string user;
-    if (context != nullptr || arangodb::ExecContext::isAuthEnabled()) {
-      user = context->user();
-    }
+    ExecContext const& exec = ExecContext::current();
 
     VPackBuilder builder;
     builder.openObject();
@@ -99,7 +97,7 @@ void RestTransactionHandler::executeGetState() {
     bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->toVelocyPack(builder, _vocbase.name(), user, fanout);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
  
     builder.close(); // array
     builder.close(); // object
@@ -138,7 +136,7 @@ void RestTransactionHandler::executeBegin() {
   // figure out the transaction ID
   TRI_voc_tid_t tid = 0;
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (found) {
     if (!ServerState::isDBServer(role)) {
@@ -167,7 +165,7 @@ void RestTransactionHandler::executeBegin() {
   
   
   bool parseSuccess = false;
-  VPackSlice body = parseVPackBody(parseSuccess);
+  VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return;
@@ -176,7 +174,7 @@ void RestTransactionHandler::executeBegin() {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   
-  Result res = mgr->createManagedTrx(_vocbase, tid, body);
+  Result res = mgr->createManagedTrx(_vocbase, tid, slice);
   if (res.fail()) {
     generateError(res);
   } else {

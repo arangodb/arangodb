@@ -21,10 +21,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PageSizeFeature.h"
-#include "Logger/Logger.h"
+
+#include "Basics/operating-system.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb::basics;
 
@@ -35,7 +47,7 @@ size_t PageSizeFeature::PageSize = 0;
 PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void PageSizeFeature::prepare() {

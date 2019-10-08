@@ -27,6 +27,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
@@ -68,8 +73,9 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
   CollectionNameResolver resolver;
 };
 
-RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestWalAccessHandler::RestWalAccessHandler(application_features::ApplicationServer& server,
+                                           GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   // determine start and end tick
@@ -158,7 +164,7 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (ExecContext::CURRENT == nullptr || !ExecContext::CURRENT->isAdminUser()) {
+  if (!_context.isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
@@ -234,14 +240,12 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // track the number of parallel invocations of the tailing API
-  auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
   // this may throw when too many threads are going into tailing
-  rf->trackTailingStart();
-  
-  auto guard = scopeGuard([rf]() {
-    rf->trackTailingEnd();
-  });
-      
+  rf.trackTailingStart();
+
+  auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+
   bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
 
   WalAccess::Filter filter;
@@ -258,7 +262,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;
@@ -419,16 +423,5 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa(r.lastIncludedTick()));
-  }
-}
-
-/// @brief Grant temporary restore rights
-void RestWalAccessHandler::grantTemporaryRights() {
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
-      // If you have administrative access on this database,
-      // we grant you everything for restore.
-      ExecContext::CURRENT = nullptr;
-    }
   }
 }

@@ -34,10 +34,14 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "Geo/ShapeContainer.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace geo_index {
@@ -78,12 +82,11 @@ Index::Index(VPackSlice const& info,
 /// @brief Parse document and return cells for indexing
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
-  using geo::GeoUtils;
 
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
-      return GeoUtils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
+      return geo::utils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
     }
     geo::ShapeContainer shape;
     Result r = geo::geojson::parseRegion(loc, shape);
@@ -101,7 +104,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     return r;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return GeoUtils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
+    return geo::utils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
   } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);

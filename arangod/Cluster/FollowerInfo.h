@@ -106,9 +106,13 @@ class FollowerInfo {
   /// @brief Take over leadership for this shard.
   ///        Also inject information of a insync followers that we knew about
   ///        before a failover to this server has happened
+  ///        The second parameter may be nullptr. It is an additional list
+  ///        of declared to be insync followers. If it is nullptr the follower
+  ///        list is initialised empty.
   ////////////////////////////////////////////////////////////////////////////////
 
-  void takeOverLeadership(std::vector<std::string> const& previousInsyncFollowers);
+  void takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
+                          std::shared_ptr<std::vector<ServerID>> realInsyncFollowers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower to a shard, this is only done by the server side
@@ -183,17 +187,19 @@ class FollowerInfo {
       if (_canWrite) {
         // Someone has decided we can write, fastPath!
 
-#ifdef ARANGODB_USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // Invariant, we can only WRITE if we do not have other failover candidates
         READ_LOCKER(readLockerData, _dataLock);
         TRI_ASSERT(_followers->size() == _failoverCandidates->size());
-        TRI_ASSERT(_followers->size() > _docColl->minReplicationFactor());
+        // Our follower list only contains followers, numFollowers + leader
+        // needs to be at least writeConcern.
+        TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
 #endif
         return _canWrite;
       }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
-      if (_followers->size() + 1 < _docColl->minReplicationFactor()) {
+      if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
         return false;
       }

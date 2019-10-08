@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -36,7 +37,7 @@ ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationSe
       _enableFoxxStore(true),
       _hardenedRestApi(false) {
   setOptional(false);
-  startsAfter("ServerPlatform");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -73,8 +74,8 @@ bool ServerSecurityFeature::canAccessHardenedApi() const {
   bool allowAccess = !isRestApiHardened();
 
   if (!allowAccess) {
-    ExecContext const* exec = ExecContext::CURRENT;
-    if (exec == nullptr || exec->isAdminUser()) {
+    ExecContext const& exec = ExecContext::current();
+    if (exec.isAdminUser()) {
       // also allow access if there is not authentication
       // enabled or when the user is an administrator
       allowAccess = true;

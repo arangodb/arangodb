@@ -24,6 +24,9 @@
 #ifndef ARANGODB_BASICS_PROCESS__UTILS_H
 #define ARANGODB_BASICS_PROCESS__UTILS_H 1
 
+#include <string>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/threads.h"
 
@@ -73,7 +76,7 @@ typedef enum {
   TRI_EXT_TERMINATED = 5,   // process has terminated normally
   TRI_EXT_ABORTED = 6,      // process has terminated abnormally
   TRI_EXT_STOPPED = 7,      // process has been stopped
-  TRI_EXT_TIMEOUT = 9      // waiting for the process timed out
+  TRI_EXT_TIMEOUT = 9       // waiting for the process timed out
 } TRI_external_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,8 +139,6 @@ struct ExternalProcessStatus {
   ExternalProcessStatus();
 };
 
-void TRI_LogProcessInfoSelf(char const* message = nullptr);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,6 +171,7 @@ void TRI_SetProcessTitle(char const* title);
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
+                               std::vector<std::string> additionalEnv,
                                bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////

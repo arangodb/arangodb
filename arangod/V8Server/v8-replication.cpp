@@ -25,7 +25,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/DatabaseTailingSyncer.h"
@@ -206,8 +208,9 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(server, builder.slice(), databaseName);
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -357,8 +360,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
   }
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, builder.slice(), database);
   // will throw if invalid
   configuration.validate();
 
@@ -421,10 +425,9 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate, ApplierTyp
     applier = vocbase.replicationApplier();
   } else {
     // applier type global
-    auto replicationFeature =
-        application_features::ApplicationServer::getFeature<ReplicationFeature>(
-            "Replication");
-    applier = replicationFeature->globalReplicationApplier();
+    auto& server = application_features::ApplicationServer::server();
+    auto& replicationFeature = server.getFeature<ReplicationFeature>();
+    applier = replicationFeature.globalReplicationApplier();
   }
 
   if (applier == nullptr) {
@@ -619,14 +622,13 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
     TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
   }
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  auto& server = application_features::ApplicationServer::server();
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;

@@ -23,9 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
 
-#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/ConditionVariable.h"
+#include "Basics/debugging.h"
+
+#ifdef ARANGODB_SHOW_LOCK_TIME
 #include "Logger/Logger.h"
 #endif
 
@@ -35,7 +37,7 @@ using namespace arangodb::basics;
 ///
 /// The constructors locks the condition variable, the destructors unlocks
 /// the condition variable
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
 ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable,
                                  char const* file, int line)
@@ -64,7 +66,7 @@ ConditionLocker::~ConditionLocker() {
     unlock();
   }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG_TOPIC("89086", WARN, arangodb::Logger::FIXME)
         << "ConditionLocker " << _file << ":" << _line << " took " << _time << " s";

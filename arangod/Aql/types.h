@@ -24,6 +24,9 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"
 
@@ -42,6 +45,10 @@ typedef uint64_t QueryId;
 
 // Map RemoteID->ServerID->[SnippetId]
 typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
+
+// Enable/Disable block passthrough in fetchers
+enum class BlockPassthrough { Disable, Enable };
+
 }  // namespace aql
 }  // namespace arangodb
 

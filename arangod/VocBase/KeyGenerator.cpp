@@ -29,6 +29,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-compiler.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/ticks.h"
@@ -325,20 +327,20 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
 class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
-      : TraditionalKeyGenerator(allowUserKeys) {
+  explicit TraditionalKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
+      : TraditionalKeyGenerator(allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->uniqid();
-  }
+  uint64_t generateValue() override { return _ci.uniqid(); }
 
   /// @brief track a key value (internal)
   void track(uint64_t /* value */) override {}
+
+ private:
+  ClusterInfo& _ci;
 };
 
 /// @brief base class for padded key generators
@@ -521,20 +523,20 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorCluster(bool allowUserKeys)
-      : PaddedKeyGenerator(allowUserKeys) {
+  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
+      : PaddedKeyGenerator(allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->uniqid();
-  }
+  uint64_t generateValue() override { return _ci.uniqid(); }
 
   /// @brief generate a key value (internal)
   void track(uint64_t /* value */) override {}
+
+ private:
+  ClusterInfo& _ci;
 };
 
 /// @brief auto-increment key generator - not usable in cluster
@@ -695,7 +697,9 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
     {static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL),
      [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         return new TraditionalKeyGeneratorCluster(allowUserKeys);
+         auto& server = application_features::ApplicationServer::server();
+         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+         return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new TraditionalKeyGeneratorSingle(allowUserKeys);
      }},
@@ -758,7 +762,9 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
      [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         return new PaddedKeyGeneratorCluster(allowUserKeys);
+         auto& server = application_features::ApplicationServer::server();
+         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+         return new PaddedKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new PaddedKeyGeneratorSingle(allowUserKeys);
      }}};

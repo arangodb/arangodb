@@ -20,7 +20,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LoggerFeature.h"
+#include <unordered_set>
+
+#include "Basics/operating-system.h"
 
 #ifdef ARANGODB_HAVE_GETGRGID
 #include <grp.h>
@@ -30,18 +32,30 @@
 #include <unistd.h>
 #endif
 
-#include "Basics/conversions.h"
-#include "Basics/StringUtils.h"
-#include "Logger/LogAppender.h"
-#include "Logger/LogAppenderFile.h"
-#include "Logger/LogTimeFormat.h"
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-
 #if _WIN32
 #include <iostream>
+#include "Basics/win-utils.h"
 #endif
+
+#include "LoggerFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
+#include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/conversions.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogAppender.h"
+#include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTimeFormat.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -54,8 +68,8 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bo
     _threaded(threaded) {
   setOptional(false);
 
-  startsAfter("ShellColors");
-  startsAfter("Version");
+  startsAfter<ShellColorsFeature>();
+  startsAfter<VersionFeature>();
 
   _levels.push_back("info");
 
@@ -210,6 +224,21 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "cannot combine `--log.time-format` with either `--log.use-microtime` or `--log.use-local-time`";
     FATAL_ERROR_EXIT();
   }
+       
+  // convert the deprecated options into the new timeformat
+  if (options->processingResult().touched("log.use-local-time")) {
+    _timeFormatString = "local-datestring";
+    // the following call ensures the string is actually valid.
+    // if not valid, the following call will throw an exception and
+    // abort the startup
+    LogTimeFormats::formatFromName(_timeFormatString);
+  } else if (options->processingResult().touched("log.use-microtime")) {
+    _timeFormatString = "timestamp-micros";
+    // the following call ensures the string is actually valid.
+    // if not valid, the following call will throw an exception and
+    // abort the startup
+    LogTimeFormats::formatFromName(_timeFormatString);
+  }
 
   if (!_fileMode.empty()) {
     try {
@@ -297,9 +326,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(false);
+    Logger::initialize(server(), false);
   } else {
-    Logger::initialize(_threaded);
+    Logger::initialize(server(), _threaded);
   }
 }
 

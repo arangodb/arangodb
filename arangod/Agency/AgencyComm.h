@@ -25,20 +25,19 @@
 #ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_AGENCY_COMM_H 1
 
-#include "Basics/Common.h"
-
-#include <list>
 #include <deque>
-
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
+#include <list>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
 #include "Basics/Mutex.h"
+#include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -173,6 +172,109 @@ class AgencyOperationType {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 AgencyCommManager
+// -----------------------------------------------------------------------------
+
+class AgencyCommManager {
+ public:
+  static std::unique_ptr<AgencyCommManager> MANAGER;
+  static AgencyConnectionOptions CONNECTION_OPTIONS;
+
+ public:
+  static void initialize(std::string const& prefix);
+  static void shutdown();
+
+  static bool isEnabled() { return MANAGER != nullptr; }
+
+  static std::string path();
+  static std::string path(std::string const&);
+  static std::string path(std::string const&, std::string const&);
+  static std::vector<std::string> slicePath(std::string const&);
+
+  static std::string generateStamp();
+
+ public:
+  explicit AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
+
+ public:
+  bool start();
+  void stop();
+
+  // Get a connection to the current endpoint, which will be filled in to
+  // `endpoint`, if that is empty. Otherwise, a connection to the non-empty
+  // endpoint `endpoint` is returned, regardless of what is the current
+  // endpoint.
+  std::unique_ptr<httpclient::GeneralClientConnection> acquire(std::string& endpoint);
+
+  // Returns a connection to the manager. `endpoint` must be the string
+  // description under which it was `acquire`d. Call this if you are done
+  // using the connection and no error occurred.
+  void release(std::unique_ptr<httpclient::GeneralClientConnection>,
+               std::string const& endpoint);
+
+  // Returns a connection to the manager. `endpoint` must be the string
+  // description under which it was `acquire`d. Call this if you are done
+  // using the connection and an error occurred. The connection object will
+  // be destroyed and the current endpoint will be rotated.
+  void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
+              std::string const& endpoint);
+
+  // If a request receives a redirect HTTP 307, one should call the following
+  // method to make the new location the current one. The method returns the
+  // new endpoint specification. If anything goes wrong (for example, some
+  // other thread has in the meantime changed the active endpoint), an empty
+  // string is returned, which means that one has to acquire a new endpoint.
+  std::string redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
+                       std::string const& endpoint, std::string const& location,
+                       std::string& url);
+
+  void addEndpoint(std::string const&);
+  /// removes old endpoints, adds new ones
+  void updateEndpoints(std::vector<std::string> const& endpoints);
+  std::string endpointsString() const;
+  std::vector<std::string> endpoints() const;
+  std::shared_ptr<velocypack::Builder> summery() const;
+
+ private:
+  // caller must hold _lock
+  void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
+                        std::string const& endpoint);
+
+  // caller must hold lock
+  void releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
+                         std::string const& endpoint);
+
+  // caller must hold _lock
+  std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
+
+  // caller must hold _lock
+  void switchCurrentEndpoint();
+
+ private:
+  std::string const _prefix;
+
+  // protects all the members
+  mutable Mutex _lock;
+
+  // The following structure contains a list of string descriptions of the
+  // known agency endpoints. The front one is the one currently used for
+  // communication. If there is a redirect, we add the redirected one to
+  // the list (if not already there) and move it to the front. If we fail
+  // with the communication with the front one, we move it to the back and
+  // try the next.
+  std::deque<std::string> _endpoints;
+
+  // In the following map we cache GeneralClientConnections to the above
+  // endpoints. One can acquire one of them for use, in which case it is
+  // removed from the corresponding vector. If one calls `release` on it,
+  // it is sent back to the ununsed vector. If an error occurs one
+  // should call `failed` such that the manager can switch to a new
+  // current endpoint. In case a redirect is received, one has to inform
+  // the manager by calling `redirect`.
+  std::unordered_map<std::string, std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>> _unusedConnections;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
 
@@ -184,6 +286,13 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  template<typename T>
+  AgencyPrecondition(std::string const& key, Type t, T const& v)
+    : key(AgencyCommManager::path(key)), type(t), empty(false),
+      builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  };
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -193,7 +302,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  velocypack::Slice const value;
+  velocypack::Slice value;
+  std::shared_ptr<VPackBuilder> builder;
 };
 
 // -----------------------------------------------------------------------------
@@ -208,6 +318,15 @@ class AgencyOperation {
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice const value);
+
+  template<typename T>
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
+    : _key(AgencyCommManager::path(key)), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+    _holder->add(VPackValue(value));
+    _value = _holder->slice();
+    _opType.type = AgencyOperationType::Type::VALUE;
+    _opType.value = opType;
+  }
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice const newValue, velocypack::Slice const oldValue);
@@ -226,6 +345,7 @@ class AgencyOperation {
   AgencyOperationType _opType;
   velocypack::Slice _value;
   velocypack::Slice _value2;
+  std::shared_ptr<VPackBuilder> _holder;
 };
 
 // -----------------------------------------------------------------------------
@@ -239,6 +359,12 @@ class AgencyCommResult {
                    std::string const& transactionId = std::string());
 
   ~AgencyCommResult() = default;
+
+  AgencyCommResult(AgencyCommResult const& other) = delete;
+  AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
+
+  AgencyCommResult(AgencyCommResult&& other) noexcept;
+  AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
   void set(int code, std::string const& message);
@@ -268,6 +394,17 @@ class AgencyCommResult {
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
+
+  Result asResult() {
+    if (successful()) {
+      return Result{};
+    }
+    return Result{errorCode(), errorMessage()};
+  }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  VPackBuilder toVelocyPack() const;
 
  public:
   std::string _location;
@@ -505,109 +642,6 @@ struct AgencyReadTransaction : public AgencyTransaction {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 AgencyCommManager
-// -----------------------------------------------------------------------------
-
-class AgencyCommManager {
- public:
-  static std::unique_ptr<AgencyCommManager> MANAGER;
-  static AgencyConnectionOptions CONNECTION_OPTIONS;
-
- public:
-  static void initialize(std::string const& prefix);
-  static void shutdown();
-
-  static bool isEnabled() { return MANAGER != nullptr; }
-
-  static std::string path();
-  static std::string path(std::string const&);
-  static std::string path(std::string const&, std::string const&);
-  static std::vector<std::string> slicePath(std::string const&);
-
-  static std::string generateStamp();
-
- public:
-  explicit AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
-
- public:
-  bool start();
-  void stop();
-
-  // Get a connection to the current endpoint, which will be filled in to
-  // `endpoint`, if that is empty. Otherwise, a connection to the non-empty
-  // endpoint `endpoint` is returned, regardless of what is the current
-  // endpoint.
-  std::unique_ptr<httpclient::GeneralClientConnection> acquire(std::string& endpoint);
-
-  // Returns a connection to the manager. `endpoint` must be the string
-  // description under which it was `acquire`d. Call this if you are done
-  // using the connection and no error occurred.
-  void release(std::unique_ptr<httpclient::GeneralClientConnection>,
-               std::string const& endpoint);
-
-  // Returns a connection to the manager. `endpoint` must be the string
-  // description under which it was `acquire`d. Call this if you are done
-  // using the connection and an error occurred. The connection object will
-  // be destroyed and the current endpoint will be rotated.
-  void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
-              std::string const& endpoint);
-
-  // If a request receives a redirect HTTP 307, one should call the following
-  // method to make the new location the current one. The method returns the
-  // new endpoint specification. If anything goes wrong (for example, some
-  // other thread has in the meantime changed the active endpoint), an empty
-  // string is returned, which means that one has to acquire a new endpoint.
-  std::string redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
-                       std::string const& endpoint, std::string const& location,
-                       std::string& url);
-
-  void addEndpoint(std::string const&);
-  /// removes old endpoints, adds new ones
-  void updateEndpoints(std::vector<std::string> const& endpoints);
-  std::string endpointsString() const;
-  std::vector<std::string> endpoints() const;
-  std::shared_ptr<velocypack::Builder> summery() const;
-
- private:
-  // caller must hold _lock
-  void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
-                        std::string const& endpoint);
-
-  // caller must hold lock
-  void releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
-                         std::string const& endpoint);
-
-  // caller must hold _lock
-  std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
-
-  // caller must hold _lock
-  void switchCurrentEndpoint();
-
- private:
-  std::string const _prefix;
-
-  // protects all the members
-  mutable Mutex _lock;
-
-  // The following structure contains a list of string descriptions of the
-  // known agency endpoints. The front one is the one currently used for
-  // communication. If there is a redirect, we add the redirected one to
-  // the list (if not already there) and move it to the front. If we fail
-  // with the communication with the front one, we move it to the back and
-  // try the next.
-  std::deque<std::string> _endpoints;
-
-  // In the following map we cache GeneralClientConnections to the above
-  // endpoints. One can acquire one of them for use, in which case it is
-  // removed from the corresponding vector. If one calls `release` on it,
-  // it is sent back to the ununsed vector. If an error occurs one
-  // should call `failed` such that the manager can switch to a new
-  // current endpoint. In case a redirect is received, one has to inform
-  // the manager by calling `redirect`.
-  std::unordered_map<std::string, std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>> _unusedConnections;
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
 
@@ -696,5 +730,9 @@ class AgencyComm {
   bool shouldInitializeStructure();
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif

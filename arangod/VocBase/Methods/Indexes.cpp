@@ -47,6 +47,8 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -113,7 +115,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     // add code for estimates here
     std::unordered_map<std::string, double> estimates;
 
-    int rv = selectivityEstimatesOnCoordinator(databaseName, cid, estimates);
+    auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
+    int rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
     if (rv != TRI_ERROR_NO_ERROR) {
       return Result(rv, "could not retrieve estimates");
     }
@@ -122,7 +125,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     flags &= ~Index::makeFlags(Index::Serialize::Estimates);
 
     VPackBuilder tmpInner;
-    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
+    auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto c = ci.getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, flags, [&](arangodb::Index const* idx) {
       return withHidden || !idx->isHidden();
     });
@@ -326,24 +330,20 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
                                        VPackSlice const& indexDef, bool create,
                                        VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
-  auto& dbName = collection->vocbase().name();
-  auto cid = std::to_string(collection->id());
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = collection->vocbase().server().getFeature<ClusterFeature>();
 
-  return ClusterInfo::instance()->ensureIndexCoordinator(  // create index
-      dbName, cid, indexDef, create, resultBuilder, cluster->indexCreationTimeout()  // args
-  );
+  return cluster.clusterInfo().ensureIndexCoordinator(  // create index
+      *collection, indexDef, create, resultBuilder, cluster.indexCreationTimeout());
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& input,
                             bool create, VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    auth::Level lvl = exec->databaseAuthLevel();
-    bool canModify = exec->canUseCollection(collection->name(), auth::Level::RW);
-    bool canRead = exec->canUseCollection(collection->name(), auth::Level::RO);
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isSuperuser()) {
+    auth::Level lvl = exec.databaseAuthLevel();
+    bool canModify = exec.canUseCollection(collection->name(), auth::Level::RW);
+    bool canRead = exec.canUseCollection(collection->name(), auth::Level::RO);
     if ((create && (lvl != auth::Level::RW || !canModify)) ||
         (lvl == auth::Level::NONE || !canRead)) {
       events::CreateIndex(collection->vocbase().name(), collection->name(),
@@ -365,8 +365,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
     return res;
   }
 
-  auto const& dbname = collection->vocbase().name();
-  std::string const collname(collection->name());
   VPackSlice indexDef = normalized.slice();
 
   if (ServerState::instance()->isCoordinator()) {
@@ -394,11 +392,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
-        auto c = ClusterInfo::instance()->getCollection(dbname, collname);
         auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
 
-        if (flds.isArray() && c->numberOfShards() > 1) {
-          std::vector<std::string> const& shardKeys = c->shardKeys();
+        if (flds.isArray() && collection->numberOfShards() > 1) {
+          std::vector<std::string> const& shardKeys = collection->shardKeys();
           std::unordered_set<std::string> indexKeys;
           size_t n = static_cast<size_t>(flds.length());
 
@@ -605,9 +602,10 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& indexArg) {
   TRI_ASSERT(collection);
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() != auth::Level::RW ||
-        !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isSuperuser()) {
+    if (exec.databaseAuthLevel() != auth::Level::RW ||
+        !exec.canUseCollection(collection->name(), auth::Level::RW)) {
       events::DropIndex(collection->vocbase().name(), collection->name(), "", TRI_ERROR_FORBIDDEN);
       return TRI_ERROR_FORBIDDEN;
     }
@@ -660,7 +658,8 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);
 #else
-    res = ClusterInfo::instance()->dropIndexCoordinator(  // drop index
+    auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    res = ci.dropIndexCoordinator(  // drop index
         collection->vocbase().name(), std::to_string(collection->id()), iid, 0.0  // args
     );
 #endif

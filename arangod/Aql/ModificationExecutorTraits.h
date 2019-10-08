@@ -24,9 +24,14 @@
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_TRAITS_H
 
 #include "Aql/ModificationExecutor.h"
+#include "Transaction/Methods.h"
+#include "Utils/OperationResult.h"
 
-#include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <cstddef>
+#include <cstdint>
 
 namespace arangodb {
 namespace aql {
@@ -41,11 +46,11 @@ enum class ModOperationType : uint8_t {
   APPLY_INSERT = 4,  // apply it and return the result, used only used for UPSERT
 };
 
-inline std::string toString(Insert&){ return "Insert"; };
-inline std::string toString(Remove&){ return "Remove"; };
-inline std::string toString(Update&){ return "Update"; };
-inline std::string toString(Upsert&){ return "Upsert"; };
-inline std::string toString(Replace&){ return "Replace"; };
+inline std::string toString(Insert&) { return "Insert"; };
+inline std::string toString(Remove&) { return "Remove"; };
+inline std::string toString(Update&) { return "Update"; };
+inline std::string toString(Upsert&) { return "Upsert"; };
+inline std::string toString(Replace&) { return "Replace"; };
 
 struct ModificationBase {
   ModificationBase()
@@ -54,7 +59,7 @@ struct ModificationBase {
 
   std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
-  std::size_t _blockIndex = 0;  // cursor to the current positon
+  std::size_t _blockIndex = 0;      // cursor to the current positon
   SharedAqlItemBlockPtr _block = nullptr;
 
   OperationResult _operationResult;
@@ -87,8 +92,10 @@ struct ModificationBase {
     target = std::move(result);
     if (target.buffer && target.slice().isArray()) {
       slice = target.slice();
-      iter = VPackArrayIterator(slice);
+    } else {
+      slice = VPackSlice::emptyArraySlice();
     }
+    iter = VPackArrayIterator(slice);
   }
 
   void setOperationResult(OperationResult&& result) {

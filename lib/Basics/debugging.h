@@ -25,11 +25,13 @@
 #ifndef ARANGODB_BASICS_DEBUGGING_H
 #define ARANGODB_BASICS_DEBUGGING_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
+#include <stdlib.h>
 #include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
+
+#include "Basics/system-compiler.h"
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -47,9 +49,9 @@
 
 /// @brief cause a segmentation violation
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_SegfaultDebugging(char const* value);
+void TRI_TerminateDebugging(char const* value);
 #else
-inline void TRI_SegfaultDebugging(char const*) {}
+inline void TRI_TerminateDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
@@ -201,5 +203,32 @@ operator<< (std::ostream& o, T const& t) {
   o << " " << conpar<is_associative<T>::value>::close;
   return o;  
 }
+
+/// @brief assert
+#ifndef TRI_ASSERT
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define TRI_ASSERT(expr)                             \
+  do {                                               \
+    if (!(ADB_LIKELY(expr))) {                       \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
+      TRI_PrintBacktrace();                          \
+      std::abort();                                  \
+    }                                                \
+  } while (0)
+
+#else
+
+#define TRI_ASSERT(expr) \
+  while (0) {            \
+    (void)(expr);        \
+  }                      \
+  do {                   \
+  } while (0)
+
+#endif
+
+#endif
 
 #endif

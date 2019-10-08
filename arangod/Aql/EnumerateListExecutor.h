@@ -26,14 +26,13 @@
 #ifndef ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 
-#include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace transaction {
@@ -43,9 +42,9 @@ class Methods;
 namespace aql {
 
 class ExecutorInfos;
-class InputAqlItemRow;
+class OutputAqlItemRow;
 class NoStats;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
@@ -61,8 +60,8 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  RegisterId getOutputRegister() const noexcept { return _outputRegister; };
+  RegisterId getInputRegister() const noexcept;
+  RegisterId getOutputRegister() const noexcept;
 
  private:
   // These two are exactly the values in the parent members
@@ -78,9 +77,9 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
 class EnumerateListExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateListExecutorInfos;

@@ -21,11 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathExecutor.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/system-compiler.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
@@ -39,6 +41,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool ShortestPathExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough ShortestPathExecutor::Properties::allowsBlockPassthrough;
+constexpr bool ShortestPathExecutor::Properties::inputSizeRestrictsOutputSize;
 using namespace arangodb::graph;
 
 namespace {

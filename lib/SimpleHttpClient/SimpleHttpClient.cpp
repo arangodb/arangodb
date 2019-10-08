@@ -23,23 +23,36 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SimpleHttpClient.h"
+#include <stddef.h>
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <thread>
+#include <utility>
 
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include <boost/algorithm/string/predicate.hpp>
 
-#include <boost/algorithm/string.hpp>
-
+#include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <chrono>
-#include <thread>
+#include "SimpleHttpClient.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/GeneralResponse.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -178,7 +191,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       break;
     }
 
-    if (application_features::ApplicationServer::isStopping()) {
+    auto& server = application_features::ApplicationServer::server();
+    if (server.isStopping()) {
       // abort this client, will also lead to exiting this loop next
       setAborted(true);
     }
@@ -248,9 +262,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   // reset error message
   _errorMessage = "";
 
-  auto comm =
-      application_features::ApplicationServer::getFeature<arangodb::application_features::CommunicationFeaturePhase>(
-          "CommunicationPhase");
+  auto& server = application_features::ApplicationServer::server();
+  auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
 
   // set body
   setRequest(method, rewriteLocation(location), body, bodyLength, headers);
@@ -405,7 +418,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
-    if (!comm->getCommAllowed()) {
+    if (!comm.getCommAllowed()) {
       setErrorMessage("Command locally aborted");
       return nullptr;
     }
@@ -591,7 +604,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   if (method != rest::RequestType::GET) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
-    _writeBuffer.appendInteger(bodyLength);
+    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
   } else {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));

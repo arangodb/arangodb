@@ -58,10 +58,11 @@ template <SocketType ST>
 int HttpConnection<ST>::on_status(http_parser* parser, const char* at,
                                   size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
-  self->_response->header.meta.emplace(
-      std::string("http/") + std::to_string(parser->http_major) + '.' +
-          std::to_string(parser->http_minor),
-      std::string(at, len));
+  // required for some arango shenanigans
+  self->_response->header.addMeta(std::string("http/") +
+                                      std::to_string(parser->http_major) + '.' +
+                                      std::to_string(parser->http_minor),
+                                  std::string(at, len));
   return 0;
 }
 
@@ -226,6 +227,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
     this->startConnection();
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
+    drainQueue(fuerte::Error::ConnectionClosed);
   }
   return mid;
 }
@@ -298,18 +300,31 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
       header.append(http::urlEncode(p.first) + "=" + http::urlEncode(p.second));
     }
   }
-  header.append(" HTTP/1.1\r\n");
-  header.append("Host: ");
-  header.append(this->_config._host);
-  header.append("\r\n");
+  header.append(" HTTP/1.1\r\n")
+      .append("Host: ")
+      .append(this->_config._host)
+      .append("\r\n");
   if (_idleTimeout.count() > 0) {  // technically not required for http 1.1
     header.append("Connection: Keep-Alive\r\n");
   } else {
     header.append("Connection: Close\r\n");
   }
-  for (auto const& pair : req.header.meta) {
+
+  header.append("Content-Type: ")
+      .append(to_string(req.contentType()))
+      .append("\r\n")
+      .append("Accept: ")
+      .append(to_string(req.acceptType()))
+      .append("\r\n");
+
+  bool haveAuth = false;
+  for (auto const& pair : req.header.meta()) {
     if (boost::iequals(fu_content_length_key, pair.first)) {
       continue;  // skip content-length header
+    }
+
+    if (boost::iequals("authorization", pair.first)) {
+      haveAuth = true;
     }
 
     header.append(pair.first);
@@ -318,7 +333,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
     header.append("\r\n");
   }
 
-  if (!_authHeader.empty()) {
+  if (!haveAuth && !_authHeader.empty()) {
     header.append(_authHeader);
   }
 
