@@ -2556,7 +2556,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  uint64_t rebootId;
+  RebootId rebootId(0);
   std::string serverId;
 
   VPackSlice collection = body.get("collection");
@@ -2566,7 +2566,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   if (body.hasKey("rebootId")) {
     if (body.get("rebootId").isInteger()) {
       if (body.hasKey("serverId") && body.get("serverId").isString()) {
-        rebootId = body.get("rebootId").getNumber<uint64_t>();
+        rebootId = RebootId(body.get("rebootId").getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2959,7 +2959,7 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col, double ttl,
                                                          AccessMode::Type access,
-                                                         uint64_t const& rebootId,
+                                                         RebootId const& rebootId,
                                                          std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
@@ -2994,7 +2994,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
   ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  #warning shut down check needed?
+
   std::string vn = _vocbase.name();
   try {
     std::function<void(void)> f =
@@ -3010,7 +3010,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
     auto rGuard = std::make_unique<CallbackGuard>(
       ci.rebootTracker().callMeOnChange(
-        RebootTracker::PeerState(serverId, RebootId(rebootId)), f, ""));
+        RebootTracker::PeerState(serverId, rebootId), f, ""));
 
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
     
