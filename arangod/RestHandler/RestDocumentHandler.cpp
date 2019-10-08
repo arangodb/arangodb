@@ -176,7 +176,7 @@ bool RestDocumentHandler::insertDocument() {
 
   Result res = trx->begin();
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -187,12 +187,12 @@ bool RestDocumentHandler::insertDocument() {
   // result stays valid!
   res = trx->finish(result.result);
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(collectionName, result, "");
     return false;
   }
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -277,7 +277,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   Result res = trx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collection, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -292,13 +292,13 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
       generatePreconditionFailed(result.slice());
     } else {
-      generateTransactionError(collection, res, key);
+      generateTransactionError(collection, OperationResult(std::move(res)), key);
     }
     return false;
   }
 
   if (!res.ok()) {
-    generateTransactionError(collection, res, key);
+    generateTransactionError(collection, OperationResult(std::move(res)), key);
     return false;
   }
 
@@ -463,8 +463,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // ...........................................................................
 
   Result res = trx->begin();
+
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -486,12 +487,12 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // ...........................................................................
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(collectionName, result, key);
     return false;
   }
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, key, 0);
+    generateTransactionError(collectionName, OperationResult(std::move(res)), key);
     return false;
   }
 
@@ -586,7 +587,7 @@ bool RestDocumentHandler::removeDocument() {
   Result res = trx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -596,12 +597,12 @@ bool RestDocumentHandler::removeDocument() {
   res = trx->finish(result.result);
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(collectionName, result, key);
     return false;
   }
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, key);
+    generateTransactionError(collectionName, OperationResult(std::move(res)), key);
     return false;
   }
 
@@ -639,7 +640,7 @@ bool RestDocumentHandler::readManyDocuments() {
   Result res = trx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -651,12 +652,12 @@ bool RestDocumentHandler::readManyDocuments() {
   res = trx->finish(result.result);
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(collectionName, result, "");
     return false;
   }
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
