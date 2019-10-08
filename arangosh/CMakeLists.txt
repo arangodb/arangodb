@@ -134,7 +134,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobackup jemalloc)
+  add_dependencies(arangobackup jemalloc_build)
 endif ()
 
 if(MSVC)
