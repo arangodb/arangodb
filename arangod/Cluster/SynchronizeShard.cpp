@@ -440,7 +440,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
-    body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
+    body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId()));
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
 
