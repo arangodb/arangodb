@@ -55,11 +55,11 @@ class ConnectionPool final {
  public:
   struct Config {
     ClusterInfo* clusterInfo;
-    uint64_t minOpenConnections = 1;      /// minimum number of open connections
-    uint64_t maxOpenConnections = 25;     /// max number of connections
-    uint64_t connectionTtlMilli = 60000;  /// unused connection lifetime
+    uint64_t minOpenConnections = 1;       /// minimum number of open connections
+    uint64_t maxOpenConnections = 25;      /// max number of connections
+    uint64_t connectionTtlMilli = 60000;   /// unused connection lifetime
     uint64_t requestTimeoutMilli = 120000; /// request timeout
-    unsigned int numIOThreads = 1;            /// number of IO threads
+    unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
   };

@@ -62,6 +62,7 @@ struct Response {
   std::string destinationShard() const; /// @brief shardId or empty
   std::string serverId() const;         /// @brief server ID
 };
+static_assert(std::is_nothrow_move_constructible<Response>::value, "");
 using FutureRes = arangodb::futures::Future<Response>;
 
 /// @brief send a request to a given destination
