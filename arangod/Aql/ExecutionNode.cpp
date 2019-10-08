@@ -2335,8 +2335,9 @@ ExecutionNode * MaterializeNode::clone(ExecutionPlan * plan, bool withDependenci
 }
 
 CostEstimate MaterializeNode::estimateCost() const {
-  // we look for parent as we will materialize so many documents so be asked by parent
   if (_dependencies.empty()) {
+    // we should always have dependency as we need input for materializing
+    TRI_ASSERT(false);
     return aql::CostEstimate::empty();
   }
   aql::CostEstimate estimate = _dependencies[0]->getCost();

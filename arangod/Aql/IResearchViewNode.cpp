@@ -640,7 +640,7 @@ SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Met
   return reader;
 }
 
-const char* NODE_DATABAE_PARAM = "database";
+const char* NODE_DATABASE_PARAM = "database";
 const char* NODE_VIEW_NAME_PARAM = "view";
 const char* NODE_VIEW_ID_PARAM = "viewId";
 const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
@@ -909,7 +909,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // system info
-  nodes.add(NODE_DATABAE_PARAM, VPackValue(_vocbase.name()));
+  nodes.add(NODE_DATABASE_PARAM, VPackValue(_vocbase.name()));
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
   nodes.add(NODE_VIEW_ID_PARAM, VPackValue(basics::StringUtils::itoa(_view->id())));
@@ -1069,7 +1069,7 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
 
     std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
       [](auto const& scorer) { return scorer.var; });
-    if (_outNonMaterializedColPtr != nullptr) {
+    if (isLateMaterialized()) {
       vars[vars.size() - 2] = _outNonMaterializedColPtr;
       vars[vars.size() - 1] = _outNonMaterializedDocId;
     } else {
@@ -1196,13 +1196,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   bool const ordered = !_scorers.empty();
-  bool const materialized = _outNonMaterializedColPtr == nullptr;
+  bool const materialized = !isLateMaterialized(); 
   // We have one output register for documents, which is always the first after
   // the input registers.
-  aql::RegisterId const firstOutputRegister = getNrInputRegisters();
-  auto numScoreRegisters = static_cast<aql::RegisterId>(_scorers.size());
+  auto const firstOutputRegister = getNrInputRegisters();
+  auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
 
-  aql::RegisterId numDocumentRegs = 1;
+  aql::RegisterCount numDocumentRegs = 1;
   // Also we could be asked to produce only document/collection ids for later materialization
   if (!materialized) {
     numDocumentRegs += 2;

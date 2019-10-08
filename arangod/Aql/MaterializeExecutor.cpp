@@ -75,8 +75,8 @@ arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep,
     RegisterId inNmColPtr, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx )
   : ExecutorInfos(
-      std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>({inNmColPtr, inNmDocId})),
-      std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>({outDocRegId})),
+      make_shared_unordered_set(std::initializer_list<RegisterId>({inNmColPtr, inNmDocId})),
+      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
       nrInputRegisters, nrOutputRegisters,
       std::move(registersToClear), std::move(registersToKeep)),
       _inNonMaterializedColRegId(inNmColPtr), _inNonMaterializedDocRegId(inNmDocId),
@@ -89,8 +89,8 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
   bool written = false;
   // some micro-optimization
   auto& callback = _readDocumentContext._callback;
-  auto DocRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
-  auto ColRegId = _readDocumentContext._infos->inputNonMaterializedColRegId();
+  auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
+  auto colRegId = _readDocumentContext._infos->inputNonMaterializedColRegId();
   auto* trx = _readDocumentContext._infos->trx();
   do {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -104,12 +104,12 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
     }
     auto collection =
       reinterpret_cast<arangodb::LogicalCollection const*>(
-        input.getValue(ColRegId).toInt64());
+        input.getValue(colRegId).slice().getUInt());
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
     written = collection->readDocumentWithCallback(trx,
-      LocalDocumentId(input.getValue(DocRegId).toInt64()),
+      LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
       callback);
   } while (!written && state != ExecutionState::DONE);
   return {state, NoStats{}};

@@ -296,13 +296,15 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateCollection,
 
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    lateDocumentMaterializationRule,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
     spliceSubqueriesRule
-
-    // move document materialization after SORT and LIMIT
-    lateDocumentMaterializationRule,
   };
 
   velocypack::StringRef name;

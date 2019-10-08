@@ -285,6 +285,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
+  Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp
@@ -346,7 +347,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
-  Aql/MaterializeExecutor.cpp
 )
 
 set(LIB_ARANGO_VOCBASE_SOURCES

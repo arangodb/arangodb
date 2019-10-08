@@ -599,7 +599,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     {
       // For sake of performance we store raw pointer to collection
       // It is safe as pipeline work inside one process
-      static_assert(sizeof(void*) <= sizeof(uint64_t), "Pointer not fits in LocalDocumentId");
+      static_assert(sizeof(void*) <= sizeof(uint64_t), "Pointer not fits in uint64_t");
       AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
       bool mustDestroy = true;
       AqlValueGuard guard{ a, mustDestroy };

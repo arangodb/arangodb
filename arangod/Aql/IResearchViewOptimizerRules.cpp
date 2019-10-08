@@ -274,7 +274,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule) {
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+  auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
       // currently only arangosearch view node supports late materialization
@@ -289,14 +289,14 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::LIMIT, true);
-  for (auto node : nodes) {
-    auto loop = const_cast<ExecutionNode*>(node->getLoop());
+  for (auto limitNode : nodes) {
+    auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
       if (viewNode.isLateMaterialized()) {
         continue; //loop is aleady optimized
       }
-      ExecutionNode* current = node->getFirstDependency();
+      ExecutionNode* current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
       // examinig plan. We are looking for SortNode closest to lowerest LimitNode
       // without document body usage before that node.
@@ -304,23 +304,23 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       bool stopSearch = false;
       while (current != loop) {
         switch (current->getType()) {
-        case arangodb::aql::ExecutionNode::SORT:
-          if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
-            sortNode = current;
-          }
-          break;
-        case arangodb::aql::ExecutionNode::REMOTE:
-          // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
-          // Moreover we pass raw collection pointer - this must not cross process border!
-          if (sortNode != nullptr) {
-            // this limit node affects only closest sort, if this sort is invalid
-            // we need to check other limit node
-            stopSearch = true;
-            sortNode = nullptr;
-          }
-          break;
-        default: // make clang happy
-          break;
+          case arangodb::aql::ExecutionNode::SORT:
+            if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
+              sortNode = current;
+            }
+            break;
+          case arangodb::aql::ExecutionNode::REMOTE:
+            // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
+            // Moreover we pass raw collection pointer - this must not cross process border!
+            if (sortNode != nullptr) {
+              // this limit node affects only closest sort, if this sort is invalid
+              // we need to check other limit node
+              stopSearch = true;
+              sortNode = nullptr;
+            }
+            break;
+          default: // make clang happy
+            break;
         }
         if (sortNode != nullptr) {
           arangodb::HashSet<Variable const*> currentUsedVars;
@@ -346,19 +346,17 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
-        // insert a scatter node
-        auto materializerNode =
+        // insert a materialize node
+        auto materializeNode =
             plan->registerNode(std::make_unique<MaterializeNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
-        // on cluster we need to materializer node stay close to sort node on db server (to avoid network hop for materialization calls)
+        // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
-        auto materializerDependency = ServerState::instance()->isCoordinator() ? sortNode : node;
-        auto* dependencyParent = materializerDependency->getFirstParent();
+        auto materializeDependency = ServerState::instance()->isCoordinator() ? sortNode : limitNode;
+        auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
-        dependencyParent->removeDependency(materializerDependency);
-        dependencyParent->addDependency(materializerNode);
-        materializerDependency->addParent(materializerNode);
+        dependencyParent->replaceDependency(materializeDependency, materializeNode);
         modified = true;
       }
     }
