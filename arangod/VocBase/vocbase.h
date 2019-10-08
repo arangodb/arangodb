@@ -40,6 +40,7 @@
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Slice.h>
 
@@ -56,7 +57,6 @@ class Slice;
 class StringRef;
 }  // namespace velocypack
 class CollectionKeysRepository;
-class CreateDatabaseInfo;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
@@ -160,16 +160,12 @@ struct TRI_vocbase_t {
 
   arangodb::application_features::ApplicationServer& _server;
 
-  TRI_voc_tick_t const _id;  // internal database id
-  std::string  _name; // database name
+  arangodb::CreateDatabaseInfo _info;
+
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   State _state;
   bool _isOwnAppsDirectory;
-
-  std::uint32_t _replicationFactor; // 0 is satellite, 1 disabled
-  std::uint32_t _writeConcern;
-  std::string _sharding; // "flexible" (same as "") or "single"
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _deadCollections;  // collections dropped that can be removed later
@@ -214,8 +210,8 @@ struct TRI_vocbase_t {
     return _server;
   }
 
-  TRI_voc_tick_t id() const { return _id; }
-  std::string const& name() const { return _name; }
+  TRI_voc_tick_t id() const { return _info.getId(); }
+  std::string const& name() const { return _info.getName(); }
   std::string path() const;
   std::uint32_t replicationFactor() const;
   std::uint32_t writeConcern() const;
@@ -268,7 +264,7 @@ struct TRI_vocbase_t {
   bool markAsDropped();
 
   /// @brief returns whether the database is the system database
-  bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
+  bool isSystem() const { return _info.getName() == TRI_VOC_SYSTEM_DATABASE; }
 
   /// @brief stop operations in this vocbase. must be called prior to
   /// shutdown to clean things up

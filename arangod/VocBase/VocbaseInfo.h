@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE_VOCBASEINFO_H
@@ -85,7 +85,7 @@ class CreateDatabaseInfo {
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
-  
+
   application_features::ApplicationServer& server() const;
 
   uint64_t getId() const {
@@ -102,7 +102,7 @@ class CreateDatabaseInfo {
     _validId = true;
   }
 
-  std::string getName() const {
+  std::string const& getName() const {
     TRI_ASSERT(_valid);
     return _name;
   }
@@ -116,7 +116,7 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _writeConcern;
   }
-  std::string sharding() const {
+  std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
@@ -131,7 +131,7 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
-  
+
   std::uint64_t _id = 0;
   std::string _name = "";
   std::vector<DBUser> _users;
