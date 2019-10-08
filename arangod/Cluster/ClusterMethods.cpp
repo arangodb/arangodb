@@ -3043,6 +3043,10 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
   // Now check results
   for (auto const& req : requests) {
     auto res = req.result;
+    if (res.answer == NULL) {
+      continue;
+    }
+
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
@@ -3091,38 +3095,38 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
 
   for (auto& i : dbsBackups) {
     // check if the backup is on all dbservers
-    if (i.second.size() == dbServers.size()) {
-      bool valid = true;
+    bool valid = true;
 
-      // check here that the backups are all made with the same version
-      std::string version;
-      size_t totalSize = 0;
-      size_t totalFiles = 0;
+    // check here that the backups are all made with the same version
+    std::string version;
+    size_t totalSize = 0;
+    size_t totalFiles = 0;
 
-      for (BackupMeta const& meta : i.second) {
-        if (version.empty()) {
-          version = meta._version;
-        } else {
-          if (version != meta._version) {
-            LOG_TOPIC("aaaaa", WARN, Logger::BACKUP)
-                << "Backup " << meta._id
-                << " has different versions accross dbservers: " << version
-                << " and " << meta._version;
-            valid = false;
-            break;
-          }
+    for (BackupMeta const& meta : i.second) {
+      if (version.empty()) {
+        version = meta._version;
+      } else {
+        if (version != meta._version) {
+          LOG_TOPIC("aaaaa", WARN, Logger::BACKUP)
+              << "Backup " << meta._id
+              << " has different versions accross dbservers: " << version
+              << " and " << meta._version;
+          valid = false;
+          break;
         }
-        totalSize += meta._sizeInBytes;
-        totalFiles += meta._nrFiles;
       }
+      totalSize += meta._sizeInBytes;
+      totalFiles += meta._nrFiles;
+    }
 
-      if (valid) {
-        BackupMeta& front = i.second.front();
-        front._sizeInBytes = totalSize;
-        front._nrFiles = totalFiles;
-        front._serverId = "";  // makes no sense for whole cluster
-        hotBackups.insert(std::make_pair(front._id, front));
-      }
+    if (valid) {
+      BackupMeta& front = i.second.front();
+      front._sizeInBytes = totalSize;
+      front._nrFiles = totalFiles;
+      front._serverId = "";  // makes no sense for whole cluster
+      front._isAvailable = i.second.size() == dbServers.size();
+      front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
+      hotBackups.insert(std::make_pair(front._id, front));
     }
   }
 
