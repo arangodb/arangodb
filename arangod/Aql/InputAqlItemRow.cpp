@@ -251,7 +251,12 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   result.add("raw", raw.slice());
 }
 
-InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex) {
+  TRI_ASSERT(_block != nullptr);
+}
+
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
   TRI_ASSERT(_baseIndex < _block->size());

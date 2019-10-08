@@ -65,7 +65,7 @@ void ActionBase::init() {
   _actionDone = std::chrono::system_clock::duration::zero();
 }
 
-ActionBase::~ActionBase() {}
+ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
   LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)

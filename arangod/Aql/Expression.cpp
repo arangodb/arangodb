@@ -1649,14 +1649,17 @@ bool Expression::willUseV8() {
   TRI_ASSERT(_node != nullptr);
   return _node->willUseV8();
 }
-Expression* Expression::clone(ExecutionPlan* plan, Ast* ast) {
+
+std::unique_ptr<Expression> Expression::clone(ExecutionPlan* plan, Ast* ast) {
   // We do not need to copy the _ast, since it is managed by the
   // query object and the memory management of the ASTs
-  return new Expression(plan, ast != nullptr ? ast : _ast, _node);
+  return std::make_unique<Expression>(plan, ast != nullptr ? ast : _ast, _node);
 }
+
 void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {
   _node->toVelocyPack(builder, verbose);
 }
+
 std::string Expression::typeString() {
   if (_type == UNPROCESSED) {
     initExpression();

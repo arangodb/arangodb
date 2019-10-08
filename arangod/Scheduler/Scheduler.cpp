@@ -51,7 +51,7 @@ class SchedulerThread : virtual public Thread {
  public:
   explicit SchedulerThread(application_features::ApplicationServer& server, Scheduler& scheduler)
       : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() {} // shutdown is called by derived implementation!
+  ~SchedulerThread() = default; // shutdown is called by derived implementation!
 
  protected:
   Scheduler& _scheduler;
@@ -76,7 +76,7 @@ Scheduler::Scheduler(application_features::ApplicationServer& server)
   // Move this into the Feature and then move it else where
 }
 
-Scheduler::~Scheduler() {}
+Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
   _cronThread.reset(new SchedulerCronThread(_server, *this));

@@ -55,7 +55,7 @@ TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
       _baseOptions(opts) {
 }
 
-TraverserCache::~TraverserCache() {}
+TraverserCache::~TraverserCache() = default;
 
 void TraverserCache::clear() {
   _stringHeap->clear();
