@@ -479,7 +479,7 @@ void ClusterInfo::loadPlan() {
   auto longPlanWaitLogger = scopeGuard([&tStart]() {
     auto tExit = TRI_microtime();
     if (tExit - tStart > 0.5) {
-      LOG_TOPIC("66666", ERR, arangodb::Logger::FIXME) <<
+      LOG_TOPIC("66666", WARN, Logger::CLUSTER) <<
         "Loading the new plan took: " << (tExit - tStart);
     }
   });
