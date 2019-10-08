@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
+let internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -410,7 +411,7 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testCreateEmptyShardKeysArray : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ ] });
       let props = db["UnitTestsClusterCrud"].properties();
@@ -493,29 +494,83 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
-
     testCreateInvalidNumberOfShards1 : function () {
       try {
         db._create("UnitTestsClusterCrud", { numberOfShards : 0 });
-      }
-      catch (err) {
+        fail();
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
-
     testCreateInvalidNumberOfShards2 : function () {
       try {
         db._create("UnitTestsClusterCrud", { numberOfShards : 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
       }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+    },
+
+    testCreateAsManyShardsAsAllowed : function () {
+      let max = internal.maxNumberOfShards;
+      if (max > 0) {
+        db._create("UnitTestsClusterCrud", { numberOfShards : max });
+        let properties = db["UnitTestsClusterCrud"].properties();
+        assertEqual(max, properties.numberOfShards);
+      }
+    },
+
+    testCreateMoreShardsThanAllowed : function () {
+      let max = internal.maxNumberOfShards;
+      if (max > 0) {
+        try {
+          db._create("UnitTestsClusterCrud", { numberOfShards : max + 1 });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replicationFactor
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinReplicationFactor : function () {
+      let min = internal.minReplicationFactor;
+      if (min > 0) {
+        db._create("UnitTestsClusterCrud", { replicationFactor: min });
+        let properties = db["UnitTestsClusterCrud"].properties();
+        assertEqual(min, properties.replicationFactor);
+
+        try {
+          db["UnitTestsClusterCrud"].properties({ replicationFactor: min - 1 });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      }
+    },
+    
+    testMaxReplicationFactor : function () {
+      let max = internal.maxReplicationFactor;
+      if (max > 0) {
+        try {
+          db._create("UnitTestsClusterCrud", { replicationFactor: max });
+          let properties = db["UnitTestsClusterCrud"].properties();
+          assertEqual(max, properties.replicationFactor);
+          
+          try {
+            db["UnitTestsClusterCrud"].properties({ replicationFactor: max + 1 });
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          }
+        } catch (err) {
+          // if creation fails, then it must have been exactly this error
+          assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        }
       }
     },
 

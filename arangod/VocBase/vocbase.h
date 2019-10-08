@@ -168,7 +168,7 @@ struct TRI_vocbase_t {
   bool _isOwnAppsDirectory;
 
   std::uint32_t _replicationFactor; // 0 is satellite, 1 disabled
-  std::uint32_t _minReplicationFactor;
+  std::uint32_t _writeConcern;
   std::string _sharding; // "flexible" (same as "") or "single"
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
@@ -218,7 +218,7 @@ struct TRI_vocbase_t {
   std::string const& name() const { return _name; }
   std::string path() const;
   std::uint32_t replicationFactor() const;
-  std::uint32_t minReplicationFactor() const;
+  std::uint32_t writeConcern() const;
   std::string const& sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }

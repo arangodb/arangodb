@@ -34,6 +34,8 @@
 
 #ifndef _WIN32
 
+#include <sys/resource.h>
+
 // Enabled on Linux and Mac
 
 #define EXPECT_DEATH_CORE_FREE(func, assertion) \

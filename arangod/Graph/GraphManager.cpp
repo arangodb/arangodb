@@ -47,6 +47,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
@@ -95,6 +96,13 @@ OperationResult GraphManager::createVertexCollection(std::string const& name, bo
 OperationResult GraphManager::createCollection(std::string const& name, TRI_col_type_e colType,
                                                bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
+
+  if (ServerState::instance()->isCoordinator()) {
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(options, ctx()->vocbase().server());
+    if (res.fail()) {
+      return OperationResult(res);
+    }
+  }
 
   auto res = arangodb::methods::Collections::create(  // create collection
       ctx()->vocbase(),                               // collection vocbase
@@ -966,6 +974,13 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
+    if (ServerState::instance()->isCoordinator()) {
+      // validate numberOfShards and replicationFactor
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(input.get("options"), _vocbase.server());
+      if (res.fail()) {
+        return res;
+      }
+    }
     return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
     return Result{e.code(), e.message()};
