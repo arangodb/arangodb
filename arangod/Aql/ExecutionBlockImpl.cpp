@@ -331,21 +331,24 @@ static SkipVariants constexpr skipType() {
 }  // namespace arangodb
 
 template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
   traceSkipSomeBegin(atMost);
   auto state = ExecutionState::HASMORE;
 
   while (state == ExecutionState::HASMORE && _skipped < atMost) {
-    auto res = skipSomeOnceWithoutTrace(atMost);
+    auto res = skipSomeOnceWithoutTrace(atMost - _skipped);
     TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
     state = res.first;
     _skipped += res.second;
+    TRI_ASSERT(_skipped <= atMost);
   }
 
   size_t skipped = 0;
   if (state != ExecutionState::WAITING) {
     std::swap(skipped, _skipped);
   }
+
+  TRI_ASSERT(skipped <= atMost);
   return traceSkipSomeEnd(state, skipped);
 }
 
