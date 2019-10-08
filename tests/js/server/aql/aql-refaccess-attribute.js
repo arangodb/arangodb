@@ -58,9 +58,11 @@ function ahuacatlRefAccessAttributeTestSuite () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
       collection = internal.db._create("UnitTestsAhuacatlRefAccess");
 
+      let docs = [];
       for (var i = 1; i <= 10; ++i) {
-        collection.save({ "val" : i });
+        docs.push({ "val" : i });
       }
+      collection.insert(docs);
 
       collection.ensureSkiplist("val");
     },

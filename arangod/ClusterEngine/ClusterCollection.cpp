@@ -106,7 +106,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection,
       _info(static_cast<ClusterCollection const*>(physical)->_info),
       _selectivityEstimates(collection) {}
 
-ClusterCollection::~ClusterCollection() {}
+ClusterCollection::~ClusterCollection() = default;
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip

@@ -51,7 +51,7 @@ TEST(CacheManagerTest, test_basic_constructor_function) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   Manager manager(postFn, requestLimit);
 
-  ASSERT_TRUE(requestLimit == manager.globalLimit());
+  ASSERT_EQ(requestLimit, manager.globalLimit());
 
   ASSERT_TRUE(0ULL < manager.globalAllocation());
   ASSERT_TRUE(requestLimit > manager.globalAllocation());
@@ -59,9 +59,9 @@ TEST(CacheManagerTest, test_basic_constructor_function) {
   uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
   Manager bigManager(nullptr, bigRequestLimit);
 
-  ASSERT_TRUE(bigRequestLimit == bigManager.globalLimit());
+  ASSERT_EQ(bigRequestLimit, bigManager.globalLimit());
 
-  ASSERT_TRUE((1024ULL * 1024ULL) < bigManager.globalAllocation());
+  ASSERT_TRUE(1024ULL * 1024ULL < bigManager.globalAllocation());
   ASSERT_TRUE(bigRequestLimit > bigManager.globalAllocation());
 }
 

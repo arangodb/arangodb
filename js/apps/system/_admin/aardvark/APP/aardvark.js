@@ -95,7 +95,11 @@ router.get('/config.js', function (req, res) {
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
-      foxxApiEnabled: !internal.isFoxxApiDisabled()
+      foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      minReplicationFactor: internal.minReplicationFactor,
+      maxReplicationFactor: internal.maxReplicationFactor,
+      defaultReplicationFactor: internal.defaultReplicationFactor,
+      maxNumberOfShards: internal.maxNumberOfShards
     })}`
   );
 })

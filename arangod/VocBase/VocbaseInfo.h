@@ -112,9 +112,9 @@ class CreateDatabaseInfo {
     return _replicationFactor;
   }
 
-  std::uint32_t minReplicationFactor() const {
+  std::uint32_t writeConcern() const {
     TRI_ASSERT(_valid);
-    return _minReplicationFactor;
+    return _writeConcern;
   }
   std::string sharding() const {
     TRI_ASSERT(_valid);
@@ -137,7 +137,7 @@ class CreateDatabaseInfo {
   std::vector<DBUser> _users;
 
   std::uint32_t _replicationFactor = 1;
-  std::uint32_t _minReplicationFactor = 1;
+  std::uint32_t _writeConcern = 1;
   std::string _sharding = "flexible";
 
   bool _validId = false;
@@ -148,14 +148,14 @@ class CreateDatabaseInfo {
 struct VocbaseOptions {
   std::string sharding = "";
   std::uint32_t replicationFactor = 1;
-  std::uint32_t minReplicationFactor = 1;
+  std::uint32_t writeConcern = 1;
 };
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
 void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
-                                   std::uint32_t minReplicationFactor);
+                                   std::uint32_t writeConcern);
 void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb

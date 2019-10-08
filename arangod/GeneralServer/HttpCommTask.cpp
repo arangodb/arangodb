@@ -235,7 +235,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
 }
 
 template <SocketType T>
-HttpCommTask<T>::~HttpCommTask() {}
+HttpCommTask<T>::~HttpCommTask() = default;
 
 template <SocketType T>
 void HttpCommTask<T>::start() {

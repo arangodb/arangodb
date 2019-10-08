@@ -31,7 +31,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 constexpr bool SubqueryStartExecutor::Properties::preservesOrder;
-constexpr bool SubqueryStartExecutor::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough SubqueryStartExecutor::Properties::allowsBlockPassthrough;
 constexpr bool SubqueryStartExecutor::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos)

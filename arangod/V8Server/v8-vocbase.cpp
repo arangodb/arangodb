@@ -2113,6 +2113,36 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                            StatisticsFeature::enabled()))
       .FromMaybe(false);  // ignore result  //, v8::ReadOnly);
 
+  // replication factors
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+  
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+  
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+  
+  // max number of shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break
   context->Global()

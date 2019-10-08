@@ -280,8 +280,14 @@ void V8ShellFeature::copyInstallationFiles() {
   std::string const nodeModulesPathVersioned =
       basics::FileUtils::buildFilename("js", versionAppendix, "node",
                                        "node_modules");
-  auto filter = [&nodeModulesPath,
-                 &nodeModulesPathVersioned](std::string const& filename) -> bool {
+  std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
+
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, &binRegex](std::string const& filename) -> bool {
+    if (std::regex_search(filename, binRegex)) {
+      // don't copy files in .bin
+      return true;
+    }
+
     if (filename.size() >= nodeModulesPath.size()) {
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);

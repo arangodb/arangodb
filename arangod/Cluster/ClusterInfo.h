@@ -553,7 +553,7 @@ class ClusterInfo final {
   Result createCollectionCoordinator(   // create collection
       std::string const& databaseName,  // database name
       std::string const& collectionID, uint64_t numberOfShards,
-      uint64_t replicationFactor, uint64_t minReplicationFactor,
+      uint64_t replicationFactor, uint64_t writeConcern,
       bool waitForReplication, arangodb::velocypack::Slice const& json,
       double timeout,  // request timeout
       bool isNewDatabase,

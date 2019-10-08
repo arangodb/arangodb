@@ -1,7 +1,31 @@
 devel
 -----
 
-* DB server locking / unlocking for hot backup revisited and enhanced
+* Show shards of all collections (including system collections) in the web UI's shard
+  distribution view.
+
+  This is necessary to access the prototype collections of a collection sharded via
+  `distributeShardsLike` in case the prototype is a system collection, and the prototype
+  should be moved to another server.
+
+* RCLone URL normalization
+
+* Fixed Unintended multiple unlock commands from coordinator to
+  transaction locked db servers
+
+* Disallow using `_id` or `_rev` as shard keys in clustered collections.
+
+  Using these attributes for sharding was not supported before, but didn't trigger
+  any errors. Instead, collections were created and silently using `_key` as
+  the shard key, without making the caller aware of that an unsupported shard
+  keys was used.
+
+* DB server locking / unlocking for hot backup revisited and enhanced.
+
+* Fixed unintended multiple unlock commands from coordinator to
+  transaction locked db servers.
+
+* Use execvp instead of execv in hotbackup restore.
 
 * Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
   in the cluster. It now also may speed up fullCount with sorted indexes and a

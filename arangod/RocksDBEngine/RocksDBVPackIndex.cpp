@@ -378,7 +378,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollect
 }
 
 /// @brief destroy the index
-RocksDBVPackIndex::~RocksDBVPackIndex() {}
+RocksDBVPackIndex::~RocksDBVPackIndex() = default;
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

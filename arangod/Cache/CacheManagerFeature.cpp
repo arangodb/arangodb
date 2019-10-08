@@ -67,7 +67,7 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
   startsAfter<BasicFeaturePhaseServer>();
 }
 
-CacheManagerFeature::~CacheManagerFeature() {}
+CacheManagerFeature::~CacheManagerFeature() = default;
 
 void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("cache", "Configure the hash cache");

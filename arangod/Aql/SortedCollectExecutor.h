@@ -47,7 +47,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class SortedCollectExecutorInfos : public ExecutorInfos {
@@ -166,7 +166,7 @@ class SortedCollectExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

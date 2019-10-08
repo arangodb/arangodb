@@ -2787,14 +2787,14 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         }
 
         size_t replicationFactor = col->replicationFactor();
-        size_t minReplicationFactor = col->minReplicationFactor();
+        size_t writeConcern = col->writeConcern();
         size_t numberOfShards = col->numberOfShards();
 
         // the default behavior however is to bail out and inform the user
         // that the requested replicationFactor is not possible right now
         if (dbServers.size() < replicationFactor) {
-          TRI_ASSERT(minReplicationFactor <= replicationFactor);
-          // => (dbServers.size() < minReplicationFactor) is granted
+          TRI_ASSERT(writeConcern <= replicationFactor);
+          // => (dbServers.size() < writeConcern) is granted
           LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
               << "Do not have enough DBServers for requested replicationFactor,"
               << " nrDBServers: " << dbServers.size()
@@ -2846,7 +2846,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       infos.emplace_back(ClusterCollectionCreationInfo{
           std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),
-          col->minReplicationFactor(), waitForSyncReplication, velocy.slice()});
+          col->writeConcern(), waitForSyncReplication, velocy.slice()});
       vpackData.emplace_back(velocy.steal());
     }
 
@@ -3043,6 +3043,10 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
   // Now check results
   for (auto const& req : requests) {
     auto res = req.result;
+    if (res.answer == NULL) {
+      continue;
+    }
+
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
@@ -3091,38 +3095,38 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
 
   for (auto& i : dbsBackups) {
     // check if the backup is on all dbservers
-    if (i.second.size() == dbServers.size()) {
-      bool valid = true;
+    bool valid = true;
 
-      // check here that the backups are all made with the same version
-      std::string version;
-      size_t totalSize = 0;
-      size_t totalFiles = 0;
+    // check here that the backups are all made with the same version
+    std::string version;
+    size_t totalSize = 0;
+    size_t totalFiles = 0;
 
-      for (BackupMeta const& meta : i.second) {
-        if (version.empty()) {
-          version = meta._version;
-        } else {
-          if (version != meta._version) {
-            LOG_TOPIC("aaaaa", WARN, Logger::BACKUP)
-                << "Backup " << meta._id
-                << " has different versions accross dbservers: " << version
-                << " and " << meta._version;
-            valid = false;
-            break;
-          }
+    for (BackupMeta const& meta : i.second) {
+      if (version.empty()) {
+        version = meta._version;
+      } else {
+        if (version != meta._version) {
+          LOG_TOPIC("aaaaa", WARN, Logger::BACKUP)
+              << "Backup " << meta._id
+              << " has different versions accross dbservers: " << version
+              << " and " << meta._version;
+          valid = false;
+          break;
         }
-        totalSize += meta._sizeInBytes;
-        totalFiles += meta._nrFiles;
       }
+      totalSize += meta._sizeInBytes;
+      totalFiles += meta._nrFiles;
+    }
 
-      if (valid) {
-        BackupMeta& front = i.second.front();
-        front._sizeInBytes = totalSize;
-        front._nrFiles = totalFiles;
-        front._serverId = "";  // makes no sense for whole cluster
-        hotBackups.insert(std::make_pair(front._id, front));
-      }
+    if (valid) {
+      BackupMeta& front = i.second.front();
+      front._sizeInBytes = totalSize;
+      front._nrFiles = totalFiles;
+      front._serverId = "";  // makes no sense for whole cluster
+      front._isAvailable = i.second.size() == dbServers.size();
+      front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
+      hotBackups.insert(std::make_pair(front._id, front));
     }
   }
 
@@ -3971,6 +3975,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
+        lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
           ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
           return result;
@@ -4131,7 +4136,7 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
         return arangodb::Result(
           TRI_ERROR_CLUSTER_TIMEOUT, "timeout waiting for all db servers to report backup list");
       } else {
-        LOG_TOPIC("f9u3f", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
+        LOG_TOPIC("76865", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
         std::this_thread::sleep_for(wait);
         wait *= 1.1;
       }

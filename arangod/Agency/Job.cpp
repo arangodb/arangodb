@@ -79,7 +79,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
       _creator(creator),
       _jb(nullptr) {}
 
-Job::~Job() {}
+Job::~Job() = default;
 
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";

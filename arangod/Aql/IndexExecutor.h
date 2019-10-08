@@ -42,9 +42,11 @@ namespace aql {
 
 class ExecutionEngine;
 class ExecutorInfos;
+class Expression;
 class InputAqlItemRow;
+class Query;
 
-template <bool pass>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 struct AstNode;
@@ -58,7 +60,8 @@ class IndexExecutorInfos : public ExecutorInfos {
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+      Expression* filter,
+      std::vector<std::string> const& projections, 
       std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
       std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
@@ -75,7 +78,9 @@ class IndexExecutorInfos : public ExecutorInfos {
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   std::vector<std::string> const& getProjections() const noexcept;
+  Query* getQuery() const noexcept;
   transaction::Methods* getTrxPtr() const noexcept;
+  Expression* getFilter() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const noexcept;
   bool getUseRawDocumentPointers() const noexcept;
@@ -124,9 +129,9 @@ class IndexExecutorInfos : public ExecutorInfos {
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
+  Expression* _filter;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
-  transaction::Methods* _trxPtr;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 
@@ -176,19 +181,17 @@ class IndexExecutor {
     std::unique_ptr<OperationCursor> _cursor;
     Type const _type;
 
-    union CallbackMethod {
-      IndexIterator::LocalDocumentIdCallback noProduce;
-      DocumentProducingFunction produce;
-
-      CallbackMethod() : noProduce(nullptr) {}
-      ~CallbackMethod() {}
-    } _callback;
+    // Only one of _produce and _noProduce is set at a time, depending on _type.
+    // As std::function is not trivially destructible, it's safer not to use a
+    // union.
+    IndexIterator::LocalDocumentIdCallback _noProduce;
+    DocumentProducingFunction _produce;
   };
 
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 

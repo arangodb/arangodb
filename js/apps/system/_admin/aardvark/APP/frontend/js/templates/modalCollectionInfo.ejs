@@ -1,6 +1,10 @@
 <%
-    var figuresData = content.figures;
+    var figuresData = content.figures || {};
     var revision    = content.revision;
+
+    if (!figuresData.figures) {
+      figuresData.figures = {};
+    }
 %>
 
         <table id="collectionInfoTable" class="arango-table">

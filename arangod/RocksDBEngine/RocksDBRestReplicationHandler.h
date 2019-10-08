@@ -36,7 +36,7 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
  public:
   RocksDBRestReplicationHandler(application_features::ApplicationServer&,
                                 GeneralRequest*, GeneralResponse*);
-  ~RocksDBRestReplicationHandler() {}
+  ~RocksDBRestReplicationHandler() = default;
 
  public:
   char const* name() const override final {

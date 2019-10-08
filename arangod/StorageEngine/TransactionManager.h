@@ -39,7 +39,7 @@ struct TransactionData {
 class TransactionManager {
  public:
   TransactionManager() {}
-  virtual ~TransactionManager() {}
+  virtual ~TransactionManager() = default;
 
   // register a list of failed transactions
   virtual void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) = 0;

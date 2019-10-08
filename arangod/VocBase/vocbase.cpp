@@ -766,6 +766,7 @@ void TRI_vocbase_t::stop() {
     // soon, we have to retry, since some of these collection keys might currently
     // still being in use:
     auto lastTime = TRI_microtime();
+    _collectionKeys->stopStores();
     while (true) {
       if (!_collectionKeys->garbageCollect(true)) {
         break;
@@ -1704,7 +1705,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _state(TRI_vocbase_t::State::NORMAL),
     _isOwnAppsDirectory(true),
     _replicationFactor(info.replicationFactor()) ,
-    _minReplicationFactor(info.minReplicationFactor()) ,
+    _writeConcern(info.writeConcern()),
     _sharding(info.sharding()),
     _deadlockDetector(false),
     _userStructures(nullptr) {
@@ -1758,8 +1759,8 @@ std::uint32_t TRI_vocbase_t::replicationFactor() const {
   return _replicationFactor;
 }
 
-std::uint32_t TRI_vocbase_t::minReplicationFactor() const {
-  return _minReplicationFactor;
+std::uint32_t TRI_vocbase_t::writeConcern() const {
+  return _writeConcern;
 }
 
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
@@ -1811,13 +1812,13 @@ arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
   {
     VPackObjectBuilder b(&result);
 
-    result.add("name", VPackValue(_name));
-    result.add("id", VPackValue(std::to_string(_id)));
-    result.add("isSystem", VPackValue(isSystem()));
+    result.add(StaticStrings::DataSourceName, VPackValue(_name));
+    result.add(StaticStrings::DataSourceId, VPackValue(std::to_string(_id)));
+    result.add(StaticStrings::DataSourceSystem, VPackValue(isSystem()));
 
     if (ServerState::instance()->isCoordinator()) {
       result.add("path", VPackValue(path()));
-      arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _minReplicationFactor);
+      arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _writeConcern);
     } else {
       result.add("path", VPackValue("none"));
     }

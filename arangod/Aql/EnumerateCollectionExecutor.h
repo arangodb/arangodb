@@ -47,11 +47,12 @@ struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
 class ExecutorInfos;
+class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 struct Variable;
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos : public ExecutorInfos {
@@ -61,7 +62,8 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+      Expression* filter,
+      std::vector<std::string> const& projections,
       std::vector<size_t> const& coveringIndexAttributePositions,
       bool useRawDocumentPointers, bool random);
 
@@ -73,8 +75,10 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   ExecutionEngine* getEngine();
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
-  std::vector<std::string> const& getProjections() const noexcept;
+  Query* getQuery() const;
   transaction::Methods* getTrxPtr() const;
+  Expression* getFilter() const;
+  std::vector<std::string> const& getProjections() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const;
   bool getUseRawDocumentPointers() const;
@@ -85,7 +89,7 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
-  transaction::Methods* _trxPtr;
+  Expression* _filter;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
@@ -101,7 +105,7 @@ class EnumerateCollectionExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     /* With some more modifications this could be turned to true. Actually the
    output of this block is input * itemsInCollection */
     static constexpr bool inputSizeRestrictsOutputSize = false;
