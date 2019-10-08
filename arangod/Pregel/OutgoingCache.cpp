@@ -49,7 +49,7 @@ OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
 // ================= ArrayOutCache ==================
 
 template <typename M>
-ArrayOutCache<M>::~ArrayOutCache() {}
+ArrayOutCache<M>::~ArrayOutCache() = default;
 
 template <typename M>
 void ArrayOutCache<M>::_removeContainedMessages() {
@@ -151,7 +151,7 @@ CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state, MessageFormat<M> co
     : OutCache<M>(state, format), _combiner(combiner) {}
 
 template <typename M>
-CombiningOutCache<M>::~CombiningOutCache() {}
+CombiningOutCache<M>::~CombiningOutCache() = default;
 
 template <typename M>
 void CombiningOutCache<M>::_removeContainedMessages() {

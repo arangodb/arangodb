@@ -43,7 +43,7 @@ using namespace arangodb;
 AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
     : _agency(), _callbackBasePath(callbackBasePath) {}
 
-AgencyCallbackRegistry::~AgencyCallbackRegistry() {}
+AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
 bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
   uint32_t rand;

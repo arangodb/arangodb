@@ -137,7 +137,7 @@ class GraphEnumerator : public PathEnumerator {
         _currentDepth{},
         _nextDepth{arangodb::velocypack::StringRef(startVertex)} {}
 
-  ~GraphEnumerator() {}
+  ~GraphEnumerator() = default;
 
   bool next() override {
     ++_idx;
@@ -294,34 +294,34 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
 
 TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_doesnt_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(stats.getFiltered(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(stats.getFiltered(), 0);
 }
 
 TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_doesnt_wait) {
@@ -329,7 +329,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_d
   myGraph.addVertex("2");
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -337,22 +337,22 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_d
                        infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 
-  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/2");
-  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/3");
+  ASSERT_EQ(traverser->startVertexUsedAt(0), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(1), "v/2");
+  ASSERT_EQ(traverser->startVertexUsedAt(2), "v/3");
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 }
 
 TEST_F(TraversalExecutorTestInputStartVertex,
@@ -361,7 +361,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   myGraph.addVertex("2");
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -371,26 +371,26 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   for (size_t i = 0; i < 3; ++i) {
     // We expect to wait 3 times
     std::tie(state, stats) = testee.produceRows(row);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
+    ASSERT_EQ(state, ExecutionState::WAITING);
   }
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 
-  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/2");
-  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/3");
+  ASSERT_EQ(traverser->startVertexUsedAt(0), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(1), "v/2");
+  ASSERT_EQ(traverser->startVertexUsedAt(2), "v/3");
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
   // WAITING is not part of called counts
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 }
 
 TEST_F(TraversalExecutorTestInputStartVertex,
@@ -399,7 +399,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   myGraph.addVertex("2");
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -414,28 +414,28 @@ TEST_F(TraversalExecutorTestInputStartVertex,
     // We expect to wait 3 times
     std::tie(state, stats) = testee.produceRows(row);
     total += stats;
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row.produced());
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row.produced());
     std::tie(state, stats) = testee.produceRows(row);
     ASSERT_TRUE(row.produced());
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     row.advanceRow();
     total += stats;
-    ASSERT_TRUE(total.filtered == 0);
+    ASSERT_EQ(total.filtered, 0);
     /* We cannot ASSERT this because of internally to complex
     mechanism */
-    // ASSERT_TRUE(total.scannedIndex == i + 1);
-    ASSERT_TRUE(fetcher.nrCalled() == (uint64_t)(i + 1));
+    // ASSERT_EQ(total.scannedIndex, i + 1);
+    ASSERT_EQ(fetcher.nrCalled(), (uint64_t)(i + 1));
   }
   ASSERT_TRUE(fetcher.isDone());
   // The traverser will lie
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 
-  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/2");
-  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/3");
+  ASSERT_EQ(traverser->startVertexUsedAt(0), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(1), "v/2");
+  ASSERT_EQ(traverser->startVertexUsedAt(2), "v/3");
 
   std::vector<std::string> expectedResult{"v/2", "v/3", "v/1"};
   auto block = row.stealBlock();
@@ -500,34 +500,34 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(stats.getFiltered(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(stats.getFiltered(), 0);
 }
 
 TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_wait) {
@@ -536,7 +536,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_w
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
 
@@ -544,22 +544,22 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_w
                        infos.registersToKeep(), infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 
-  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(0), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(1), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(2), "v/1");
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 }
 
 TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no_edges_connected) {
@@ -568,7 +568,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
   OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
@@ -577,26 +577,26 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no
   for (size_t i = 0; i < 3; ++i) {
     // We expect to wait 3 times
     std::tie(state, stats) = testee.produceRows(row);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
+    ASSERT_EQ(state, ExecutionState::WAITING);
   }
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 
-  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(0), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(1), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(2), "v/1");
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(stats.getFiltered() == 0);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_FALSE(row.produced());
   ASSERT_TRUE(fetcher.isDone());
   // WAITING is not part of called counts
-  ASSERT_TRUE(fetcher.nrCalled() == 3);
+  ASSERT_EQ(fetcher.nrCalled(), 3);
 }
 
 TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_edges_connected) {
@@ -605,7 +605,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_ed
   myGraph.addVertex("3");
   auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   TraversalExecutor testee(fetcher, infos);
   TraversalStats stats{};
   myGraph.addEdge("1", "2", "1->2");
@@ -619,28 +619,28 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_ed
     // We expect to wait 3 times
     std::tie(state, stats) = testee.produceRows(row);
     total += stats;
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!row.produced());
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(row.produced());
     std::tie(state, stats) = testee.produceRows(row);
     ASSERT_TRUE(row.produced());
-    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    ASSERT_EQ(state, ExecutionState::HASMORE);
     row.advanceRow();
     total += stats;
-    ASSERT_TRUE(total.filtered == 0);
+    ASSERT_EQ(total.filtered, 0);
     /* We cannot ASSERT this because of internally to complex
     mechanism */
-    // ASSERT_TRUE(total.scannedIndex == i + 1);
-    ASSERT_TRUE(fetcher.nrCalled() == (uint64_t)(i + 1));
+    // ASSERT_EQ(total.scannedIndex, i + 1);
+    ASSERT_EQ(fetcher.nrCalled(), (uint64_t)(i + 1));
   }
   ASSERT_TRUE(fetcher.isDone());
   // The traverser will lie
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 
-  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/1");
-  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(0), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(1), "v/1");
+  ASSERT_EQ(traverser->startVertexUsedAt(2), "v/1");
 
   std::vector<std::string> expectedResult{"v/2", "v/2", "v/2"};
   auto block = row.stealBlock();

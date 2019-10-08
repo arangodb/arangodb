@@ -42,7 +42,7 @@ using namespace arangodb::aql;
 template <typename Modifier>
 constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::preservesOrder;
 template <typename Modifier>
-constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::allowsBlockPassthrough;
+constexpr BlockPassthrough SingleRemoteModificationExecutor<Modifier>::Properties::allowsBlockPassthrough;
 template <typename Modifier>
 constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::inputSizeRestrictsOutputSize;
 

@@ -338,17 +338,17 @@ void RestCollectionHandler::handleCommandPost() {
                                             StaticStrings::DataSourceSystem,
                                             StaticStrings::DataSourceId,
                                             "isVolatile",
-                                            "journalSize",
-                                            "indexBuckets",
+                                            StaticStrings::JournalSize,
+                                            StaticStrings::IndexBuckets,
                                             "keyOptions",
                                             StaticStrings::WaitForSyncString,
-                                            "cacheEnabled",
+                                            StaticStrings::CacheEnabled,
                                             StaticStrings::ShardKeys,
                                             StaticStrings::NumberOfShards,
                                             StaticStrings::DistributeShardsLike,
                                             "avoidServers",
                                             StaticStrings::IsSmart,
-                                            "shardingStrategy",
+                                            StaticStrings::ShardingStrategy,
                                             StaticStrings::GraphSmartGraphAttribute,
                                             StaticStrings::SmartJoinAttribute,
                                             StaticStrings::ReplicationFactor,
@@ -549,14 +549,15 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             }
           }
 
-          // min replication checks
+          // write concern checks
+          // not an error: for historical reasons the write concern is read from the
+          // variable "minReplicationFactor"
           if (body.get(StaticStrings::MinReplicationFactor).isNumber() &&
               body.get(StaticStrings::MinReplicationFactor).getInt() > 0) {
-            uint64_t minReplicationFactor =
+            uint64_t writeConcern =
                 body.get(StaticStrings::MinReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
-                minReplicationFactor > server()
-                                           .getFeature<ClusterFeature>()
+                writeConcern > server().getFeature<ClusterFeature>()
                                            .clusterInfo()
                                            .getCurrentDBServers()
                                            .size()) {

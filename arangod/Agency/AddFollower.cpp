@@ -63,7 +63,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-AddFollower::~AddFollower() {}
+AddFollower::~AddFollower() = default;
 
 void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 

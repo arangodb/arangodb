@@ -184,7 +184,7 @@ class LogicalCollection : public LogicalDataSource {
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const;
   size_t replicationFactor() const;
-  size_t minReplicationFactor() const;
+  size_t writeConcern() const;
   std::string distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;

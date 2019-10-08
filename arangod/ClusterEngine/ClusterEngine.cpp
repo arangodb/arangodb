@@ -75,7 +75,7 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
   setOptional(true);
 }
 
-ClusterEngine::~ClusterEngine() {}
+ClusterEngine::~ClusterEngine() = default;
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&

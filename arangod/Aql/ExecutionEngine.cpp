@@ -55,7 +55,7 @@ struct TraverserEngineShardLists {
     edgeCollections.resize(length);
   }
 
-  ~TraverserEngineShardLists() {}
+  ~TraverserEngineShardLists() = default;
 
   // Mapping for edge collections to shardIds.
   // We have to retain the ordering of edge collections, all
@@ -622,7 +622,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
     bool const returnInheritedResults = !arangodb::ServerState::isDBServer(role);
     if (returnInheritedResults) {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<true, void>>*>(root);
+      auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>*>(root);
       TRI_ASSERT(returnNode != nullptr);
       engine->resultRegister(returnNode->getOutputRegisterId());
     } else {

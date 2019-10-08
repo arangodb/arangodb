@@ -246,7 +246,7 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
       _offset(0),
       _interval(0) {}
 
-Task::~Task() {}
+Task::~Task() = default;
 
 void Task::setOffset(double offset) {
   _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));

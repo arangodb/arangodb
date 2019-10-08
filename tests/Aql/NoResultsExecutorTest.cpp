@@ -70,65 +70,65 @@ class NoResultsExecutorTest : public ::testing::Test {
 
 TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_doesnt_wait) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_waits) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-  ASSERT_TRUE(fetcher.nrCalled() == 0);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+  ASSERT_EQ(fetcher.nrCalled(), 0);
 }
 
 }  // namespace aql

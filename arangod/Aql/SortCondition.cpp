@@ -149,7 +149,7 @@ SortCondition::SortCondition(
 }
 
 /// @brief destroy the sort condition
-SortCondition::~SortCondition() {}
+SortCondition::~SortCondition() = default;
   
 bool SortCondition::onlyUsesNonNullSortAttributes(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {

@@ -44,6 +44,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
@@ -257,6 +258,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
+      
+    if (ServerState::instance()->isCoordinator()) {
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server());
+      if (res.fail()) {
+        return res;
+      }
+    }
 
     if (info.name.empty()) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -305,10 +313,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       }
 
       if (!hasDistribute) {
-        auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
-        if (minReplicationFactorSlice.isNone()) {
-          auto factor = vocbase.minReplicationFactor();
-          helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
+        // not an error: for historical reasons the write concern is read from the
+        // variable "minReplicationFactor"
+        auto writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+        if (writeConcernSlice.isNone()) {
+          helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
         }
       }
     } else  { // single server
@@ -442,30 +451,30 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 void Collections::createSystemCollectionProperties(std::string collectionName,
                                                    VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
 
-  uint32_t defaultReplFactor = vocbase.replicationFactor();
-  uint32_t defaultMinReplFactor = vocbase.minReplicationFactor();
+  uint32_t defaultReplicationFactor = vocbase.replicationFactor();
+  uint32_t defaultWriteConcern = vocbase.writeConcern();
 
   auto& server = application_features::ApplicationServer::server();
   if (server.hasFeature<ClusterFeature>()) {
-    defaultReplFactor = std::max(defaultReplFactor, server.getFeature<ClusterFeature>().systemReplicationFactor());
+    defaultReplicationFactor = std::max(defaultReplicationFactor, server.getFeature<ClusterFeature>().systemReplicationFactor());
   }
 
   {
     VPackObjectBuilder scope(&bb);
-    bb.add("isSystem", VPackSlice::trueSlice());
-    bb.add("waitForSync", VPackSlice::falseSlice());
-    bb.add("journalSize", VPackValue(1024 * 1024));
-    bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplFactor));
-    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultMinReplFactor));
+    bb.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
+    bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
+    bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
+    bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
+    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));
 
     // that forces all collections to be on the same physical DBserver
     if (vocbase.isSystem()) {
       if (collectionName != StaticStrings::UsersCollection) {
-        bb.add("distributeShardsLike", VPackValue(StaticStrings::UsersCollection));
+        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::UsersCollection));
       }
     } else {
       if (collectionName != StaticStrings::GraphsCollection) {
-        bb.add("distributeShardsLike", VPackValue(StaticStrings::GraphsCollection));
+        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphsCollection));
       }
     }
   }
@@ -606,6 +615,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
                                  std::to_string(collection.id()));
+
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(props, collection.vocbase().server());
+    if (res.fail()) {
+      return res;
+    }
 
     return info->properties(props, partialUpdate);
   } else {

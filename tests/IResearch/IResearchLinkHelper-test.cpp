@@ -82,8 +82,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     }
     }
 
-  ~IResearchLinkHelperTestSingle() {
-  }
+  ~IResearchLinkHelperTestSingle() = default;
 };
 
 // -----------------------------------------------------------------------------
@@ -244,7 +243,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
                               builder, json->slice(), false, sysVocbase)
                               .ok()));
-    EXPECT_TRUE((true == !analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1")));
+    EXPECT_FALSE(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
   }
 
   // analyzer single-server (inRecovery) fail persist in recovery
@@ -263,6 +262,6 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
                               builder, json->slice(), false, sysVocbase)
                               .ok()));
-    EXPECT_TRUE((true == !analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2")));
+    EXPECT_FALSE(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"));
   }
 }

@@ -128,7 +128,7 @@ LanguageCheckFeature::LanguageCheckFeature(application_features::ApplicationServ
   startsAfter<LanguageFeature>();
 }
 
-LanguageCheckFeature::~LanguageCheckFeature() {}
+LanguageCheckFeature::~LanguageCheckFeature() = default;
 
 void LanguageCheckFeature::start() {
   auto& feature = server().getFeature<LanguageFeature>();
