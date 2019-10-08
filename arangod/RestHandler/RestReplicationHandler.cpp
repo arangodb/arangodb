@@ -2563,10 +2563,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   VPackSlice ttlSlice = body.get("ttl");
   VPackSlice idSlice = body.get("id");
 
-  if (body.hasKey("rebootId")) {
-    if (body.get("rebootId").isInteger()) {
+  if (body.hasKey(StaticStrings::RebootId)) {
+    if (body.get(StaticStrings::RebootId).isInteger()) {
       if (body.hasKey("serverId") && body.get("serverId").isString()) {
-        rebootId = RebootId(body.get("rebootId").getNumber<uint64_t>());
+        rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
