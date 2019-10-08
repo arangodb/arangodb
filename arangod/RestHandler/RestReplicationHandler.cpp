@@ -3009,7 +3009,8 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
       };
 
     auto rGuard = std::make_unique<CallbackGuard>(
-      ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, RebootId(rebootId)), f, ""));
+      ci.rebootTracker().callMeOnChange(
+        RebootTracker::PeerState(serverId, RebootId(rebootId)), f, ""));
 
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
     
