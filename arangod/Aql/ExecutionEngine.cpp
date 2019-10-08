@@ -55,7 +55,7 @@ struct TraverserEngineShardLists {
     edgeCollections.resize(length);
   }
 
-  ~TraverserEngineShardLists() {}
+  ~TraverserEngineShardLists() = default;
 
   // Mapping for edge collections to shardIds.
   // We have to retain the ordering of edge collections, all

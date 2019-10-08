@@ -59,7 +59,7 @@ namespace mocks {
       server.startFeatures();
     }
 
-    ~TransactionManagerSetup() {}
+    ~TransactionManagerSetup() = default;
   };
 
 } // namespace tests

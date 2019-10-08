@@ -45,7 +45,7 @@ struct GraphFormat {
 
   GraphFormat(application_features::ApplicationServer& server)
       : _server(server) {}
-  virtual ~GraphFormat() {}
+  virtual ~GraphFormat() = default;
 
   virtual size_t estimatedVertexSize() const { return sizeof(V); };
   virtual size_t estimatedEdgeSize() const { return sizeof(E); };

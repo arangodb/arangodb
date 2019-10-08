@@ -63,20 +63,19 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
         auto otherDeps = otherNode->getDependencies();
 
         for (auto d : otherDeps) {
-          if(!isSubqueryRelated(d)) {
+          if (!isSubqueryRelated(d)) {
             otherdepids.insert(d->id());
           }
         }
 
         for (auto d : en->getDependencies()) {
-          if(!isSubqueryRelated(d)) {
+          if (!isSubqueryRelated(d)) {
             depids.insert(d->id());
           }
         }
 
         EXPECT_EQ(depids, otherdepids);
-      }
-      catch(...) {
+      } catch(...) {
         EXPECT_TRUE(false) <<
           "expected node with id " << en->id() << " of type " <<
           en->getTypeString() << " to be present in optimized plan";
@@ -88,7 +87,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
   void after(ExecutionNode* en) override final {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
-    EXPECT_TRUE(false) << "Optimised plan must not contain SUBQUERY nodes";
+    EXPECT_TRUE(false) << "Optimized plan must not contain SUBQUERY nodes";
     return false;
   }
   ExecutionPlan* _other;
@@ -103,9 +102,6 @@ namespace aql {
 class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
 protected:
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
-  Ast ast;
-  ExecutionPlan plan;
 
   void verifySubquerySplicing(std::string querystring) {
     auto notSplicedOptions = arangodb::velocypack::Parser::fromJson(
@@ -115,7 +111,7 @@ protected:
                                          arangodb::aql::QueryString(querystring), nullptr,
                                          notSplicedOptions, arangodb::aql::PART_MAIN);
     notSplicedQuery.parse();
-    auto notSplicedPlan = std::move(notSplicedQuery.stealPlan());
+    std::unique_ptr<arangodb::aql::ExecutionPlan> notSplicedPlan(notSplicedQuery.stealPlan());
 
     ASSERT_NE(notSplicedPlan, nullptr);
 
@@ -135,7 +131,8 @@ protected:
                                       arangodb::aql::QueryString(querystring), nullptr,
                                       splicedOptions, arangodb::aql::PART_MAIN);
     splicedQuery.parse();
-    auto splicedPlan = std::move(splicedQuery.stealPlan());
+    
+    std::unique_ptr<arangodb::aql::ExecutionPlan> splicedPlan(splicedQuery.stealPlan());
     ASSERT_NE(notSplicedPlan, nullptr);
 
     SmallVector<ExecutionNode*> splicedSubqueryNodes{a},
@@ -158,13 +155,12 @@ protected:
 
     // Make sure no nodes got lost (currently does not check SubqueryNodes,
     // SubqueryStartNode, SubqueryEndNode correctness)
-    Comparator compare(notSplicedPlan);
+    Comparator compare(notSplicedPlan.get());
     splicedPlan->root()->walk(compare);
   }
 
  public:
-  SpliceSubqueryNodeOptimizerRuleTest()
-      : fakedQuery(server.createFakeQuery()), ast(fakedQuery.get()), plan(&ast){};
+  SpliceSubqueryNodeOptimizerRuleTest() {}
 };
 
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_no_subquery_plan) {

@@ -115,7 +115,7 @@ void AcceptorTcp<T>::open() {
     throw std::runtime_error(ec.message());
   }
   _open = true;
-
+  
   LOG_TOPIC("853a9", DEBUG, arangodb::Logger::COMMUNICATION)
       << "successfully opened acceptor TCP";
 

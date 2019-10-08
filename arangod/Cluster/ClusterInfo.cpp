@@ -172,7 +172,7 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 /// @brief destroys a collection info object
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfoCurrent::~CollectionInfoCurrent() {}
+CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
@@ -199,7 +199,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() {}
+ClusterInfo::~ClusterInfo() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
@@ -1820,14 +1820,14 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::createCollectionCoordinator(  // create collection
     std::string const& databaseName, std::string const& collectionID, uint64_t numberOfShards,
-    uint64_t replicationFactor, uint64_t minReplicationFactor, bool waitForReplication,
+    uint64_t replicationFactor, uint64_t writeConcern, bool waitForReplication,
     velocypack::Slice const& json,  // collection definition
     double timeout,                 // request timeout,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
-                                    minReplicationFactor, waitForReplication, json}};
+                                    writeConcern, waitForReplication, json}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,
@@ -2506,8 +2506,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   VPackBuilder temp;
   temp.openObject();
   temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
-  temp.add("replicationFactor", VPackValue(info->replicationFactor()));
-  temp.add("minReplicationFactor", VPackValue(info->minReplicationFactor()));
+  temp.add(StaticStrings::ReplicationFactor, VPackValue(info->replicationFactor()));
+  temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 

@@ -44,7 +44,7 @@ BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&&
                                            arangodb::velocypack::StringRef const vertex)
     : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
-BreadthFirstEnumerator::PathStep::~PathStep() {}
+BreadthFirstEnumerator::PathStep::~PathStep() = default;
 
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
                                                TraverserOptions* opts)
@@ -61,7 +61,7 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice 
   _toSearch.emplace_back(NextStep(0));
 }
 
-BreadthFirstEnumerator::~BreadthFirstEnumerator() {}
+BreadthFirstEnumerator::~BreadthFirstEnumerator() = default;
 
 bool BreadthFirstEnumerator::next() {
   if (_isFirst) {

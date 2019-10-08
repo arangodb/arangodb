@@ -196,7 +196,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
     // +1 for the leader (me)
-    if (_followers->size() + 1 < _docColl->minReplicationFactor()) {
+    if (_followers->size() + 1 < _docColl->writeConcern()) {
       _canWrite = false;
     }
     // we are finished
@@ -306,7 +306,7 @@ bool FollowerInfo::updateFailoverCandidates() {
 #endif
     return _canWrite;
   }
-  TRI_ASSERT(_followers->size() + 1 >= _docColl->minReplicationFactor());
+  TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
   _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
   // Just be sure

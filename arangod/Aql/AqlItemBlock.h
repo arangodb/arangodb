@@ -27,8 +27,9 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
 
-#include <unordered_set>
+#include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -213,13 +214,29 @@ class AqlItemBlock {
   /// information only. It should not be handed to any non-subquery executor.
   bool isShadowRow(size_t row) const;
 
+  /// @brief get the ShadowRowDepth as AqlValue
+  /// Does only work if this row is a shadow row
+  /// Asserts on Maintainer, returns NULL on production
   AqlValue const& getShadowRowDepth(size_t row) const;
 
+  /// @brief Set the ShadowRowDepth with the given AqlValue
+  /// Transforms this row into a ShadowRow, if it was a DataRow before
+  /// will also overwrite any former value, if set.
   void setShadowRowDepth(size_t row, AqlValue const& other);
 
+  /// @brief Transform the given row into a ShadowRow.
+  /// namely adding the `0` depth value to.
   void makeShadowRow(size_t row);
 
+  /// @brief Transform the given row into a DataRow.
+  /// namely overwrite the depth value with NULL.
   void makeDataRow(size_t row);
+
+  /// @brief Return the indexes of shadowRows within this block.
+  std::set<size_t> const& getShadowRowIndexes() const noexcept;
+
+  /// @brief Quick test if we have any ShadowRows within this block;
+  bool hasShadowRows() const noexcept;
 
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
@@ -266,6 +283,10 @@ class AqlItemBlock {
   /// @brief number of SharedAqlItemBlockPtr instances. shall be returned to
   /// the _manager when it reaches 0.
   mutable size_t _refCount = 0;
+
+  /// @brief A list of indexes with all shadowRows within
+  /// this ItemBlock. Used to easier split data based on them.
+  std::set<size_t> _shadowRowIndexes;
 };
 
 }  // namespace aql

@@ -67,7 +67,7 @@ class TransactionState {
   /// @brief an implementation-dependent structure for storing runtime data
   struct Cookie {
     typedef std::unique_ptr<Cookie> ptr;
-    virtual ~Cookie() {}
+    virtual ~Cookie() = default;
   };
 
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;

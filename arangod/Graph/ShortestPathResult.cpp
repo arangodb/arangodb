@@ -42,7 +42,7 @@ using namespace arangodb::traverser;
 
 ShortestPathResult::ShortestPathResult() : _readDocuments(0) {}
 
-ShortestPathResult::~ShortestPathResult() {}
+ShortestPathResult::~ShortestPathResult() = default;
 
 /// @brief Clears the path
 void ShortestPathResult::clear() {

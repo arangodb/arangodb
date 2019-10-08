@@ -110,8 +110,8 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
@@ -129,12 +129,12 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 
@@ -156,273 +156,63 @@ TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
   for (size_t i = 0; i < 5; ++i) {
     std::tie(state, stats) = testee.produceRows(result);
-    ASSERT_EQ(ExecutionState::WAITING, state);
-    ASSERT_TRUE(!result.produced());
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(result.produced());
   }
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::DONE, state);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   block = result.stealBlock();
   AqlValue v = block->getValue(0, 0);
   ASSERT_TRUE(v.isNumber());
   int64_t number = v.toInt64();
-  ASSERT_EQ(1, number);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(1, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_EQ(2, number);
+  ASSERT_EQ(number, 2);
 
   v = block->getValue(2, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_EQ(3, number);
+  ASSERT_EQ(number, 3);
 
   v = block->getValue(3, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_EQ(4, number);
+  ASSERT_EQ(number, 4);
 
   v = block->getValue(4, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_EQ(5, number);
-}
-
-TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_doesnt_wait) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-        100, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
-  VPackBuilder input;
-  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
-  ConstrainedSortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(!result.produced());
-}
-
-TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_doesnt_wait_skiprows) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-        100, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
-  VPackBuilder input;
-  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
-  ConstrainedSortExecutor testee(fetcher, infos);
-
-  size_t skipped;
-  NoStats stats{};
-  std::tie(state, stats, skipped) = testee.skipRows(1000);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_EQ(0, skipped);
-}
-
-TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_waits) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-        100, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
-  VPackBuilder input;
-  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
-  ConstrainedSortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_TRUE(!result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(!result.produced());
-}
-
-TEST_F(SortExecutorTest, constrained_no_rows_upstream_producer_waits_skiprows) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-        100, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
-  VPackBuilder input;
-  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
-  ConstrainedSortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-  size_t skipped;
-  std::tie(state, stats, skipped) = testee.skipRows(1000);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_EQ(0, skipped);
-
-  std::tie(state, stats, skipped) = testee.skipRows(1000);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_EQ(0, skipped);
-}
-
-TEST_F(SortExecutorTest, constrained_rows_upstream_we_are_waiting_for_list_of_numbers) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-        100, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
-  std::shared_ptr<VPackBuilder> input =
-      VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
-  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
-  ConstrainedSortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
-  for (size_t i = 0; i < 5; ++i) {
-    std::tie(state, stats) = testee.produceRows(result);
-    ASSERT_EQ(ExecutionState::WAITING, state);
-    ASSERT_TRUE(!result.produced());
-  }
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-
-  std::tie(state, stats, std::ignore) = testee.skipRows(1);
-  ASSERT_EQ(ExecutionState::DONE, state);
-
-  block = result.stealBlock();
-  AqlValue v = block->getValue(0, 0);
-  ASSERT_TRUE(v.isNumber());
-  int64_t number = v.toInt64();
-  ASSERT_EQ(1, number);
-
-  v = block->getValue(1, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(2, number);
-
-  v = block->getValue(2, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(3, number);
-
-  v = block->getValue(3, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(4, number);
-
-  v = block->getValue(4, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(5, number);
-}
-
-TEST_F(SortExecutorTest, constrained_rows_upstream_we_are_waiting_for_list_of_numbers_skiprows) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-        100, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
-  std::shared_ptr<VPackBuilder> input =
-      VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
-  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
-  ConstrainedSortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-  size_t skipped;
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
-  for (size_t i = 0; i < 5; ++i) {
-    std::tie(state, stats, skipped) = testee.skipRows(10);
-    ASSERT_EQ(ExecutionState::WAITING, state);
-    ASSERT_EQ(0, skipped);
-  }
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
-
-  std::tie(state, stats, skipped) = testee.skipRows(1);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_EQ(skipped, 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
-
-  std::tie(state, stats, skipped) = testee.skipRows(2);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_EQ(2, skipped);
-
-  block = result.stealBlock();
-  AqlValue v = block->getValue(0, 0);
-  ASSERT_TRUE(v.isNumber());
-  int64_t number = v.toInt64();
-  ASSERT_EQ(1, number);
-
-  v = block->getValue(1, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(3, number);
+  ASSERT_EQ(number, 5);
 }
 
 }  // namespace aql

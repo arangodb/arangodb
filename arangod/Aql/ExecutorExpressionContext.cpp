@@ -34,14 +34,6 @@ size_t ExecutorExpressionContext::numRegisters() const {
   return _inputRow.getNrRegisters();
 }
 
-AqlValue const& ExecutorExpressionContext::getRegisterValue(size_t i) const {
-  return _inputRow.getValue(static_cast<arangodb::aql::RegisterId>(i));
-}
-
-Variable const* ExecutorExpressionContext::getVariable(size_t i) const {
-  return (_vars)[i];
-}
-
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;

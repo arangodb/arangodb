@@ -104,7 +104,7 @@ public:
     as.addReporter(_progressHandler);
   }
 
-  virtual ~TestMaintenanceFeature() {}
+  virtual ~TestMaintenanceFeature() = default;
 
   void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 

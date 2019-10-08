@@ -1077,7 +1077,7 @@ AqlValue dateFromParameters(
     months m{extractFunctionParameterValue(parameters, 1).toInt64()};
     days d{extractFunctionParameterValue(parameters, 2).toInt64()};
 
-    if ((y < years{0}) || (m < months{0}) || (d < days{0})) {
+    if ((y < years{0} || y > years{9999}) || (m < months{0}) || (d < days{0})) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
@@ -1121,7 +1121,6 @@ AqlValue dateFromParameters(
   }
 
   if (asTimestamp) {
-    // TODO: validate
     return AqlValue(AqlValueHintInt(time.count()));
   }
   return ::timeAqlValue(expressionContext, AFN, tp);
@@ -4187,7 +4186,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   }
 
   auto& server = application_features::ApplicationServer::server();
-
+  
   double const sleepValue = value.toDouble();
   auto now = std::chrono::steady_clock::now();
   auto const endTime = now + std::chrono::milliseconds(static_cast<int64_t>(sleepValue * 1000.0));

@@ -136,7 +136,7 @@ class SupervisedSchedulerThread : virtual public Thread {
   explicit SupervisedSchedulerThread(application_features::ApplicationServer& server,
                                      SupervisedScheduler& scheduler)
       : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SupervisedSchedulerThread() {}  // shutdown is called by derived implementation!
+  ~SupervisedSchedulerThread() = default;  // shutdown is called by derived implementation!
 
  protected:
   SupervisedScheduler& _scheduler;
@@ -186,7 +186,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
   _queues[2].reserve(fifo2Size);
 }
 
-SupervisedScheduler::~SupervisedScheduler() {}
+SupervisedScheduler::~SupervisedScheduler() = default;
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
                                 bool allowDirectHandling) {
