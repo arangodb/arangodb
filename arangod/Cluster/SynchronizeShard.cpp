@@ -486,7 +486,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url,
       body.toJson(), std::unordered_map<std::string, std::string>(), timeLeft);
     if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
-      LOG_TOPIC("dcddd", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("4f34d", DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: cancelation error for shard - " << collection
         << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
     }
@@ -1056,7 +1056,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     }
     lastLogTick = tickReached;
     if (didTimeout) {
-      LOG_TOPIC("7531f", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("e516e", INFO, Logger::MAINTENANCE)
         << "Renewing softLock for " << shard << " on leader: " << leader;
     }
   }
