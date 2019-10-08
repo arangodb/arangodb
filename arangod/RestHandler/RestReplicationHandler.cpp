@@ -2991,12 +2991,13 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
+  std::string vn = _vocbase.name();
   try {
     std::function<void(void)> f =
       [=]() {
         try {
           // Code does not matter, read only access, so we can roll back.
-          queryRegistry->destroy(_vocbase.name(), id, TRI_ERROR_QUERY_KILLED, false);
+          queryRegistry->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
         } catch (...) {
           // All errors that show up here can only be
           // triggered if the query is destroyed in between.
