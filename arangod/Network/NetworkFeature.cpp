@@ -63,12 +63,14 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
-    : NetworkFeature(server, network::ConnectionPool::Config{}) {}
+    : NetworkFeature(server, network::ConnectionPool::Config{}) {
+      this->_numIOThreads = 2; // override default
+    }
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(2),
+      _numIOThreads(config.numIOThreads),
       _maxOpenConnections(config.maxOpenConnections),
       _connectionTtlMilli(config.connectionTtlMilli),
       _verifyHosts(config.verifyHosts) {
