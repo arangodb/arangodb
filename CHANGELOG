@@ -1,3 +1,10 @@
+v3.5.2 (XXXX-XX-XX)
+-------------------
+
+* Removed debug log messages "found comm task ..." that could be logged
+  on server shutdown.
+
+
 v3.5.1 (2019-10-07)
 -------------------
 
