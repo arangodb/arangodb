@@ -74,7 +74,8 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
                                                              IndexExecutorInfos& infos) {
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      infos.getProjections(), infos.getTrxPtr(),
+      infos.getQuery(), infos.getFilter(),
+      infos.getProjections(), 
       infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
 }
@@ -87,7 +88,8 @@ IndexExecutorInfos::IndexExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
@@ -105,9 +107,9 @@ IndexExecutorInfos::IndexExecutorInfos(
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
+      _filter(filter),
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _trxPtr(trxPtr),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
@@ -183,8 +185,16 @@ std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexc
   return _projections;
 }
 
+Query* IndexExecutorInfos::getQuery() const noexcept {
+  return _engine->getQuery();
+}
+
 transaction::Methods* IndexExecutorInfos::getTrxPtr() const noexcept {
-  return _trxPtr;
+  return _engine->getQuery()->trx();
+}
+
+Expression* IndexExecutorInfos::getFilter() const noexcept {
+  return _filter;
 }
 
 std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePositions() const noexcept {
@@ -265,19 +275,16 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
                       : Type::Document),
-      _callback() {
-  if (checkUniqueness) {
-    if (_type == Type::NoResult) {
-      _callback.noProduce = getNullCallback<true>(context);
-    } else {
-      _callback.produce = buildCallback<true>(context);
-    }
+      _noProduce(nullptr),
+      _produce(nullptr) {
+  auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
+  auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
+  if (_type == Type::NoResult) {
+    _noProduce = getNullCallback_(context);
+    _produce = nullptr;
   } else {
-    if (_type == Type::NoResult) {
-      _callback.noProduce = getNullCallback<false>(context);
-    } else {
-      _callback.produce = buildCallback<false>(context);
-    }
+    _produce = buildCallback_(context);
+    _noProduce = nullptr;
   }
 }
 
@@ -287,19 +294,11 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _index(other._index),
       _cursor(std::move(other._cursor)),
       _type(other._type),
-      _callback() {
-  if (other._type == Type::NoResult) {
-    _callback.noProduce = other._callback.noProduce;
-  } else {
-    _callback.produce = other._callback.produce;
-  }
-}
+      _noProduce(std::move(other._noProduce)),
+      _produce(std::move(other._produce)) {}
 
 bool IndexExecutor::CursorReader::hasMore() const {
-  if (_cursor != nullptr && _cursor->hasMore()) {
-    return true;
-  }
-  return false;
+  return _cursor != nullptr && _cursor->hasMore();
 }
 
 bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
@@ -318,14 +317,14 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   }
   switch (_type) {
     case Type::NoResult:
-      TRI_ASSERT(_callback.noProduce != nullptr);
-      return _cursor->next(_callback.noProduce, output.numRowsLeft());
+      TRI_ASSERT(_noProduce != nullptr);
+      return _cursor->next(_noProduce, output.numRowsLeft());
     case Type::Covering:
-      TRI_ASSERT(_callback.produce != nullptr);
-      return _cursor->nextCovering(_callback.produce, output.numRowsLeft());
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextCovering(_produce, output.numRowsLeft());
     case Type::Document:
-      TRI_ASSERT(_callback.produce != nullptr);
-      return _cursor->nextDocument(_callback.produce, output.numRowsLeft());
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextDocument(_produce, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached

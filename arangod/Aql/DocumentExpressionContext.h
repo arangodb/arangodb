@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,43 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H 1
+#ifndef ARANGOD_AQL_DOCUMENT_EXPRESSION_CONTEXT_H
+#define ARANGOD_AQL_DOCUMENT_EXPRESSION_CONTEXT_H 1
 
-#include "Basics/Common.h"
+#include "Aql/QueryExpressionContext.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace aql {
+class Query;
 
-struct ClusterCollectionCreationInfo {
-  enum State { INIT, FAILED, DONE };
-  ClusterCollectionCreationInfo(std::string const cID, uint64_t shards,
-                                uint64_t replicationFactor, uint64_t writeConcern,
-                                bool waitForRep, velocypack::Slice const& slice);
-
-  std::string const collectionID;
-  uint64_t numberOfShards;
-  uint64_t replicationFactor;
-  uint64_t writeConcern;
-  bool waitForReplication;
-  velocypack::Slice const json;
-  std::string name;
-  State state;
-
+class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  velocypack::Slice isBuildingSlice() const;
+  DocumentExpressionContext(Query* query, arangodb::velocypack::Slice document);
+
+  ~DocumentExpressionContext() = default;
+
+  size_t numRegisters() const override;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
 
  private:
-  bool needsBuildingFlag() const;
-
- private:
-  velocypack::Builder _isBuildingJson;
+  /// @brief temporary storage for expression data context
+  arangodb::velocypack::Slice _document;
 };
+}  // namespace aql
 }  // namespace arangodb
-
 #endif

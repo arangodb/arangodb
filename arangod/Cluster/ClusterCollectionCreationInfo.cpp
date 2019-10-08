@@ -28,12 +28,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
-    std::string const cID, uint64_t shards, uint64_t repFac, uint64_t minRepFac,
-    bool waitForRep, velocypack::Slice const& slice)
+    std::string const cID, uint64_t shards, uint64_t replicationFactor, 
+    uint64_t writeConcern, bool waitForRep, velocypack::Slice const& slice)
     : collectionID(std::move(cID)),
       numberOfShards(shards),
-      replicationFactor(repFac),
-      minReplicationFactor(minRepFac),
+      replicationFactor(replicationFactor),
+      writeConcern(writeConcern),
       waitForReplication(waitForRep),
       json(slice),
       name(arangodb::basics::VelocyPackHelper::getStringValue(json, arangodb::StaticStrings::DataSourceName,

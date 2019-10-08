@@ -262,7 +262,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                                      std::vector<transaction::Methods::IndexHandle>{
                                          transaction::Methods::IndexHandle{picked}},
                                      std::move(condition), opts);
-          en->cloneInto(*inode);
+          en->CollectionAccessingNode::cloneInto(*inode);
+          en->DocumentProducingNode::cloneInto(plan.get(), *inode);
           plan->registerNode(inode);
           plan->replaceNode(n, inode);
           if (en->isRestricted()) {
@@ -344,7 +345,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                                    std::move(condition), opts);
         plan->registerNode(inode);
         plan->replaceNode(n, inode);
-        en->cloneInto(*inode);
+        en->CollectionAccessingNode::cloneInto(*inode);
+        en->DocumentProducingNode::cloneInto(plan.get(), *inode);
         modified = true;
       }
     }

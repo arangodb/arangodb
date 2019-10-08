@@ -128,6 +128,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "this server's advertised endpoint (e.g. external IP "
                      "address or load balancer, optional)",
                      new StringParameter(&_myAdvertisedEndpoint));
+  
+  options->addOption("--cluster.write-concern",
+                     "write concern used for writes to new collections",
+                     new UInt32Parameter(&_writeConcern)).setIntroducedIn(30600);
 
   options->addOption("--cluster.system-replication-factor",
                      "default replication factor for system collections",
@@ -138,14 +142,22 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt32Parameter(&_defaultReplicationFactor)).setIntroducedIn(30600);
 
   options->addOption("--cluster.min-replication-factor",
-                     "minimum replication factor for collections",
+                     "minimum replication factor for new collections",
                      new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30600);
+  
+  options->addOption("--cluster.max-replication-factor",
+                     "maximum replication factor for new collections (0 = unrestricted)",
+                     new UInt32Parameter(&_maxReplicationFactor)).setIntroducedIn(30600);
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--cluster.max-number-of-shards",
+                     "maximum number of shards when creating new collections (0 = unrestricted)",
+                     new UInt32Parameter(&_maxNumberOfShards)).setIntroducedIn(30501);
 
   options->addOption(
       "--cluster.index-create-timeout",
@@ -165,6 +177,80 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "ArangoDBStarter for this now! See "
         << "https://github.com/arangodb-helper/ArangoDBStarter/ for more "
         << "details.";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_minReplicationFactor == 0) {
+    // min replication factor must not be 0
+    LOG_TOPIC("2fbdd", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.min-replication-factor`. The value must be at least 1";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_maxReplicationFactor > 10) {
+    // 10 is a hard-coded limit for the replication factor
+    LOG_TOPIC("886c6", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.max-replication-factor`. The value must not exceed 10";
+    FATAL_ERROR_EXIT();
+  }
+
+  TRI_ASSERT(_minReplicationFactor > 0);
+  if (!options->processingResult().touched("cluster.default-replication-factor")) {
+    // no default replication factor set. now use the minimum value, which is 
+    // guaranteed to be at least 1 
+    _defaultReplicationFactor = _minReplicationFactor;
+  }
+  
+  if (!options->processingResult().touched("cluster.system-replication-factor")) {
+    // no system replication factor set. now make sure it is between min and max
+    if (_systemReplicationFactor > _maxReplicationFactor) {
+      _systemReplicationFactor = _maxReplicationFactor;
+    } else if (_systemReplicationFactor < _minReplicationFactor) {
+      _systemReplicationFactor = _minReplicationFactor;
+    }
+  }
+  
+  if (_defaultReplicationFactor == 0) {
+    // default replication factor must not be 0
+    LOG_TOPIC("fc8a9", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.default-replication-factor`. The value must be at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_systemReplicationFactor == 0) {
+    // default replication factor must not be 0
+    LOG_TOPIC("46935", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.system-replication-factor`. The value must be at least 1";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_defaultReplicationFactor > 0 &&
+      _maxReplicationFactor > 0 && 
+      _defaultReplicationFactor > _maxReplicationFactor) {
+    LOG_TOPIC("5af7e", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.default-replication-factor`. Must not be higher than `--cluster.max-replication-factor`";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_defaultReplicationFactor > 0 &&
+      _defaultReplicationFactor < _minReplicationFactor) {
+    LOG_TOPIC("b9aea", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.default-replication-factor`. Must not be lower than `--cluster.min-replication-factor`";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_systemReplicationFactor > 0 &&
+      _maxReplicationFactor > 0 && 
+      _systemReplicationFactor > _maxReplicationFactor) {
+    LOG_TOPIC("6cf0c", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.system-replication-factor`. Must not be higher than `--cluster.max-replication-factor`";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_systemReplicationFactor > 0 &&
+      _systemReplicationFactor < _minReplicationFactor) {
+    LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--cluster.system-replication-factor`. Must not be lower than `--cluster.min-replication-factor`";
     FATAL_ERROR_EXIT();
   }
 

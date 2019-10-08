@@ -270,9 +270,9 @@ size_t LogicalCollection::replicationFactor() const {
   return _sharding->replicationFactor();
 }
 
-size_t LogicalCollection::minReplicationFactor() const {
+size_t LogicalCollection::writeConcern() const {
   TRI_ASSERT(_sharding != nullptr);
-  return _sharding->minReplicationFactor();
+  return _sharding->writeConcern();
 }
 
 std::string LogicalCollection::distributeShardsLike() const {
@@ -738,12 +738,14 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
   }
   auto& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  MUTEX_LOCKER(guard, _infoLock);  // prevent simultanious updates
+  MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
   size_t rf = _sharding->replicationFactor();
-  size_t minrf = _sharding->minReplicationFactor();
-  VPackSlice rfSl = slice.get("replicationFactor");
-  VPackSlice minrfSl = slice.get("minReplicationFactor");
+  size_t wc = _sharding->writeConcern();
+  VPackSlice rfSl = slice.get(StaticStrings::ReplicationFactor);
+  // not an error: for historical reasons the write concern is read from the
+  // variable "minReplicationFactor"
+  VPackSlice wcSl = slice.get(StaticStrings::MinReplicationFactor);
 
   if (!rfSl.isNone()) {
     if (rfSl.isInteger()) {
@@ -798,27 +800,26 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
     }
   }
 
-  if (!minrfSl.isNone()) {
-    if (minrfSl.isInteger()) {
-      int64_t minrfTest = minrfSl.getNumber<int64_t>();
-      if (minrfTest < 0) {
-        // negative value for min replication factor... not good
+  if (!wcSl.isNone()) {
+    if (wcSl.isInteger()) {
+      int64_t wcTest = wcSl.getNumber<int64_t>();
+      if (wcTest < 0) {
+        // negative value for writeConcern... not good
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for minReplicationFactor");
       }
 
-      minrf = minrfSl.getNumber<size_t>();
-      if (minrf > rf || minrf > 10) {
+      wc = wcSl.getNumber<size_t>();
+      if (wc > rf) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for minReplicationFactor");
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          rf != _sharding->minReplicationFactor()) {  // sanity checks
+          rf != _sharding->writeConcern()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change minReplicationFactor, "
-                        "please change " +
+                        "Cannot change minReplicationFactor, please change " +
                             _sharding->distributeShardsLike());
         } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
@@ -834,7 +835,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "bad value for minReplicationFactor");
     }
-    TRI_ASSERT((minrf <= rf && !isSatellite()) || (minrf == 0 && isSatellite()));
+    TRI_ASSERT((wc <= rf && !isSatellite()) || (wc == 0 && isSatellite()));
   }
 
   auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
@@ -848,7 +849,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 
   TRI_ASSERT(!isSatellite() || rf == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-  _sharding->setMinAndMaxReplicationFactor(minrf, rf);
+  _sharding->setWriteConcernAndReplicationFactor(wc, rf);
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
