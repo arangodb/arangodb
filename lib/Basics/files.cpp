@@ -1125,7 +1125,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   gzFile gzFd(gzopen(filename,"rb"));
   auto fdGuard = arangodb::scopeGuard([&gzFd](){ if (nullptr != gzFd) gzclose(gzFd); });
-  char * retPtr = nullptr;
+  char* retPtr = nullptr;
 
   if (nullptr != gzFd) {
     TRI_string_buffer_t result;
