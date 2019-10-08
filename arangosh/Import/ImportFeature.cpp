@@ -344,7 +344,13 @@ void ImportFeature::start() {
 
     // restore old database name
     client.setDatabaseName(dbName);
-    versionString = _httpClient->getServerVersion(nullptr);
+    err = TRI_ERROR_NO_ERROR;
+    versionString = _httpClient->getServerVersion(&err);
+  
+    if (err != TRI_ERROR_NO_ERROR) {
+      // disconnecting here will abort arangoimport a few lines below
+      _httpClient->disconnect();
+    }
   }
 
   if (!_httpClient->isConnected()) {
