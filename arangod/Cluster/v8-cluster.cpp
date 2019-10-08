@@ -309,12 +309,24 @@ static void JS_APIAgency(std::string const& envelope,
 
   AgencyComm comm;
   AgencyCommResult result =
-      comm.sendWithFailover(fuerte::RestVerb::Post,
+      comm.sendWithFailover(arangodb::rest::RequestType::POST,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
                             std::string("/_api/agency/") + envelope, builder.slice());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
+  }
+
+  try {
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result._body.clear();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("57115", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    result.clear();
+  } catch (...) {
+    LOG_TOPIC("ec86e", ERR, Logger::AGENCYCOMM)
+        << "Error transforming result: out of memory";
+    result.clear();
   }
 
   auto l = TRI_VPackToV8(isolate, result.slice());
@@ -428,12 +440,24 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   AgencyComm comm;
   AgencyCommResult result =
-      comm.sendWithFailover(fuerte::RestVerb::Get,
+      comm.sendWithFailover(arangodb::rest::RequestType::GET,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
                             std::string("/_api/agency/config"), builder.slice());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
+  }
+
+  try {
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result._body.clear();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("d8594", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    result.clear();
+  } catch (...) {
+    LOG_TOPIC("0ba23", ERR, Logger::AGENCYCOMM)
+        << "Error transforming result: out of memory";
+    result.clear();
   }
 
   auto l = TRI_VPackToV8(isolate, result.slice());

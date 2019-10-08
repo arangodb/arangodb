@@ -2,6 +2,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Futures/Utilities.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Buffer.h>
@@ -21,6 +22,7 @@ struct RequestMeta {
 
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
+  AsyncAgencyCommManager *man,
   RequestMeta&& meta,
   VPackBuffer<uint8_t>&& body
 ) {
@@ -28,12 +30,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
   using namespace arangodb;
 
   if (application_features::ApplicationServer::server().isStopping()) {
-    return futures::makeFuture(AgencyAsyncResult{fuerte::Error::Canceled, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   }
 
-  std::string endpoint;
-  AgencyCommManager::MANAGER->acquire(endpoint);
-  auto *pool = AgencyCommManager::MANAGER->pool();
+  std::string endpoint = man->getCurrentEndpoint();
+  auto *pool = man->pool();
 
   // build inquiry request
   VPackBuilder b;
@@ -45,7 +46,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
   }
 
   return network::sendRequest(pool, endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers).thenValue(
-    [meta = std::move(meta), ep = std::move(endpoint)]
+    [meta = std::move(meta), ep = std::move(endpoint), man]
       (network::Response &&result) mutable {
 
     auto &req = result.request;
@@ -56,8 +57,8 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       case fuerte::Error::Timeout:
       case fuerte::Error::CouldNotConnect:
         // retry to send the request
-        AgencyCommManager::MANAGER->failed(ep);
-        return agencyAsyncInquiry (std::move(meta), std::move(*req.get()).moveBuffer());
+        man->reportError(ep);
+        return agencyAsyncInquiry (man, std::move(meta), std::move(*req.get()).moveBuffer());
 
       case fuerte::Error::NoError:
         // handle inquiry response
@@ -74,12 +75,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       default:
         // return the result as is
         return futures::makeFuture(
-          AgencyAsyncResult{result.error, std::move(resp)});
+          AsyncAgencyCommResult{result.error, std::move(resp)});
     }
   });
 }
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
+  AsyncAgencyCommManager *man,
   RequestMeta&& meta,
   VPackBuffer<uint8_t>&& body
 ) {
@@ -87,14 +89,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
   using namespace arangodb;
 
   if (application_features::ApplicationServer::server().isStopping()) {
-    return futures::makeFuture(AgencyAsyncResult{fuerte::Error::Canceled, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   }
 
-  std::string endpoint;
-  AgencyCommManager::MANAGER->acquire(endpoint);
-  auto *pool = AgencyCommManager::MANAGER->pool();
+  std::string endpoint = man->getCurrentEndpoint();
+  auto *pool = man->pool();
   return network::sendRequest(pool, endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers).thenValue(
-    [meta = std::move(meta), ep = std::move(endpoint)]
+    [meta = std::move(meta), ep = std::move(endpoint), man]
     (network::Response &&result) mutable {
 
     auto &req = result.request;
@@ -103,25 +104,35 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
     switch (result.error) {
       case fuerte::Error::CouldNotConnect:
         // retry to send the request
-        AgencyCommManager::MANAGER->failed(ep);
-        return agencyAsyncSend (std::move(meta), std::move(*req.get()).moveBuffer());
+        man->reportError(ep);
+        return agencyAsyncSend (man, std::move(meta), std::move(*req.get()).moveBuffer());
 
       case fuerte::Error::NoError:
-        if ((400 <= resp->statusCode() && resp->statusCode() <= 499) || resp->statusCode() == 503) {
+        if ((400 <= resp->statusCode() && resp->statusCode() <= 499)) {
           return futures::makeFuture(
-            AgencyAsyncResult{result.error, std::move(resp)});
+            AsyncAgencyCommResult{result.error, std::move(resp)});
+        }
+
+        if (resp->statusCode() == StatusServiceUnavailable) {
+          std::string const& location = resp->header.metaByKey(arangodb::StaticStrings::Location);
+          if (location.empty()) {
+            man->reportError(ep);
+          } else {
+            man->reportRedirect(ep, location);
+          }
+          return agencyAsyncSend (man, std::move(meta), std::move(*req.get()).moveBuffer());
         }
 
         if (meta.clientIds.size() == 0) {
           return futures::makeFuture(
-            AgencyAsyncResult{result.error, std::move(resp)});
+            AsyncAgencyCommResult{result.error, std::move(resp)});
         }
 
         /* fallthrough */
       case fuerte::Error::Timeout:
         // inquiry the request
-        AgencyCommManager::MANAGER->failed(ep);
-        return agencyAsyncInquiry(std::move(meta), std::move(*req.get()).moveBuffer());
+        man->reportError(ep);
+        return agencyAsyncInquiry(man, std::move(meta), std::move(*req.get()).moveBuffer());
 
       case fuerte::Error::Canceled:
       case fuerte::Error::VstUnauthorized:
@@ -134,7 +145,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
       default:
         // return the result as is
         return futures::makeFuture(
-          AgencyAsyncResult{result.error, std::move(resp)});
+          AsyncAgencyCommResult{result.error, std::move(resp)});
     }
   });
 }
@@ -144,7 +155,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
 namespace arangodb {
 
-AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(fuerte::RestVerb method, std::string url, arangodb::network::Timeout timeout, VPackBuffer<uint8_t> &&body) const {
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
+  fuerte::RestVerb method, std::string url,
+  arangodb::network::Timeout timeout, VPackBuffer<uint8_t> &&body) const {
 
   std::vector<std::string> clientIds;
   VPackSlice bodySlice(body.data());
@@ -160,7 +173,57 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(fuerte::RestVerb
   }
 
   network::Headers headers;
-  return agencyAsyncSend(RequestMeta({timeout, method, url, std::move(clientIds), std::move(headers)}), std::move(body));
+  return agencyAsyncSend(_manager, RequestMeta({timeout, method,
+    url, std::move(clientIds), std::move(headers)}), std::move(body));
 }
+
+void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
+  {
+    std::unique_lock<std::mutex> guard(_lock);
+    _endpoints.push_back(endpoint);
+  }
+}
+
+void AsyncAgencyCommManager::updateEndpoints(std::vector<std::string> const& endpoints) {
+  {
+    std::unique_lock<std::mutex> guard(_lock);
+    _endpoints.clear();
+    std::copy(endpoints.begin(), endpoints.end(),
+              std::back_inserter(_endpoints));
+  }
+}
+
+std::string AsyncAgencyCommManager::getCurrentEndpoint() {
+  {
+    std::unique_lock<std::mutex> guard(_lock);
+    TRI_ASSERT(_endpoints.size() > 0);
+    return _endpoints.front();
+  }
+};
+
+void AsyncAgencyCommManager::reportError(std::string const& endpoint) {
+  {
+    std::unique_lock<std::mutex> guard(_lock);
+    if (endpoint == _endpoints.front()) {
+      _endpoints.pop_front();
+      _endpoints.push_back(endpoint);
+    }
+  }
+}
+
+void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint, std::string const& redirectTo) {
+  {
+    std::unique_lock<std::mutex> guard(_lock);
+    if (endpoint == _endpoints.front()) {
+      _endpoints.pop_front();
+      _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), redirectTo),
+                      _endpoints.end());
+      _endpoints.push_back(endpoint);
+      _endpoints.push_front(redirectTo);
+    }
+  }
+}
+
+std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;
 
 }

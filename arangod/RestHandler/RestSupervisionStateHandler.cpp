@@ -71,7 +71,7 @@ RestStatus RestSupervisionStateHandler::execute() {
   using namespace std::chrono_literals;
 
   AsyncAgencyComm().sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 1s, std::move(bodyBuffer))
-    .then([this, self](arangodb::futures::Try<AgencyAsyncResult> &&out) {
+    .then([this, self](arangodb::futures::Try<AsyncAgencyCommResult> &&out) {
       if (out.hasValue()) {
         auto &result = out.get();
 

@@ -22,6 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <fuerte/message.h>
 
+#include <deque>
+#include <mutex>
+#include <memory>
+
+#include "Network/Methods.h"
+#include "Futures/Future.h"
 #include "Agency/AgencyComm.h"
 
 
@@ -30,7 +36,7 @@ namespace arangodb {
 using namespace arangodb::fuerte;
 
 
-struct AgencyAsyncResult {
+struct AsyncAgencyCommResult {
   fuerte::Error error;
   std::unique_ptr<arangodb::fuerte::Response> response;
 
@@ -43,10 +49,39 @@ struct AgencyAsyncResult {
   }
 };
 
-class AsyncAgencyComm {
-public:
-  using FutureResult = arangodb::futures::Future<AgencyAsyncResult>;
+class AsyncAgencyComm;
 
-  FutureResult sendWithFailover(fuerte::RestVerb method, std::string url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+class AsyncAgencyCommManager final {
+public:
+  static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
+
+  void addEndpoint(std::string const& endpoint);
+  void updateEndpoints(std::vector<std::string> const& endpoints);
+
+  std::string getCurrentEndpoint();
+  void reportError(std::string const& endpoint);
+  void reportRedirect(std::string const& endpoint, std::string const& redirectTo);
+
+  network::ConnectionPool *pool() const { return _pool; };
+  void pool(network::ConnectionPool *pool) { _pool = pool; };
+
+private:
+  std::mutex _lock;
+  std::deque<std::string> _endpoints;
+  network::ConnectionPool *_pool;
 };
+
+class AsyncAgencyComm final {
+public:
+  using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
+  FutureResult sendWithFailover(fuerte::RestVerb method, std::string url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+
+  AsyncAgencyComm() : _manager(AsyncAgencyCommManager::INSTANCE.get()) {}
+  AsyncAgencyComm(AsyncAgencyCommManager *manager) : _manager(manager) {}
+  AsyncAgencyComm(AsyncAgencyCommManager &manager) : _manager(&manager) {}
+private:
+  AsyncAgencyCommManager *_manager;
+};
+
+
 }
