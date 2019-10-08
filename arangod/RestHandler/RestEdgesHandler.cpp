@@ -107,6 +107,7 @@ std::string queryString(TRI_edge_direction_e dir) {
       return "FOR e IN @@collection FILTER (e._from == @vertex || e._to == "
              "@vertex) RETURN e";
   }
+  return "RETURN {}";
 }
 
 aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,

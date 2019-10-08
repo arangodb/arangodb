@@ -1186,56 +1186,52 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
                                   std::move(headers), /*retryNotFound*/ true));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) {
-        // format of expected answer:
-        // in `indexes` is a map that has keys in the format
-        // s<shardid>/<indexid> and index information as value
-        // {"code":200
-        // ,"error":false
-        // ,"indexes":{ "s10004/0"    : 1.0,
-        //              "s10004/10005": 0.5
-        //            }
-        // }
+    // format of expected answer:
+    // in `indexes` is a map that has keys in the format
+    // s<shardid>/<indexid> and index information as value
+    // {"code":200
+    // ,"error":false
+    // ,"indexes":{ "s10004/0"    : 1.0,
+    //              "s10004/10005": 0.5
+    //            }
+    // }
 
-        std::map<std::string, std::vector<double>> indexEstimates;
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
+    std::map<std::string, std::vector<double>> indexEstimates;
+    for (Future<network::Response>& f : futures) {
+      network::Response const& r = f.get();
 
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
+      if (r.fail()) {
+        return network::fuerteToArangoErrorCode(r);
+      }
 
-          VPackSlice answer = r.slice();
-          if (!answer.isObject()) {
-            return TRI_ERROR_INTERNAL;
-          }
+      VPackSlice answer = r.slice();
+      if (!answer.isObject()) {
+        return TRI_ERROR_INTERNAL;
+      }
 
-          // add to the total
-          for (auto const& pair : VPackObjectIterator(answer.get("indexes"), true)) {
-            velocypack::StringRef shard_index_id(pair.key);
-            auto split_point =
-                std::find(shard_index_id.begin(), shard_index_id.end(), '/');
-            std::string index(split_point + 1, shard_index_id.end());
-            double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
-            indexEstimates[index].push_back(estimate);
-          }
-        }
+      // add to the total
+      for (auto const& pair : VPackObjectIterator(answer.get("indexes"), true)) {
+        velocypack::StringRef shard_index_id(pair.key);
+        auto split_point =
+            std::find(shard_index_id.begin(), shard_index_id.end(), '/');
+        std::string index(split_point + 1, shard_index_id.end());
+        double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
+        indexEstimates[index].push_back(estimate);
+      }
+    }
 
-        auto aggregate_indexes = [](std::vector<double> const& vec) -> double {
-          TRI_ASSERT(!vec.empty());
-          double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
-          rv /= static_cast<double>(vec.size());
-          return rv;
-        };
+    auto aggregate_indexes = [](std::vector<double> const& vec) -> double {
+      TRI_ASSERT(!vec.empty());
+      double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
+      rv /= static_cast<double>(vec.size());
+      return rv;
+    };
 
-        for (auto const& p : indexEstimates) {
-          result[p.first] = aggregate_indexes(p.second);
-        }
+    for (auto const& p : indexEstimates) {
+      result[p.first] = aggregate_indexes(p.second);
+    }
 
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+    return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1825,53 +1821,49 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
                                   *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
 
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
 
-          auto payload = r.response->stealPayload();
-          VPackSlice resSlice(payload->data());
-          if (!resSlice.isObject()) {
-            // Response has invalid format
-            return TRI_ERROR_HTTP_CORRUPTED_JSON;
-          }
-          filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                                  "filtered", 0);
-          read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                              "readIndex", 0);
-          VPackSlice edges = resSlice.get("edges");
-          bool allCached = true;
+    auto payload = r.response->stealPayload();
+    VPackSlice resSlice(payload->data());
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    }
+    filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
+                                                                            "filtered", 0);
+    read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
+                                                                        "readIndex", 0);
+    VPackSlice edges = resSlice.get("edges");
+    bool allCached = true;
 
-          for (auto const& e : VPackArrayIterator(edges)) {
-            VPackSlice id = e.get(StaticStrings::IdString);
-            if (!id.isString()) {
-              // invalid id type
-              LOG_TOPIC("a23b5", ERR, Logger::GRAPHS)
-                  << "got invalid edge id type: " << id.typeName();
-              continue;
-            }
-            arangodb::velocypack::StringRef idRef(id);
-            auto resE = cache.insert({idRef, e});
-            if (resE.second) {
-              // This edge is not yet cached.
-              allCached = false;
-              result.emplace_back(e);
-            } else {
-              result.emplace_back(resE.first->second);
-            }
-          }
-          if (!allCached) {
-            datalake.emplace_back(std::move(payload));
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+    for (auto const& e : VPackArrayIterator(edges)) {
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC("a23b5", ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
+      arangodb::velocypack::StringRef idRef(id);
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
+        // This edge is not yet cached.
+        allCached = false;
+        result.emplace_back(e);
+      } else {
+        result.emplace_back(resE.first->second);
+      }
+    }
+    if (!allCached) {
+      datalake.emplace_back(std::move(payload));
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief fetch edges from TraverserEngines
@@ -1919,50 +1911,47 @@ int fetchEdgesFromEngines(
                                   *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
 
-          auto payload = r.response->stealPayload();
-          VPackSlice resSlice(payload->data());
-          if (!resSlice.isObject()) {
-            // Response has invalid format
-            return TRI_ERROR_HTTP_CORRUPTED_JSON;
-          }
-          read += basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                    "readIndex", 0);
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
 
-          bool allCached = true;
-          VPackSlice edges = resSlice.get("edges");
-          for (auto const& e : VPackArrayIterator(edges)) {
-            VPackSlice id = e.get(StaticStrings::IdString);
-            if (!id.isString()) {
-              // invalid id type
-              LOG_TOPIC("da49d", ERR, Logger::GRAPHS)
-                  << "got invalid edge id type: " << id.typeName();
-              continue;
-            }
-            arangodb::velocypack::StringRef idRef(id);
-            auto resE = cache.insert({idRef, e});
-            if (resE.second) {
-              // This edge is not yet cached.
-              allCached = false;
-              result.emplace_back(e);
-            } else {
-              result.emplace_back(resE.first->second);
-            }
-          }
-          if (!allCached) {
-            datalake.emplace_back(std::move(payload));
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+    auto payload = r.response->stealPayload();
+    VPackSlice resSlice(payload->data());
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    }
+    read += basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
+                                                              "readIndex", 0);
+
+    bool allCached = true;
+    VPackSlice edges = resSlice.get("edges");
+    for (auto const& e : VPackArrayIterator(edges)) {
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC("da49d", ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
+      arangodb::velocypack::StringRef idRef(id);
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
+        // This edge is not yet cached.
+        allCached = false;
+        result.emplace_back(e);
+      } else {
+        result.emplace_back(resE.first->second);
+      }
+    }
+    if (!allCached) {
+      datalake.emplace_back(std::move(payload));
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief fetch vertices from TraverserEngines
@@ -2010,49 +1999,45 @@ void fetchVerticesFromEngines(
                                   *(leased->buffer()), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
-  futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
 
-          if (r.fail()) {
-            THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
-          }
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
+    }
 
-          auto payload = r.response->stealPayload();
-          VPackSlice resSlice(payload->data());
-          if (!resSlice.isObject()) {
-            // Response has invalid format
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
-          }
-          if (r.response->statusCode() != fuerte::StatusOK) {
-            int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
-            // We have an error case here. Throw it.
-            THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
-                                                     resSlice, StaticStrings::ErrorMessage,
-                                                     TRI_errno_string(code)));
-          }
-          
-          bool cached = false;
-          for (auto const& pair : VPackObjectIterator(resSlice)) {
-            arangodb::velocypack::StringRef key(pair.key);
-            if (vertexIds.erase(key) == 0) {
-              // We either found the same vertex twice,
-              // or found a vertex we did not request.
-              // Anyways something somewhere went seriously wrong
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-            }
-            TRI_ASSERT(result.find(key) == result.end());
-            if (!cached) {
-              datalake.emplace_back(std::move(payload));
-              cached = true;
-            }
-            // Protected by datalake
-            result.emplace(key, pair.value);
-          }
-        }
-      })
-      .get();
+    auto payload = r.response->stealPayload();
+    VPackSlice resSlice(payload->data());
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
+    }
+    if (r.response->statusCode() != fuerte::StatusOK) {
+      int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
+      // We have an error case here. Throw it.
+      THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
+                                               resSlice, StaticStrings::ErrorMessage,
+                                               TRI_errno_string(code)));
+    }
+    
+    bool cached = false;
+    for (auto const& pair : VPackObjectIterator(resSlice)) {
+      arangodb::velocypack::StringRef key(pair.key);
+      if (vertexIds.erase(key) == 0) {
+        // We either found the same vertex twice,
+        // or found a vertex we did not request.
+        // Anyways something somewhere went seriously wrong
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+      }
+      TRI_ASSERT(result.find(key) == result.end());
+      if (!cached) {
+        datalake.emplace_back(std::move(payload));
+        cached = true;
+      }
+      // Protected by datalake
+      result.emplace(key, pair.value);
+    }
+  }
 
   if (!forShortestPath) {
     // Fill everything we did not find with NULL
@@ -2307,23 +2292,20 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
                                   url, buffer, network::Timeout(120)));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([&](std::vector<Try<network::Response>> const& results) -> int {
-        for (auto const& tryRes : results) {
-          network::Response const& r = tryRes.get();
-          if (r.fail()) {
-            return network::fuerteToArangoErrorCode(r);
-          }
-          if (r.response->statusCode() != fuerte::StatusOK) {
-            int code = network::errorCodeFromBody(r.slice());
-            if (code != TRI_ERROR_NO_ERROR) {
-              return code;
-            }
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
+    
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
+    if (r.response->statusCode() != fuerte::StatusOK) {
+      int code = network::errorCodeFromBody(r.slice());
+      if (code != TRI_ERROR_NO_ERROR) {
+        return code;
+      }
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 #ifndef USE_ENTERPRISE
