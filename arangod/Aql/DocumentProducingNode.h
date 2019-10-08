@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_NODE_H 1
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -36,6 +37,7 @@ class Slice;
 }
 namespace aql {
 class ExecutionPlan;
+class Expression;
 struct Variable;
 
 class DocumentProducingNode {
@@ -46,6 +48,8 @@ class DocumentProducingNode {
   virtual ~DocumentProducingNode() = default;
 
  public:
+  void cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const;
+
   /// @brief return the out variable
   Variable const* outVariable() const;
 
@@ -58,8 +62,14 @@ class DocumentProducingNode {
   void projections(std::unordered_set<std::string>&& projections);
 
   std::vector<size_t> const& coveringIndexAttributePositions() const noexcept;
+  
+  /// @brief remember the condition to execute for early filtering
+  void setFilter(std::unique_ptr<Expression> filter);
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  /// @brief return the condition for the node
+  Expression* filter() const { return _filter.get(); }
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
 
  protected:
   Variable const* _outVariable;
@@ -74,6 +84,9 @@ class DocumentProducingNode {
   /// populated by IndexNodes, and will be left empty by
   /// EnumerateCollectionNodes
   std::vector<std::size_t> mutable _coveringIndexAttributePositions;
+  
+  /// @brief early filtering condition
+  std::unique_ptr<Expression> _filter;
 };
 
 }  // namespace aql

@@ -249,6 +249,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DistinctCollectExecutor.cpp
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
+  Aql/DocumentExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -284,6 +285,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
+  Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp

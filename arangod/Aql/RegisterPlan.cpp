@@ -314,7 +314,20 @@ void RegisterPlan::after(ExecutionNode* en) {
       subQueryNodes.emplace_back(en);
       break;
     }
-
+    case ExecutionNode::MATERIALIZE: {
+      depth++;
+      nrRegsHere.emplace_back(1);
+      // create a copy of the last value here
+      // this is required because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId = nrRegs.back() + 1;
+      nrRegs.emplace_back(registerId);
+      auto ep = ExecutionNode::castTo<MaterializeNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
+      totalNrRegs++;
+      break;
+    }
     default: {
       // should not reach this point
       TRI_ASSERT(false);

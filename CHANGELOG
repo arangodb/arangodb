@@ -1,6 +1,13 @@
 devel
 -----
 
+* Show shards of all collections (including system collections) in the web UI's shard
+  distribution view.
+
+  This is necessary to access the prototype collections of a collection sharded via
+  `distributeShardsLike` in case the prototype is a system collection, and the prototype
+  should be moved to another server.
+
 * RCLone URL normalization
 
 * Fixed Unintended multiple unlock commands from coordinator to

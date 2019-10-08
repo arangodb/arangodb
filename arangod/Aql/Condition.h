@@ -134,7 +134,7 @@ class Condition {
   static std::unique_ptr<Condition> fromVPack(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
   /// @brief clone the condition
-  Condition* clone() const;
+  std::unique_ptr<Condition> clone() const;
 
   /// @brief add a sub-condition to the condition
   /// the sub-condition will be AND-combined with the existing condition(s)

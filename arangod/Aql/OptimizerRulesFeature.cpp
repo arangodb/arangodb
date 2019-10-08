@@ -27,8 +27,8 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -127,7 +127,7 @@ void OptimizerRulesFeature::addRules() {
 
   // note that levels must be unique
 
-  registerRule("replace-function-with-index", replaceNearWithinFulltext,
+  registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
                OptimizerRule::replaceNearWithinFulltext, OptimizerRule::makeFlags());
 
   // inline subqueries one level higher
@@ -377,10 +377,33 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+#if 0
+  // not yet enabled - we need to adjust a lot of tests in order to turn
+  // on this rule
+  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, OptimizerRule::moveFiltersIntoEnumerateCollection,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault));
+#endif
+
   // Splice subqueries
+  //
+  // ***CAUTION***
+  // TL;DR: This rule (if activated) *must* run last.
+  //
+  // It changes the structure of the query plan by "splicing", i.e. replacing
+  // every SubqueryNode by a SubqueryStart and a SubqueryEnd node with the
+  // subquery's nodes in between, resulting in a linear query plan. If an
+  // optimizer runs after this rule, it has to be aware of SubqueryStartNode and
+  // SubqueryEndNode and would likely be more complicated to write.
+  //
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
+
+  // apply late materialization for view queries
+  registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,
+               OptimizerRule::lateDocumentMaterializationRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // finally add the storage-engine specific rules
   addStorageEngineRules();

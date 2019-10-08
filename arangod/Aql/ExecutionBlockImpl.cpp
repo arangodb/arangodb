@@ -63,6 +63,7 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/MaterializeExecutor.h"
 
 #include <type_traits>
 
@@ -302,15 +303,20 @@ static SkipVariants constexpr skipType() {
 
   static_assert(useExecutor ==
                     (std::is_same<Executor, IndexExecutor>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<false>>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<true>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
                      std::is_same<Executor, LimitExecutor>::value ||
                      std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
                      std::is_same<Executor, ConstrainedSortExecutor>::value ||
-                     std::is_same<Executor, SortingGatherExecutor>::value),
+                     std::is_same<Executor, SortingGatherExecutor>::value ||
+                     std::is_same<Executor, MaterializeExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -724,10 +730,14 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
@@ -761,3 +771,4 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor>;

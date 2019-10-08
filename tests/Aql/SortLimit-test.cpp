@@ -146,7 +146,7 @@ class SortLimitTest
       if (0 != arangodb::basics::VelocyPackHelper::compare(
                    insertedDocs[expected[i++]].slice(), resolved, true)) {
         return false;
-      };
+      }
     }
 
     return true;
@@ -166,7 +166,7 @@ class SortLimitTest
           "{ \"valAsc\": " + std::to_string(i) +
           ", \"valDsc\": " + std::to_string(total - 1 - i) +
           ", \"mod\": " + std::to_string(i % 100) + "}"));
-    };
+    }
 
     arangodb::OperationOptions options;
     options.returnNew = true;
