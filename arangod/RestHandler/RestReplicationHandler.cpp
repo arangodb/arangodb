@@ -2556,26 +2556,26 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  VPackSlice collection, ttlSlice, idSlice;
-  std::string rebootId;
+  uint64_t rebootId;
+  std::string serverId;
 
-  if (body.isObject() && body.hasKey("collection") && body.hasKey("ttl") && body.hasKey("id")) {
-    collection = body.get("collection");
-    ttlSlice = body.get("ttl");
-    idSlice = body.get("id");
-  } else {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "body needs to be an object with attributes 'collection', "
-                  "'ttl' and 'id'");
-    return;
-  }
+  VPackSlice collection = body.get("collection");
+  VPackSlice ttlSlice = body.get("ttl");
+  VPackSlice idSlice = body.get("id");
 
   if (body.hasKey("rebootId")) {
-    if (body.get("rebootId").isString()) {
-      rebootId = body.get("rebootId").copyString();
+    if (body.get("rebootId").isInteger()) {
+      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+        rebootId = body.get("rebootId").getNumber<uint64_t>();
+        serverId = body.get("serverId").copyString();
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "'rebootId' must be accompanied by string atttibute 'serverId'");
+        return;
+      }
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "'rebootId' must be a string attribute");
+                    "'rebootId' must be an integer attribute");
       return;
     }
   }
@@ -2624,7 +2624,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
-  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId);
+  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2958,7 +2958,9 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col, double ttl,
-                                                         AccessMode::Type access, std::string const& rebootId) const {
+                                                         AccessMode::Type access,
+                                                         uint64_t const& rebootId,
+                                                         std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -2991,20 +2993,26 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  #warning shut down check needed?
   std::string vn = _vocbase.name();
   try {
     std::function<void(void)> f =
       [=]() {
         try {
           // Code does not matter, read only access, so we can roll back.
-          queryRegistry->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
+          QueryRegistryFeature::registry()->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
         } catch (...) {
           // All errors that show up here can only be
           // triggered if the query is destroyed in between.
         }
       };
-    auto rGuard = std::make_unique<CallbackGuard>(f);
+
+    auto rGuard = std::make_unique<CallbackGuard>(
+      ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, RebootId(rebootId)), f, ""));
+
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
+    
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};
