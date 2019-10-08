@@ -118,7 +118,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth)
     : ExecutorInfos(std::move(infos)),
-      _outputRegister(firstOutputRegister),
+      _firstOutputRegister(firstOutputRegister),
       _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),
       _query(query),
@@ -138,11 +138,16 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
 }
 
 RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
-  return _outputRegister;
+  return _firstOutputRegister + getNumScoreRegisters();
 }
 
 RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const noexcept {
   return _numScoreRegisters;
+}
+
+RegisterId IResearchViewExecutorInfos::getFirstScoreRegister() const noexcept {
+  TRI_ASSERT(getNumScoreRegisters() > 0);
+  return _firstOutputRegister;
 }
 
 std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const
@@ -190,7 +195,8 @@ const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearc
 }
 
 bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const noexcept {
-  return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
+  return getNumScoreRegisters() > 0 &&
+         getFirstScoreRegister() <= reg && reg < getFirstScoreRegister() + getNumScoreRegisters();
 }
 
 IResearchViewStats::IResearchViewStats() noexcept : _scannedIndex(0) {}
@@ -249,6 +255,16 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
       inputRow(inputRow),
       outputRow(outputRow),
       callback(copyDocumentCallback(*this)) {}
+
+template <typename Impl, typename Traits>
+aql::RegisterId IResearchViewExecutorBase<Impl, Traits>::ReadContext::getNmColPtrOutReg() const {
+  return docOutReg;
+}
+
+template <typename Impl, typename Traits>
+aql::RegisterId IResearchViewExecutorBase<Impl, Traits>::ReadContext::getNmDocIdOutReg() const {
+  return docOutReg + 1;
+}
 
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry::IndexReadBufferEntry(std::size_t keyIdx) noexcept
@@ -510,9 +526,9 @@ void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& ctx,
                                                          float_t const* end) {
   TRI_ASSERT(Traits::Ordered);
 
-  // scorer register are placed consecutively after the document output register
+  // scorer registers are placed right before document output register
   // is used here currently only for assertions.
-  RegisterId scoreReg = ctx.docOutReg + 1;
+  RegisterId scoreReg = infos().getFirstScoreRegister();
 
   // copy scores, registerId's are sequential
   for (; begin != end; ++begin, ++scoreReg) {
@@ -530,7 +546,7 @@ void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& ctx,
 
   // we should have written exactly all score registers by now
   TRI_ASSERT(!infos().isScoreReg(scoreReg));
-  TRI_ASSERT(scoreReg - ctx.docOutReg - 1 == infos().getNumScoreRegisters());
+  TRI_ASSERT(scoreReg == infos().getOutputRegister());
 }
 
 template <typename Impl, typename Traits>
@@ -589,13 +605,6 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     LogicalCollection const& collection) {
   // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
-    { // need this to make row think it is fully written
-      AqlValue a(VPackSlice::noneSlice());
-      bool mustDestroy = true;
-      AqlValueGuard guard{ a, mustDestroy };
-      ctx.outputRow.moveValueInto(
-        ctx.docOutReg , ctx.inputRow, guard);
-    }
     {
       // For sake of performance we store raw pointer to collection
       // It is safe as pipeline work inside one process
@@ -603,15 +612,13 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
       AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
       bool mustDestroy = true;
       AqlValueGuard guard{ a, mustDestroy };
-      ctx.outputRow.moveValueInto(
-        ctx.docOutReg + infos().getNumScoreRegisters() + 1 , ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getNmColPtrOutReg(), ctx.inputRow, guard);
     }
     {
       AqlValue a(AqlValueHintUInt(documentId.id()));
       bool mustDestroy = true;
       AqlValueGuard guard{ a, mustDestroy };
-      ctx.outputRow.moveValueInto(
-        ctx.docOutReg + infos().getNumScoreRegisters() + 2 , ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getNmDocIdOutReg(), ctx.inputRow, guard);
     }
     return true;
   } else {
@@ -636,8 +643,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   if (writeDocOk) {
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (Traits::Ordered) {
-      // scorer register are placed consecutively after the document output register
-      RegisterId scoreReg = ctx.docOutReg + 1;
+      // scorer register are placed right before the document output register
+      RegisterId scoreReg = infos().getFirstScoreRegister();
       for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
         TRI_ASSERT(infos().isScoreReg(scoreReg));
         bool mustDestroy = false;

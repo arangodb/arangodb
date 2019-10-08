@@ -557,7 +557,7 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
-  
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
@@ -956,6 +956,11 @@ class MaterializeNode  : public ExecutionNode {
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
+
+  /// @brief return out variable
+  arangodb::aql::Variable const& outVariable() const noexcept {
+    return *_outVariable;
+  }
 
  private:
   /// @brief input variable  non-materialized collection ids

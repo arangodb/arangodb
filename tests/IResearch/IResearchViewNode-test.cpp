@@ -164,10 +164,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
     EXPECT_EQ(42, *node.options().sources.begin());
-
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
-==== BASE ====
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   {
@@ -212,10 +210,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
     EXPECT_EQ(42, *node.options().sources.begin());
-
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
-==== BASE ====
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // invalid 'primarySortBuckets' specified
@@ -677,10 +673,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
     EXPECT_EQ(42, *node.options().sources.begin());
-
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
-==== BASE ====
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -721,10 +715,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(0, node.options().sources.size());
-
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
-==== BASE ====
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -1862,10 +1854,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
       EXPECT_EQ(node.options().forceSync, deserialized.options().forceSync);
       EXPECT_EQ(node.sort(), deserialized.sort());
       EXPECT_EQ(0, node.sort().second);
-==== BASE ====
-
-      EXPECT_TRUE(node.getCost() == deserialized.getCost());
-==== BASE ====
+      EXPECT_EQ(node.getCost(), deserialized.getCost());
     }
   }
     // with late materialization
@@ -2159,9 +2148,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     {
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_NE(nullptr, block);
-      EXPECT_TRUE(nullptr !=
-                  dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false>>*>(
-                      block.get()));
+      EXPECT_NE(nullptr,
+                  (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, true>>*>(
+                      block.get())));
     }
   }
 }

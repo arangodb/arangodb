@@ -357,6 +357,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
         dependencyParent->replaceDependency(materializeDependency, materializeNode);
+        materializeDependency->addParent(materializeNode);
         modified = true;
       }
     }

@@ -858,15 +858,13 @@ void IResearchViewNode::planNodeRegisters(
     std::vector<aql::RegisterId>& nrRegsHere, std::vector<aql::RegisterId>& nrRegs,
     std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
     unsigned int& totalNrRegs, unsigned int depth) const {
-  nrRegsHere.emplace_back(1);
+  nrRegsHere.emplace_back(isLateMaterialized()? 0 : 1);
+
   // create a copy of the last value here
   // this is requried because back returns a reference and emplace/push_back
   // may invalidate all references
-  aql::RegisterId const registerId = 1 + nrRegs.back();
-  nrRegs.emplace_back(registerId);
-
-  varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
-
+  aql::RegisterCount const prevRegistersCount = nrRegs.back();
+  nrRegs.emplace_back(prevRegistersCount);
   //  if (isInInnerLoop()) {
   //    return;
   //  }
@@ -879,15 +877,17 @@ void IResearchViewNode::planNodeRegisters(
   }
 
   // Plan register for document-id only block
-  if (_outNonMaterializedDocId != nullptr) {
-    // paired variable should be there as well
-    TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
+  if (isLateMaterialized()) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
     varInfo.emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
     varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+  } else {
+    ++nrRegsHere[depth];
+    ++nrRegs[depth];
+    varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
   }
 }
 
@@ -1065,7 +1065,7 @@ void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable con
 std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {
     std::vector<arangodb::aql::Variable const*> vars(_scorers.size() +
                                                      // document or  collection + docId for late materialization
-                                                    (_outNonMaterializedColPtr != nullptr ? 2 : 1));
+                                                    (isLateMaterialized() ? 2 : 1));
 
     std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
       [](auto const& scorer) { return scorer.var; });
@@ -1117,11 +1117,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #endif
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
-    auto it = getRegisterPlan()->varInfo.find(outVariable().id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    aql::RegisterId outputRegister = it->second.registerId;
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             arangodb::aql::make_shared_unordered_set(),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());
@@ -1179,11 +1176,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // nothing to query
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
-    auto it = getRegisterPlan()->varInfo.find(outVariable().id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    aql::RegisterId outputRegister = it->second.registerId;
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             arangodb::aql::make_shared_unordered_set(),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());
@@ -1196,20 +1190,22 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   bool const ordered = !_scorers.empty();
-  bool const materialized = !isLateMaterialized(); 
+  bool const materialized = !isLateMaterialized();
   // We have one output register for documents, which is always the first after
   // the input registers.
   auto const firstOutputRegister = getNrInputRegisters();
   auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
 
-  aql::RegisterCount numDocumentRegs = 1;
-  // Also we could be asked to produce only document/collection ids for later materialization
-  if (!materialized) {
+  aql::RegisterCount numDocumentRegs = 0;
+  // We could be asked to produce only document/collection ids for later materialization or full document body at once
+  if (materialized) {
+    numDocumentRegs += 1;
+  } else {
     numDocumentRegs += 2;
   }
 
-  // We have one additional output register for each scorer, consecutively after
-  // the output register for documents. And two additiona registers for late materialization
+  // We have one additional output register for each scorer, before
+  // the output register(s) for documents (one or two, depending on late materialization)
   // These must of course fit in the
   // available registers. There may be unused registers reserved for later
   // blocks.

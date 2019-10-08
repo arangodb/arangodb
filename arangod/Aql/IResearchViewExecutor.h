@@ -73,6 +73,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       int depth);
 
   RegisterId getOutputRegister() const noexcept;
+  RegisterId getFirstScoreRegister() const noexcept;
   RegisterId getNumScoreRegisters() const noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   Query& getQuery() const noexcept;
@@ -92,7 +93,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
-  RegisterId const _outputRegister;
+  RegisterId const _firstOutputRegister;
   RegisterId const _numScoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
@@ -159,6 +160,8 @@ class IResearchViewExecutorBase {
                          OutputAqlItemRow& outputRow);
 
     aql::RegisterId const docOutReg;
+    aql::RegisterId getNmColPtrOutReg() const;
+    aql::RegisterId getNmDocIdOutReg() const;
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
