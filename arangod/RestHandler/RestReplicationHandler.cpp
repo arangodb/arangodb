@@ -2997,7 +2997,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
       [=]() {
         try {
           // Code does not matter, read only access, so we can roll back.
-          std::ignore = queryRegistry->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
+          queryRegistry->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
         } catch (...) {
           // All errors that show up here can only be
           // triggered if the query is destroyed in between.
