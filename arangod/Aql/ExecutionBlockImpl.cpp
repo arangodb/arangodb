@@ -366,7 +366,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWith
     }
     TRI_ASSERT(skipped <= atMost);
 
-    return traceSkipSomeEnd({res.first, skipped});
+    return {res.first, skipped};
   }
 
   ExecutionState state;
