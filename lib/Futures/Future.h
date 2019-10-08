@@ -140,13 +140,13 @@ void waitImpl(Future<T>& f) {
   
   std::unique_lock<std::mutex> lock(m);
   Promise<T> p;
-  Future<T> tmp = p.getFuture();
+  Future<T> ret = p.getFuture();
   f.thenFinal([&p, &cv](Try<T>&& t) {
     p.setTry(std::move(t));
     cv.notify_one();
   });
-  f = std::move(tmp);
-  cv.wait(lock, [&f]{return f.isReady();});
+  f = std::move(ret);
+  cv.wait(lock, [&f]{ return f.isReady(); });
 }
 }  // namespace detail
 
