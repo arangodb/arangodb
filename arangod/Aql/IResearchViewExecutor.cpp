@@ -257,16 +257,6 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
       callback(copyDocumentCallback(*this)) {}
 
 template <typename Impl, typename Traits>
-aql::RegisterId IResearchViewExecutorBase<Impl, Traits>::ReadContext::getNmColPtrOutReg() const {
-  return docOutReg;
-}
-
-template <typename Impl, typename Traits>
-aql::RegisterId IResearchViewExecutorBase<Impl, Traits>::ReadContext::getNmDocIdOutReg() const {
-  return docOutReg + 1;
-}
-
-template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry::IndexReadBufferEntry(std::size_t keyIdx) noexcept
     : _keyIdx(keyIdx) {}
 

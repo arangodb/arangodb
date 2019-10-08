@@ -160,11 +160,17 @@ class IResearchViewExecutorBase {
                          OutputAqlItemRow& outputRow);
 
     aql::RegisterId const docOutReg;
-    aql::RegisterId getNmColPtrOutReg() const;
-    aql::RegisterId getNmDocIdOutReg() const;
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
+
+    inline aql::RegisterId getNmColPtrOutReg() const noexcept {
+      return docOutReg;
+    }
+
+    inline aql::RegisterId getNmDocIdOutReg() const noexcept {
+      return docOutReg + 1;
+    }
   };  // ReadContext
 
   template <typename ValueType>
