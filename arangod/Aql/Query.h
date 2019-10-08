@@ -306,10 +306,6 @@ class Query {
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::unique_ptr<ExecutionPlan> stealPlan() { return preparePlan(); }
-#endif
-
  private:
   /// @brief initializes the query
   void init();
@@ -340,7 +336,8 @@ class Query {
   void cleanupPlanAndEngineSync(int errorCode, velocypack::Builder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int errorCode, velocypack::Builder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode,
+                                      velocypack::Builder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
@@ -436,7 +433,7 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
-  
+
   /// @brief whether or not the hash was already calculated
   mutable bool _queryHashCalculated;
 
@@ -447,11 +444,11 @@ class Query {
   /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
   std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
-  
+
   /// @brief current state the query is in (used for profiling and error
   /// messages)
   QueryExecutionState::ValueType _state;
-  
+
   /// @brief the query part
   QueryPart const _part;
 
