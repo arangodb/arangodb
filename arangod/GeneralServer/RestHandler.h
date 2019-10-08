@@ -161,12 +161,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    auto self = shared_from_this();
-    std::move(f).thenFinal([self, this, &done](futures::Try<T>) -> void {
-      if (std::this_thread::get_id() == _executionMutexOwner.load()) {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+      auto thisPtr = self.get();
+      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
-        this->continueHandlerExecution();
+        thisPtr->continueHandlerExecution();
       }
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;
