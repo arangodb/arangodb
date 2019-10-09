@@ -48,7 +48,6 @@ struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
 class TransactionState;
-struct TtlStatistics;
 
 /// @brief convert ClusterComm error into arango error code
 int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
@@ -150,12 +149,12 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 ///        TraversalVariant
 
 int fetchEdgesFromEngines(
-    std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    arangodb::velocypack::Slice vertexId, size_t,
+    transaction::Methods& trx,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    arangodb::velocypack::Slice vertexId, size_t depth,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
     std::vector<arangodb::velocypack::Slice>&,
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
-    arangodb::velocypack::Builder&, size_t&, size_t&);
+    std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>&, size_t&, size_t&);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -170,13 +169,13 @@ int fetchEdgesFromEngines(
 ///        ShortestPathVariant
 
 int fetchEdgesFromEngines(
-    std::string const& dbname,
+    transaction::Methods& trx,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     arangodb::velocypack::Slice vertexId, bool backward,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
     std::vector<arangodb::velocypack::Slice>& result,
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
-    arangodb::velocypack::Builder& builder, size_t& read);
+    std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake,
+    size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -188,38 +187,12 @@ int fetchEdgesFromEngines(
 ///        a 'null' will be inserted into the result.
 
 void fetchVerticesFromEngines(
-    std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    transaction::Methods& trx,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
     std::unordered_set<arangodb::velocypack::StringRef>&,
-    std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
-    arangodb::velocypack::Builder&);
-
-/// @brief fetch vertices from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        If any server responds with a document
-///        it will be inserted into the result.
-///        If no server responds with a document
-///        a 'null' will be inserted into the result.
-///        ShortestPath Variant
-
-void fetchVerticesFromEngines(
-    std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<arangodb::velocypack::StringRef>&,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
-    arangodb::velocypack::Builder&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a filtered set of edges on Coordinator.
-///        Also returns the result in VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
-                                  std::string const& collname, std::string const& vertex,
-                                  TRI_edge_direction_e const& direction,
-                                  arangodb::rest::ResponseCode& responseCode,
-                                  arangodb::velocypack::Builder& result);
+    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake,
+    bool forShortestPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
@@ -243,17 +216,6 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
 
 int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                            bool waitForCollector, double maxWaitTime = -1.0);
-
-/// @brief get TTL statistics from all DBservers and aggregate them
-Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
-
-/// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
-
-/// @brief set TTL properties on all DBservers
-Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
-                                      arangodb::velocypack::Slice const& properties,
-                                      arangodb::velocypack::Builder& out);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator

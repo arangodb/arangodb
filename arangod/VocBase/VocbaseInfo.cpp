@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan-Christoph Uhde
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseInfo.h"
@@ -30,7 +30,7 @@
 #include "Utils/Events.h"
 
 namespace arangodb {
-  
+
 CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
@@ -229,7 +229,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
                                           bool extractId, bool extractName) {
   if (options.isNone() || options.isNull()) {
     return Result();
-  } 
+  }
   if (!options.isObject()) {
     events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
@@ -239,7 +239,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _writeConcern = vocopts.writeConcern;
   _sharding = vocopts.sharding;
-  
+
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
     if (!nameSlice.isString()) {
@@ -357,7 +357,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
             << "Cannot access ClusterFeature to determine minReplicationFactor";
       }
     } else if (isNumber) {
-      vocbaseOptions.writeConcern = 
+      vocbaseOptions.writeConcern =
           writeConcernSlice.getNumber<decltype(vocbaseOptions.writeConcern)>();
     }
   }

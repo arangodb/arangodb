@@ -82,17 +82,9 @@ void MessageHeader::contentType(std::string const& type) {
   addMeta(fu_content_type_key, type);
 }
 
-void MessageHeader::contentType(ContentType type) {
-  contentType(to_string(type));
-}
-
 ///////////////////////////////////////////////
 // class RequestHeader
 ///////////////////////////////////////////////
-
-ContentType RequestHeader::acceptType() const { return _acceptType; }
-
-void RequestHeader::acceptType(ContentType type) { _acceptType = type; }
 
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
