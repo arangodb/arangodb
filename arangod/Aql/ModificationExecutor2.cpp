@@ -28,7 +28,11 @@
 #include "Basics/Common.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Aql/InsertModifier.h"
+#include "Aql/RemoveModifier.h"
+#include "Aql/ReplaceModifier.h"
 #include "Aql/UpdateModifier.h"
+#include "Aql/UpsertModifier.h"
 
 #include <algorithm>
 
@@ -253,5 +257,9 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
   return {ExecutionState::DONE, std::move(stats)};
 }
 
+template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, ReplaceModifier>;
 template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, UpdateModifier>;
+template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, UpsertModifier>;
 // template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpdateModifier>;
