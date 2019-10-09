@@ -45,6 +45,17 @@ files="$(
 )"
 
 git_files=$(git diff --name-only)
+files_final=()
+for gf in ${git_files[@]}; do
+    echo "---------------------"
+    for f in ${files[@]}; do
+        echo "$gf -- $f"
+        if [[ $gf == $f ]]; then
+            files_final+=( "$f" )
+            continue
+        fi
+    done
+done
 
 # do final formatting
-${clang_format} -i -verbose -style=file ${files[@]}
+${clang_format} -i -verbose -style=file ${files_final[@]}
