@@ -45,7 +45,7 @@ class AqlItemMatrix {
   // Anything beyond that has a questionable runtime on nowadays hardware anyways.
   using RowIndex = std::pair<uint32_t, uint32_t>;
 
-  explicit AqlItemMatrix(size_t nrRegs);
+  explicit AqlItemMatrix(RegisterId nrRegs);
   ~AqlItemMatrix() = default;
 
   /**
@@ -65,7 +65,7 @@ class AqlItemMatrix {
   /**
    * @brief Number of registers, i.e. width of the matrix.
    */
-  size_t getNrRegisters() const noexcept;
+  RegisterId getNrRegisters() const noexcept;
 
   /**
    * @brief Test if this matrix is empty
@@ -89,12 +89,20 @@ class AqlItemMatrix {
 
   SharedAqlItemBlockPtr getBlock(size_t index) const noexcept;
 
+  bool stoppedOnShadowRow() const noexcept;
+
+  ShadowAqlItemRow popShadowRow();
+
+  ShadowAqlItemRow peekShadowRow() const;
+
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
   uint64_t _size;
 
-  size_t _nrRegs;
+  RegisterId _nrRegs;
+
+  size_t _lastShadowRow;
 };
 
 }  // namespace aql

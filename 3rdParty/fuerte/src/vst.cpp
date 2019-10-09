@@ -155,8 +155,12 @@ void message::requestHeader(RequestHeader const& header,
     builder.add(fu_accept_key, VPackValue(to_string(header.acceptType())));
     builder.add(fu_content_type_key,
                 VPackValue(to_string(header.contentType())));
-    for (auto const& item : header.meta()) {
-      builder.add(item.first, VPackValue(item.second));
+    for (auto const& pair : header.meta()) {
+      if (boost::iequals(fu_content_type_key, pair.first) ||
+          boost::iequals(fu_accept_key, pair.first)) {
+        continue;
+      }
+      builder.add(pair.first, VPackValue(pair.second));
     }
   }
 
@@ -194,8 +198,11 @@ void message::responseHeader(ResponseHeader const& header,
   builder.add(fu_content_type_key,
               VPackValue(to_string(header.contentType())));
   if (!header.meta().empty()) {
-    for (auto const& item : header.meta()) {
-      builder.add(item.first, VPackValue(item.second));
+    for (auto const& pair : header.meta()) {
+      if (boost::iequals(fu_content_type_key, pair.first)) {
+         continue;
+       }
+      builder.add(pair.first, VPackValue(pair.second));
     }
   }
   builder.close();
