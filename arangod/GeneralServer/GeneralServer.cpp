@@ -135,20 +135,26 @@ void GeneralServer::stopWorking() {
       }
     }
 
-    LOG_TOPIC("f1749", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    if (i % 40 == 0) {
+      // don't spam too much
+      LOG_TOPIC("f1749", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // this is a debugging facility that we can hopefully remove soon
     MUTEX_LOCKER(lock, _tasksLock);
     for (auto const& it : _commTasks) {
       LOG_TOPIC("9c8ac", INFO, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
     }
+#endif
   }
   
   for (auto& context : _contexts) {
     context.stop();
   }
 
+  size_t i = 0;
   while (true) {
     {
       MUTEX_LOCKER(lock, _tasksLock);
@@ -157,14 +163,18 @@ void GeneralServer::stopWorking() {
       }
     }
 
-    LOG_TOPIC("f1549", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    if (i++ % 100 == 0) {
+      LOG_TOPIC("f1549", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // this is a debugging facility that we can hopefully remove soon
     MUTEX_LOCKER(lock, _tasksLock);
     for (auto const& it : _commTasks) {
       LOG_TOPIC("9b8ac", INFO, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
     }
+#endif
   }
   
   for (auto& context : _contexts) {

@@ -4,6 +4,21 @@ v3.5.2 (XXXX-XX-XX)
 * Fixed issue #10193: Arangoexport does not handle line feeds when exporting as 
   csv.
 
+* Removed debug log messages "found comm task ..." that could be logged
+  on server shutdown.
+
+* Fixed issue #10183: Arangoimport imports on _system when you try to 
+  create a new database.
+
+  This bugfix fixes the output of arangoimport, which could display a
+  wrong target database for the import if the option `--create-database`
+  was used.
+
+* Fixed issue #10158: Invalid Query Crashes ArangoDB.
+
+  This fixes traversal queries that are run on a static empty start vertex
+  string.
+
 
 v3.5.1 (2019-10-07)
 -------------------
