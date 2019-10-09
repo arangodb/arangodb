@@ -1,6 +1,16 @@
 v3.4.9 (XXX-XX-XX)
 -------------------
 
+* Properly report parse errors for extraneous unterminated string literals
+  at the end of AQL query strings. For example, in the query `RETURN 1 "abc`,
+  the `RETURN 1` part was parsed fully, and the `"abc` part at the end was
+  parsed until the EOF and then forgotten. But as the fully parsed tokens
+  `RETURN 1` already form a proper query, the unterminated string literal
+  at the end was not reported as a parse error.
+  This is now fixed for unterminated string literals in double and single
+  quotes as well as unterminated multi-line comments at the end of the query
+  string.
+
 * Fixed issue #10078: FULLTEXT with sort on same field not working.
 
 * Fixed issue #10062: AQL: Could not extract custom attribute.
