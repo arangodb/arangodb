@@ -35,7 +35,7 @@ class Mutex;
 template <class T, class M = Mutex>
 class MutexGuard {
  public:
-  explicit MutexGuard(T& value, M mutex);
+  explicit MutexGuard(T& value, M& mutex);
   ~MutexGuard();
 
   T& get() noexcept;
@@ -47,7 +47,7 @@ class MutexGuard {
 };
 
 template <class T, class M>
-MutexGuard<T, M>::MutexGuard(T& value, M mutex) : _value(value), _mutex(mutex) {
+MutexGuard<T, M>::MutexGuard(T& value, M& mutex) : _value(value), _mutex(mutex) {
   _mutex.lock();
 }
 
@@ -69,14 +69,18 @@ T const& MutexGuard<T, M>::get() const noexcept {
 template <class T, class M = Mutex>
 class Guarded {
  public:
-  explicit Guarded(T&& value = T(), M&& mutex = M());
-  explicit Guarded(T value = T(), M mutex = M());
+  explicit Guarded(T&& value = T());
+  template <typename... Args>
+  explicit Guarded(Args...);
 
   // TODO with C++17, these could be noexcept depending on callback being noexcept
   template <class F>
-  decltype(F()) doUnderLock(F callback);
+  std::result_of_t<F(T&)> doUnderLock(F callback);
   template <class F>
-  decltype(F(false)) tryUnderLock(F callback);
+  std::result_of_t<F(T const&)> doUnderLock(F callback);
+
+  // template <class F>
+  // decltype(F(false)) tryUnderLock(F callback);
   // TODO add more types of "do under lock"?
 
   MutexGuard<T, M> getLockedGuard();
@@ -88,31 +92,39 @@ class Guarded {
 };
 
 template <class T, class M>
-Guarded<T, M>::Guarded(T&& value, M&& mutex)
-    : _value(std::forward<T>(value)), _mutex(std::forward<T>(mutex)) {}
+Guarded<T, M>::Guarded(T&& value) : _value{std::move(value)}, _mutex{} {}
 
 template <class T, class M>
-Guarded<T, M>::Guarded(T value, M mutex)
-    : _value(std::move(value)), _mutex(std::move(mutex)) {}
+template <typename... Args>
+Guarded<T, M>::Guarded(Args... args) : _value{args...}, _mutex{} {}
 
 template <class T, class M>
 template <class F>
-decltype(F()) Guarded<T, M>::doUnderLock(F callback) {
+std::result_of_t<F(T&)> Guarded<T, M>::doUnderLock(F callback) {
   MUTEX_LOCKER(guard, _mutex);
 
-  return callback();
+  return callback(_value);
 }
 
 template <class T, class M>
 template <class F>
-decltype(F(false)) Guarded<T, M>::tryUnderLock(F callback) {
-  TRY_MUTEX_LOCKER(guard, _mutex);
+std::result_of_t<F(T const&)> Guarded<T, M>::doUnderLock(F callback) {
+  MUTEX_LOCKER(guard, _mutex);
 
-  return callback(guard.isLocked());
+  return callback(_value);
 }
+
+// template <class T, class M>
+// template <class F>
+// decltype(F(false)) Guarded<T, M>::tryUnderLock(F callback) {
+//   TRY_MUTEX_LOCKER(guard, _mutex);
+//
+//   return callback(guard.isLocked());
+// }
+
 template <class T, class M>
-MutexGuard Guarded<T, M>::getLockedGuard() {
-  return MutexGuard(_value, _mutex);
+MutexGuard<T, M> Guarded<T, M>::getLockedGuard() {
+  return MutexGuard<T, M>(_value, _mutex);
 }
 
 }  // namespace arangodb
