@@ -358,7 +358,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   Result res = trx.begin();
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -514,7 +514,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   res = trx.finish(res);
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
   } else {
     generateDocumentsCreated(result);
   }
@@ -564,7 +564,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   Result res = trx.begin();
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
 
     return false;
   }
@@ -619,7 +619,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   res = trx.finish(res);
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
   } else {
     generateDocumentsCreated(result);
   }
@@ -746,7 +746,7 @@ bool RestImportHandler::createFromKeyValueList() {
   Result res = trx.begin();
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -848,7 +848,7 @@ bool RestImportHandler::createFromKeyValueList() {
   res = trx.finish(res);
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
   } else {
     generateDocumentsCreated(result);
   }

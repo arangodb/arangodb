@@ -200,13 +200,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                 std::string const& key, TRI_voc_rid_t = 0);
 
   /// @brief generate an error message for a transaction error
-  void generateTransactionError(std::string const& collectionName, 
-                                Result const& res,
-                                std::string const& key, TRI_voc_rid_t rid = 0) {
-    generateTransactionError(collectionName, OperationResult(res), key, rid);
-  }
-
-  /// @brief generate an error message for a transaction error
   void generateTransactionError(OperationResult const& result) {
     generateTransactionError("", result, "", 0);
   }
