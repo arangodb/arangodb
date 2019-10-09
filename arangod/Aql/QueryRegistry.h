@@ -27,7 +27,7 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/RebootTracker.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ResultT.h"
 
 struct TRI_vocbase_t;

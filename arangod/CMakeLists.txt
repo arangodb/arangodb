@@ -148,6 +148,7 @@ endif ()
 
 set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
+  Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/TraverserEngine.cpp
