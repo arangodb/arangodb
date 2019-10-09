@@ -8,6 +8,11 @@ v3.5.2 (XXXX-XX-XX)
   wrong target database for the import if the option `--create-database`
   was used.
 
+* Fixed issue #10158: Invalid Query Crashes ArangoDB.
+
+  This fixes traversal queries that are run on a static empty start vertex
+  string.
+
 
 v3.5.1 (2019-10-07)
 -------------------
