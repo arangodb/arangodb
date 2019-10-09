@@ -47,6 +47,10 @@ struct AsyncAgencyCommResult {
   VPackSlice slice() {
     return response->slice();
   }
+
+  fuerte::StatusCode statusCode() {
+    return response->statusCode();
+  }
 };
 
 class AsyncAgencyComm;
@@ -57,6 +61,8 @@ public:
 
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
+
+  std::deque<std::string> const& endpoints() { return _endpoints; }
 
   std::string getCurrentEndpoint();
   void reportError(std::string const& endpoint);
@@ -72,6 +78,11 @@ private:
 };
 
 class AsyncAgencyComm final {
+public:
+  using FutureBufferResult = arangodb::futures::Future<VPackBuffer<uint8_t>>;
+
+  FutureBufferResult getValues(std::string const& path);
+
 public:
   using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
   FutureResult sendWithFailover(fuerte::RestVerb method, std::string url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;

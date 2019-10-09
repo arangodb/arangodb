@@ -188,9 +188,9 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
+bool SupervisedScheduler::queue(RequestLane lane, fu2::function<void()> handler,
                                 bool allowDirectHandling) {
-  if (!isDirectDeadlockLane(lane) && 
+  if (!isDirectDeadlockLane(lane) &&
       allowDirectHandling &&
       !ServerState::instance()->isClusterRole()) {
     uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
@@ -209,18 +209,18 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
       }
     }
   }
-  
+
   auto work = std::make_unique<WorkItem>(std::move(handler));
-  
+
   // use memory order acquire to make sure, pushed item is visible
   uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t const jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
-  
+
   // to make sure the queue length hasn't underflowed
   TRI_ASSERT(jobsDone <= jobsSubmitted);
 
   uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
-  
+
   size_t const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
 
   TRI_ASSERT(queueNo <= 2);
@@ -357,7 +357,7 @@ void SupervisedScheduler::runWorker() {
       // we want at least 3 retries
       state->_queueRetryCount = 3;
     }
-    
+
     // inform the supervisor that this thread is alive
     state->_ready = true;
     _conditionSupervisor.notify_one();
@@ -369,7 +369,7 @@ void SupervisedScheduler::runWorker() {
       if (work == nullptr) {
         break;
       }
-    
+
       _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
 
       state->_lastJobStarted = clock::now();
@@ -590,8 +590,8 @@ void SupervisedScheduler::startOneThread() {
         << "could not start additional worker thread";
     return;
   }
- 
-  // sync with runWorker() 
+
+  // sync with runWorker()
   _conditionSupervisor.wait(guard, [&state]() {
     return state->_ready;
   });

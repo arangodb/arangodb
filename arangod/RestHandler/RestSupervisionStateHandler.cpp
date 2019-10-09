@@ -89,34 +89,6 @@ RestStatus RestSupervisionStateHandler::execute() {
       }
       continueHandlerExecution();
     });
-#if 0
-  AgencyCommResult const& result = AgencyComm().getValues("Target");
-  if (result.successful()) {
-
-    VPackBuilder bodyBuilder;
-    //try {
-      LOG_DEVEL << result.slice().toJson();
-      VPackSlice target = result.slice().at(0).get({"arango", "Target"});
-
-      {
-        VPackObjectBuilder ob(&bodyBuilder);
-        bodyBuilder.add("ToDo", target.get("ToDo"));
-        bodyBuilder.add("Pending", target.get("Pending"));
-        bodyBuilder.add("Finished", target.get("Finished"));
-        bodyBuilder.add("Failed", target.get("Failed"));
-      }
-
-
-      resetResponse(rest::ResponseCode::OK);
-      _response->setPayload(bodyBuilder.slice(), true);
-      return RestStatus::DONE;
-
-    //} catch(...) {}
-  } else {
-    LOG_DEVEL << "failed to get agency value";
-  }
-#endif
-
 
   return RestStatus::WAITING;
 }
