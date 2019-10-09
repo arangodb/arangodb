@@ -45,4 +45,4 @@ files="$(
         "!" "(" -name "tokens.*" -o -name "v8-json.*" -o -name "voc-errors.*" -o -name "grammar.*" -o -name "xxhash.*" -o -name "exitcodes.*" ")"
 )"
 
-${clang_tidy} ${files}
+${clang_tidy} -checks=-*,clang-analyzer-*,-clang-analyzer-cplusplus* ${files}
