@@ -151,11 +151,11 @@ class Scheduler {
       auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
         [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
 
-      return std::move(f).thenValue([item](bool cancelled) { if (cancelled) { throw std::logic_error("delay was cancelled"); } });
+      return std::move(f).thenValue([item = std::move(item)](bool cancelled) { if (cancelled) { throw std::logic_error("delay was cancelled"); } });
     }
 
-    template<typename T>
-    futures::Future<T> delay(clock::duration d, futures::Future<T> &&u) {
+    /*template<typename T>
+    futures::Future<T> delay(clock::duration d, T &&u) {
       if (d == clock::duration::zero()) {
         return std::move(u);
       }
@@ -167,7 +167,7 @@ class Scheduler {
         [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
 
       return std::move(f).thenValue([item, u = std::move(u)](bool cancelled) { if (cancelled) { throw std::logic_error("delay was cancelled"); } else { return u; } });
-    }
+    }*/
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
   // ---------------------------------------------------------------------------
