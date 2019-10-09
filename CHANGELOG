@@ -1,6 +1,9 @@
 v3.4.9 (XXX-XX-XX)
 -------------------
 
+* Fixed issue #10193: Arangoexport does not handle line feeds when exporting as 
+  csv.
+
 * Properly report parse errors for extraneous unterminated string literals
   at the end of AQL query strings. For example, in the query `RETURN 1 "abc`,
   the `RETURN 1` part was parsed fully, and the `"abc` part at the end was
