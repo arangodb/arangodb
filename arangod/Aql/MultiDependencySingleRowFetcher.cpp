@@ -259,7 +259,7 @@ std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipRowsForDe
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = skipSomeForDependency(dependency, atMost);
-  if (skipped < atMost) {
+  if (state == ExecutionState::HASMORE && skipped < atMost) {
     state = ExecutionState::DONE;
   }
   return {state, skipped};
