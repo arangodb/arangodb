@@ -42,7 +42,6 @@
 
 #include <ctime>
 #include <iomanip>
-// #include <regex>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
