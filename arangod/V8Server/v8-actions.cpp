@@ -1422,7 +1422,7 @@ static int clusterSendToAllServers(std::string const& dbname,
   network::ConnectionPool* pool = server.getFeature<NetworkFeature>().pool();
   if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_SHUTTING_DOWN;
   }
   ClusterInfo& ci = *pool->config().clusterInfo;
 

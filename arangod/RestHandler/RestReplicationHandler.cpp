@@ -337,7 +337,7 @@ RestStatus RestReplicationHandler::execute() {
       // DEL  - delete batchid
 
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleUnforwardedTrampolineCoordinator();
       } else {
         handleCommandBatch();
       }
@@ -367,7 +367,7 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleUnforwardedTrampolineCoordinator();
       } else {
         handleCommandInventory();
       }
@@ -419,7 +419,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleUnforwardedTrampolineCoordinator();
       } else {
         handleCommandDump();
       }
@@ -598,7 +598,7 @@ std::string RestReplicationHandler::forwardingTarget() {
     std::string const& command = suffixes[0];
     if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
         (command == Dump && type == rest::RequestType::GET)) {
-      ServerID DBserver = _request->value("DBserver");
+      ServerID const& DBserver = _request->value("DBserver");
       if (!DBserver.empty()) {
         return DBserver;
       }
@@ -664,14 +664,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deprecated: forward a command in the coordinator case
+/// @brief handle an unforwarded command in the coordinator case
 /// If the request is well-formed and has the DBserver set, then the request
 /// should already be forwarded by other means. We should only get here if
 /// the request is null or the DBserver parameter is missing. This method
 /// now just does a bit of error handling.
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleTrampolineCoordinator() {
+void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }

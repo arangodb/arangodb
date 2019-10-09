@@ -58,11 +58,12 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 namespace {
+static std::string serverPrefix("server:");
+
 std::string stripServerPrefix(std::string const& destination) {
-  static std::string prefix("server:");
-  TRI_ASSERT(destination.size() >= prefix.size() &&
-             destination.substr(0, prefix.size()) == prefix);
-  return destination.substr(prefix.size());
+  TRI_ASSERT(destination.size() >= serverPrefix.size() &&
+             destination.substr(0, serverPrefix.size()) == serverPrefix);
+  return destination.substr(serverPrefix.size());
 }
 }  // namespace
 

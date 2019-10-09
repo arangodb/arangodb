@@ -163,7 +163,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      "/_db/" + StringUtils::urlEncode(dbname) +
                                          _request->requestPath() + params,
-                                     std::move(payload), headers, options);
+                                     std::move(payload), std::move(headers), options);
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     int res = network::fuerteToArangoErrorCode(response);

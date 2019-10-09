@@ -282,7 +282,7 @@ std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
         [pool](network::DestinationId const& d, arangodb::fuerte::RestVerb v,
                std::string const& u, velocypack::Buffer<uint8_t> b,
                network::Timeout t, network::Headers h) -> network::FutureRes {
-          return sendRequest(pool, d, v, u, b, t, h);
+          return sendRequest(pool, d, v, u, std::move(b), t, std::move(h));
         });
   }
   return _theInstance;
@@ -344,6 +344,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             // Ask them
             std::vector<network::FutureRes> futures;
+            futures.reserve(serversToAsk.size());
             for (auto const& server : serversToAsk) {
               network::Headers headers;
               auto f = _send("server:" + server, fuerte::RestVerb::Get, path,

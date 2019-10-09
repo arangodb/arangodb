@@ -156,9 +156,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   if (res.hasValue() && res.get().ok() && res.get().response &&
       res.get().response->statusCode() == fuerte::StatusOK) {
     auto result = res.get();
-    auto slices = result.response->slices();
-    TRI_ASSERT(!slices.empty());
-    auto const idSlice = slices[0];
+    auto const idSlice = result.response->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
@@ -333,17 +331,14 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
 
   if (res.hasValue() && res.get().ok() && res.get().response &&
       res.get().response->statusCode() == fuerte::StatusNotFound) {
-    auto slices = res.get().response->slices();
-    if (!slices.empty()) {
-      auto const& slice = slices[0];
-      if (slice.isObject()) {
-        VPackSlice s = slice.get(StaticStrings::ErrorNum);
-        if (s.isNumber()) {
-          int errorNum = s.getNumber<int>();
-          if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-            // database is gone. that means our lock is also gone
-            return arangodb::Result();
-          }
+    auto const slice = res.get().response->slice();
+    if (slice.isObject()) {
+      VPackSlice s = slice.get(StaticStrings::ErrorNum);
+      if (s.isNumber()) {
+        int errorNum = s.getNumber<int>();
+        if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+          // database is gone. that means our lock is also gone
+          return arangodb::Result();
         }
       }
     }
@@ -474,9 +469,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
 
     if (res.hasValue() && res.get().ok() && res.get().response &&
         res.get().response->statusCode() == fuerte::StatusOK) {
-      auto slices = res.get().response->slices();
-      TRI_ASSERT(!slices.empty());
-      auto const& slice = slices[0];
+      auto const slice = res.get().response->slice();
       TRI_ASSERT(slice.isObject());
       VPackSlice lockHeld = slice.get("lockHeld");
       if (lockHeld.isBoolean() && lockHeld.getBool()) {
@@ -487,17 +480,14 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
     } else {
       if (res.hasValue() && res.get().ok() && res.get().response &&
           res.get().response->statusCode() == fuerte::StatusNotFound) {
-        auto slices = res.get().response->slices();
-        if (!slices.empty()) {
-          auto const& slice = slices[0];
-          if (slice.isObject()) {
-            VPackSlice s = slice.get(StaticStrings::ErrorNum);
-            if (s.isNumber()) {
-              int errorNum = s.getNumber<int>();
-              if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-                // database is gone. we can now give up
-                break;
-              }
+        auto const slice = res.get().response->slice();
+        if (slice.isObject()) {
+          VPackSlice s = slice.get(StaticStrings::ErrorNum);
+          if (s.isNumber()) {
+            int errorNum = s.getNumber<int>();
+            if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+              // database is gone. we can now give up
+              break;
             }
           }
         }

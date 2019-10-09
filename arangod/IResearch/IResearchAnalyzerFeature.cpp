@@ -755,12 +755,12 @@ arangodb::Result visitAnalyzers( // visit analyzers
     arangodb::network::ConnectionPool* pool = feature.pool();
 
     if (!pool) {
-      return arangodb::Result(  // result
-          TRI_ERROR_INTERNAL,   // code
+      return arangodb::Result(      // result
+          TRI_ERROR_SHUTTING_DOWN,  // code
           std::string("failure to find connection pool while visiting Analyzer "
                       "collection '") +
               ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() +
-              "'");
+              "', server is likely shutting down");
     }
 
     auto collection = getAnalyzerCollection(vocbase);

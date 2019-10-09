@@ -124,7 +124,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief forward a command in the coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleTrampolineCoordinator();
+  void handleUnforwardedTrampolineCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the cluster inventory, only on coordinator

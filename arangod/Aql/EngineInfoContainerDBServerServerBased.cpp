@@ -357,12 +357,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                                     url, std::move(buffer), headers, options)
                    .get();
     _query.incHttpRequests(1);
-    if (res.fail() || !res.response) {
+    if (res.fail()) {
       int code = network::fuerteToArangoErrorCode(res);
-      LOG_TOPIC("f9a77", DEBUG, Logger::AQL) << server << " responded with " << code
-                                             << " -> " << TRI_errno_string(code);
+      std::string message = network::fuerteToArangoErrorMessage(res);
+      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
+          << server << " responded with " << code << " -> " << message;
       LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
-      return {code};
+      return {code, message};
     }
     auto slices = res.response->slices();
     if (slices.empty()) {
