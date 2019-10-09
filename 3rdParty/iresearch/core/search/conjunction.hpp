@@ -147,8 +147,8 @@ class conjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(target = front_->seek(target))) {
-      return doc_limits::eof();
+    if (type_limits<type_t::doc_id_t>::eof(target = front_->seek(target))) {
+      return type_limits<type_t::doc_id_t>::eof();
     }
 
     return converge(target);
@@ -162,7 +162,7 @@ class conjunction : public doc_iterator_base {
 
     for (auto rest = seek_rest(target); target != rest; rest = seek_rest(target)) {
       target = front_->seek(rest);
-      if (doc_limits::eof(target)) {
+      if (type_limits<type_t::doc_id_t>::eof(target)) {
         break;
       }
     }
