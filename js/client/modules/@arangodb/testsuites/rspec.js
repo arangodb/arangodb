@@ -352,14 +352,20 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   defaultFns.push('ssl_server');
 
   opts['skipSsl'] = false;
-  if (platform.substr(0, 3) !== 'win') {
-    opts['rspec'] = 'rspec';
+
+  if (opts.hasOwnProperty('ruby')) {
+    let rx = new RegExp('ruby.exe$');
+    var rspec = opts.ruby.replace(rx, 'rspec');
+    opts['rspec'] = opts.ruby;
   } else {
-    // Windows process utilties would apply `.exe` to rspec.
-    // However the file is called .bat and .exe cannot be found.
-    opts['rspec'] = 'rspec.bat';
+    if (platform.substr(0, 3) !== 'win') {
+      opts['rspec'] = 'rspec';
+    } else {
+      // Windows process utilties would apply `.exe` to rspec.
+      // However the file is called .bat and .exe cannot be found.
+      opts['rspec'] = 'rspec.bat';
+    }
   }
-  opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
