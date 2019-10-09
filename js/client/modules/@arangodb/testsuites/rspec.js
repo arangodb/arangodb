@@ -355,8 +355,7 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   if (opts.hasOwnProperty('ruby')) {
     let rx = new RegExp('ruby.exe$');
-    var rspec = opts.ruby.replace(rx, 'rspec');
-    opts['rspec'] = opts.ruby;
+    opts['rspec'] = opts.ruby.replace(rx, 'rspec');
   } else {
     if (platform.substr(0, 3) !== 'win') {
       opts['rspec'] = 'rspec';
@@ -366,6 +365,7 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
       opts['rspec'] = 'rspec.bat';
     }
   }
+  opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
