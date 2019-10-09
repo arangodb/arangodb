@@ -119,6 +119,17 @@ function ahuacatlParseTestSuite () {
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1 + 1 +"); 
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return (1"); 
       assertParseError(errors.ERROR_QUERY_PARSE.code, "for f1 in x1"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 00"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 01"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1."); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return -");
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return +");
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return ."); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 /* "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 \" foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ' foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 `foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ´foo "); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -239,12 +239,8 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
       return;
     }
 
-    std::vector<std::string> files(TRI_FullTreeDirectory(_path.c_str()));
-    bool isEmpty = (files.size() <= 1);
-    // TODO: TRI_FullTreeDirectory always returns at least one element ("")
-    // even if directory is empty?
-
-    if (!isEmpty) {
+    std::vector<std::string> files(TRI_FilesDirectory(_path.c_str()));
+    if (!files.empty()) {
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
