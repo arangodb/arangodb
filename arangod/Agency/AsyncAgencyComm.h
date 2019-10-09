@@ -29,6 +29,7 @@
 #include "Network/Methods.h"
 #include "Futures/Future.h"
 #include "Agency/AgencyComm.h"
+#include "Cluster/ResultT.h"
 
 
 namespace arangodb {
@@ -52,6 +53,13 @@ struct AsyncAgencyCommResult {
     return response->statusCode();
   }
 };
+
+struct AgencyReadResult : public AsyncAgencyCommResult {
+  VPackSlice value() { return this->_value; }
+private:
+  VPackSlice _value;
+};
+
 
 class AsyncAgencyComm;
 
@@ -79,13 +87,14 @@ private:
 
 class AsyncAgencyComm final {
 public:
-  using FutureBufferResult = arangodb::futures::Future<VPackBuffer<uint8_t>>;
+  using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
+  using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
 
-  FutureBufferResult getValues(std::string const& path);
+  FutureResult getValues(std::string const& path);
 
 public:
-  using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
-  FutureResult sendWithFailover(fuerte::RestVerb method, std::string url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+  FutureResult sendWithFailover(fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+  FutureResult sendWithFailover(fuerte::RestVerb method, std::string const& url, network::Timeout timeout, AgencyTransaction const& trx) const;
 
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::INSTANCE.get()) {}
   AsyncAgencyComm(AsyncAgencyCommManager *manager) : _manager(manager) {}

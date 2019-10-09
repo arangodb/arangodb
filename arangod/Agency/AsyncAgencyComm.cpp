@@ -64,14 +64,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
     // build inquire request
     VPackBuffer<uint8_t> query;
     {
-      VPackBuilder b;
+      VPackBuilder b(query);
       {
         VPackArrayBuilder ab(&b);
         for (auto const& i : meta.clientIds) {
           b.add(VPackValue(i));
         }
       }
-      query = std::move(*b.steal());
     }
 
     std::string endpoint = man->getCurrentEndpoint();
@@ -207,7 +206,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 namespace arangodb {
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-  fuerte::RestVerb method, std::string url,
+  fuerte::RestVerb method, std::string const& url,
   arangodb::network::Timeout timeout, VPackBuffer<uint8_t> &&body) const {
 
   std::vector<std::string> clientIds;
@@ -227,6 +226,19 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
   return agencyAsyncSend(_manager, RequestMeta({timeout, method,
     url, std::move(clientIds), std::move(headers), 0}), std::move(body));
 }
+
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(fuerte::RestVerb method, std::string const& url, network::Timeout timeout, AgencyTransaction const& trx) const {
+
+  VPackBuffer<uint8_t> body;
+  {
+    VPackBuilder builder(body);
+    trx.toVelocyPack(builder);
+  }
+
+  return sendWithFailover(method, url, timeout, std::move(body));
+}
+
 
 void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
   {
@@ -273,6 +285,13 @@ void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint, std::st
       _endpoints.push_front(redirectTo);
     }
   }
+}
+
+const char * AGENCY_URL_READ = "/_api/agency/read";
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) {
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ,
+    1s /* AgencyCommManager::CONNECTION_OPTIONS._requestTimeout*/, AgencyReadTransaction(path));
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;
