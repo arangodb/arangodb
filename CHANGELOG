@@ -1,6 +1,9 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Removed debug log messages "found comm task ..." that could be logged
+  on server shutdown.
+
 * Fixed issue #10183: Arangoimport imports on _system when you try to 
   create a new database.
 
