@@ -348,6 +348,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/UpdateModifier.cpp
+  Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
