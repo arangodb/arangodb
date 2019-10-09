@@ -986,7 +986,49 @@
         assertEqual(
           db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(false, false, false, 0) OPTIONS { waitForSync : true }  RETURN d").toArray().length,
           28);
+      },
+      testCheckIssue10090 : function () {
+        let docs = [{ "type": "person", "text": "foo" }, { "type": "person", "text": "foo bar" }];
+        let res = [];
+        docs.forEach(function(element, i) {
+          try
+          {
+            let c, v;
+
+            c = db._create("cIssue10090", { waitForSync: true});
+            v = db._createView("vIssue10090", "arangosearch",
+              {
+                links: {
+                  "cIssue10090": {
+                    analyzers: [
+                      "identity"
+                    ],
+                    fields: {
+                      "text": {
+                        analyzers: [
+                          "text_en",
+                          "identity"
+                        ]
+                      },
+                      "type": {}
+                    },
+                  }
+                }
+              }
+            );
+
+            c.save(i === 0 ? docs : docs.reverse());
+            res.push(db._query("FOR d IN vIssue10090 SEARCH d.type == 'person' AND PHRASE(d.text, 'foo bar', 'text_en') OPTIONS { waitForSync: true } RETURN d").toArray());
+          }
+          finally
+          {
+            db._dropView("vIssue10090");
+            db._drop("cIssue10090");
+          }
+        });
+
+        docs.forEach(function(element, i) { assertEqual(res[i].length, 1); });
       }
     };
-  }
+  };
 }());
