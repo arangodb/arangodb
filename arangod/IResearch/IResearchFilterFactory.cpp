@@ -740,9 +740,10 @@ arangodb::Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ct
   return {};
 }
 
-arangodb::Result buildBinaryArrayComparsionPreFilter(irs::boolean_filter* &filter,
-                                          bool notNode,
-                                          int64_t qualifierType, bool emptyArray) {
+std::tuple<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsionPreFilter(
+    irs::boolean_filter* &filter, arangodb::aql::AstNodeType arrayComparsion,
+    int64_t qualifierType, bool emptyArray) {
+  arangodb::aql::AstNodeType expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
   if (emptyArray) {
     switch (qualifierType) {
     case arangodb::aql::Quantifier::ANY:
@@ -754,53 +755,136 @@ arangodb::Result buildBinaryArrayComparsionPreFilter(irs::boolean_filter* &filte
       break;
     default:
       TRI_ASSERT(false); // new qualifier added ?
-      return { TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator" };
+      return std::make_tuple(
+        arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator"),
+        arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
     }
   } else {
+    // NONE is inverted ALL so do conversion
+    if (arangodb::aql::Quantifier::NONE == qualifierType) {
+      qualifierType = arangodb::aql::Quantifier::ALL;
+      switch (arrayComparsion) {
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE;
+          break;
+        default:
+          TRI_ASSERT(false); // new array comparsion operator?
+          return std::make_tuple(
+            arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array comparison operator"),
+            arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+      }
+    }
     switch (qualifierType) {
-      case arangodb::aql::Quantifier::NONE:
-        filter = !notNode
-                  ? &static_cast<irs::boolean_filter&>(
-                        filter->add<irs::Not>().filter<irs::Or>())
-                  : &static_cast<irs::boolean_filter&>(filter->add<irs::And>());
-        break;
       case arangodb::aql::Quantifier::ALL:
-        filter = notNode
-                  ? &static_cast<irs::boolean_filter&>(
-                        filter->add<irs::Not>().filter<irs::Or>())
-                  : &static_cast<irs::boolean_filter&>(filter->add<irs::And>());
+        filter = static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+        // calculate node type for expanding operation
+        // As soon as array is left argument but for filter we place document to the left
+        // we reverse comparsion operation
+        switch (arrayComparsion) {
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
+            break;
+          default:
+            TRI_ASSERT(false); // new array comparsion operator?
+            return std::make_tuple(
+              arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL comparison operator"),
+              arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+        }
         break;
-      case arangodb::aql::Quantifier::ANY:
-        filter = notNode
-                  ? &static_cast<irs::boolean_filter&>(
-                        filter->add<irs::Not>().filter<irs::And>())
-                  : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+      case arangodb::aql::Quantifier::ANY: {
+        auto& tmp = filter->add<irs::Or>();
+        filter = static_cast<irs::boolean_filter*>(&tmp);
+        //filter = &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+        switch (arrayComparsion) {
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+            expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
+            break;
+          default:
+            TRI_ASSERT(false); // new array comparsion operator?
+            return std::make_tuple(
+              arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL comparison operator"),
+              arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+        }
         break;
+      }
       default:
         TRI_ASSERT(false); // new qualifier added ?
-        return { TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator" };
+        return std::make_tuple(
+          arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator"),
+          arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return std::make_tuple(TRI_ERROR_NO_ERROR, expandNodeType);
 }
 
-arangodb::aql::AstNodeType mapNodeTypeForArrayIntervalComparsion(arangodb::aql::AstNodeType arrayComparsion) {
-  switch (arrayComparsion) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
-      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
-      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
-      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
-    default:
-      TRI_ASSERT(false);
-      // return root as failure indicator
-      // (this makes sure no filter could be built from it)
-      return  arangodb::aql::NODE_TYPE_ROOT;
-  }
-}
+//arangodb::aql::AstNodeType mapNodeTypeForArrayIntervalComparsion(arangodb::aql::AstNodeType arrayComparsion) {
+//  switch (arrayComparsion) {
+//    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+//      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT;
+//    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+//      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
+//    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+//      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
+//    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+//      return arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
+//    default:
+//      TRI_ASSERT(false);
+//      // return root as failure indicator
+//      // (this makes sure no filter could be built from it)
+//      return  arangodb::aql::NODE_TYPE_ROOT;
+//  }
+//}
 
 arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext const& ctx,
                               FilterContext const& filterCtx, arangodb::aql::AstNode const& node) {
@@ -827,8 +911,6 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
     return {TRI_ERROR_BAD_PARAMETER, "wrong qualifier node type for Array comparison operator"};
   }
   auto const qualifierType = qualifierNode->getIntValue(true);
-  bool const incl = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE == node.type ||
-                    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE == node.type;
 
   if (arangodb::aql::NODE_TYPE_ARRAY == valueNode->type) {
     if (!attributeNode->isDeterministic()) {
@@ -849,20 +931,28 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
         return fromExpression(filter, ctx, filterCtx, node);
       }
     }
+    arangodb::Result buildRes;
+    arangodb::aql::AstNodeType normalizeNodeType = arangodb::aql::NODE_TYPE_ROOT;
     if (!n) {
       if (filter) {
-        auto buildRes = buildBinaryArrayComparsionPreFilter(filter, false, qualifierType, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, true);
         if (!buildRes.ok()) {
           return buildRes;
+        }
+        if (ADB_UNLIKELY(arangodb::aql::NODE_TYPE_ROOT == normalizeNodeType)) {
+          return { TRI_ERROR_BAD_PARAMETER, "wrong node type for Array comparison operator" };
         }
       }
       // nothing to do more
       return {};
     }
     if (filter) {
-      auto buildRes = buildBinaryArrayComparsionPreFilter(filter, false, qualifierType, false);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, false);
       if (!buildRes.ok()) {
         return buildRes;
+      }
+      if (ADB_UNLIKELY(arangodb::aql::NODE_TYPE_ROOT == normalizeNodeType)) {
+        return { TRI_ERROR_BAD_PARAMETER, "wrong node type for Array comparison operator" };
       }
       filter->boost(filterCtx.boost);
     }
@@ -870,16 +960,14 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
       filterCtx.analyzer,
       irs::no_boost() };  // reset boost
     // Expand array interval as several binaryInterval nodes ('array' feature is ensured by pre-filter)
-    arangodb::aql::AstNodeType normalizeNodeType = mapNodeTypeForArrayIntervalComparsion(node.type);
-    if (ADB_UNLIKELY(arangodb::aql::NODE_TYPE_ROOT == normalizeNodeType)) {
-       return {TRI_ERROR_BAD_PARAMETER, "wrong node type for Array comparison operator"};
-    }
     arangodb::iresearch::NormalizedCmpNode normalized;
     arangodb::aql::AstNode toNormalize(normalizeNodeType);
     toNormalize.reserve(2);
-    // min/max in direct way as equation was already
+    // min/max in direct way as equation was already reversed
     bool const min = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == normalizeNodeType ||
                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normalizeNodeType;
+    bool const incl = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normalizeNodeType ||
+                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == normalizeNodeType;
     for (size_t i = 0; i < n; ++i) {
       auto const* member = valueNode->getMemberUnchecked(i);
       TRI_ASSERT(member);
@@ -939,16 +1027,17 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
       size_t const n = value.size();
-
+      arangodb::Result buildRes;
+      arangodb::aql::AstNodeType normalizeNodeType;
       if (!n) {
-        auto buildRes = buildBinaryArrayComparsionPreFilter(filter, false, qualifierType, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, true);
         if (!buildRes.ok()) {
           return buildRes;
         }
         // nothing to do more
         return {};
       }
-      auto buildRes = buildBinaryArrayComparsionPreFilter(filter, false, qualifierType, false);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, false);
       if (!buildRes.ok()) {
           return buildRes;
       }
@@ -964,11 +1053,12 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
         LOG_TOPIC("ff299", WARN, arangodb::iresearch::TOPIC) << message;
         return { TRI_ERROR_BAD_PARAMETER, message };
       }
-      //  Min /Max reversed as we reverse the equation!
-      bool const min = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT == node.type ||
-                       arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE == node.type;
+      bool const min = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == normalizeNodeType ||
+                       arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normalizeNodeType;
+      bool const incl = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normalizeNodeType ||
+                        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == normalizeNodeType;
       for (size_t i = 0; i < n; ++i) {
-        auto rv = min ? 
+        auto rv = min ?
           byRangeValue<irs::Bound::MIN>(filter, fieldName, value.at(i), incl, ctx, subFilterCtx) :
           byRangeValue<irs::Bound::MAX>(filter, fieldName, value.at(i), incl, ctx, subFilterCtx);
         if (rv.fail()) {
@@ -1022,26 +1112,30 @@ arangodb::Result fromArrayInArray(irs::boolean_filter* filter, QueryContext cons
       return fromExpression(filter, ctx, filterCtx, node);
     }
   }
-  const bool notNode = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type ||
-                       arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE == node.type;
+
   const auto qualifierType = qualifierNode->getIntValue(true);
+  arangodb::Result buildRes;
+  arangodb::aql::AstNodeType normalizeNodeType = arangodb::aql::NODE_TYPE_ROOT;
   if (!n) {
     if (filter) {
-      auto buildRes = buildBinaryArrayComparsionPreFilter(filter, notNode, qualifierType, true);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, true);
       if (!buildRes.ok()) {
         return buildRes;
       }
+      TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == normalizeNodeType ||
+        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == normalizeNodeType);
     }
-
     // nothing to do more
     return {};
   }
 
   if (filter) {
-     auto buildRes = buildBinaryArrayComparsionPreFilter(filter, notNode, qualifierType, false);
+     std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, false);
      if (!buildRes.ok()) {
         return buildRes;
      }
+     TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == normalizeNodeType ||
+                arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == normalizeNodeType);
      filter->boost(filterCtx.boost);
   }
 
@@ -1051,7 +1145,7 @@ arangodb::Result fromArrayInArray(irs::boolean_filter* filter, QueryContext cons
   };
 
   arangodb::iresearch::NormalizedCmpNode normalized;
-  arangodb::aql::AstNode toNormalize(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+  arangodb::aql::AstNode toNormalize(normalizeNodeType);
   toNormalize.reserve(2);
 
   // FIXME better to rewrite expression the following way but there is no place
@@ -1077,7 +1171,7 @@ arangodb::Result fromArrayInArray(irs::boolean_filter* filter, QueryContext cons
 
       // use std::shared_ptr since AstNode is not copyable/moveable
       auto exprNode = std::make_shared<arangodb::aql::AstNode>(
-          arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+          normalizeNodeType);
       exprNode->reserve(2);
       exprNode->addMember(attributeNode);
       exprNode->addMember(member);
@@ -1088,8 +1182,11 @@ arangodb::Result fromArrayInArray(irs::boolean_filter* filter, QueryContext cons
         return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
       }
     } else {
-      auto* termFilter = filter ? &filter->add<irs::by_term>() : nullptr;
-
+      iresearch::by_term* termFilter =  nullptr;
+      if (filter) {
+        termFilter = (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == normalizeNodeType) ?
+          &filter->add<irs::And>().add<irs::Not>().filter<irs::by_term>() : &filter->add<irs::by_term>();
+      }
       auto rv = byTerm(termFilter, normalized, ctx, subFilterCtx);
       if (rv.fail()) {
         return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
@@ -1145,21 +1242,21 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
     LOG_TOPIC("f7a13", WARN, arangodb::iresearch::TOPIC) << message;
     return {TRI_ERROR_BAD_PARAMETER, message};
   }
-  const bool notNode = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type ||
-                       arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE == node.type;
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
       size_t const n = value.size();
       const auto qualifierType = qualifierNode->getIntValue(true);
+      arangodb::Result buildRes;
+      arangodb::aql::AstNodeType normalizeNodeType;
       if (!n) {
-        auto buildRes = buildBinaryArrayComparsionPreFilter(filter, notNode, qualifierType, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, true);
         if (!buildRes.ok()) {
           return buildRes;
         }
         // nothing to do more
         return {};
       }
-      auto buildRes = buildBinaryArrayComparsionPreFilter(filter, notNode, qualifierType, false);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierType, false);
       if (!buildRes.ok()) {
           return buildRes;
       }
@@ -1168,10 +1265,12 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
           filterCtx.analyzer,
           irs::no_boost()  // reset boost
       };
-
+      TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == normalizeNodeType ||
+                 arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == normalizeNodeType);
       for (size_t i = 0; i < n; ++i) {
-        // failed to create a filter
-        auto rv = byTerm(&filter->add<irs::by_term>(), *attributeNode, value.at(i), ctx, subFilterCtx);
+        auto subFilter = (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == normalizeNodeType) ?
+          &filter->add<irs::And>().add<irs::Not>().filter<irs::by_term>() : &filter->add<irs::by_term>();
+        auto rv = byTerm(subFilter, *attributeNode, value.at(i), ctx, subFilterCtx);
         if (rv.fail()) {
           return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
         }
@@ -1236,9 +1335,9 @@ arangodb::Result fromInArray(irs::boolean_filter* filter, QueryContext const& ct
 
   if (filter) {
     filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-                 ? &static_cast<irs::boolean_filter&>(
-                       filter->add<irs::Not>().filter<irs::Or>())
-                 : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+                 ? static_cast<irs::boolean_filter*>(
+                       &filter->add<irs::Not>().filter<irs::Or>())
+                 : static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
     filter->boost(filterCtx.boost);
   }
 
@@ -1377,9 +1476,9 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       }
 
       filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-                   ? &static_cast<irs::boolean_filter&>(
-                         filter->add<irs::Not>().filter<irs::Or>())
-                   : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+                   ? static_cast<irs::boolean_filter*>(
+                         &filter->add<irs::Not>().filter<irs::Or>())
+                   : static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
       filter->boost(filterCtx.boost);
 
       FilterContext const subFilterCtx{
