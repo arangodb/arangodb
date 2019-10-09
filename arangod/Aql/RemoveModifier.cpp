@@ -55,44 +55,24 @@ Result RemoveModifier::accumulate(InputAqlItemRow& row) {
   Result result;
 
   RegisterId const inDocReg = _infos._input1RegisterId;
-  RegisterId const keyReg = _infos._input2RegisterId;
-  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
-  // The document to be UPDATEd
+  // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  // A separate register for the key/rev is available
-  // so we use that
-  //
-  // WARNING
-  //
-  // We must never take _rev from the document if there is a key
-  // expression.
-  TRI_ASSERT(_infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
-  if (hasKeyVariable) {
-    AqlValue const& keyDoc = row.getValue(keyReg);
-    result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _infos._options.ignoreRevs);
-  } else {
+  if (!_infos._consultAqlWriteFilter ||
+      !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
+                                                               StaticStrings::Empty)) {
+    TRI_ASSERT(_infos._trx->resolver() != nullptr);
+    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
                                _infos._options.ignoreRevs);
-  }
 
-  if (result.ok()) {
-    if (!_infos._consultAqlWriteFilter ||
-        !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(), key)) {
-      if (hasKeyVariable) {
-        VPackBuilder keyDocBuilder;
-
-        buildKeyDocument(keyDocBuilder, key, rev);
-        // This deletes _rev if rev is empty or ignoreRevs is set in
-        // options.
-        VPackCollection::merge(_accumulator, inDoc.slice(),
-                               keyDocBuilder.slice(), false, true);
-      } else {
-        _accumulator.add(inDoc.slice());
-      }
+    if (result.ok()) {
+      VPackBuilder keyDocBuilder;
+      buildKeyDocument(keyDocBuilder, key, rev);
+      // This deletes _rev if rev is empty or ignoreRevs is set in
+      // options.
+      _accumulator.add(keyDocBuilder.slice());
       _operations.push_back({ModOperationType::APPLY_RETURN, row});
     } else {
       _operations.push_back({ModOperationType::IGNORE_RETURN, row});
@@ -107,8 +87,8 @@ Result RemoveModifier::accumulate(InputAqlItemRow& row) {
 }
 
 OperationResult RemoveModifier::transact() {
-  auto toUpdate = _accumulator.slice();
-  return _infos._trx->update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+  auto toRemove = _accumulator.slice();
+  return _infos._trx->remove(_infos._aqlCollection->name(), toRemove, _infos._options);
 }
 
 size_t RemoveModifier::size() const {
