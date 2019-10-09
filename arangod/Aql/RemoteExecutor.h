@@ -119,9 +119,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // _communicationMutex *must* be locked for this!
   unsigned generateNewTicket();
   
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _didSendShutdownRequest = false;
-#endif
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
