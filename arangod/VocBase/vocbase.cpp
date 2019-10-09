@@ -837,6 +837,7 @@ void TRI_vocbase_t::shutdown() {
   // soon, we have to retry, since some of these collection keys might currently
   // still being in use:
   auto lastTime = TRI_microtime();
+  _collectionKeys->stopStores();
   while (true) {
     if (!_collectionKeys->garbageCollect(true)) {
       break;
