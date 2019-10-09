@@ -210,8 +210,8 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
           TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
-    if (q->second->_callbackGuard != nullptr) {
-      q->second->_callbackGuard->call();
+    if (q->second->_rebootGuard != nullptr) {
+      q->second->_rebootGuard->callAndClear();
     }
 
     if (q->second->_isOpen && !ignoreOpened) {
