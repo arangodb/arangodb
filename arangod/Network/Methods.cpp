@@ -148,9 +148,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
   conn->sendRequest(std::move(req), [p = std::move(p)](fuerte::Error err,
                                                        std::unique_ptr<fuerte::Request> req,
                                                        std::unique_ptr<fuerte::Response> res) {
-    p->promise.setValue(network::Response{p->destination, err,
-                                          std::shared_ptr<fuerte::Response>(res.get())});
-    res.release();
+    p->promise.setValue(network::Response{p->destination, err, std::move(res)});
   });
   return f;
 }
@@ -186,7 +184,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   Headers _headers;
   std::shared_ptr<arangodb::Scheduler::WorkItem> _workItem;
   futures::Promise<network::Response> _promise;  /// promise called
-  std::shared_ptr<fuerte::Response> _response;   /// temporary response
+  std::unique_ptr<fuerte::Response> _response;   /// temporary response
 
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
@@ -297,8 +295,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    _response.reset(res.get());
-    res.release();
+    _response = std::move(res);
     bool queued =
         sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
           self->_promise.setValue(Response{std::move(self->_destination), err,

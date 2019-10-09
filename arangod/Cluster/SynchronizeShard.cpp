@@ -377,7 +377,7 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
           .get();
 
   if (res.ok()) {
-    auto response = res.response;
+    auto* response = res.response.get();
     if (response->statusCode() != fuerte::StatusOK &&
         response->statusCode() != fuerte::StatusNoContent) {
       std::string errorMessage = "got status " + std::to_string(response->statusCode());

@@ -43,8 +43,8 @@ class ConnectionPool;
 struct Response {
   DestinationId destination;
   fuerte::Error error;  /// connectivity error
-  std::shared_ptr<arangodb::fuerte::Response> response;
-  
+  std::unique_ptr<arangodb::fuerte::Response> response;
+
   bool ok() const {
     return fuerte::Error::NoError == this->error;
   }

@@ -90,19 +90,28 @@ static void VerifyNumbers(VPackSlice result, std::string const& colName,
 
   VPackSlice total = progress.get("total");
   ASSERT_TRUE(total.isNumber());
-  ASSERT_TRUE(total.getNumber<uint64_t>() == testTotal);
+  ASSERT_EQ(total.getNumber<uint64_t>(), testTotal);
 
   VPackSlice current = progress.get("current");
   ASSERT_TRUE(current.isNumber());
   ASSERT_EQ(current.getNumber<uint64_t>(), testCurrent);
 }
 
-static std::shared_ptr<VPackBuilder> buildCountBody(uint64_t count) {
-  auto res = std::make_shared<VPackBuilder>();
-  res->openObject();
-  res->add("count", VPackValue(count));
-  res->close();
-  return res;
+static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
+  VPackBuffer<uint8_t> responseBuffer;
+  VPackBuilder builder(responseBuffer);
+  builder.openObject();
+  builder.add("count", VPackValue(count));
+  builder.close();
+
+  fuerte::ResponseHeader header;
+  header.contentType(fuerte::ContentType::VPack);
+  std::unique_ptr<fuerte::Response> response(new fuerte::Response(std::move(header)));
+  response->setPayload(std::move(responseBuffer), /*offset*/ 0);
+
+  TRI_ASSERT(!response->slices().empty());
+
+  return response;
 }
 
 class ShardDistributionReporterTest
@@ -247,27 +256,6 @@ TEST_F(ShardDistributionReporterTest,
   uint64_t shard3LeaderCount = 4651;
   uint64_t shard3FollowerCount = 912;
 
-  // Moking HttpResults
-  fakeit::Mock<fuerte::Response> db1s2CountMock;
-  fuerte::Response& httpdb1s2Count = db1s2CountMock.get();
-  std::shared_ptr<VPackBuilder> db1s2Builder;
-
-  fakeit::Mock<fuerte::Response> db1s3CountMock;
-  fuerte::Response& httpdb1s3Count = db1s3CountMock.get();
-  std::shared_ptr<VPackBuilder> db1s3Builder;
-
-  fakeit::Mock<fuerte::Response> db2s2CountMock;
-  fuerte::Response& httpdb2s2Count = db2s2CountMock.get();
-  std::shared_ptr<VPackBuilder> db2s2Builder;
-
-  fakeit::Mock<fuerte::Response> db3s2CountMock;
-  fuerte::Response& httpdb3s2Count = db3s2CountMock.get();
-  std::shared_ptr<VPackBuilder> db3s2Builder;
-
-  fakeit::Mock<fuerte::Response> db3s3CountMock;
-  fuerte::Response& httpdb3s3Count = db3s3CountMock.get();
-  std::shared_ptr<VPackBuilder> db3s3Builder;
-
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
   shards->emplace(s2, std::vector<ServerID>{dbserver2, dbserver1, dbserver3});
   shards->emplace(s3, std::vector<ServerID>{dbserver3, dbserver1, dbserver2});
@@ -285,37 +273,6 @@ TEST_F(ShardDistributionReporterTest,
     EXPECT_TRUE(((sid == s1) || (sid == s2) || (sid == s3)));
     return currentShards[sid];
   });
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(db1s2CountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        db1s2Builder = buildCountBody(shard2LowFollowerCount);
-        return std::vector<VPackSlice>{db1s2Builder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(db1s3CountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        db1s3Builder = buildCountBody(shard3FollowerCount);
-        return std::vector<VPackSlice>{db1s3Builder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(db2s2CountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        db2s2Builder = buildCountBody(shard2LeaderCount);
-        return std::vector<VPackSlice>{db2s2Builder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(db3s2CountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        db3s2Builder = buildCountBody(shard2HighFollowerCount);
-        return std::vector<VPackSlice>{db3s2Builder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(db3s3CountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        db3s3Builder = buildCountBody(shard3LeaderCount);
-        return std::vector<VPackSlice>{db3s3Builder->slice()};
-      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
@@ -336,28 +293,23 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       // off-sync follows s2,s3
       if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
-        response.response =
-            std::shared_ptr<fuerte::Response>(&httpdb1s2Count, [](fuerte::Response*) {});
+        response.response = generateCountResponse(shard2LowFollowerCount);
       } else {
         EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
-        response.response =
-            std::shared_ptr<fuerte::Response>(&httpdb1s3Count, [](fuerte::Response*) {});
+        response.response = generateCountResponse(shard3FollowerCount);
       }
     } else if (destination == "server:" + dbserver2) {
       // Leads s2
       EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count");
-      response.response =
-          std::shared_ptr<fuerte::Response>(&httpdb2s2Count, [](fuerte::Response*) {});
+      response.response = generateCountResponse(shard2LeaderCount);
     } else if (destination == "server:" + dbserver3) {
       // Leads s3
       // off-sync follows s2
       if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
-        response.response =
-            std::shared_ptr<fuerte::Response>(&httpdb3s2Count, [](fuerte::Response*) {});
+        response.response = generateCountResponse(shard2HighFollowerCount);
       } else {
         EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
-        response.response =
-            std::shared_ptr<fuerte::Response>(&httpdb3s3Count, [](fuerte::Response*) {});
+        response.response = generateCountResponse(shard3LeaderCount);
       }
     } else {
       // Unknown Server!!
@@ -691,11 +643,11 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice total = progress.get("total");
             ASSERT_TRUE(total.isNumber());
-            ASSERT_TRUE(total.getNumber<uint64_t>() == shard2LeaderCount);
+            ASSERT_EQ(total.getNumber<uint64_t>(), shard2LeaderCount);
 
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
-            ASSERT_TRUE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
+            ASSERT_EQ(current.getNumber<uint64_t>(), shard2LowFollowerCount);
           }
         }
 
@@ -847,41 +799,9 @@ TEST_F(ShardDistributionReporterTest,
     return currentShards[sid];
   });
 
-  // Moking HttpResults
-  fakeit::Mock<fuerte::Response> leaderCountMock;
-  fuerte::Response& lCount = leaderCountMock.get();
-  std::shared_ptr<VPackBuilder> lCountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerOneCountMock;
-  fuerte::Response& f1Count = followerOneCountMock.get();
-  std::shared_ptr<VPackBuilder> f1CountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerTwoCountMock;
-  fuerte::Response& f2Count = followerTwoCountMock.get();
-  std::shared_ptr<VPackBuilder> f2CountBuilder;
-
   uint64_t leaderCount = 1337;
   uint64_t smallerFollowerCount = 456;
   uint64_t largerFollowerCount = 1111;
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        lCountBuilder = buildCountBody(leaderCount);
-        return std::vector<VPackSlice>{lCountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        f1CountBuilder = buildCountBody(largerFollowerCount);
-        return std::vector<VPackSlice>{f1CountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        f2CountBuilder = buildCountBody(smallerFollowerCount);
-        return std::vector<VPackSlice>{f2CountBuilder->slice()};
-      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
@@ -895,14 +815,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&lCount, [](fuerte::Response*) {});
+      response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f1Count, [](fuerte::Response*) {});
+      response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f2Count, [](fuerte::Response*) {});
+      response.response = generateCountResponse(smallerFollowerCount);
     } else {
       EXPECT_TRUE(false);
     }
@@ -1015,41 +932,7 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
   uint64_t largerFollowerCount = 1111;
-
-  // Moking HttpResults
-  fakeit::Mock<fuerte::Response> leaderCountMock;
-  fuerte::Response& lCount = leaderCountMock.get();
-  std::shared_ptr<VPackBuilder> lCountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerOneCountMock;
-  fuerte::Response& f1Count = followerOneCountMock.get();
-  std::shared_ptr<VPackBuilder> f1CountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerTwoCountMock;
-  fuerte::Response& f2Count = followerTwoCountMock.get();
-  std::shared_ptr<VPackBuilder> f2CountBuilder;
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        lCountBuilder = buildCountBody(leaderCount);
-        return std::vector<VPackSlice>{lCountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        f1CountBuilder = buildCountBody(largerFollowerCount);
-        return std::vector<VPackSlice>{f1CountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        f2CountBuilder = buildCountBody(smallerFollowerCount);
-        return std::vector<VPackSlice>{f2CountBuilder->slice()};
-      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
@@ -1063,15 +946,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&lCount, [](fuerte::Response*) {});
+      response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f1Count, [](fuerte::Response*) {});
+      response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
       response.error = fuerte::Error::Timeout;
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f2Count, [](fuerte::Response*) {});
     } else {
       EXPECT_TRUE(false);
     }
@@ -1104,42 +983,6 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
-  uint64_t largerFollowerCount = 1111;
-
-  // Moking HttpResults
-  fakeit::Mock<fuerte::Response> leaderCountMock;
-  fuerte::Response& lCount = leaderCountMock.get();
-  std::shared_ptr<VPackBuilder> lCountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerOneCountMock;
-  fuerte::Response& f1Count = followerOneCountMock.get();
-  std::shared_ptr<VPackBuilder> f1CountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerTwoCountMock;
-  fuerte::Response& f2Count = followerTwoCountMock.get();
-  std::shared_ptr<VPackBuilder> f2CountBuilder;
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        lCountBuilder = buildCountBody(leaderCount);
-        return std::vector<VPackSlice>{lCountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        f1CountBuilder = buildCountBody(largerFollowerCount);
-        return std::vector<VPackSlice>{f1CountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        f2CountBuilder = buildCountBody(smallerFollowerCount);
-        return std::vector<VPackSlice>{f2CountBuilder->slice()};
-      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
@@ -1153,16 +996,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&lCount, [](fuerte::Response*) {});
+      response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
       response.error = fuerte::Error::Timeout;
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f1Count, [](fuerte::Response*) {});
     } else if (destination == "server:" + dbserver3) {
       response.error = fuerte::Error::Timeout;
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f2Count, [](fuerte::Response*) {});
     } else {
       EXPECT_TRUE(false);
     }
@@ -1241,41 +1079,7 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
   uint64_t largerFollowerCount = 1111;
-
-  // Moking HttpResults
-  fakeit::Mock<fuerte::Response> leaderCountMock;
-  fuerte::Response& lCount = leaderCountMock.get();
-  std::shared_ptr<VPackBuilder> lCountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerOneCountMock;
-  fuerte::Response& f1Count = followerOneCountMock.get();
-  std::shared_ptr<VPackBuilder> f1CountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerTwoCountMock;
-  fuerte::Response& f2Count = followerTwoCountMock.get();
-  std::shared_ptr<VPackBuilder> f2CountBuilder;
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        lCountBuilder = buildCountBody(leaderCount);
-        return std::vector<VPackSlice>{lCountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        f1CountBuilder = buildCountBody(largerFollowerCount);
-        return std::vector<VPackSlice>{f1CountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        f2CountBuilder = buildCountBody(smallerFollowerCount);
-        return std::vector<VPackSlice>{f2CountBuilder->slice()};
-      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
@@ -1289,15 +1093,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&lCount, [](fuerte::Response*) {});
+      response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f1Count, [](fuerte::Response*) {});
+      response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
       response.error = fuerte::Error::Timeout;
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f2Count, [](fuerte::Response*) {});
     } else {
       EXPECT_TRUE(false);
     }
@@ -1330,42 +1130,6 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
-  uint64_t largerFollowerCount = 1111;
-
-  // Moking HttpResults
-  fakeit::Mock<fuerte::Response> leaderCountMock;
-  fuerte::Response& lCount = leaderCountMock.get();
-  std::shared_ptr<VPackBuilder> lCountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerOneCountMock;
-  fuerte::Response& f1Count = followerOneCountMock.get();
-  std::shared_ptr<VPackBuilder> f1CountBuilder;
-
-  fakeit::Mock<fuerte::Response> followerTwoCountMock;
-  fuerte::Response& f2Count = followerTwoCountMock.get();
-  std::shared_ptr<VPackBuilder> f2CountBuilder;
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        lCountBuilder = buildCountBody(leaderCount);
-        return std::vector<VPackSlice>{lCountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        f1CountBuilder = buildCountBody(largerFollowerCount);
-        return std::vector<VPackSlice>{f1CountBuilder->slice()};
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, slices, std::vector<VPackSlice>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        f2CountBuilder = buildCountBody(smallerFollowerCount);
-        return std::vector<VPackSlice>{f2CountBuilder->slice()};
-      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
@@ -1379,16 +1143,11 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.response =
-          std::shared_ptr<fuerte::Response>(&lCount, [](fuerte::Response*) {});
+      response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
       response.error = fuerte::Error::Timeout;
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f1Count, [](fuerte::Response*) {});
     } else if (destination == "server:" + dbserver3) {
       response.error = fuerte::Error::Timeout;
-      response.response =
-          std::shared_ptr<fuerte::Response>(&f2Count, [](fuerte::Response*) {});
     } else {
       EXPECT_TRUE(false);
     }
