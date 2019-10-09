@@ -130,24 +130,25 @@ using decay_t = typename decay<T>::type;
 struct EmptyConstructor {};
 
 // uses a condition_variable to wait
-template <typename T>
+template<typename T>
 void waitImpl(Future<T>& f) {
   if (f.isReady()) {
-    return;  // short-circuit
+    return; // short-circuit
   }
-
+  
   std::mutex m;
   std::condition_variable cv;
-
-  std::unique_lock<std::mutex> lock(m);
-
+  
   Promise<T> p;
-  f.thenFinal([&p, &cv](Try<T>&& t) {
+  Future<T> ret = p.getFuture();
+  f.thenFinal([&p, &cv, &m](Try<T>&& t) {
     p.setTry(std::move(t));
+    std::lock_guard<std::mutex> guard(m);
     cv.notify_one();
   });
-  f = std::move(p.getFuture());
-  cv.wait(lock, [&f] { return f.isReady(); });
+  std::unique_lock<std::mutex> lock(m);
+  cv.wait(lock, [&ret]{ return ret.isReady(); });
+  f = std::move(ret);
 }
 }  // namespace detail
 
@@ -264,14 +265,6 @@ class Future {
     return std::move(getStateTryChecked());
   }
 
-  /// Returns a reference to the result value if it is ready, with a reference
-  /// category and const-qualification like those of the future.
-  /// Does not `wait()`; see `get()` for that.
-  /*T& value() &;
-  T const& value() const&;
-  T&& value() &&;
-  T const&& value() const&&;*/
-
   /// Returns a reference to the result's Try if it is ready, with a reference
   /// category and const-qualification like those of the future.
   /// Does not `wait()`; see `get()` for that.
@@ -282,12 +275,9 @@ class Future {
 
   /// Blocks until this Future is complete.
   void wait() {
-    while (!isReady()) {
-      unsigned i = 8;
-      while (!isReady() && i--) {
-        std::this_thread::yield();
-        std::this_thread::yield();
-      }
+    unsigned i = 8;
+    while (!isReady() && i--) {
+      std::this_thread::yield();
     }
     detail::waitImpl(*this);
   }

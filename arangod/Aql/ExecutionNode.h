@@ -81,7 +81,6 @@ class Index;
 namespace aql {
 class Ast;
 struct Collection;
-class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
@@ -155,6 +154,7 @@ class ExecutionNode {
     DISTRIBUTE_CONSUMER = 28,
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
+    MATERIALIZE = 31,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -674,10 +674,7 @@ class CalculationNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
-                  Variable const* conditionVariable, Variable const* outVariable);
-
-  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr, Variable const* outVariable);
+  CalculationNode(ExecutionPlan* plan, size_t id, std::unique_ptr<Expression> expr, Variable const* outVariable);
 
   CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -717,14 +714,11 @@ class CalculationNode : public ExecutionNode {
   bool isDeterministic() override final;
 
  private:
-  /// @brief an optional condition variable for the calculation
-  Variable const* _conditionVariable;
-
   /// @brief output variable to write to
   Variable const* _outVariable;
 
   /// @brief we need to have an expression and where to write the result
-  Expression* _expression;
+  std::unique_ptr<Expression> _expression;
 };
 
 /// @brief class SubqueryNode
@@ -927,6 +921,56 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+};
+
+class MaterializeNode  : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+
+ public:
+  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+                   aql::Variable const& inDocId, aql::Variable const& outVariable);
+
+  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+
+  /// @brief getVariablesSetHere
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
+  /// @brief return out variable
+  arangodb::aql::Variable const& outVariable() const noexcept {
+    return *_outVariable;
+  }
+
+ private:
+  /// @brief input variable  non-materialized collection ids
+  aql::Variable const* _inNonMaterializedColPtr;
+
+  /// @brief input variable non-materialized document ids
+  aql::Variable const* _inNonMaterializedDocId;
+
+  /// @brief the variable produced by materialization
+  Variable const* _outVariable;
 };
 
 }  // namespace aql

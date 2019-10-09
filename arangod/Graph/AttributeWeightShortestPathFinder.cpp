@@ -161,7 +161,7 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _intermediateSet(false),
       _intermediate() {}
 
-AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {}
+AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() = default;
 
 bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice const& st,
                                                      arangodb::velocypack::Slice const& ta,

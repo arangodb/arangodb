@@ -598,6 +598,9 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateStatementsN
 std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+    arangodb::aql::ExecutionNode::INDEX};
 
 /// @brief find the single shard id for the node to restrict an operation to
 /// this will check the conditions of an IndexNode or a data-modification node
@@ -976,15 +979,9 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
 
     auto outVar = ast->variables()->createTemporaryVariable();
-    ExecutionNode* calculationNode = nullptr;
-    auto expression = new Expression(plan.get(), ast, sorted);
-    try {
-      calculationNode =
-          new CalculationNode(plan.get(), plan->nextId(), expression, outVar);
-    } catch (...) {
-      delete expression;
-      throw;
-    }
+    auto expression = std::make_unique<Expression>(plan.get(), ast, sorted);
+    ExecutionNode* calculationNode = 
+        new CalculationNode(plan.get(), plan->nextId(), std::move(expression), outVar);
     plan->registerNode(calculationNode);
 
     // make the new node a parent of the original calculation node
@@ -3059,7 +3056,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
                                         usedIndexes, std::move(condition), opts);
 
         auto n = newNode.release();
-        enumerateCollectionNode->cloneInto(*n);
+        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
+        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
 
         _plan->registerNode(n);
         _plan->replaceNode(enumerateCollectionNode, n);
@@ -3438,9 +3436,8 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
               CalculationNode* cn =
-                  new CalculationNode(plan.get(), plan->nextId(), expr.get(),
+                  new CalculationNode(plan.get(), plan->nextId(), std::move(expr),
                                       calculationNode->outVariable());
-              expr.release();
               plan->registerNode(cn);
               plan->replaceNode(setter, cn);
               modified = true;
@@ -4569,7 +4566,10 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           // ready to rumble!
           break;
         }
-
+        // late-materialization should be set only after sort nodes are distributed
+        // in cluster as it accounts this disctribution. So we should not encounter this 
+        // kind of nodes for now
+        case EN::MATERIALIZE: 
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
@@ -4849,7 +4849,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         _variable(nullptr),
         _lastNode(nullptr) {}
 
-  ~RemoveToEnumCollFinder() {}
+  ~RemoveToEnumCollFinder() = default;
 
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
@@ -5414,19 +5414,13 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
     auto newRoot = simplifier.simplify(root);
 
     if (newRoot != root) {
-      ExecutionNode* newNode = nullptr;
-      Expression* expr = new Expression(plan.get(), plan->getAst(), newRoot);
+      auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newRoot);
 
-      try {
-        TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        newNode = new CalculationNode(plan.get(), plan->nextId(), expr, outVar);
-      } catch (...) {
-        delete expr;
-        throw;
+      TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
+      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(), std::move(expr), outVar);
 
       plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
@@ -5587,18 +5581,10 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
 
     RemoveRedundantOr remover;
     if (remover.hasRedundantCondition(cn->expression()->node())) {
-      ExecutionNode* newNode = nullptr;
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      Expression* expr = new Expression(plan.get(), plan->getAst(), astNode);
-
-      try {
-        newNode = new CalculationNode(plan.get(), plan->nextId(), expr, outVar);
-      } catch (...) {
-        delete expr;
-        throw;
-      }
-
+      auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), astNode);
+      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(), std::move(expr), outVar);
       plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
       modified = true;
@@ -5908,9 +5894,8 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
               CalculationNode* cn =
-                  new CalculationNode(plan.get(), plan->nextId(), expr.get(),
+                  new CalculationNode(plan.get(), plan->nextId(), std::move(expr),
                                       calculationNode->outVariable());
-              expr.release();
               plan->registerNode(cn);
               plan->replaceNode(setter, cn);
               modified = true;
@@ -7156,7 +7141,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
                                                  Ast::createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
-                                            expr.get(), nullptr, outVariable);
+                                            std::move(expr), outVariable);
         plan->registerNode(calcNode);
         expr.release();
         plan->insertAfter(f, calcNode);
@@ -7183,6 +7168,102 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+/// @brief move filters into EnumerateCollection nodes
+void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                                 OptimizerRule const& rule) {
+  bool modified = false;
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, ::moveFilterIntoEnumerateTypes, true);
+
+  arangodb::HashSet<Variable const*> found;
+
+  for (auto const& n : nodes) {
+    auto en = dynamic_cast<DocumentProducingNode*>(n);
+    if (en == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
+    }
+
+    Variable const* outVariable = en->outVariable();
+        
+    if (!n->isVarUsedLater(outVariable)) {
+      // e.g. FOR doc IN collection RETURN 1
+      continue;
+    }
+
+    ExecutionNode* current = n->getFirstParent();
+
+    std::unordered_map<Variable const*, CalculationNode*> calculations;
+
+    while (current != nullptr) {
+      if (current->getType() != EN::FILTER && current->getType() != EN::CALCULATION) {
+        break;
+      }
+      
+      if (current->getType() == EN::FILTER) {
+        if (calculations.empty()) {
+          break;
+        }
+        auto filterNode = ExecutionNode::castTo<FilterNode*>(current);
+        Variable const* inVariable = filterNode->inVariable();
+        
+        auto it = calculations.find(inVariable);
+        if (it == calculations.end()) {
+          break;
+        }
+
+        CalculationNode* cn = (*it).second;
+        Expression* expr = cn->expression();
+        Expression* existingFilter = en->filter();
+        if (existingFilter != nullptr && existingFilter->node() != nullptr) {
+          // node already has a filter, now AND-merge it with what we found!
+          AstNode* merged = plan->getAst()->createNodeBinaryOperator(
+            NODE_TYPE_OPERATOR_BINARY_AND, existingFilter->node(), expr->node());
+        
+          en->setFilter(std::make_unique<Expression>(plan.get(), plan->getAst(), merged));
+        } else {
+          // node did not yet have a filter
+          en->setFilter(expr->clone(plan.get(), plan->getAst()));
+        }
+
+        // remove the filter
+        ExecutionNode* filterParent = current->getFirstParent();
+        TRI_ASSERT(filterParent != nullptr);
+        plan->unlinkNode(current);
+        current = filterParent;
+
+        if (!current->isVarUsedLater(cn->outVariable())) {
+          // also remove the calculation node
+          plan->unlinkNode(cn);
+        }
+        modified = true;
+      } else if (current->getType() == EN::CALCULATION) {
+        // store all calculations we found
+        auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
+        auto expr = calculationNode->expression();
+        if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
+          break;
+        }
+        if (expr->node() == nullptr) {
+          break;
+        }
+
+        found.clear();
+        Ast::getReferencedVariables(expr->node(), found);
+        if (found.size() == 1 && 
+            found.find(outVariable) != found.end()) {
+          calculations.emplace(calculationNode->outVariable(), calculationNode);
+        }
+      } 
+
+      current = current->getFirstParent();
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
 // Splices in subqueries by replacing subquery nodes by
 // a SubqueryStartNode and a SubqueryEndNode with the subquery's nodes
 // in between.
@@ -7193,8 +7274,6 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SUBQUERY, true);
-
-  std::unordered_map<ExecutionNode*, std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>> subqueryAttributes;
 
   for (auto const& n : nodes) {
     modified = true;
@@ -7208,7 +7287,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     // All parents of the Singleton of the subquery become parents of the SubqueryStartNode
     // The singleton will be deleted after.
     // TODO: Meh const_cast
-    ExecutionNode *singleton = const_cast<ExecutionNode*>(sq->getSubquery()->getSingleton());
+    ExecutionNode* singleton = const_cast<ExecutionNode*>(sq->getSubquery()->getSingleton());
     std::vector<ExecutionNode*> deps = singleton->getParents();
     for (auto* x : deps) {
       TRI_ASSERT(x != nullptr);

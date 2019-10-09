@@ -98,7 +98,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info, VPa
   }
 }
 
-ShortestPathOptions::~ShortestPathOptions() {}
+ShortestPathOptions::~ShortestPathOptions() = default;
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
@@ -224,10 +224,8 @@ void ShortestPathOptions::fetchVerticesCoordinator(
     }
   }
   if (!fetch.empty()) {
-    transaction::BuilderLeaser leased(trx());
-
-    fetchVerticesFromEngines(trx()->vocbase().name(), ch->engines(), fetch,
-                             cache, ch->datalake(), *(leased.get()));
+    fetchVerticesFromEngines(*_trx, ch->engines(), fetch, cache, ch->datalake(),
+                             /*forShortestPath*/ true);
   }
 }
 

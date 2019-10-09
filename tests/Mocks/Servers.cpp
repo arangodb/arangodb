@@ -559,7 +559,7 @@ MockDBServer::MockDBServer(bool start) : MockClusterServer() {
   }
 }
 
-MockDBServer::~MockDBServer() {}
+MockDBServer::~MockDBServer() = default;
 
 TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
@@ -612,7 +612,7 @@ MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {
   }
 }
 
-MockCoordinator::~MockCoordinator() {}
+MockCoordinator::~MockCoordinator() = default;
 
 TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);

@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE_VOCBASEINFO_H
@@ -85,7 +85,7 @@ class CreateDatabaseInfo {
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
-  
+
   application_features::ApplicationServer& server() const;
 
   uint64_t getId() const {
@@ -102,7 +102,7 @@ class CreateDatabaseInfo {
     _validId = true;
   }
 
-  std::string getName() const {
+  std::string const& getName() const {
     TRI_ASSERT(_valid);
     return _name;
   }
@@ -112,11 +112,11 @@ class CreateDatabaseInfo {
     return _replicationFactor;
   }
 
-  std::uint32_t minReplicationFactor() const {
+  std::uint32_t writeConcern() const {
     TRI_ASSERT(_valid);
-    return _minReplicationFactor;
+    return _writeConcern;
   }
-  std::string sharding() const {
+  std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
@@ -131,13 +131,13 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
-  
+
   std::uint64_t _id = 0;
   std::string _name = "";
   std::vector<DBUser> _users;
 
   std::uint32_t _replicationFactor = 1;
-  std::uint32_t _minReplicationFactor = 1;
+  std::uint32_t _writeConcern = 1;
   std::string _sharding = "flexible";
 
   bool _validId = false;
@@ -148,14 +148,14 @@ class CreateDatabaseInfo {
 struct VocbaseOptions {
   std::string sharding = "";
   std::uint32_t replicationFactor = 1;
-  std::uint32_t minReplicationFactor = 1;
+  std::uint32_t writeConcern = 1;
 };
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
 void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
-                                   std::uint32_t minReplicationFactor);
+                                   std::uint32_t writeConcern);
 void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb

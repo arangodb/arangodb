@@ -31,6 +31,8 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/InputAqlItemRow.h"
 
+#include "FetcherTestHelper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -47,10 +49,11 @@ class AllRowsFetcherTest : public ::testing::Test {
   AqlItemMatrix const* matrix = nullptr;
   VPackBuilder input;
   ResourceMonitor monitor;
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 };
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 0};
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, nullptr);
 
   {
@@ -64,8 +67,8 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -74,7 +77,6 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {
 }
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 0};
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, nullptr);
 
@@ -93,8 +95,8 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -103,8 +105,6 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immediately) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
@@ -123,8 +123,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -133,8 +133,6 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then_done) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
@@ -154,8 +152,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -164,8 +162,6 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_done) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(block));
@@ -189,8 +185,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -199,8 +195,6 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
 }
 
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmore_then_done) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block))
@@ -225,8 +219,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -238,8 +232,6 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
 // specification should be compared with the actual output.
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
                         block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
@@ -268,8 +260,8 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -278,8 +270,6 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
 }
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
                         block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
@@ -322,8 +312,8 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
@@ -332,8 +322,6 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
 }
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
                         block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
@@ -377,14 +365,91 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
-    ASSERT_EQ(state, ExecutionState::DONE);
-    ASSERT_EQ(matrix2, matrix);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(matrix2, nullptr);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 7);
 }
+
+class AllRowsFetcherFetchRows : public fetcherHelper::PatternTestWrapper<AllRowsFetcher> {
+ public:
+  AllRowsFetcherFetchRows()
+      : fetcherHelper::PatternTestWrapper<AllRowsFetcher>() {}
+
+  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+    AqlItemMatrix const* matrix = nullptr;
+    ExecutionState state = ExecutionState::HASMORE;
+
+    // Fetch all rows until done
+    std::tie(state, matrix) = _fetcher.fetchAllRows();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    if (!dataResults.empty() || matrix != nullptr) {
+      ASSERT_NE(matrix, nullptr);
+
+      // Assert that all rows come out in order and only these
+      EXPECT_EQ(matrix->size(), dataResults.size());
+      auto rowIndexes = matrix->produceRowIndexes();
+      ASSERT_EQ(rowIndexes.size(), dataResults.size());
+
+      for (size_t i = 0; i < rowIndexes.size(); ++i) {
+        auto row = matrix->getRow(rowIndexes[i]);
+        ASSERT_TRUE(row.isInitialized());
+        EXPECT_TRUE(row.getValue(0).slice().isEqualString(dataResults[i]));
+      }
+    }
+
+    AqlItemMatrix const* nextMatrix;
+    // Now assert that we will forever stay in the DONE state and do not move on.
+    std::tie(state, nextMatrix) = _fetcher.fetchAllRows();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(nextMatrix, nullptr);
+  }
+};
+
+TEST_SHADOWROW_PATTERN_1(AllRowsFetcherFetchRows, AllRowsFetcherPattern1Test);
+TEST_SHADOWROW_PATTERN_2(AllRowsFetcherFetchRows, AllRowsFetcherPattern2Test);
+TEST_SHADOWROW_PATTERN_3(AllRowsFetcherFetchRows, AllRowsFetcherPattern3Test);
+TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchRows, AllRowsFetcherPattern4Test);
+TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchRows, AllRowsFetcherPattern5Test);
+TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchRows, AllRowsFetcherPattern6Test);
+
+class AllRowsFetcherFetchSingleRow
+    : public fetcherHelper::PatternTestWrapper<AllRowsFetcher> {
+ public:
+  AllRowsFetcherFetchSingleRow()
+      : fetcherHelper::PatternTestWrapper<AllRowsFetcher>() {}
+
+  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    ExecutionState state = ExecutionState::HASMORE;
+
+    // Fetch all rows until done
+    for (auto const& it : dataResults) {
+      std::tie(state, row) = _fetcher.fetchRow();
+      if (it != dataResults.back()) {
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      } else {
+        EXPECT_EQ(state, ExecutionState::DONE);
+      }
+      ASSERT_TRUE(row.isInitialized());
+      EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
+    }
+    // Now assert that we will forever stay in the DONE state and do not move on.
+    std::tie(state, row) = _fetcher.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row.isInitialized());
+  }
+};
+
+TEST_SHADOWROW_PATTERN_1(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern1Test);
+TEST_SHADOWROW_PATTERN_2(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern2Test);
+TEST_SHADOWROW_PATTERN_3(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern3Test);
+TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern4Test);
+TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern5Test);
+TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern6Test);
 
 }  // namespace aql
 }  // namespace tests

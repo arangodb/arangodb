@@ -1085,6 +1085,7 @@ function processQuery(query, explain, planIndex) {
     var rc, v, e, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
+    var filter = '';
     // index in this array gives the traversal direction
     const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
     switch (node.type) {
@@ -1094,7 +1095,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1121,13 +1125,22 @@ function processQuery(query, explain, planIndex) {
             return variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join(', ');
         }
-
-        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
+        let viewAnnotation = '/* view query';
+        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+          viewAnnotation += ' with late materialization';
+        }
+        viewAnnotation +=  ' */';
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + 
+               view(node.view) + condition + sortCondition + scorers +
+               '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */`;
-      //`
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */` + filter;
+      
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1633,6 +1646,8 @@ function processQuery(query, explain, planIndex) {
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+      case 'MaterializeNode':
+      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }
 
     return 'unhandled node type (' + node.type + ')';

@@ -51,7 +51,7 @@ class ClusterTraverserCache : public TraverserCache {
   ClusterTraverserCache(aql::Query* query,
                         std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const*);
 
-  ~ClusterTraverserCache() {}
+  ~ClusterTraverserCache() = default;
 
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
@@ -84,7 +84,7 @@ class ClusterTraverserCache : public TraverserCache {
     return _cache;
   }
 
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake() {
+  std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake() {
     return _datalake;
   }
 
@@ -96,7 +96,7 @@ class ClusterTraverserCache : public TraverserCache {
   /// @brief link by _id into our data dump
   std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice> _cache;
   /// @brief dump for our edge and vertex documents
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
+  std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>> _datalake;
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
 

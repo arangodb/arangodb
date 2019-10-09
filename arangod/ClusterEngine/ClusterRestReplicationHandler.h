@@ -33,7 +33,7 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
   ClusterRestReplicationHandler(application_features::ApplicationServer&,
                                 GeneralRequest*, GeneralResponse*);
-  ~ClusterRestReplicationHandler() {}
+  ~ClusterRestReplicationHandler() = default;
 
  public:
   char const* name() const override final {

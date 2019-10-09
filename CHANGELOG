@@ -1,6 +1,18 @@
 devel
 -----
 
+* Bugfix: In an AQL cluster query, when gathering unsorted data in combination
+  with a LIMIT with non-zero offset, if this offset exactly matches the number
+  of documents in the first shards consumed, the rest of the documents was not
+  returned.
+
+* Show shards of all collections (including system collections) in the web UI's shard
+  distribution view.
+
+  This is necessary to access the prototype collections of a collection sharded via
+  `distributeShardsLike` in case the prototype is a system collection, and the prototype
+  should be moved to another server.
+
 * RCLone URL normalization
 
 * Fixed Unintended multiple unlock commands from coordinator to

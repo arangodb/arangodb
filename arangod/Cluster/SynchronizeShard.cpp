@@ -122,7 +122,7 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-SynchronizeShard::~SynchronizeShard() {}
+SynchronizeShard::~SynchronizeShard() = default;
 
 static std::stringstream& AppendShardInformationToMessage(
     std::string const& database, std::string const& shard, std::string const& planId,

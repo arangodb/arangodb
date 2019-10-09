@@ -108,7 +108,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   }
 }
 
-TakeoverShardLeadership::~TakeoverShardLeadership() {}
+TakeoverShardLeadership::~TakeoverShardLeadership() = default;
 
 static void sendLeaderChangeRequests(network::ConnectionPool* pool,
                                      std::vector<ServerID> const& currentServers,

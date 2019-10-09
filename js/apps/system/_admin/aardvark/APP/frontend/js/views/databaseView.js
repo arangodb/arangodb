@@ -70,7 +70,7 @@
 
       var callback = function (error, db) {
         if (error) {
-          arangoHelper.arangoError('DB', 'Could not get current db properties');
+          arangoHelper.arangoError('DB', 'Could not get current database properties');
         } else {
           self.currentDB = db;
 
@@ -134,12 +134,12 @@
       return $('#selectDatabases').val();
     },
 
-    handleError: function (status, text, dbname) {
-      if (status === 409) {
+    handleError: function (err, dbname) {
+      if (err.status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
-      } else if (status === 400) {
-        arangoHelper.arangoError('DB', 'Invalid Parameters');
-      } else if (status === 403) {
+      } else if (err.status === 400) {
+        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + err.responseJSON.errorMessage);
+      } else if (err.status === 403) {
         arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
       }
     },
@@ -154,11 +154,11 @@
         return false;
       }
       if (db.indexOf('_') === 0) {
-        arangoHelper.arangoError('DB ', 'Databasename should not start with _');
+        arangoHelper.arangoError('DB ', 'Database name should not start with _');
         return false;
       }
       if (!db.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError('DB', 'Databasename may only contain numbers, letters, _ and -');
+        arangoHelper.arangoError('DB', 'Database name may only contain numbers, letters, _ and -');
         return false;
       }
       return true;
@@ -182,32 +182,29 @@
     },
 
     submitCreateDatabase: function () {
-      console.log("submit create database");
       var self = this; // userPassword,
       var dbname = $('#newDatabaseName').val();
       var userName = $('#newUser').val();
 
       var sharding = $('#newSharding').val();
       var replicationFactor = $('#new-replication-factor').val();
-      var minReplicationFactor = $('#new-min-replication-factor').val();
+      var writeConcern = $('#new-write-concern').val();
 
       var options = {
         name: dbname,
         "options" : {
           "sharding" : sharding,
           "replicationFactor" : Number(replicationFactor),
-          "minReplicationFactor" : Number(minReplicationFactor),
+          "minReplicationFactor" : Number(writeConcern),
         },
         users: [{
           username: userName
         }]
       };
 
-      console.log("options when creating " + dbname + " "  + JSON.stringify(options));
-
       this.collection.create(options, {
         error: function (data, err) {
-          self.handleError(err.status, err.statusText, dbname);
+          self.handleError(err, dbname);
         },
         success: function (data) {
           if (window.location.hash === '#databases') {
@@ -407,10 +404,10 @@
 
         tableContent.push(
           window.modalView.createTextEntry(
-            'new-min-replication-factor',
-            'Mininum replication factor',
+            'new-write-concern',
+            'Minimum replication factor',
             dbDefaultProperties.minReplicationFactor,
-            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
             'Default minimum replication factor',
             false,
             [
@@ -418,8 +415,6 @@
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                 msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
-              // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
-              // So we cannot easily verify if minReplication > replicationFactor...
             ]
           )
         );

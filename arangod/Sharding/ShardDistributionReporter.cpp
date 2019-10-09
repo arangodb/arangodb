@@ -48,7 +48,7 @@ struct SyncCountInfo {
   std::vector<ServerID> followers;
 
   SyncCountInfo() : insync(false), total(1), current(0) {}
-  ~SyncCountInfo() {}
+  ~SyncCountInfo() = default;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -269,7 +269,7 @@ ShardDistributionReporter::ShardDistributionReporter(ClusterInfo* ci, network::S
   TRI_ASSERT(_ci != nullptr);
 }
 
-ShardDistributionReporter::~ShardDistributionReporter() {}
+ShardDistributionReporter::~ShardDistributionReporter() = default;
 
 std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
     application_features::ApplicationServer& server) {

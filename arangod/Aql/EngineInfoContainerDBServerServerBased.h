@@ -63,7 +63,7 @@ class EngineInfoContainerDBServerServerBased {
                               std::unordered_map<ShardID, ServerID> const& shardMapping,
                               Query const& query);
 
-    ~TraverserEngineShardLists() {}
+    ~TraverserEngineShardLists() = default;
 
     void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
 

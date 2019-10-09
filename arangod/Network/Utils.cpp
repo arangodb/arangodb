@@ -101,7 +101,7 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice body) {
+int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -109,7 +109,7 @@ int errorCodeFromBody(arangodb::velocypack::Slice body) {
       return num.getNumericValue<int>();
     }
   }
-  return TRI_ERROR_ILLEGAL_NUMBER;
+  return defaultErrorCode;
 }
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,

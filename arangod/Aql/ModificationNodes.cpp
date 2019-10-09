@@ -53,7 +53,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(builder);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));

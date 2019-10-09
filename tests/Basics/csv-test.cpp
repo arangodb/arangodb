@@ -72,7 +72,7 @@ class CCsvTest : public ::testing::Test {
  protected:
   CCsvTest() { column = 0; }
 
-  ~CCsvTest() {}
+  ~CCsvTest() = default;
 
   static void ProcessCsvBegin(TRI_csv_parser_t* parser, size_t row) {
     CCsvTest* me = reinterpret_cast<CCsvTest*>(parser->_dataAdd);

@@ -867,6 +867,7 @@ bool AqlItemBlock::isShadowRow(size_t row) const {
 
 AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
   TRI_ASSERT(isShadowRow(row));
+  TRI_ASSERT(hasShadowRows());
   return _data[getSubqueryDepthAddress(row)];
 }
 
@@ -874,19 +875,37 @@ void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
   TRI_ASSERT(other.isNumber());
   _data[getSubqueryDepthAddress(row)] = other;
   TRI_ASSERT(isShadowRow(row));
+  // Might be shadowRow before, but we do not care, set is unique
+  _shadowRowIndexes.emplace(row);
 }
 
 void AqlItemBlock::makeShadowRow(size_t row) {
   TRI_ASSERT(!isShadowRow(row));
   _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  TRI_ASSERT(isShadowRow(row));
+  _shadowRowIndexes.emplace(row);
 }
 
 void AqlItemBlock::makeDataRow(size_t row) {
   TRI_ASSERT(isShadowRow(row));
   _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
+  TRI_ASSERT(!isShadowRow(row));
+  _shadowRowIndexes.erase(row);
 }
 
-AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept { return _manager; }
+/// @brief Return the indexes of shadowRows within this block.
+std::set<size_t> const& AqlItemBlock::getShadowRowIndexes() const noexcept {
+  return _shadowRowIndexes;
+}
+
+/// @brief Quick test if we have any ShadowRows within this block;
+bool AqlItemBlock::hasShadowRows() const noexcept {
+  return !_shadowRowIndexes.empty();
+}
+
+AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
+  return _manager;
+}
 
 size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
 
@@ -897,7 +916,9 @@ void AqlItemBlock::decrRefCount() const noexcept {
   --_refCount;
 }
 
-RegisterCount AqlItemBlock::internalNrRegs() const noexcept { return _nrRegs + 1; }
+RegisterCount AqlItemBlock::internalNrRegs() const noexcept {
+  return _nrRegs + 1;
+}
 size_t AqlItemBlock::getAddress(size_t index, RegisterId varNr) const noexcept {
   TRI_ASSERT(index < _nrItems);
   TRI_ASSERT(varNr < _nrRegs);

@@ -63,13 +63,15 @@ struct MessageHeader {
   // content type accessors
   inline ContentType contentType() const { return _contentType; }
   void contentType(std::string const& type);
-  void contentType(ContentType type);
+  void contentType(ContentType type) {
+    _contentType = type;
+  }
 
  protected:
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
-  ContentType _contentType;
-  ContentType _acceptType;
+  ContentType _contentType = ContentType::Unset;
+  ContentType _acceptType = ContentType::Unset;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -87,9 +89,9 @@ struct RequestHeader final : public MessageHeader {
 
  public:
   // accept header accessors
-  ContentType acceptType() const;
-  void acceptType(ContentType type);
-  void acceptType(std::string const& type);
+  ContentType acceptType() const { return _acceptType; }
+  void acceptType(ContentType type) { _acceptType = type; }
+  void acceptType(std::string const& type) { _acceptType = to_ContentType(type); }
 
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
@@ -161,11 +163,8 @@ class Request final : public Message {
   static constexpr std::chrono::milliseconds defaultTimeout =
       std::chrono::milliseconds(300 * 1000);
 
-  Request(RequestHeader&& messageHeader = RequestHeader())
+  Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
-
-  Request(RequestHeader const& messageHeader)
-      : header(messageHeader), _timeout(defaultTimeout) {}
 
   /// @brief request header
   RequestHeader header;
@@ -211,8 +210,11 @@ class Request final : public Message {
 // Response contains the message resulting from a request to a server.
 class Response : public Message {
  public:
-  Response(ResponseHeader&& reqHeader = ResponseHeader())
+  Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
+
+  Response(Response const&) = delete;
+  Response& operator=(Response const&) = delete;
 
   /// @brief request header
   ResponseHeader header;

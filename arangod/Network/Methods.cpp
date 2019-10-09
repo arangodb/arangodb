@@ -132,15 +132,16 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
 
   auto req = prepareRequest(type, path, std::move(payload), std::move(headers), options);
 
-  // fits in SSO of std::function
   struct Pack {
     DestinationId destination;
     ConnectionPool::Ref ref;
     futures::Promise<network::Response> promise;
+    std::unique_ptr<fuerte::Response> tmp;
     Pack(DestinationId const& dest, ConnectionPool::Ref r)
     : destination(dest), ref(std::move(r)), promise() {}
   };
-  static_assert(sizeof(std::shared_ptr<Pack>) <= 2*sizeof(void*), "does not fit in sfo");
+  // fits in SSO of std::function
+  static_assert(sizeof(std::shared_ptr<Pack>) <= 2*sizeof(void*), "");
   auto p = std::make_shared<Pack>(destination, pool->leaseConnection(spec.endpoint));
 
   auto conn = p->ref.connection();
@@ -148,7 +149,22 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
   conn->sendRequest(std::move(req), [p = std::move(p)](fuerte::Error err,
                                                        std::unique_ptr<fuerte::Request> req,
                                                        std::unique_ptr<fuerte::Response> res) {
-    p->promise.setValue(network::Response{p->destination, err, std::move(res)});
+    
+    Scheduler* sch = SchedulerFeature::SCHEDULER;
+    if (ADB_UNLIKELY(sch == nullptr)) {  // mostly relevant for testing
+      p->promise.setValue(network::Response{p->destination, err, std::move(res)});
+      return;
+    }
+    
+    p->tmp = std::move(res);
+    
+    bool queued =
+        sch->queue(RequestLane::CLUSTER_INTERNAL, [p, err]() {
+          p->promise.setValue(Response{std::move(p->destination), err, std::move(p->tmp)});
+        });
+    if (ADB_UNLIKELY(!queued)) {
+      p->promise.setValue(network::Response{p->destination, err, std::move(p->tmp)});
+    }
   });
   return f;
 }
