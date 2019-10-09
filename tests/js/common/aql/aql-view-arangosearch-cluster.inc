@@ -994,7 +994,7 @@
           try
           {
             let c, v;
-  
+
             c = db._create("cIssue10090", { waitForSync: true});
             v = db._createView("vIssue10090", "arangosearch",
               {
@@ -1016,7 +1016,7 @@
                 }
               }
             );
-  
+
             c.save(i === 0 ? docs : docs.reverse());
             res.push(db._query("FOR d IN vIssue10090 SEARCH d.type == 'person' AND PHRASE(d.text, 'foo bar', 'text_en') OPTIONS { waitForSync: true } RETURN d").toArray());
           }
@@ -1026,7 +1026,7 @@
             db._drop("cIssue10090");
           }
         });
-  
+
         docs.forEach(function(element, i) { assertEqual(res[i].length, 1); });
       }
     };
