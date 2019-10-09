@@ -57,7 +57,7 @@ function runSetup () {
   c = db._create("UnitTestsRecoveryDummy2");
   c.save({ name: 'crashme' }, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

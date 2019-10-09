@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-analyzers.h"
+
+#include <velocypack/Parser.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -34,8 +38,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Parser.h"
-#include "velocypack/StringRef.h"
 
 namespace {
 
@@ -269,23 +271,28 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
-    arangodb::iresearch::IResearchAnalyzerFeature
-  >();
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
-  TRI_ASSERT(analyzers);
-
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::SystemDatabaseFeature
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
-
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+         splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
+  }
+  auto name = splittedAnalyzerName.second;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      "invalid characters in analyzer name '" + name + "'"
+      std::string("invalid characters in analyzer name '").append(name).append("'")
     );
 
     return;
@@ -343,7 +350,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
 
       auto* feature = // feature
-        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue));
+        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue), false);
 
       if (!feature) {
         TRI_V8_THROW_TYPE_ERROR("<feature> not supported");
@@ -366,9 +373,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers->emplace(result, name, type, 
-      propertiesSlice, 
-      features);
+    auto res = analyzers.emplace(result, name, type, propertiesSlice, features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -419,16 +424,12 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
-    arangodb::iresearch::IResearchAnalyzerFeature
-  >();
-
-  TRI_ASSERT(analyzers);
-
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  ;
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
   auto name = TRI_ObjectToString(isolate, args[0]);
   std::string nameBuf;
@@ -445,8 +446,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // ...........................................................................
 
   const auto analyzerVocbase = arangodb::iresearch::IResearchAnalyzerFeature::extractVocbaseName(name);
-  if(!analyzerVocbase.empty() && vocbase.name() != analyzerVocbase   && 
-    arangodb::StaticStrings::SystemDatabase != analyzerVocbase) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+          analyzerVocbase, vocbase.name(), true)) {
     std::string errorMessage("Analyzer '");
     errorMessage.append(name)
       .append("' is not accessible. Only analyzers from current database ('")
@@ -470,7 +471,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto analyzer = analyzers->get(name);
+    auto analyzer = analyzers.get(name);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -503,16 +504,12 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
-    arangodb::iresearch::IResearchAnalyzerFeature
-  >();
-
-  TRI_ASSERT(analyzers);
-
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  ;
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
   // ...........................................................................
   // end of parameter parsing
@@ -529,17 +526,17 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
-    analyzers->visit(visitor, nullptr); // include static analyzers
+    analyzers.visit(visitor, nullptr);  // include static analyzers
 
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)) {
-      analyzers->visit(visitor, &vocbase);
+      analyzers.visit(visitor, &vocbase);
     }
 
     // include analyzers from the system vocbase if possible
     if (sysVocbase // have system vocbase
        && sysVocbase->name() != vocbase.name() // not same vocbase as current
        && arangodb::iresearch::IResearchAnalyzerFeature::canUse(*sysVocbase, arangodb::auth::Level::RO)) {
-      analyzers->visit(visitor, sysVocbase.get());
+      analyzers.visit(visitor, sysVocbase.get());
     }
 
     auto v8Result = v8::Array::New(isolate);
@@ -586,24 +583,30 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
-    arangodb::iresearch::IResearchAnalyzerFeature
-  >();
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  ;
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
-  TRI_ASSERT(analyzers);
-
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
-
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+           splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
+  }
+  auto name = splittedAnalyzerName.second;
   
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       std::string( "Invalid characters in analyzer name '").append(name)
-        .append("'. Analyzer name should be specified without database prefix.")
+        .append("'.")
     );
   }
 
@@ -637,7 +640,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = analyzers->remove(name, force);
+    auto res = analyzers.remove(name, force);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);

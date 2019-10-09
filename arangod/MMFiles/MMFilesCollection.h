@@ -87,8 +87,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   static constexpr uint32_t defaultIndexBuckets = 8;
 
-  static constexpr double defaultLockTimeout = 10.0 * 60.0;
-
   std::string const& path() const override { return _path; };
 
   void setPath(std::string const& path) override { _path = path; };
@@ -358,7 +356,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief Fill indexes used in recovery
   int fillIndexes(transaction::Methods& trx,
-                  std::vector<std::shared_ptr<Index>> const& indexes,
+                  PhysicalCollection::IndexContainerType const& indexes,
                   bool skipPersistent = true);
 
   int openWorker(bool ignoreErrors);

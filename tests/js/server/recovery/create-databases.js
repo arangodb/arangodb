@@ -58,7 +58,7 @@ function runSetup () {
 
   db.test.save({ _key: 'crashme' }, true);
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

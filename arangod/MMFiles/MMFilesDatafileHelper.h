@@ -261,6 +261,7 @@ static inline void InitMarker(MMFilesMarker* marker, MMFilesMarkerType type, uin
 
 static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(uint32_t maximalSize,
                                                              TRI_voc_tick_t fid) {
+  // cppcheck-suppress duplicateExpression
   static_assert(sizeof(TRI_voc_tick_t) == sizeof(TRI_voc_fid_t),
                 "invalid tick/fid sizes");
 

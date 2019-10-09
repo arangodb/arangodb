@@ -211,7 +211,6 @@ class Try {
       case Content::None:
       default:
         throw std::logic_error("Using uninitialized Try");
-        return;
     }
   }
 
@@ -308,7 +307,7 @@ template <>
 class Try<void> {
  public:
   Try() noexcept : _exception() { TRI_ASSERT(!hasException()); }
-  Try(std::exception_ptr e) : _exception(std::move(e)) {}
+  explicit Try(std::exception_ptr e) : _exception(std::move(e)) {}
   Try(Try<void>&& o) : _exception(std::move(o._exception)) {}
 
   /// copy assignment

@@ -137,6 +137,9 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 namespace arangodb {
 namespace import {
 
+ImportStatistics::ImportStatistics(application_features::ApplicationServer& server)
+    : _histogram(server) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,10 +157,11 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
-    : _httpClient(client->createHttpClient(endpoint, params)),
+    : _clientFeature(client),
+      _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
@@ -174,6 +178,7 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _firstChunk(true),
       _ignoreMissing(false),
       _numberLines(0),
+      _stats(client.server()),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -186,17 +191,18 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _columnNames(),
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
-    auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
-      CONDITION_LOCKER(guard, _threadsCondition);
-      guard.signal();
-    }));
+    auto http = client.createHttpClient(endpoint, params);
+    _senderThreads.emplace_back(
+        new SenderThread(client.server(), std::move(http), &_stats, [this]() {
+          CONDITION_LOCKER(guard, _threadsCondition);
+          guard.signal();
+        }));
     _senderThreads.back()->start();
   }
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread.reset(new AutoTuneThread(client.server(), *this));
     _autoTuneThread->start();
   }  // if
 
@@ -227,7 +233,8 @@ ImportHelper::~ImportHelper() {
 bool ImportHelper::importDelimited(std::string const& collectionName,
                                    std::string const& pathName,
                                    DelimitedImportType typeImport) {
-  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
@@ -264,7 +271,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   size_t separatorLength;
@@ -295,6 +301,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _rowsRead = 0;
 
   char buffer[32768];
+  // int64_t totalRead = 0;
 
   while (!_hasError) {
     ssize_t n = fd->read(buffer, sizeof(buffer));
@@ -313,7 +320,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       break;
     }
 
-    totalRead += static_cast<int64_t>(n);
+    // totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
@@ -335,7 +342,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
 bool ImportHelper::importJson(std::string const& collectionName,
                               std::string const& pathName, bool assumeLinewise) {
-  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
@@ -378,7 +386,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
+  // int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   static int const BUFFER_SIZE = 32768;
@@ -420,7 +428,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += static_cast<int64_t>(n);
+    // totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {

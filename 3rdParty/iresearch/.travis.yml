@@ -695,7 +695,7 @@ install:
   - |
     ICU_DIR=${DEPS_DIR}/icu
     if [[ -z "$(ls -A ${ICU_DIR})" ]]; then
-      ICU_URL="https://kent.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-src.tgz"
+      ICU_URL="https://netix.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-src.tgz"
       cd ${DEPS_DIR}
       wget -P icu ${ICU_URL}
       cd ${ICU_DIR}
@@ -721,7 +721,8 @@ install:
           travis_retry git clone --depth 1 --recursive --quiet ${BOOST_URL} ${BOOST_DIR} || exit 1
         else
           #BOOST_URL="https://mirrors.netix.net/sourceforge/b/bo/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
-          BOOST_URL="https://kent.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
+          #BOOST_URL="https://kent.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
+          BOOST_URL="https://netix.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi

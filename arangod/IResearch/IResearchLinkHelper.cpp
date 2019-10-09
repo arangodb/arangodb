@@ -24,6 +24,9 @@
 #include "Basics/Common.h"
 
 #include "IResearchLinkHelper.h"
+
+#include <velocypack/Iterator.h>
+
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
@@ -43,7 +46,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -58,10 +60,10 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& server = defaultVocbase.server();
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
   for (auto& entry: meta._analyzers) {
     if (!entry._pool) {
@@ -350,7 +352,7 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result(); // nothing to update
   }
 
-  arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
+  arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -563,6 +565,7 @@ namespace iresearch {
     }
   } emptySlice;
 
+  // cppcheck-suppress returnReference
   return emptySlice._slice;
 }
 
@@ -765,8 +768,7 @@ namespace iresearch {
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT // have context
-        && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+    if (!arangodb::ExecContext::current().canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"
@@ -795,14 +797,7 @@ namespace iresearch {
             continue; 
           }
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
-          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
-            // in case of absent system database analyzer name will not be normalized
-            // and may not contain database prefix. But in that case analyzer will be
-            // considered local for current database and this is perefectly fine.
-            continue;
-          }
-          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
-              analyzerVocbase != currentVocbase) {
+          if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
             return arangodb::Result(
                 TRI_ERROR_BAD_PARAMETER,
                 std::string("Analyzer '").append(analyzer._pool->name())

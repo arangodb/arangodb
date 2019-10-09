@@ -27,6 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
 
@@ -35,8 +36,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestPregelHandler::execute() {
   try {
@@ -61,7 +63,7 @@ RestStatus RestPregelHandler::execute() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      PregelFeature::handleConductorRequest(suffix[1], body, response);
+      PregelFeature::handleConductorRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
       /*
        if (buffer.empty()) {

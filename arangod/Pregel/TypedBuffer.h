@@ -54,7 +54,7 @@ struct TypedBuffer {
   static_assert(std::is_default_constructible<T>::value, "");
   
   /// close file (see close() )
-  virtual ~TypedBuffer() {}
+  virtual ~TypedBuffer() = default;
   TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// end usage of the structure
@@ -111,7 +111,7 @@ struct TypedBuffer {
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
-  VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0);
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;

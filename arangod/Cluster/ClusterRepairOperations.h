@@ -35,6 +35,7 @@ namespace velocypack {
 template <typename T>
 class Buffer;
 }
+class ClusterInfo;
 
 namespace cluster_repairs {
 using DBServers = std::vector<ServerID>;
@@ -331,7 +332,7 @@ class RepairOperationToTransactionVisitor
   using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
 
  public:
-  RepairOperationToTransactionVisitor();
+  RepairOperationToTransactionVisitor(ClusterInfo&);
   RepairOperationToTransactionVisitor(std::function<uint64_t()> getJobId,
                                       std::function<std::chrono::system_clock::time_point()> getJobCreationTimestamp);
 

@@ -172,7 +172,7 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
   } // else
 
   if (!found) {
-    std::string dirname = TRI_Dirname(filename.c_str());
+    std::string dirname = TRI_Dirname(filename);
     std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
 
     // future thought: are there faster ways to find matching .sha. file?
@@ -210,10 +210,8 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
 //
 std::string RocksDBEventListenerThread::getRocksDBPath() {
   // get base path from DatabaseServerFeature
-  auto databasePathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
-  std::string rockspath = databasePathFeature->directory();
+  auto& databasePathFeature = _server.getFeature<DatabasePathFeature>();
+  std::string rockspath = databasePathFeature.directory();
   rockspath += TRI_DIR_SEPARATOR_CHAR;
   rockspath += "engine-rocksdb";
 
@@ -290,8 +288,8 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
 //
 // Setup the object, clearing variables, but do no real work
 //
-RocksDBEventListener::RocksDBEventListener()
-  : _shaThread("Sha256Thread") {
+RocksDBEventListener::RocksDBEventListener(application_features::ApplicationServer& server)
+    : _shaThread(server, "Sha256Thread") {
   _shaThread.start(&_threadDone);
 } // RocksDBEventListener::RocksDBEventListener
 

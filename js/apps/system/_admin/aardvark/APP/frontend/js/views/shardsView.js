@@ -148,12 +148,7 @@
 
             _.each(data.results, function (ignore, name) {
               if (name !== 'error' && name !== 'code') {
-                if (name.substring(0, 1) !== '_') {
-                  collsAvailable = true;
-                }
-                if (name.startsWith('_local_') || name.startsWith('_to_') || name.startsWith('_from_')) {
-                  collsAvailable = true;
-                }
+                collsAvailable = true;
               }
             });
 
@@ -366,7 +361,14 @@
 
       // order results
       var ordered = {};
-      Object.keys(collections).sort().forEach(function (key) {
+      Object.keys(collections).sort(function(l, r) {
+        if (l[0] === '_' && r[0] !== '_') { 
+          return 1;
+        } else if (l[0] !== '_' && r[0] === '_') {
+          return -1;
+        }
+        return l === r ? 0 : ((l < r) ? -1 : 1);
+      }).forEach(function (key) {
         ordered[key] = collections[key];
       });
 

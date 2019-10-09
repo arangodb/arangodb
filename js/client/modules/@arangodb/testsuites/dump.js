@@ -530,7 +530,6 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
-  options.extraArgs["backup.api-enabled"] = true;
   if (options.storageEngine === "mmfiles") {
     return {
       'hotbackup for mmfiles not yet implemented': {
@@ -636,7 +635,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   defaultFns.push('dump_multiple');
 
   testFns['hot_backup'] = hotBackup;
-  defaultFns.push('hotBackup');
+  defaultFns.push('hot_backup');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

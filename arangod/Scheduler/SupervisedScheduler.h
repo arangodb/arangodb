@@ -39,11 +39,12 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
+  SupervisedScheduler(application_features::ApplicationServer& server,
+                      uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
+  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override ADB_WARN_UNUSED_RESULT;
 
  private:
   std::atomic<size_t> _numWorkers;
@@ -70,14 +71,14 @@ class SupervisedScheduler final : public Scheduler {
         : _handler(handler) {}
     explicit WorkItem(std::function<void()>&& handler)
         : _handler(std::move(handler)) {}
-    ~WorkItem() {}
+    ~WorkItem() = default;
 
     void operator()() { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queue[3];
+  boost::lockfree::queue<WorkItem*> _queues[3];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -114,13 +115,19 @@ class SupervisedScheduler final : public Scheduler {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
+    // _ready = false means the Worker is not properly initialized
+    // _ready = true means it is initialized and can be used to dispatch tasks to
+    // _ready is protected by the Scheduler's condition variable & mutex
+    bool _ready;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
 
     // initialize with harmless defaults: spin once, sleep forever
     explicit WorkerState(SupervisedScheduler& scheduler);
-    WorkerState(WorkerState&& that) noexcept;
+    WorkerState(WorkerState const&) = delete;
+    WorkerState& operator=(WorkerState const&) = delete;
 
+    // cppcheck-suppress missingOverride
     bool start();
   };
   size_t _maxNumWorker;
@@ -138,7 +145,9 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  size_t _maxFifoSize;
+  uint64_t const _maxFifoSize;
+  uint64_t const _fifo1Size;
+  uint64_t const _fifo2Size;
 
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 

@@ -691,7 +691,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 #ifndef _WIN32
   if (syncFile) {
     // also sync target directory
-    std::string const dir = TRI_Dirname(filename.c_str());
+    std::string const dir = TRI_Dirname(filename);
     fd = TRI_OPEN(dir.c_str(), O_RDONLY | TRI_O_CLOEXEC);
     if (fd < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);

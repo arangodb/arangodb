@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
+#include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
 
 namespace arangodb {
@@ -57,7 +58,7 @@ struct ViewExpressionContextBase : public aql::QueryExpressionContext {
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::ExecutionNode::VarInfo>;
+  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   ViewExpressionContext(aql::Query* query, aql::RegisterId numRegs,
                         aql::Variable const& outVar,
@@ -69,14 +70,6 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
         _nodeDepth(nodeDepth) {}
 
   virtual size_t numRegisters() const override;
-
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
 
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;

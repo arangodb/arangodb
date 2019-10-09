@@ -19,6 +19,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
@@ -69,46 +70,40 @@ struct CFilesSetup {
     TRI_RemoveDirectory(_directory.c_str());
   }
 
-  StringBuffer* writeFile (const char* blob) {
-    StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
-    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
-    filename->appendText("tmp-");
-    filename->appendInteger(++counter);
-    filename->appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
+  void writeFile(char const* blob) {
+    StringBuffer filename(true);
+    filename.appendText(_directory);
+    filename.appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename.appendText("tmp-");
+    filename.appendInteger(++counter);
+    filename.appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
-    FILE* fd = fopen(filename->c_str(), "wb");
+    FILE* fd = fopen(filename.c_str(), "wb");
 
     if (fd) {
       size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       (void) numWritten;
       fclose(fd);
-    }
-    else {
+    } else {
       EXPECT_TRUE(false);
     }
-
-    return filename;
   }
 
-  StringBuffer * writeFile (const char * name, const char * blob) {
-    StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
-    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
-    filename->appendText(name);
+  void writeFile(char const* name, char const* blob) {
+    StringBuffer filename(true);
+    filename.appendText(_directory);
+    filename.appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename.appendText(name);
 
-    FILE* fd = fopen(filename->c_str(), "wb");
+    FILE* fd = fopen(filename.c_str(), "wb");
 
     if (fd) {
       size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       (void) numWritten;
       fclose(fd);
-    }
-    else {
+    } else {
       EXPECT_TRUE(false);
     }
-
-    return filename;
   }
 
   StringBuffer _directory;
@@ -169,16 +164,23 @@ TEST(RocksDBEventListenerThread, delete_matching_sha) {
 ////////////////////////////////////////////////////////////////////////////////
 class TestRocksDBEventListenerThread : public arangodb::RocksDBEventListenerThread {
 public:
-  TestRocksDBEventListenerThread() : arangodb::RocksDBEventListenerThread("testListener") {
-    // sample sha values are simulated, not real
-    setup.writeFile("MANIFEST-000004", "some manifest data");
-    setup.writeFile("CURRENT","MANIFEST-000004\n");
-    setup.writeFile("IDENTITY","no idea what goes here");
-    setup.writeFile("037793.sst","raw data 1");
-    setup.writeFile("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash","");
-    setup.writeFile("037684.sst","raw data 2");
-    setup.writeFile("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash","");
-    setup.writeFile("086219.sst","raw data 3");
+ TestRocksDBEventListenerThread(arangodb::application_features::ApplicationServer& server)
+     : arangodb::RocksDBEventListenerThread(server, "testListener") {
+   // sample sha values are simulated, not real
+   setup.writeFile("MANIFEST-000004", "some manifest data");
+   setup.writeFile("CURRENT", "MANIFEST-000004\n");
+   setup.writeFile("IDENTITY", "no idea what goes here");
+   setup.writeFile("037793.sst", "raw data 1");
+   setup.writeFile(
+       "037793.sha."
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
+       "");
+   setup.writeFile("037684.sst", "raw data 2");
+   setup.writeFile(
+       "086218.sha."
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
+       "");
+   setup.writeFile("086219.sst", "raw data 3");
   };
 
   CFilesSetup setup;
@@ -196,7 +198,8 @@ public:
 
 
 TEST(CheckMissingShaFilesSimple, verify_common_situations) {
-  TestRocksDBEventListenerThread tr;
+  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  TestRocksDBEventListenerThread tr{server};
 
   tr.checkMissingShaFiles(tr.setup._directory.c_str(), 0);
 

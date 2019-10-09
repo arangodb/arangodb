@@ -39,6 +39,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
@@ -46,6 +47,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
@@ -95,12 +97,19 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
                                                bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
+  if (ServerState::instance()->isCoordinator()) {
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(options, ctx()->vocbase().server());
+    if (res.fail()) {
+      return OperationResult(res);
+    }
+  }
+
   auto res = arangodb::methods::Collections::create(  // create collection
       ctx()->vocbase(),                               // collection vocbase
       name,                                           // collection name
       colType,                                        // collection type
       options,                                        // collection properties
-      waitForSync, true, [](std::shared_ptr<LogicalCollection> const&) -> void {});
+      waitForSync, true, false, [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
 }
@@ -255,8 +264,8 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
   if (!name.empty()) {
     // try looking up the collection by name then
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      ClusterInfo* ci = ClusterInfo::instance();
-      return ci->getCollectionNT(vocbase.name(), name);
+      ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+      return ci.getCollectionNT(vocbase.name(), name);
     } else {
       return vocbase.lookupCollection(name);
     }
@@ -566,8 +575,9 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     // NOTE: Empty graph is allowed.
     return TRI_ERROR_NO_ERROR;
   }
+
   return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true,
+      vocbase, collectionsToCreate, waitForSync, true, false, nullptr,
       [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 };
 
@@ -632,8 +642,8 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   stringstream << "When creating graph " << databaseName << "." << graph->name() << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("952c0", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
@@ -644,7 +654,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext->canUseDatabase(auth::Level::RW)) {
+  if (!execContext.canUseDatabase(auth::Level::RW)) {
     // Check for all collections: if it exists and if we have RO access to it.
     // If none fails the check above we need to return READ_ONLY.
     // Otherwise we return FORBIDDEN
@@ -656,7 +666,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
             << logprefix << "Cannot create collection " << databaseName << "." << col;
         return false;
       }
-      if (!execContext->canUseCollection(col, auth::Level::RO)) {
+      if (!execContext.canUseCollection(col, auth::Level::RO)) {
         LOG_TOPIC("b4d48", DEBUG, Logger::GRAPHS)
             << logprefix << "No read access to " << databaseName << "." << col;
         return false;
@@ -693,7 +703,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   auto checkCollectionAccess = [&](std::string const& col) -> bool {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext->canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(col, auth::Level::RO)) {
       LOG_TOPIC("43c84", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return false;
@@ -910,15 +920,15 @@ Result GraphManager::checkDropGraphPermissions(
   stringstream << "When dropping graph " << databaseName << "." << graph.name() << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("56c2f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
 
   bool mustDropAtLeastOneCollection =
       !followersToBeRemoved.empty() || !leadersToBeRemoved.empty();
-  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
 
   if (mustDropAtLeastOneCollection && !canUseDatabaseRW) {
     LOG_TOPIC("fdc57", DEBUG, Logger::GRAPHS)
@@ -929,7 +939,7 @@ Result GraphManager::checkDropGraphPermissions(
 
   for (auto const& col : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.
-    if (!execContext->canUseCollection(col, auth::Level::RW)) {
+    if (!execContext.canUseCollection(col, auth::Level::RW)) {
       LOG_TOPIC("96384", DEBUG, Logger::GRAPHS)
           << logprefix << "No write access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;
@@ -938,7 +948,7 @@ Result GraphManager::checkDropGraphPermissions(
 
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
-  if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RO)) {
+  if (!execContext.canUseCollection(StaticStrings::GraphCollection, auth::Level::RO)) {
     LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS)
         << logprefix << "No read access to " << databaseName << "."
         << StaticStrings::GraphCollection;
@@ -950,7 +960,7 @@ Result GraphManager::checkDropGraphPermissions(
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RW)) {
+  if (!execContext.canUseCollection(StaticStrings::GraphCollection, auth::Level::RW)) {
     LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
         << logprefix << "No write access to " << databaseName << "."
         << StaticStrings::GraphCollection;
@@ -964,6 +974,13 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
+    if (ServerState::instance()->isCoordinator()) {
+      // validate numberOfShards and replicationFactor
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(input.get("options"), _vocbase.server());
+      if (res.fail()) {
+        return res;
+      }
+    }
     return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
     return Result{e.code(), e.message()};

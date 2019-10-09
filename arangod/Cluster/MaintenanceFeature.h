@@ -50,7 +50,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   explicit MaintenanceFeature(application_features::ApplicationServer&);
 
-  virtual ~MaintenanceFeature() {}
+  virtual ~MaintenanceFeature() = default;
 
   struct errors_t {
     std::map<std::string, std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
@@ -436,6 +436,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
+
+  bool _resignLeadershipOnShutdown;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 

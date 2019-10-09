@@ -24,6 +24,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
@@ -32,8 +35,6 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 
@@ -193,19 +194,15 @@ bool IResearchLinkMeta::init( // initialize meta
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
     if (readAnalyzerDefinition && mask->_analyzerDefinitions) {
-      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        IResearchAnalyzerFeature // featue type
-      >();
-      auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        arangodb::SystemDatabaseFeature // featue type
-      >();
+      auto& server = arangodb::application_features::ApplicationServer::server();
       auto field = slice.get(fieldName);
-
-      if (!analyzers || !field.isArray()) {
+      if (!server.hasFeature<IResearchAnalyzerFeature>() || !field.isArray()) {
         errorField = fieldName;
 
         return false;
       }
+
+      auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
       for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         auto value = *itr;
@@ -232,8 +229,9 @@ bool IResearchLinkMeta::init( // initialize meta
           name = value.get(subFieldName).copyString();
 
           if (defaultVocbase) {
-            auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
-
+            auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
+                                  ? server.getFeature<SystemDatabaseFeature>().use()
+                                  : nullptr;
             if (sysVocbase) {
               name = IResearchAnalyzerFeature::normalize( // normalize
                 name, *defaultVocbase, *sysVocbase // args
@@ -304,7 +302,7 @@ bool IResearchLinkMeta::init( // initialize meta
               }
 
               auto featureName = getStringRef(subValue);
-              auto* feature = irs::attribute::type_id::get(featureName);
+              auto* feature = irs::attribute::type_id::get(featureName, false);
 
               if (!feature) {
                 errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>" + std::string(featureName);
@@ -318,7 +316,7 @@ bool IResearchLinkMeta::init( // initialize meta
         }
         // get analyzer potentially creating it (e.g. on cluster)
         // @note do not use emplace(...) since it'll trigger loadAnalyzers(...)
-        if (!analyzers->get(name, type, properties, features)) {
+        if (!analyzers.get(name, type, properties, features)) {
           errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
 
           return false;
@@ -336,20 +334,15 @@ bool IResearchLinkMeta::init( // initialize meta
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
     } else {
-      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        IResearchAnalyzerFeature // featue type
-      >();
-      auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        arangodb::SystemDatabaseFeature // featue type
-      >();
+      auto& server = arangodb::application_features::ApplicationServer::server();
       auto field = slice.get(fieldName);
-
-      if (!analyzers || !field.isArray()) {
+      if (!server.hasFeature<IResearchAnalyzerFeature>() || !field.isArray()) {
         errorField = fieldName;
 
         return false;
       }
 
+      auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       _analyzers.clear();  // reset to match read values exactly
       std::unordered_set<irs::string_ref> uniqueGuard;
 
@@ -366,7 +359,9 @@ bool IResearchLinkMeta::init( // initialize meta
         auto shortName = name;
 
         if (defaultVocbase) {
-          auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+          auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
+                                ? server.getFeature<SystemDatabaseFeature>().use()
+                                : nullptr;
 
           if (sysVocbase) {
             name = IResearchAnalyzerFeature::normalize( // normalize
@@ -380,8 +375,8 @@ bool IResearchLinkMeta::init( // initialize meta
 
         // for cluster only check cache to avoid ClusterInfo locking issues
         // analyzer should have been populated via 'analyzerDefinitions' above
-        auto analyzer = analyzers->get( // get analyzer
-          name, arangodb::ServerState::instance()->isClusterRole() // args
+        auto analyzer = analyzers.get(  // get analyzer
+            name, arangodb::ServerState::instance()->isClusterRole()  // args
         );
 
         if (!analyzer) {
@@ -567,10 +562,10 @@ bool IResearchLinkMeta::json( // append meta jSON
       std::string name;
 
       if (defaultVocbase) {
-        auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-          arangodb::SystemDatabaseFeature // feature type
-        >();
-        auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+        auto& server = arangodb::application_features::ApplicationServer::server();
+        auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
+                              ? server.getFeature<SystemDatabaseFeature>().use()
+                              : nullptr;
 
         if (!sysVocbase) {
           return false;

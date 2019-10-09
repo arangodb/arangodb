@@ -67,7 +67,7 @@ struct EdgeDocumentToken {
 #endif
   }
 
-  EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept
+  explicit EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept
       : _data(edge) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::COORDINATOR;
@@ -151,7 +151,7 @@ struct EdgeDocumentToken {
   struct LocalDocument {
     TRI_voc_cid_t cid;
     LocalDocumentId localDocumentId;
-    ~LocalDocument() {}
+    ~LocalDocument() = default;
   };
 
   /// fixed size union, works for both single server and
@@ -174,7 +174,7 @@ struct EdgeDocumentToken {
       return *this;
     }
 
-    ~TokenData() {}
+    ~TokenData() = default;
   };
 
   static_assert(sizeof(TokenData::document) >= sizeof(TokenData::vpack),

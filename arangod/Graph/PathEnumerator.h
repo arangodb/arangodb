@@ -91,7 +91,7 @@ class PathEnumerator {
   PathEnumerator(Traverser* traverser, std::string const& startVertex,
                  TraverserOptions* opts);
 
-  virtual ~PathEnumerator() {}
+  virtual ~PathEnumerator() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compute the next Path element from the traversal.
@@ -115,6 +115,7 @@ class PathEnumerator {
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 };
 
+// cppcheck-suppress noConstructor
 class DepthFirstEnumerator final : public PathEnumerator {
  private:
   //////////////////////////////////////////////////////////////////////////////

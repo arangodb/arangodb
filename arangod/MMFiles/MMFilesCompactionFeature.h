@@ -78,7 +78,7 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
 
  public:
   explicit MMFilesCompactionFeature(application_features::ApplicationServer& server);
-  ~MMFilesCompactionFeature() {}
+  ~MMFilesCompactionFeature() = default;
 
   /// @brief wait time between compaction runs when idle
   uint64_t compactionSleepTime() const {

@@ -34,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -136,6 +137,7 @@ class v8_action_t final : public TRI_action_t {
 
       // and execute it
       {
+	// cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
 
         if (*data != nullptr) {
@@ -160,6 +162,7 @@ class v8_action_t final : public TRI_action_t {
       }
 
       {
+	// cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
         *data = nullptr;
       }
@@ -170,6 +173,7 @@ class v8_action_t final : public TRI_action_t {
 
   bool cancel(Mutex* dataLock, void** data) override {
     {
+      // cppcheck-suppress redundantPointerOp
       MUTEX_LOCKER(mutexLocker, *dataLock);
 
       // either we have not yet reached the execute above or we are already done
@@ -356,8 +360,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() ||
-        (ExecContext::CURRENT != nullptr && ExecContext::CURRENT->isAdminUser())) {
+    if (user.empty() || ExecContext::current().isAdminUser()) {
       req->Set(IsAdminUser, v8::True(isolate));
     } else {
       req->Set(IsAdminUser, v8::False(isolate));
@@ -1007,12 +1010,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "defineAction(<name>, <callback>, <parameter>)");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
 
-  if (!v8security->isAllowedToDefineHttpAction(isolate)) {
+  if (!v8security.isAllowedToDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
   }
 
@@ -1413,7 +1414,8 @@ static int clusterSendToAllServers(std::string const& dbname,
                                    std::string const& path,  // Note: Has to be properly encoded!
                                    arangodb::rest::RequestType const& method,
                                    std::string const& body) {
-  ClusterInfo* ci = ClusterInfo::instance();
+  auto& server = application_features::ApplicationServer::server();
+  ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -1425,7 +1427,7 @@ static int clusterSendToAllServers(std::string const& dbname,
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   auto reqBodyString = std::make_shared<std::string>(body);
 
-  DBServers = ci->getCurrentDBServers();
+  DBServers = ci.getCurrentDBServers();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
     cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
@@ -1460,18 +1462,18 @@ static int clusterSendToAllServers(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DebugTerminate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract arguments
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("debugTerminate(<message>)");
   }
 
   std::string const message = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_SegfaultDebugging(message.c_str());
+  TRI_TerminateDebugging(message.c_str());
 
   // we may get here if we are in non-maintainer mode
 
@@ -1645,11 +1647,9 @@ static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled());
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1658,11 +1658,9 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled());
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1720,7 +1718,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_SEGFAULT"), JS_DebugSegfault);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_TERMINATE"), JS_DebugTerminate);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_SET_FAILAT"),
@@ -1736,13 +1734,13 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 #endif
   
   // poll interval for Foxx queues
-  FoxxQueuesFeature* foxxQueuesFeature =
-      application_features::ApplicationServer::getFeature<FoxxQueuesFeature>(
-          "FoxxQueues");
+  auto& server = application_features::ApplicationServer::server();
+  FoxxQueuesFeature& foxxQueuesFeature = server.getFeature<FoxxQueuesFeature>();
 
-  isolate->GetCurrentContext()->Global()
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-                          v8::Number::New(isolate, foxxQueuesFeature->pollInterval()), v8::ReadOnly)
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
+          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

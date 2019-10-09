@@ -32,6 +32,7 @@ namespace arangodb {
 struct OperationOptions {
   OperationOptions()
       : recoveryData(nullptr),
+        indexOperationMode(Index::OperationMode::normal),
         waitForSync(false),
         keepNull(true),
         mergeObjects(true),
@@ -40,11 +41,12 @@ struct OperationOptions {
         returnOld(false),
         returnNew(false),
         isRestore(false),
-        overwrite(false),
-        indexOperationMode(Index::OperationMode::normal) {}
-
+        overwrite(false) {}
+  
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
+  
+  Index::OperationMode indexOperationMode;
 
   // wait until the operation has been synced
   bool waitForSync;
@@ -81,8 +83,6 @@ struct OperationOptions {
   // operation if we are merely a follower. Finally, we must deny replications
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
-
-  Index::OperationMode indexOperationMode;
 };
 
 }  // namespace arangodb

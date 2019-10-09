@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -1011,6 +1011,113 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(db._views().length, 0);
       assertEqual(db[viewName], undefined);
     },
+
+    // test for public issue #9652
+    testAnalyzerWithStopwordsNameConflict : function() {
+      const dbName = "TestNameConflictDB";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      db._create("col1");
+      db._create("col2");
+      analyzers.save("custom_analyzer", 
+        "text", 
+        { 
+          locale: "en.UTF-8", 
+          case: "lower", 
+          stopwords: ["the", "of", "inc", "co", "plc", "ltd", "ag"], 
+          accent: false, 
+          stemming: false
+        },
+        ["position", "norm","frequency"]);
+
+      let v = db._createView("view1", "arangosearch", {
+        "links": {
+          "col1": {
+            "analyzers": ["identity"],
+            "fields": { "name": { "analyzers": ["custom_analyzer"]}},
+            "includeAllFields": false,
+            "storeValues": "none",
+            "trackListPositions": false
+          },
+          "col2": {
+            "analyzers": ["identity"],
+            "fields": { "name": { "analyzers": ["custom_analyzer"]}},
+            "includeAllFields": false,
+            "storeValues": "none",
+            "trackListPositions": false
+          }
+        }});
+      let properties = v.properties();
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(2, Object.keys(properties.links).length);
+
+      assertTrue(Object === properties.links.col1.constructor);
+      assertTrue(Object === properties.links.col1.fields.constructor);
+      assertEqual(1, Object.keys(properties.links.col1.fields).length);
+      assertTrue(Object === properties.links.col1.fields.name.constructor);
+      assertTrue(Array === properties.links.col1.fields.name.analyzers.constructor);
+      assertEqual(1, properties.links.col1.fields.name.analyzers.length);
+      assertTrue(String === properties.links.col1.fields.name.analyzers[0].constructor);
+      assertEqual("custom_analyzer", properties.links.col1.fields.name.analyzers[0]);
+      assertTrue(Boolean === properties.links.col1.includeAllFields.constructor);
+      assertEqual(false, properties.links.col1.includeAllFields);
+      assertTrue(Boolean === properties.links.col1.trackListPositions.constructor);
+      assertEqual(false, properties.links.col1.trackListPositions);
+      assertTrue(String === properties.links.col1.storeValues.constructor);
+      assertEqual("none", properties.links.col1.storeValues);
+      assertTrue(Array === properties.links.col1.analyzers.constructor);
+      assertEqual(1, properties.links.col1.analyzers.length);
+      assertTrue(String === properties.links.col1.analyzers[0].constructor);
+      assertEqual("identity", properties.links.col1.analyzers[0]);
+
+
+      assertTrue(Object === properties.links.col2.constructor);
+      assertTrue(Object === properties.links.col2.fields.constructor);
+      assertEqual(1, Object.keys(properties.links.col2.fields).length);
+      assertTrue(Object === properties.links.col2.fields.name.constructor);
+      assertTrue(Array === properties.links.col2.fields.name.analyzers.constructor);
+      assertEqual(1, properties.links.col2.fields.name.analyzers.length);
+      assertTrue(String === properties.links.col2.fields.name.analyzers[0].constructor);
+      assertEqual("custom_analyzer", properties.links.col2.fields.name.analyzers[0]);
+      assertTrue(Boolean === properties.links.col2.includeAllFields.constructor);
+      assertEqual(false, properties.links.col2.includeAllFields);
+      assertTrue(Boolean === properties.links.col2.trackListPositions.constructor);
+      assertEqual(false, properties.links.col2.trackListPositions);
+      assertTrue(String === properties.links.col2.storeValues.constructor);
+      assertEqual("none", properties.links.col2.storeValues);
+      assertTrue(Array === properties.links.col2.analyzers.constructor);
+      assertEqual(1, properties.links.col2.analyzers.length);
+      assertTrue(String === properties.links.col2.analyzers[0].constructor);
+      assertEqual("identity", properties.links.col2.analyzers[0]);
+      
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testLeftAnalyzerInDroppedDatabase: function () {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save(analyzerName, "identity");
+      // recreating database
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      assertNull(analyzers.analyzer(analyzerName));
+      // this should be no name conflict
+      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+     
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    }
 
   };
 }

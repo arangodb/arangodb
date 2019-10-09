@@ -20,15 +20,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterCollection.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
-#include "ClusterCollection.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -104,7 +106,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection,
       _info(static_cast<ClusterCollection const*>(physical)->_info),
       _selectivityEstimates(collection) {}
 
-ClusterCollection::~ClusterCollection() {}
+ClusterCollection::~ClusterCollection() = default;
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -203,7 +205,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.isClosed());
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index>& idx : _indexes) {
+  for (auto& idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
 
@@ -249,19 +251,16 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<VPackBuilder> ClusterCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  builder->close();
-
-  auto res = figuresOnCoordinator(_logicalCollection.vocbase().name(),
-                                  std::to_string(_logicalCollection.id()), builder);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return builder;
+futures::Future<std::shared_ptr<VPackBuilder>> ClusterCollection::figures() {
+  auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
+  return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
+                              std::to_string(_logicalCollection.id()))
+      .thenValue([](OperationResult&& opRes) -> std::shared_ptr<VPackBuilder> {
+        if (opRes.fail()) {
+          THROW_ARANGO_EXCEPTION(opRes.result);
+        }
+        return std::make_shared<VPackBuilder>(opRes.buffer);
+      });
 }
 
 void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
@@ -323,11 +322,12 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     addIndex(std::move(idx));
   }
 
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+  auto it = _indexes.cbegin();
+  if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection.type() == TRI_COL_TYPE_EDGE &&
-       (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+       ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
         (_indexes.size() >= 3 && _engineType == ClusterEngineType::RocksDBEngine &&
-         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
+         (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
 
@@ -382,16 +382,14 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
     return true;
   }
 
-  size_t i = 0;
   WRITE_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> index : _indexes) {
-    if (iid == index->id()) {
-      _indexes.erase(_indexes.begin() + i);
+  for (auto it  : _indexes) {
+    if (iid == it->id()) {
+      _indexes.erase(it);
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                         std::to_string(iid), TRI_ERROR_NO_ERROR);
       return true;
     }
-    ++i;
   }
 
   // We tried to remove an index that does not exist
@@ -495,7 +493,7 @@ void ClusterCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
       return;
     }
   }
-  _indexes.emplace_back(idx);
+  _indexes.emplace(idx);
 }
 
 }  // namespace arangodb

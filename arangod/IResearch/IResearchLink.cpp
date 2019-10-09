@@ -21,22 +21,28 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "store/mmap_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/singleton.hpp"
+#include <index/column_info.hpp>
+#include <store/mmap_directory.hpp>
+#include <store/store_utils.hpp>
+#include <utils/encryption.hpp>
+#include <utils/lz4compression.hpp>
+#include <utils/singleton.hpp>
 
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchPrimaryKeyFilter.h"
-#include "IResearchView.h"
-#include "IResearchViewCoordinator.h"
-#include "VelocyPackHelper.h"
+#include "IResearchLink.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchPrimaryKeyFilter.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -47,8 +53,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "IResearchLink.h"
-
 using namespace std::literals;
 
 namespace {
@@ -56,7 +60,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
 ////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_1");
+const irs::string_ref IRESEARCH_STORE_FORMAT("1_2");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
@@ -251,6 +255,7 @@ class IResearchFlushSubscription final : public arangodb::FlushSubscription {
 
 bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
   static_assert(
+    // cppcheck-suppress duplicateExpression
     sizeof(uint64_t) == sizeof(TRI_voc_tick_t),
     "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)"
   );
@@ -792,16 +797,15 @@ Result IResearchLink::init(
   bool const sorted = !meta._sort.empty();
 
   if (ServerState::instance()->isCoordinator()) { // coordinator link
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
+    if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
         TRI_ERROR_INTERNAL,
         "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
       };
     }
+    auto& ci = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
-    auto logicalView = ci->getView(vocbase.name(), viewId);
+    auto logicalView = ci.getView(vocbase.name(), viewId);
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
@@ -834,14 +838,13 @@ Result IResearchLink::init(
       }
     }
   } else if (ServerState::instance()->isDBServer()) { // db-server link
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
+    if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
         TRI_ERROR_INTERNAL,
         "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
       };
     }
+    auto& ci = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
     // cluster-wide link
     auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
@@ -857,7 +860,7 @@ Result IResearchLink::init(
     }
 
     // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
-    auto logicalView = ci->getView(vocbase.name(), viewId);
+    auto logicalView = ci.getView(vocbase.name(), viewId);
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
@@ -978,23 +981,22 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   _flushSubscription.reset() ; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
-  auto* dbPathFeature = application_features::ApplicationServer::lookupFeature<DatabasePathFeature>();
-
-  if (!dbPathFeature) {
+  auto& server = application_features::ApplicationServer::server();
+  if (!server.hasFeature<DatabasePathFeature>()) {
     return {
       TRI_ERROR_INTERNAL,
       "failure to find feature 'DatabasePath' while initializing link '" + std::to_string(_id) + "'"
     };
   }
-
-  auto* flushFeature = application_features::ApplicationServer::lookupFeature<FlushFeature>("Flush");
-
-  if (!flushFeature) {
+  if (!server.hasFeature<FlushFeature>()) {
     return {
       TRI_ERROR_INTERNAL,
       "failure to find feature 'FlushFeature' while initializing link '" + std::to_string(_id) + "'"
     };
   }
+
+  auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
+  auto& flushFeature = server.getFeature<FlushFeature>();
 
   auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
 
@@ -1017,7 +1019,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
 
   bool pathExists;
 
-  _dataStore._path = getPersistedPath(*dbPathFeature, *this);
+  _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
@@ -1090,9 +1092,23 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   _lastCommittedTick = _dataStore._recoveryTick;
   _flushSubscription.reset(new IResearchFlushSubscription(_dataStore._recoveryTick));
 
+
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+
+  // setup columnstore compression/encryption if requested by storage engine
+  auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
+  if (encrypt) {
+    options.column_info = [](const irs::string_ref& name) -> irs::column_info {
+      // do not waste resources to encrypt primary key column
+      return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
+    };
+  } else {
+    options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
+      return { irs::compression::lz4::type(), {}, false };
+    };
+  }
 
   auto openFlags = irs::OM_APPEND;
   if (!_dataStore._reader) {
@@ -1152,71 +1168,67 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   // set up in-recovery insertion hooks
   // ...........................................................................
 
-  auto* dbFeature = application_features::ApplicationServer::lookupFeature<DatabaseFeature>("Database");
-
-  if (!dbFeature) {
+  if (!server.hasFeature<DatabaseFeature>()) {
     return {}; // nothing more to do
   }
+  auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   auto asyncSelf = _asyncSelf; // create copy for lambda
 
-  return dbFeature->registerPostRecoveryCallback( // register callback
-    [asyncSelf, flushFeature]()->Result {
-      SCOPED_LOCK(asyncSelf->mutex()); // ensure link does not get deallocated before callback finishes
-      auto* link = asyncSelf->get();
+  return dbFeature.registerPostRecoveryCallback(  // register callback
+      [asyncSelf, &flushFeature]() -> Result {
+        SCOPED_LOCK(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
+        auto* link = asyncSelf->get();
 
-      if (!link) {
-        return {}; // link no longer in recovery state, i.e. during recovery it was created and later dropped
-      }
+        if (!link) {
+          return {};  // link no longer in recovery state, i.e. during recovery it was created and later dropped
+        }
 
-      if (!link->_flushSubscription) {
-        return {
-          TRI_ERROR_INTERNAL,
-          "failed to register flush subscription for arangosearch link '" + std::to_string(link->id()) + "'"
-        };
-      }
+        if (!link->_flushSubscription) {
+          return {
+              TRI_ERROR_INTERNAL,
+              "failed to register flush subscription for arangosearch link '" +
+                  std::to_string(link->id()) + "'"};
+        }
 
-      auto& dataStore = link->_dataStore;
+        auto& dataStore = link->_dataStore;
 
-      if (dataStore._recoveryTick > link->_engine->recoveryTick()) {
-        LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
-          << "arangosearch link '" << link->id()
-          << "' is recovered at tick '" << dataStore._recoveryTick
-          << "' less than storage engine tick '" << link->_engine->recoveryTick()
-          << "', it seems WAL tail was lost and link '" << link->id()
-          << "' is out of sync with the underlying collection '" << link->collection().name()
-          << "', consider to re-create the link in order to synchronize them.";
-      }
+        if (dataStore._recoveryTick > link->_engine->recoveryTick()) {
+          LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
+              << "arangosearch link '" << link->id() << "' is recovered at tick '"
+              << dataStore._recoveryTick << "' less than storage engine tick '"
+              << link->_engine->recoveryTick() << "', it seems WAL tail was lost and link '"
+              << link->id() << "' is out of sync with the underlying collection '"
+              << link->collection().name() << "', consider to re-create the link in order to synchronize them.";
+        }
 
-      // recovery finished
-      dataStore._inRecovery = link->_engine->inRecovery();
+        // recovery finished
+        dataStore._inRecovery = link->_engine->inRecovery();
 
-      LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
-        << "starting sync for arangosearch link '" << link->id() << "'";
+        LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
+            << "starting sync for arangosearch link '" << link->id() << "'";
 
-      auto res = link->commitUnsafe(true);
+        auto res = link->commitUnsafe(true);
 
-      LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
-        << "finished sync for arangosearch link '" << link->id() << "'";
+        LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
+            << "finished sync for arangosearch link '" << link->id() << "'";
 
-      // register flush subscription
-      TRI_ASSERT(flushFeature);
-      flushFeature->registerFlushSubscription(link->_flushSubscription);
+        // register flush subscription
+        flushFeature.registerFlushSubscription(link->_flushSubscription);
 
-      // setup asynchronous tasks for commit, consolidation, cleanup
-      link->setupMaintenance();
+        // setup asynchronous tasks for commit, consolidation, cleanup
+        link->setupMaintenance();
 
-      return res;
-    }
-  );
+        return res;
+      });
 }
 
 void IResearchLink::setupMaintenance() {
-  _asyncFeature = application_features::ApplicationServer::lookupFeature<iresearch::IResearchFeature>();
-
-  if (!_asyncFeature) {
+  auto& server = application_features::ApplicationServer::server();
+  if (!server.hasFeature<iresearch::IResearchFeature>()) {
     return;
   }
+  _asyncFeature = &(server.getFeature<iresearch::IResearchFeature>());
 
   struct CommitState: public IResearchViewMeta {
     size_t _cleanupIntervalCount{ 0 };
@@ -1638,7 +1650,7 @@ Result IResearchLink::remove(
   try {
     ctx->remove(documentId);
 
-    return TRI_ERROR_NO_ERROR;
+    return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
     return {
       e.code(),
