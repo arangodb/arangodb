@@ -400,6 +400,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
 
+  // apply late materialization for view queries
+  registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,
+               OptimizerRule::lateDocumentMaterializationRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // finally add the storage-engine specific rules
   addStorageEngineRules();
 

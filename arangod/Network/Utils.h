@@ -57,7 +57,7 @@ OperationResult opResultFromBody(T const& body, int defaultErrorCode) {
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice body);
+int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode = 0);
 
 /// @brief Extract all error baby-style error codes and store them in a map
 void errorCodesFromHeaders(network::Headers headers,
