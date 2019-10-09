@@ -246,7 +246,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     }
 
     std::vector<std::string> files(TRI_FilesDirectory(_path.c_str()));
-    bool isEmpty = (files.size() <= 1);
+    bool isEmpty = files.empty();
     // TODO: TRI_FullTreeDirectory always returns at least one element ("")
     // even if directory is empty?
 
