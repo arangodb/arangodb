@@ -44,7 +44,5 @@ files="$(
         "!" "(" -name "tokens.*" -o -name "v8-json.*" -o -name "voc-errors.*" -o -name "grammar.*" -o -name "xxhash.*" -o -name "exitcodes.*" ")"
 )"
 
-git_files=$(git diff --name-only)
-
 # do final formatting
 ${clang_format} -i -verbose -style=file ${files[@]}
