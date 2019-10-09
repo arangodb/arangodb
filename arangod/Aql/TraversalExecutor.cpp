@@ -52,7 +52,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
   // _fixedSource XOR _inputRegister
-  TRI_ASSERT((_fixedSource.empty() && _inputRegister != ExecutionNode::MaxRegisterId) ||
+  TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
 }
 
@@ -82,7 +82,7 @@ bool TraversalExecutorInfos::usePathOutput() const {
 }
 
 static std::string typeToString(TraversalExecutorInfos::OutputName type) {
-  switch(type) {
+  switch (type) {
     case TraversalExecutorInfos::VERTEX:
       return std::string{"VERTEX"};
     case TraversalExecutorInfos::EDGE:
@@ -122,7 +122,7 @@ RegisterId TraversalExecutorInfos::pathRegister() const {
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {
-  return !_fixedSource.empty();
+  return _inputRegister == ExecutionNode::MaxRegisterId;
 }
 
 std::string const& TraversalExecutorInfos::getFixedSource() const {

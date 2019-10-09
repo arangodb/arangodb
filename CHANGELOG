@@ -4,6 +4,11 @@ v3.5.2 (XXXX-XX-XX)
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
+* Fixed issue #10158: Invalid Query Crashes ArangoDB.
+
+  This fixes traversal queries that are run on a static empty start vertex
+  string.
+
 
 v3.5.1 (2019-10-07)
 -------------------
