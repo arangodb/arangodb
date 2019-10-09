@@ -70,8 +70,8 @@ struct MessageHeader {
  protected:
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
-  ContentType _contentType;
-  ContentType _acceptType;
+  ContentType _contentType = ContentType::Unset;
+  ContentType _acceptType = ContentType::Unset;
 };
 
 struct RequestHeader final : public MessageHeader {
