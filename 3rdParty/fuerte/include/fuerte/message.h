@@ -212,7 +212,7 @@ class Response final : public Message {
   Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
 
-  Response(Response const&) = delete;
+  Response(Response const&);
   Response& operator=(Response const&) = delete;
 
   /// @brief request header
