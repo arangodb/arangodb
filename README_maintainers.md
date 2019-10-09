@@ -841,3 +841,21 @@ Currently available analyzers are:
 
 
     ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json
+
+### Tooling
+
+## clang-format / clang-tidy
+
+You can get prebuild llvm/clang packages at:
+http://releases.llvm.org/download.html
+
+If you want to build the tools for yourself, because there are no packages for
+your platform, then you need to clone
+`https://github.com/llvm/llvm-project.git` and configure the build with a
+command similar to the following.
+
+```
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/.local -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" ../llvm-project/llvm/
+ninja -j8
+ninja install
+```
