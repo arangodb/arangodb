@@ -99,7 +99,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.escape", "escape characters when logging",
                      new BooleanParameter(&_useEscaped));
 
-  options->addOption("--log.output,-o", "log destination(s)",
+  options->addOption("--log.output,-o", "log destination(s), e.g. file:///path-to-file",
                      new VectorParameter<StringParameter>(&_output));
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
