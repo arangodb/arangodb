@@ -62,7 +62,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
     url = url.substr(1);
   }
 
-  action->setUrl(url, StringUtils::split(url, "/").size());
+  action->setUrl(url, StringUtils::split(url, '/').size());
 
   std::unordered_map<std::string, std::shared_ptr<TRI_action_t>>* which;
 

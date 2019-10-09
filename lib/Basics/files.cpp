@@ -1740,7 +1740,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   else {
     std::string pv;
     if (TRI_GETENV("PATH", pv)) {
-      std::vector<std::string> files = basics::StringUtils::split(pv, ':', '\0');
+      std::vector<std::string> files = basics::StringUtils::split(pv, ':');
 
       for (auto const& prefix : files) {
         std::string full;

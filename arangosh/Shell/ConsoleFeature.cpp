@@ -195,7 +195,7 @@ void ConsoleFeature::_print(std::string const& s) {
   if (pos == std::string::npos) {
     _print2(s);
   } else {
-    std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
+    std::vector<std::string> lines = StringUtils::split(s, '\x1b');
 
     int i = 0;
 
