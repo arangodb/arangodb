@@ -315,6 +315,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RemoveModifier.cpp
   Aql/ReplaceModifier.cpp
   Aql/RegexCache.cpp
   Aql/RegisterPlan.cpp
