@@ -162,35 +162,6 @@ auto collectAll(Collection&& c) -> decltype(collectAll(std::begin(c), std::end(c
   return collectAll(std::begin(c), std::end(c));
 }
 
-template <class Collection, class Rep, class Period>
-typename Collection::iterator waitForAny(Collection& c,
-                                         std::shared_ptr<std::condition_variable> cv,
-                                         std::chrono::duration<Rep, Period> timeout) {
-  using T = typename std::iterator_traits<typename Collection::iterator>::value_type::value_type;
-
-  auto ready = [](Future<T> const& f) -> bool { return f.isReady(); };
-  auto it = std::find_if(std::begin(c), std::end(c), ready);
-  if (it != std::end(c)) {
-    return it;
-  }
-
-  std::mutex m;
-  std::unique_lock<std::mutex> lock(m);
-
-  for (Future<T>& f : c) {
-    if (!f.hasCallback()) {
-      f.thenFinal([cv](Try<T> &&) -> void { cv->notify_one(); });
-    }
-  }
-
-  auto notSpurious = [&c, &ready]() -> bool {
-    return std::any_of(std::begin(c), std::end(c), ready);
-  };
-
-  cv->wait_for(lock, timeout, notSpurious);
-  return std::find_if(std::begin(c), std::end(c), ready);
-}
-
 }  // namespace futures
 }  // namespace arangodb
 #endif  // ARANGOD_FUTURES_UTILITIES_H
