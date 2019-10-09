@@ -51,64 +51,26 @@ void InsertModifier::reset() {
 }
 
 Result InsertModifier::accumulate(InputAqlItemRow& row) {
-  std::string key, rev;
-  Result result;
-
   RegisterId const inDocReg = _infos._input1RegisterId;
-  RegisterId const keyReg = _infos._input2RegisterId;
-  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
   // The document to be UPDATEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  // A separate register for the key/rev is available
-  // so we use that
-  //
-  // WARNING
-  //
-  // We must never take _rev from the document if there is a key
-  // expression.
-  TRI_ASSERT(_infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
-  if (hasKeyVariable) {
-    AqlValue const& keyDoc = row.getValue(keyReg);
-    result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _infos._options.ignoreRevs);
+  if (!_infos._consultAqlWriteFilter ||
+      !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
+                                                               StaticStrings::Empty)) {
+    _accumulator.add(inDoc.slice());
+    _operations.push_back({ModOperationType::APPLY_RETURN, row});
   } else {
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs);
-  }
-
-  if (result.ok()) {
-    if (!_infos._consultAqlWriteFilter ||
-        !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(), key)) {
-      if (hasKeyVariable) {
-        VPackBuilder keyDocBuilder;
-
-        buildKeyDocument(keyDocBuilder, key, rev);
-        // This deletes _rev if rev is empty or ignoreRevs is set in
-        // options.
-        VPackCollection::merge(_accumulator, inDoc.slice(),
-                               keyDocBuilder.slice(), false, true);
-      } else {
-        _accumulator.add(inDoc.slice());
-      }
-      _operations.push_back({ModOperationType::APPLY_RETURN, row});
-    } else {
-      _operations.push_back({ModOperationType::IGNORE_RETURN, row});
-    }
-  } else {
-    // error happened extracting key, record in operations map
-    _operations.push_back({ModOperationType::IGNORE_SKIP, row});
-    // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+    _operations.push_back({ModOperationType::IGNORE_RETURN, row});
   }
 
   return Result{};
 }
 
 OperationResult InsertModifier::transact() {
-  auto toUpdate = _accumulator.slice();
-  return _infos._trx->update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+  auto toInsert = _accumulator.slice();
+  return _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
 }
 
 size_t InsertModifier::size() const {
