@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, it, arango */
+/* global describe, beforeEach, afterEach, it */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ chai.Assertion.addProperty('does', function () {
 });
 
 const arangodb = require('@arangodb');
-const request = require('@arangodb/request');
+const arango = arangodb.arango;
 
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
