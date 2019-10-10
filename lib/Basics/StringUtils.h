@@ -65,11 +65,10 @@ namespace StringUtils {
 std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, char delim = ',', char quote = '\\');
+std::vector<std::string> split(std::string const& source, char delim = ',');
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim, char quote = '\\');
+std::vector<std::string> split(std::string const& source, std::string const& delim);
 
 /// @brief joins a string
 template <typename C>
@@ -111,7 +110,7 @@ std::string join(C const& source, char delim = ',') {
 /// @brief joins a string
 template <typename C, typename T>
 std::string join(C const& source, std::string const& delim,
-                 std::function<std::string(T)> cb) {
+                 std::function<std::string(T)> const& cb) {
   std::string result;
   bool first = true;
 
@@ -186,19 +185,19 @@ std::string urlDecode(std::string const& str);
 std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
-std::string urlEncode(char const* src, size_t const len);
+std::string urlEncode(char const* src, size_t len);
 
 /// @brief uri encodes the component string
 std::string encodeURIComponent(std::string const& str);
 
 /// @brief uri encodes the component string
-std::string encodeURIComponent(char const* src, size_t const len);
+std::string encodeURIComponent(char const* src, size_t len);
 
 /// @brief converts input string to soundex code
 std::string soundex(std::string const& str);
 
 /// @brief converts input string to soundex code
-std::string soundex(char const* src, size_t const len);
+std::string soundex(char const* src, size_t len);
 
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(std::string const& str);
@@ -370,6 +369,7 @@ float floatDecimal(char const* value, size_t size);
 // -----------------------------------------------------------------------------
 
 /// @brief converts to base64
+std::string encodeBase64(char const* value, size_t length);
 std::string encodeBase64(std::string const&);
 
 /// @brief converts from base64
