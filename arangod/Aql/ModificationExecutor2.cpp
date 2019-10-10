@@ -116,7 +116,7 @@ Result ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(Fetcher& fetcher,
+ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(FetcherType& fetcher,
                                                                         Infos& infos)
     : _infos(infos), _fetcher(fetcher), _modifier(infos) {
   // important for mmfiles

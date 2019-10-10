@@ -32,12 +32,27 @@ namespace aql {
 
 struct ModificationExecutorInfos;
 
+//
+// The SimpleModifier template class is the template for the simple modifiers
+// Insert, Remove, Replace, and Update.
+//
+// It provides the accumulator for building up the VelocyPack that is submitted
+// to the transaction, and a facility to iterate over the results of the
+// operation.
+//
+// The only code that the ModifierCompletions have to implement is the
+// accumulate and transact functions. The accumulate function collects the
+// actual modifications and there is a specific one for Insert, Remove, and
+// Update/Replace. The transact function calls the correct method for the
+// transaction (insert, remove, update, replace), and the only difference
+// between Update and Replace is which transaction method is called.
+//
 template <typename ModifierCompletion>
 class SimpleModifier {
   friend class InsertModifierCompletion;
-  friend class UpdateModifierCompletion;
-  friend class ReplaceModifierCompletion;
   friend class RemoveModifierCompletion;
+  friend class ReplaceModifierCompletion;
+  friend class UpdateModifierCompletion;
 
  public:
   using ModOp = std::pair<ModOperationType, InputAqlItemRow>;

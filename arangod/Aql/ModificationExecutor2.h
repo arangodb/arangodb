@@ -40,13 +40,34 @@ Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
 };  // namespace ModificationExecutorHelpers
 
 //
-// ModificationExecutor2 is the base class for the Insert, Remove, Update,
+// ModificationExecutor2 is the "base" class for the Insert, Remove, Update,
 // Replace and Upsert executors.
 //
-// The modification-specific code is spliced in via a template for performance
-// reasons (TODO: verify that this is true)
+// The fetcher and modification-specific code is spliced in via a template for
+// performance reasons (TODO: verify that this is true).
 //
-
+// A ModifierType has to provide the function accumulate which batches updates
+// to be submitted to the transaction, a function transact which submits the
+// currently accumulated batch of updates to the transaction, and an iterator to
+// retrieve the results of the transaction.
+//
+// The currently 5 modifier types are divided into the *simple* modifiers
+// Insert, Remove, Update, and Replace, and the Upsert modifier, which is a mix
+// of Insert and Update/Replace, and hence more complicated. (TODO: Is there any
+// way in which we can redesign the execution of AQL queries that we can just
+// transform an upsert into an update and an insert and get rid of the upsert
+// executor?)
+//
+// The simple modifiers are created by instantiating the SimpleModifier template
+// class (defined in SimpleModifier.h) with a *completion*.
+// The for completions for SimpleModifiers are defined in InsertModifier.h,
+// RemoveModifier.h, UpdateModifier.h, and ReplaceModifier.h
+//
+// The only difference between the Update and the Replace modifier is the
+// transaction method called.
+//
+// The FetcherType has to provide the function fetchRow
+//
 using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
 
 template <typename FetcherType, typename ModifierType>
@@ -58,10 +79,9 @@ class ModificationExecutor2 {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = ModificationExecutorInfos;
-  using Fetcher = FetcherType;
   using Stats = ModificationStats;
 
-  ModificationExecutor2(Fetcher&, Infos&);
+  ModificationExecutor2(FetcherType&, Infos&);
   ~ModificationExecutor2();
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
@@ -71,7 +91,7 @@ class ModificationExecutor2 {
   void doOutput(OutputAqlItemRow& output);
 
   ModificationExecutorInfos& _infos;
-  Fetcher& _fetcher;
+  FetcherType& _fetcher;
   ModifierType _modifier;
 };
 
