@@ -34,8 +34,7 @@
 TRI_TerminalSize TRI_DefaultTerminalSize() {
   unsigned short values[4];
 
-  int ret;
-  ret = ioctl(0, TIOCGWINSZ, &values);
+  int ret = ioctl(0, TIOCGWINSZ, &values);
   if (ret == -1) {
     return TRI_DEFAULT_TERMINAL_SIZE;
   }

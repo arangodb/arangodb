@@ -24,8 +24,9 @@
 #define ARANGODB_PREGEL_UTILS_H 1
 
 #include <cstdint>
+
 #include "Basics/Common.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Pregel/WorkerConfig.h"
 
 struct TRI_vocbase_t;
@@ -121,12 +122,12 @@ class Utils {
 
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& dbName, std::string const& target);
-  static void printResponses(std::vector<ClusterCommRequest> const& requests);
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
-  static int resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                          std::string const& shardKey, arangodb::velocypack::StringRef vertexKey,
+  static int resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                          std::string const& collectionName, std::string const& shardKey,
+                          arangodb::velocypack::StringRef vertexKey,
                           std::string& responsibleShard);
 };
 }  // namespace pregel

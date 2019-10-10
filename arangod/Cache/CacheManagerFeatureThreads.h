@@ -33,10 +33,14 @@
 #include <stdint.h>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class CacheRebalancerThread final : public Thread {
  public:
-  CacheRebalancerThread(cache::Manager* manager, uint64_t interval);
+  CacheRebalancerThread(application_features::ApplicationServer& server,
+                        cache::Manager* manager, uint64_t interval);
   ~CacheRebalancerThread();
 
   void beginShutdown() override;

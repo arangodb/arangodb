@@ -26,12 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
@@ -97,7 +101,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
-      _condition(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _pruneExpression(std::move(pruneExpression)) {
@@ -150,7 +153,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
     _pruneExpression->variables(_pruneVariables);
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 }
@@ -166,7 +169,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
-      _condition(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
@@ -174,7 +176,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     : GraphNode(plan, base),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
-      _condition(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
   // In Vertex
@@ -265,16 +266,12 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     }
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 }
 
-TraversalNode::~TraversalNode() {
-  if (_condition != nullptr) {
-    delete _condition;
-  }
-}
+TraversalNode::~TraversalNode() = default;
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
@@ -315,8 +312,10 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
+void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                       std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  GraphNode::toVelocyPackHelper(nodes, flags, seen);
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -394,9 +393,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
     nodes.close();
   }
 
-  nodes.add(VPackValue("indexes"));
-  _options->toVelocyPackIndexes(nodes);
-
   if (_pruneExpression != nullptr) {
     // The Expression constructor expects only this name
     nodes.add(VPackValue("expression"));
@@ -419,7 +415,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto& varInfo = getRegisterPlan()->varInfo;
-  RegisterId inputRegister = MaxRegisterId;
+  RegisterId inputRegister = RegisterPlan::MaxRegisterId;
   if (usesInVariable()) {
     auto it = varInfo.find(inVariable()->id);
     TRI_ASSERT(it != varInfo.end());
@@ -433,7 +429,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                   it->second.registerId);
@@ -441,7 +437,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::EDGE,
                                   it->second.registerId);
@@ -449,7 +445,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (usesPathOutVariable()) {
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::PATH,
                                   it->second.registerId);
@@ -567,7 +563,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->_conditionVariables.emplace(it->clone());
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 
@@ -597,7 +593,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->_vertexConditions.emplace(it.first, it.second->clone(_plan->getAst()));
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c->checkConditionsDefined();
 #endif
 
@@ -697,7 +693,7 @@ void TraversalNode::prepareOptions() {
 }
 
 /// @brief remember the condition to execute for early traversal abortion.
-void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
+void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
   arangodb::HashSet<Variable const*> varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
@@ -711,7 +707,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
     }
   }
 
-  _condition = condition;
+  _condition = std::move(condition);
 }
 
 void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t conditionLevel,
@@ -763,7 +759,7 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
   }
 }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_tmpObjVariable != nullptr);
   TRI_ASSERT(_tmpObjVarNode != nullptr);

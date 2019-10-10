@@ -29,7 +29,7 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 #include "Logger/Logger.h"
 #endif
 

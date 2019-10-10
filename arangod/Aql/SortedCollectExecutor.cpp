@@ -28,15 +28,21 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Basics/ConditionalDeleter.h"
 
-#include <lib/Logger/LogMacros.h>
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool SortedCollectExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough SortedCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr bool SortedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 static const AqlValue EmptyValue;
 
@@ -164,7 +170,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
     TRI_ASSERT(!this->aggregators.empty());
     TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    if (reg != ExecutionNode::MaxRegisterId) {
+    if (reg != RegisterPlan::MaxRegisterId) {
       it->reduce(input.getValue(reg));
     } else {
       it->reduce(EmptyValue);
@@ -174,7 +180,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
+  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
     if (count) {
       // increase the count
       groupLength++;
@@ -236,7 +242,8 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
   builder.close();
 }
 
-void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output, InputAqlItemRow& input) {
+void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output,
+                                                        InputAqlItemRow& input) {
   // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
 
@@ -265,7 +272,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 
   // set the group values
-  if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
+  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
     if (infos.getCount()) {
       // only set group count in result register
       output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,

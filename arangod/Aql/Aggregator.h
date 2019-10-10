@@ -24,17 +24,21 @@
 #ifndef ARANGOD_AQL_AGGREGATOR_H
 #define ARANGOD_AQL_AGGREGATOR_H 1
 
-#include "Aql/AqlValue.h"
-#include "Basics/Common.h"
-
-#include <velocypack/Slice.h>
+#include <functional>
+#include <memory>
+#include <string>
 
 namespace arangodb {
 namespace transaction {
 class Methods;
 }
+namespace velocypack {
+class Slice;
+}
 
 namespace aql {
+
+struct AqlValue;
 
 struct Aggregator {
   Aggregator() = delete;

@@ -90,7 +90,9 @@ VertexComputation<ECValue, int8_t, HLLCounter>* EffectiveCloseness::createComput
 struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   const std::string _resultField;
 
-  explicit ECGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit ECGraphFormat(application_features::ApplicationServer& server,
+                         std::string const& result)
+      : GraphFormat<ECValue, int8_t>(server), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; };
 
@@ -125,5 +127,5 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 };
 
 GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
-  return new ECGraphFormat(_resultField);
+  return new ECGraphFormat(_server, _resultField);
 }

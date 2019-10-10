@@ -101,7 +101,7 @@ function legacyOptimizerRuleTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var loopto = 10;
 
         internal.db._drop(colName);
@@ -110,25 +110,27 @@ function legacyOptimizerRuleTestSuite() {
         geocol.ensureIndex({type:"geo1", fields:["geo"]});
         geocol.ensureIndex({type:"geo2", fields:["loca.tion.lat","loca.tion.lon"]});
         var lat, lon;
+        let docs = [];
         for (lat=-40; lat <=40 ; ++lat) {
             for (lon=-40; lon <= 40; ++lon) {
                 //geocol.insert({lat,lon});
-                geocol.insert({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
+                docs.push({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
             }
         }
+        geocol.insert(docs);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(colName);
       geocol = null;
     },
 
     testLegacyRuleBasics : function () {
-      if(enabled.basics){
+      if (enabled.basics) {
         geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
         var queries = [
@@ -219,7 +221,7 @@ function legacyOptimizerRuleTestSuite() {
     }, // testRuleBasics
 
     testLegacyRuleRemoveNodes : function () {
-      if(enabled.removeNodes){
+      if (enabled.removeNodes) {
         var queries = [
           [ "FOR d IN " + colName  + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName  + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
@@ -250,8 +252,8 @@ function legacyOptimizerRuleTestSuite() {
       }
     }, // testRuleSort
 
-    testLegacyRuleSorted : function(){
-      if(enabled.sorted){
+    testLegacyRuleSorted : function() {
+      if (enabled.sorted) {
         var old=0;
         var query = "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) RETURN distance(d.lat, d.lon, 0, 0)";
         var result = AQL_EXECUTE(query);
@@ -278,7 +280,7 @@ function legacyGeoVariationsTestSuite() {
 
   return {
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(colName);
       geocol = internal.db._create(colName);
       geocol.ensureIndex({ type:"geo1", fields: ["location"] });
@@ -292,7 +294,7 @@ function legacyGeoVariationsTestSuite() {
       geocol.insert(documents);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(colName);
     },
 
@@ -338,6 +340,7 @@ function optimizerRuleTestSuite() {
   var ruleName = "geoindex";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
   var colName2 = colName2;
+  var colName3 = "UnitTestsGeoJsonTestSuite";
 
   var sortArray = function (l, r) {
     if (l[0] !== r[0]) {
@@ -413,7 +416,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////
-    setUp: function () {
+    setUpAll: function () {
       var loopto = 10;
 
       internal.db._drop(colName);
@@ -429,8 +432,8 @@ function optimizerRuleTestSuite() {
         }
       }
 
-      db._drop("UnitTestsGeoJsonTestSuite");
-      locations = db._create("UnitTestsGeoJsonTestSuite");
+      db._drop(colName3);
+      locations = db._create(colName3);
       locations.ensureIndex({ type: "geo", fields: ["geometry"], geoJson: true, legacy: false });
 
       indonesiaKeys = indonesia.map(doc => locations.save({ geometry: doc })._key);
@@ -440,10 +443,10 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////
-    tearDown: function () {
+    tearDownAll: function () {
       internal.db._drop(colName);
       geocol = null;
-      db._drop("UnitTestsGeoJsonTestSuite");
+      db._drop(colName3);
     },
     
     testRuleMultiIndexesInLoops: function () {

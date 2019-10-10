@@ -20,39 +20,45 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
 #ifndef ARANGOD_NETWORK_UTILS_H
 #define ARANGOD_NETWORK_UTILS_H 1
 
 #include "Basics/Result.h"
 #include "Network/types.h"
-#include "Utils/OperationOptions.h"
+#include "Rest/CommonDefines.h"
 #include "Utils/OperationResult.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-#include <chrono>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+class ClusterInfo;
+class NetworkFeature;
 
 namespace network {
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-int resolveDestination(DestinationId const& dest, std::string&);
+int resolveDestination(NetworkFeature const&, DestinationId const& dest, network::EndpointSpec&);
+int resolveDestination(ClusterInfo&, DestinationId const& dest, network::EndpointSpec&);
+
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
+                      int defaultError);
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& b, int defaultError);
+Result resultFromBody(arangodb::velocypack::Slice b, int defaultError);
 
 /// @brief extract the error from a cluster response
-OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                              int defaultErrorCode);
-/// @brief extract the error from a cluster response
-OperationResult errorFromBody(std::shared_ptr<arangodb::velocypack::Builder> const&, int defaultErrorCode);
-/// @brief extract the error from a cluster response
-OperationResult errorFromBody(arangodb::velocypack::Slice const& body, int defaultErrorCode);
+template <typename T>
+OperationResult opResultFromBody(T const& body, int defaultErrorCode) {
+  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode));
+}
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice const& body);
+int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode = 0);
 
 /// @brief Extract all error baby-style error codes and store them in a map
 void errorCodesFromHeaders(network::Headers headers,
@@ -61,12 +67,13 @@ void errorCodesFromHeaders(network::Headers headers,
 
 /// @brief transform response into arango error code
 int fuerteToArangoErrorCode(network::Response const& res);
+int fuerteToArangoErrorCode(fuerte::Error err);
+std::string fuerteToArangoErrorMessage(network::Response const& res);
+std::string fuerteToArangoErrorMessage(fuerte::Error err);
 
-/// @brief Create Cluster Communication result for insert
-OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
-                                    std::shared_ptr<velocypack::Buffer<uint8_t>> body,
-                                    OperationOptions const& options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
+/// @brief convert between arango and fuerte rest methods
+fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
+rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
 }  // namespace network
 }  // namespace arangodb

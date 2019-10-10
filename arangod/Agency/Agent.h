@@ -26,7 +26,6 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
-#include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Compactor.h"
@@ -46,7 +45,7 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  explicit Agent(application_features::ApplicationServer& server, config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -146,7 +145,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void resign(term_t otherTerm = 0);
 
   /// @brief collect store callbacks for removal
-  void trashStoreCallback(std::string const& url, query_t const& body);
+  void trashStoreCallback(std::string const& url, velocypack::Slice body);
 
  private:
 
@@ -176,7 +175,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
+  query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();

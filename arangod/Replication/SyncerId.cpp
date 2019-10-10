@@ -22,9 +22,9 @@
 
 #include "SyncerId.h"
 
-#include <lib/Basics/Exceptions.h>
-#include <lib/Basics/StringUtils.h>
-#include <lib/Rest/GeneralRequest.h>
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
+#include "Rest/GeneralRequest.h"
 
 #include <algorithm>
 #include <cctype>

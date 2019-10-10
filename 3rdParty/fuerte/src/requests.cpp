@@ -25,8 +25,8 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
   
-std::unique_ptr<Request> createRequest(RestVerb const& verb,
-                                       ContentType const& contentType) {
+std::unique_ptr<Request> createRequest(RestVerb verb,
+                                       ContentType contentType) {
   std::unique_ptr<Request> request(new Request());
   
   request->header.restVerb = verb;
@@ -48,7 +48,7 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
 
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
                                        StringMap const& parameters,
-                                       VPackSlice const& payload) {
+                                       VPackSlice const payload) {
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;

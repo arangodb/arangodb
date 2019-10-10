@@ -52,7 +52,7 @@ Parser::Parser(Query* query)
 }
 
 /// @brief destroy the parser
-Parser::~Parser() {}
+Parser::~Parser() = default;
 
 /// @brief set data for write queries
 bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionNode) {

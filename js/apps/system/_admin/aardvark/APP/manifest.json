@@ -52,6 +52,18 @@
     "/mode-aql.js": {
       "path": "react/build/assets/src/mode-aql.js",
       "gzip": false
+<<<<<<< HEAD
+=======
+    },
+    "/fonts": "frontend/fonts",
+    "/img": "frontend/compressed-img",
+    "/data": "frontend/data",
+    "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
+    "/ext-searchbox.js": "frontend/src/ext-searchbox.js",
+    "/worker-json.js": {
+      "path": "frontend/src/worker-json.js",
+      "gzip": true
+>>>>>>> 69dc50622aabd1413b33a9e9caa33d53b7ca51e0
     }
   }
 }

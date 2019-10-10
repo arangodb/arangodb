@@ -26,6 +26,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -55,7 +56,7 @@ class TRI_action_t {
     _allowUseDatabase(false),
     _isSystem(false) {}
 
-  virtual ~TRI_action_t() {}
+  virtual ~TRI_action_t() = default;
 
   virtual void visit(void*) = 0;
 

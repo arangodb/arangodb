@@ -32,7 +32,8 @@
 namespace arangodb {
 class ClusterRestExportHandler : public RestVocbaseBaseHandler {
  public:
-  ClusterRestExportHandler(GeneralRequest*, GeneralResponse*);
+  ClusterRestExportHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "ClusterRestExportHandler"; }

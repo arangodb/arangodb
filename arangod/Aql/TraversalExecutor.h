@@ -30,6 +30,7 @@
 #include "Aql/Variable.h"
 
 namespace arangodb {
+class Result;
 
 namespace traverser {
 class Traverser;
@@ -40,7 +41,7 @@ namespace aql {
 class Query;
 class OutputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TraversalExecutorInfos : public ExecutorInfos {
@@ -109,9 +110,9 @@ class TraversalExecutorInfos : public ExecutorInfos {
 class TraversalExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TraversalExecutorInfos;

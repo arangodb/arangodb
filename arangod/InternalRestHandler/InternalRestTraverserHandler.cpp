@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -35,10 +36,10 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
-InternalRestTraverserHandler::InternalRestTraverserHandler(GeneralRequest* request,
-                                                           GeneralResponse* response,
-                                                           TraverserEngineRegistry* engineRegistry)
-    : RestVocbaseBaseHandler(request, response), _registry(engineRegistry) {
+InternalRestTraverserHandler::InternalRestTraverserHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, TraverserEngineRegistry* engineRegistry)
+    : RestVocbaseBaseHandler(server, request, response), _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
 }
 
@@ -69,7 +70,7 @@ RestStatus InternalRestTraverserHandler::execute() {
         break;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(ResponseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
     generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {

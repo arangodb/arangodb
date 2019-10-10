@@ -86,6 +86,24 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
   return trxCollection;
 }
 
+/// @brief return the collection from a transaction
+TransactionCollection* TransactionState::collection(std::string const& name,
+                                                    AccessMode::Type accessType) const {
+  TRI_ASSERT(_status == transaction::Status::CREATED ||
+             _status == transaction::Status::RUNNING);
+
+  auto it = std::find_if(_collections.begin(), _collections.end(), [&name](TransactionCollection const* trxColl) {
+    return trxColl->collectionName() == name;
+  });
+
+  if (it == _collections.end() || !(*it)->canAccess(accessType)) {
+    // not found or not accessible in the requested mode
+    return nullptr;
+  }
+
+  return (*it);
+}
+
 TransactionState::Cookie* TransactionState::cookie(void const* key) noexcept {
   auto itr = _cookies.find(key);
 
@@ -202,7 +220,7 @@ void TransactionState::allCollections(                     // iterate
     }
   }
 }
-
+  
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections(int nestingLevel) {
   Result res;
@@ -299,18 +317,17 @@ void TransactionState::setExclusiveAccessType() {
 Result TransactionState::checkCollectionPermission(std::string const& cname,
                                                    AccessMode::Type accessType) const {
   TRI_ASSERT(!cname.empty());
-  ExecContext const* exec = ExecContext::CURRENT;
+  ExecContext const& exec = ExecContext::current();
 
   Result res;
-
   // no need to check for superuser, cluster_sync tests break otherwise
-  if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
-    auto level = exec->collectionAuthLevel(_vocbase.name(), cname);
+  if (!exec.isSuperuser()) {
+    auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
     TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
 
     if (level == auth::Level::NONE) {
       LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
-          << "User " << exec->user() << " has collection auth::Level::NONE";
+          << "User " << exec.user() << " has collection auth::Level::NONE";
 
       res.reset(TRI_ERROR_FORBIDDEN,
                 std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname + 
@@ -320,7 +337,7 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
 
       if (level == auth::Level::RO && collectionWillWrite) {
         LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
-            << "User " << exec->user() << " has no write right for collection " << cname;
+            << "User " << exec.user() << " has no write right for collection " << cname;
 
         res.reset(TRI_ERROR_ARANGO_READ_ONLY,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +

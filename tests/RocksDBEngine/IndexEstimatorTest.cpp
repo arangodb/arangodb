@@ -57,14 +57,14 @@ TEST_F(IndexEstimatorTest, test_unique_values) {
   for (auto it : toInsert) {
     est.insert(it);
   }
-  EXPECT_TRUE(est.nrUsed() == 100);
-  EXPECT_TRUE(est.computeEstimate() == 1);
+  EXPECT_EQ(est.nrUsed(), 100);
+  EXPECT_EQ(est.computeEstimate(), 1);
 
   for (size_t k = 0; k < 10; ++k) {
     est.remove(toInsert[k]);
   }
-  EXPECT_TRUE(est.nrUsed() == 90);
-  EXPECT_TRUE(est.computeEstimate() == 1);
+  EXPECT_EQ(est.nrUsed(), 90);
+  EXPECT_EQ(est.computeEstimate(), 1);
 }
 
 TEST_F(IndexEstimatorTest, test_multiple_values) {
@@ -75,15 +75,15 @@ TEST_F(IndexEstimatorTest, test_multiple_values) {
   for (auto it : toInsert) {
     est.insert(it);
   }
-  EXPECT_TRUE(est.nrUsed() == 10);
-  EXPECT_TRUE(est.nrCuckood() == 0);
-  EXPECT_TRUE(est.computeEstimate() == (double)10 / 100);
+  EXPECT_EQ(est.nrUsed(), 10);
+  EXPECT_EQ(est.nrCuckood(), 0);
+  EXPECT_EQ(est.computeEstimate(), (double)10 / 100);
 
   for (size_t k = 0; k < 10; ++k) {
     est.remove(toInsert[k]);
   }
-  EXPECT_TRUE(est.nrCuckood() == 0);
-  EXPECT_TRUE(est.computeEstimate() == (double)10 / 90);
+  EXPECT_EQ(est.nrCuckood(), 0);
+  EXPECT_EQ(est.computeEstimate(), (double)10 / 90);
 }
 
 TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
@@ -106,7 +106,7 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
   // We read starting from the 10th char. The first 8 are reserved for the
   // seq, and the ninth char is reserved for the type
   uint64_t persLength = rocksutils::uint64FromPersistent(serialization.data() + 9);
-  EXPECT_TRUE(persLength == length);
+  EXPECT_EQ(persLength, length);
 
   // We first have an uint64_t representing the length.
   // This has to be extracted BEFORE initialization.
@@ -115,10 +115,10 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
 
   // After serialization => deserialization
   // both estimates have to be identical
-  EXPECT_TRUE(est.nrUsed() == copy.nrUsed());
-  EXPECT_TRUE(est.nrCuckood() == copy.nrCuckood());
-  EXPECT_TRUE(est.computeEstimate() == copy.computeEstimate());
-  EXPECT_TRUE(seq == copy.appliedSeq());
+  EXPECT_EQ(est.nrUsed(), copy.nrUsed());
+  EXPECT_EQ(est.nrCuckood(), copy.nrCuckood());
+  EXPECT_EQ(est.computeEstimate(), copy.computeEstimate());
+  EXPECT_EQ(seq, copy.appliedSeq());
 
   // Now let us remove the same elements in both
   bool coin = false;
@@ -133,9 +133,9 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
   // We cannot relibly check inserts because the cuckoo has a random factor
   // Still all values have to be identical
 
-  EXPECT_TRUE(est.nrUsed() == copy.nrUsed());
-  EXPECT_TRUE(est.nrCuckood() == copy.nrCuckood());
-  EXPECT_TRUE(est.computeEstimate() == copy.computeEstimate());
+  EXPECT_EQ(est.nrUsed(), copy.nrUsed());
+  EXPECT_EQ(est.nrCuckood(), copy.nrCuckood());
+  EXPECT_EQ(est.computeEstimate(), copy.computeEstimate());
 }
 
 TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
@@ -159,17 +159,17 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     // make sure we don't apply yet
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
     serialization.clear();
-    ASSERT_TRUE(est.appliedSeq() == expected);
-    ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(iteration))) == est.computeEstimate());
+    ASSERT_EQ(est.appliedSeq(), expected);
+    ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)), est.computeEstimate());
 
     meta.removeBlocker(iteration);
-    EXPECT_TRUE(meta.committableSeq(UINT64_MAX) == UINT64_MAX);
+    EXPECT_EQ(meta.committableSeq(UINT64_MAX), UINT64_MAX);
 
     // now make sure we apply it
     est.serialize(serialization, currentSeq);
     expected = currentSeq;
     serialization.clear();
-    ASSERT_TRUE(est.appliedSeq() == expected);
+    ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(iteration + 1))) ==
             est.computeEstimate());
   }
@@ -186,10 +186,10 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
     // make sure we don't apply yet
-    ASSERT_TRUE(meta.committableSeq(UINT64_MAX) == expected + 1);
+    ASSERT_EQ(meta.committableSeq(UINT64_MAX), expected + 1);
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
     serialization.clear();
-    ASSERT_TRUE(est.appliedSeq() == expected);
+    ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
             est.computeEstimate());
 
@@ -199,10 +199,10 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
     serialization.clear();
     expected = currentSeq;
-    ASSERT_TRUE(est.appliedSeq() == expected);
+    ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
             est.computeEstimate());
-    ASSERT_TRUE(est.appliedSeq() == expected);
+    ASSERT_EQ(est.appliedSeq(), expected);
   }
 }
 
@@ -230,8 +230,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
     // now make sure we applied last batch, but not this one
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
     serialization.clear();
-    ASSERT_TRUE(est.appliedSeq() == expected);
-    ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(iteration))) == est.computeEstimate());
+    ASSERT_EQ(est.appliedSeq(), expected);
+    ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)), est.computeEstimate());
   }
 }
 
@@ -260,8 +260,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
     // now make sure we haven't applied anything
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
     serialization.clear();
-    ASSERT_TRUE(est.appliedSeq() == expected);
-    ASSERT_TRUE(1.0 == est.computeEstimate());
+    ASSERT_EQ(est.appliedSeq(), expected);
+    ASSERT_EQ(1.0, est.computeEstimate());
   }
 
   // now remove first blocker and make sure we apply everything
@@ -269,8 +269,8 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   est.serialize(serialization, meta.committableSeq(UINT64_MAX));
   expected = currentSeq;
   serialization.clear();
-  ASSERT_TRUE(est.appliedSeq() == expected);
-  ASSERT_TRUE(0.1 == est.computeEstimate());
+  ASSERT_EQ(est.appliedSeq(), expected);
+  ASSERT_EQ(0.1, est.computeEstimate());
 }
 
 TEST_F(IndexEstimatorTest, test_truncate_logic) {
@@ -294,8 +294,8 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
   expected = currentSeq;
   est.serialize(serialization, ++currentSeq);
   serialization.clear();
-  ASSERT_TRUE(est.appliedSeq() == expected);
-  ASSERT_TRUE(0.1 == est.computeEstimate());
+  ASSERT_EQ(est.appliedSeq(), expected);
+  ASSERT_EQ(0.1, est.computeEstimate());
 
   // multiple turncate
   est.bufferTruncate(currentSeq++);
@@ -312,8 +312,8 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
   // now make sure we haven't applied anything
   est.serialize(serialization, currentSeq);
   serialization.clear();
-  ASSERT_TRUE(est.appliedSeq() == expected);
-  ASSERT_TRUE(1.0 == est.computeEstimate());
+  ASSERT_EQ(est.appliedSeq(), expected);
+  ASSERT_EQ(1.0, est.computeEstimate());
 }
 
 TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
@@ -338,10 +338,10 @@ TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
   std::string serialization;
   est.serialize(serialization, ++currentSeq);
   serialization.clear();
-  ASSERT_TRUE(est.appliedSeq() == expected);
-  ASSERT_TRUE(1.0 == est.computeEstimate());
+  ASSERT_EQ(est.appliedSeq(), expected);
+  ASSERT_EQ(1.0, est.computeEstimate());
 
   est.serialize(serialization, ++currentSeq);
-  ASSERT_TRUE(est.appliedSeq() == expected);
-  ASSERT_TRUE(1.0 == est.computeEstimate());
+  ASSERT_EQ(est.appliedSeq(), expected);
+  ASSERT_EQ(1.0, est.computeEstimate());
 }

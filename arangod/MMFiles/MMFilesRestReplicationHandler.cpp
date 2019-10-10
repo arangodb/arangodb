@@ -39,7 +39,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeysRepository.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -54,9 +53,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response) {}
+MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response) {}
 
 MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
@@ -361,7 +361,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     }
   }
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -418,9 +418,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   // pull the latest state again, so that the last tick we hand out is always >=
   // the last included tick value in the results
-  while (state.lastCommittedTick < dump._lastFoundTick &&
-         !application_features::ApplicationServer::isStopping()) {
-    state = MMFilesLogfileManager::instance()->state();
+  while (state.lastCommittedTick < dump._lastFoundTick && !_vocbase.server().isStopping()) {
+    state = _vocbase.server().getFeature<MMFilesLogfileManager>().state();
     std::this_thread::sleep_for(std::chrono::microseconds(500));
   }
 
@@ -590,7 +589,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
     // add collections and views
-    grantTemporaryRights();
+    ExecContextSuperuserScope scope(ExecContext::current().isAdminUser());
     _vocbase.inventory(builder, tick, nameFilter);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -916,7 +915,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   bool withTicks = _request->parsedValue("ticks", true);
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto c = _vocbase.lookupCollection(collection);
 
@@ -925,9 +924,8 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!execContext.canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

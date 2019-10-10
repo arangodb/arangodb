@@ -103,7 +103,11 @@ jsUnity.results.fail = function (index, testName, message) {
       ENDTEST = newtime;
     }
     print(internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
-
+    if (RESULTS.hasOwnProperty('message')) {
+      RESULTS['message'] += "\n" + currentSuiteName + " - failed at: " + message;
+    } else {
+      RESULTS['message'] = currentSuiteName + " - failed at: " + message;
+    }
     return;
   }
 
@@ -141,6 +145,15 @@ jsUnity.results.end = function (passed, failed, duration) {
   }
 };
 
+jsUnity.results.beginSetUpAll = function(index) {
+  SETUPS = jsUnity.env.getDate();
+};
+
+jsUnity.results.endSetUpAll = function(index) {
+  RESULTS.setUpAllDuration = jsUnity.env.getDate() - SETUPS;
+  TOTALSETUPS += RESULTS.setUpAllDuration;
+};
+
 jsUnity.results.beginSetUp = function(index, testName) {
   if (testCount === 0)
   {
@@ -169,6 +182,15 @@ jsUnity.results.beginTeardown = function(index, testName) {
 jsUnity.results.endTeardown = function(index, testName) {
   RESULTS[testName].tearDownDuration = jsUnity.env.getDate() - TEARDOWNS;
   TOTALTEARDOWNS += RESULTS[testName].tearDownDuration;
+};
+
+jsUnity.results.beginTeardownAll = function(index) {
+  TEARDOWNS = jsUnity.env.getDate();
+};
+
+jsUnity.results.endTeardownAll = function(index) {
+  RESULTS.teardownAllDuration = jsUnity.env.getDate() - TEARDOWNS;
+  TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -255,12 +277,20 @@ function Run (testsuite) {
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
-  
-  
+
   let duplicates = [];
   for (var attrname in RESULTS) {
-    if (RESULTS.hasOwnProperty(attrname)) {
+    if (typeof(RESULTS[attrname]) === 'number') {
+      if (!COMPLETE.hasOwnProperty(attrname)) {
+        COMPLETE[attrname] = { };
+      }
+      COMPLETE[attrname][suite.suiteName] = RESULTS[attrname];
+    } else if (RESULTS.hasOwnProperty(attrname)) {
       if (COMPLETE.hasOwnProperty(attrname)) {
+        if (attrname === 'message') {
+          COMPLETE[attrname] += "\n\n" + RESULTS[attrname];
+          continue;
+        }
         print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
         duplicates.push(attrname);
       }
@@ -321,6 +351,28 @@ function WriteDone (suiteName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function RunTest (path, outputReply, filter) {
+  // re-reset our globlas, on module loading may be cached.
+  TOTAL = 0;
+  PASSED = 0;
+  FAILED = 0;
+  DURATION = 0;
+  RESULTS = {};
+  COMPLETE = {};
+  
+  SETUPS = 0;
+  TEARDOWNS = 0;
+  
+  TOTALSETUPS = 0;
+  TOTALTEARDOWNS = 0;
+  STARTTEST = 0.0;
+  ENDTEST = 0.0;
+  STARTSUITE = 0.0;
+  ENDTEARDOWN = 0.0;
+  STARTTEST = 0.0;
+  ENDTEST = 0.0;
+  STARTSUITE = 0.0;
+  ENDTEARDOWN = 0.0;
+
   var content;
   var f;
 

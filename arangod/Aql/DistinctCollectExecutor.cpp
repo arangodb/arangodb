@@ -28,15 +28,19 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Aql/Stats.h"
+#include "Logger/LogMacros.h"
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool DistinctCollectExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough DistinctCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr bool DistinctCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
@@ -55,6 +59,14 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
+std::vector<std::pair<RegisterId, RegisterId>> DistinctCollectExecutorInfos::getGroupRegisters() const {
+  return _groupRegisters;
+}
+
+transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
+  return _trxPtr;
+}
+
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -63,13 +75,9 @@ DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
                               _infos.getGroupRegisters().size()),
             AqlValueGroupEqual(_infos.getTransaction())) {}
 
-DistinctCollectExecutor::~DistinctCollectExecutor() {
-  destroyValues();
-}
+DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
-void DistinctCollectExecutor::initializeCursor() {
-  destroyValues();
-}
+void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 
 std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
@@ -146,4 +154,8 @@ void DistinctCollectExecutor::destroyValues() {
     }
   }
   _seen.clear();
+}
+
+const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
+  return _infos;
 }
