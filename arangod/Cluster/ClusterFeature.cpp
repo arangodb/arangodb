@@ -24,6 +24,7 @@
 #include "ClusterFeature.h"
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -127,7 +128,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "this server's advertised endpoint (e.g. external IP "
                      "address or load balancer, optional)",
                      new StringParameter(&_myAdvertisedEndpoint));
-  
+
   options->addOption("--cluster.write-concern",
                      "write concern used for writes to new collections",
                      new UInt32Parameter(&_writeConcern)).setIntroducedIn(30600);
@@ -147,7 +148,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.min-replication-factor",
                      "minimum replication factor for new collections",
                      new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30600);
-  
+
   options->addOption("--cluster.max-replication-factor",
                      "maximum replication factor for new collections (0 = unrestricted)",
                      new UInt32Parameter(&_maxReplicationFactor)).setIntroducedIn(30600);
@@ -186,7 +187,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "details.";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_minReplicationFactor == 0) {
     // min replication factor must not be 0
     LOG_TOPIC("2fbdd", FATAL, arangodb::Logger::CLUSTER)
@@ -203,11 +204,11 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   TRI_ASSERT(_minReplicationFactor > 0);
   if (!options->processingResult().touched("cluster.default-replication-factor")) {
-    // no default replication factor set. now use the minimum value, which is 
-    // guaranteed to be at least 1 
+    // no default replication factor set. now use the minimum value, which is
+    // guaranteed to be at least 1
     _defaultReplicationFactor = _minReplicationFactor;
   }
-  
+
   if (!options->processingResult().touched("cluster.system-replication-factor")) {
     // no system replication factor set. now make sure it is between min and max
     if (_systemReplicationFactor > _maxReplicationFactor) {
@@ -216,44 +217,44 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       _systemReplicationFactor = _minReplicationFactor;
     }
   }
-  
+
   if (_defaultReplicationFactor == 0) {
     // default replication factor must not be 0
     LOG_TOPIC("fc8a9", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. The value must be at least 1";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_systemReplicationFactor == 0) {
     // default replication factor must not be 0
     LOG_TOPIC("46935", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. The value must be at least 1";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_defaultReplicationFactor > 0 &&
-      _maxReplicationFactor > 0 && 
+      _maxReplicationFactor > 0 &&
       _defaultReplicationFactor > _maxReplicationFactor) {
     LOG_TOPIC("5af7e", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. Must not be higher than `--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_defaultReplicationFactor > 0 &&
       _defaultReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("b9aea", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. Must not be lower than `--cluster.min-replication-factor`";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_systemReplicationFactor > 0 &&
-      _maxReplicationFactor > 0 && 
+      _maxReplicationFactor > 0 &&
       _systemReplicationFactor > _maxReplicationFactor) {
     LOG_TOPIC("6cf0c", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not be higher than `--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_systemReplicationFactor > 0 &&
       _systemReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
@@ -475,8 +476,19 @@ void ClusterFeature::prepare() {
     reportRole(_requestedRole);
   }
 
+  network::ConnectionPool::Config config;
+  config.numIOThreads = static_cast<unsigned>(2);
+  config.maxOpenConnections = 2;
+  config.connectionTtlMilli = 1000;
+  config.verifyHosts = false;
+  config.clusterInfo = &clusterInfo();
+
+  _pool = std::make_unique<network::ConnectionPool>(config);
+
   // register the prefix with the communicator
   AgencyCommManager::initialize(_agencyPrefix);
+  AsyncAgencyCommManager::initialize();
+  AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
@@ -490,6 +502,7 @@ void ClusterFeature::prepare() {
     }
 
     AgencyCommManager::MANAGER->addEndpoint(unified);
+    AsyncAgencyCommManager::INSTANCE->addEndpoint(unified);
   }
 
   // disable error logging for a while

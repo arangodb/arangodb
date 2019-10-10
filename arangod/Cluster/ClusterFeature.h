@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include "Network/NetworkFeature.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -116,6 +117,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
+  std::unique_ptr<network::ConnectionPool> _pool;
 };
 
 }  // namespace arangodb

@@ -4,6 +4,7 @@
 #include "Futures/Utilities.h"
 #include "Basics/StaticStrings.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Buffer.h>
@@ -38,6 +39,38 @@ bool agencyAsyncShouldCancel(RequestMeta &meta) {
 
 bool agencyAsyncShouldTimeout(RequestMeta &meta) {
   return false;
+}
+
+std::string extractEndpointFromUrl(std::string const& location) {
+
+  std::string specification;
+  size_t delim = std::string::npos;
+
+  if (location.substr(0, 7) == "http://") {
+    specification = "http+tcp://" + location.substr(7);
+    delim = specification.find_first_of('/', 12);
+  } else if (location.substr(0, 8) == "https://") {
+    specification = "http+ssl://" + location.substr(8);
+    delim = specification.find_first_of('/', 13);
+  }
+
+  // invalid location header
+  if (delim == std::string::npos) {
+    return "";
+  }
+
+  return Endpoint::unifiedForm(specification.substr(0, delim));
+}
+
+void redirectOrError(AsyncAgencyCommManager *man, std::string const& endpoint, std::string const& location) {
+
+  std::string newEndpoint = extractEndpointFromUrl(location);
+
+  if (newEndpoint.empty()) {
+    man->reportError(endpoint);
+  } else {
+    man->reportRedirect(endpoint, newEndpoint);
+  }
 }
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager *man, RequestMeta&& meta, VPackBuffer<uint8_t>&& body);
@@ -87,14 +120,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
             return ::agencyAsyncSend (man, std::move(meta), std::move(body));
           }
 
-          if (resp->statusCode() == fuerte::StatusServiceUnavailable) {
+          if (resp->statusCode() == fuerte::StatusTemporaryRedirect) {
+            // get the Location header
             std::string const& location = resp->header.metaByKey(arangodb::StaticStrings::Location);
-            if (location.empty()) {
-              man->reportError(endpoint);
-            } else {
-              man->reportRedirect(endpoint, location);
-            }
-
+            redirectOrError (man, endpoint, location);
             return ::agencyAsyncInquiry (man, std::move(meta), std::move(body));
           }
 
@@ -120,6 +149,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
   });
 }
 
+
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
   AsyncAgencyCommManager *man,
   RequestMeta&& meta,
@@ -129,8 +159,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
   // check for conditions to abort
   if (agencyAsyncShouldCancel(meta)) {
+    LOG_DEVEL << "request was cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
+    LOG_DEVEL << "request timed out";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
@@ -141,10 +173,14 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
     // aquire the current endpoint
     std::string endpoint = man->getCurrentEndpoint();
 
+    LOG_DEVEL << "starting request " << endpoint << meta.url;
     // and fire off the request
     return network::sendRequest(man->pool(), endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers)
       .thenValue(
         [meta = std::move(meta), endpoint = std::move(endpoint), man] (network::Response &&result) mutable {
+
+
+      LOG_DEVEL << "request done";
 
       auto &req = result.request;
       auto &resp = result.response;
@@ -152,6 +188,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
       switch (result.error) {
         case fuerte::Error::NoError:
+        LOG_DEVEL << "no error: " << int(resp->statusCode());
           // success
           if ((resp->statusCode() >= 200 && resp->statusCode() <= 299)) {
             break;
@@ -162,14 +199,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
           }
 
           // 503 redirect
-          if (resp->statusCode() == StatusServiceUnavailable) {
+          if (resp->statusCode() == StatusTemporaryRedirect) {
             // get the Location header
             std::string const& location = resp->header.metaByKey(arangodb::StaticStrings::Location);
-            if (location.empty()) {
-              man->reportError(endpoint);
-            } else {
-              man->reportRedirect(endpoint, location);
-            }
+            redirectOrError (man, endpoint, location);
+
             // send again
             return ::agencyAsyncSend (man, std::move(meta), std::move(body).moveBuffer());
           }
@@ -222,6 +256,9 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     }
   }
 
+  LOG_DEVEL
+    << "async agency request " << fuerte::to_string(method) << " " << url << " " << VPackSlice(body.data()).toJson();
+
   network::Headers headers;
   return agencyAsyncSend(_manager, RequestMeta({timeout, method,
     url, std::move(clientIds), std::move(headers), 0}), std::move(body));
@@ -233,6 +270,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(fuerte::RestVerb
   VPackBuffer<uint8_t> body;
   {
     VPackBuilder builder(body);
+    VPackArrayBuilder arr(&builder);
     trx.toVelocyPack(builder);
   }
 
@@ -289,9 +327,23 @@ void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint, std::st
 
 const char * AGENCY_URL_READ = "/_api/agency/read";
 
-AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) {
-  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ,
-    1s /* AgencyCommManager::CONNECTION_OPTIONS._requestTimeout*/, AgencyReadTransaction(path));
+AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) const {
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s, AgencyReadTransaction(path));
+}
+
+AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const {
+
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s, AgencyReadTransaction(path->str()))
+    .thenValue([path](AsyncAgencyCommResult &&result) {
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        VPackSlice value = result.slice().at(0).get(std::move(path->vec()));
+        return futures::makeFuture(
+          AgencyReadResult{std::move(result), value});
+      }
+
+      return futures::makeFuture(
+        AgencyReadResult{std::move(result), VPackSlice::noneSlice()});
+    });
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;

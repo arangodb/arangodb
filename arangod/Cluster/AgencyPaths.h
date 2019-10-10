@@ -1804,23 +1804,11 @@ std::shared_ptr<Root const> root() { return Root::make_shared(); }
 
 namespace aliases {
 
-std::shared_ptr<Root::Arango const> arango() { return root()->arango(); }
-
-std::shared_ptr<Root::Arango::Plan const> plan() {
-  return root()->arango()->plan();
-}
-
-std::shared_ptr<Root::Arango::Current const> current() {
-  return root()->arango()->current();
-}
-
-std::shared_ptr<Root::Arango::Target const> target() {
-  return root()->arango()->target();
-}
-
-std::shared_ptr<Root::Arango::Supervision const> supervision() {
-  return root()->arango()->supervision();
-}
+std::shared_ptr<Root::Arango const> arango();
+std::shared_ptr<Root::Arango::Plan const> plan();
+std::shared_ptr<Root::Arango::Current const> current();
+std::shared_ptr<Root::Arango::Target const> target();
+std::shared_ptr<Root::Arango::Supervision const> supervision();
 
 }  // namespace aliases
 

@@ -30,31 +30,40 @@
 #include "Futures/Future.h"
 #include "Agency/AgencyComm.h"
 #include "Cluster/ResultT.h"
+#include "Cluster/PathComponent.h"
 
 
 namespace arangodb {
 
-using namespace arangodb::fuerte;
-
-
 struct AsyncAgencyCommResult {
-  fuerte::Error error;
+  arangodb::fuerte::Error error;
   std::unique_ptr<arangodb::fuerte::Response> response;
 
   bool ok() const {
-    return fuerte::Error::NoError == this->error;
+    return arangodb::fuerte::Error::NoError == this->error;
   }
 
   VPackSlice slice() {
     return response->slice();
   }
 
-  fuerte::StatusCode statusCode() {
+  arangodb::fuerte::StatusCode statusCode() {
     return response->statusCode();
+  }
+
+  Result asResult() {
+    if (!ok()) {
+      return Result{int(error), arangodb::fuerte::to_string(error)};
+    } else if(200 <= statusCode() && statusCode() <= 299) {
+      return Result{};
+    } else {
+      return Result{int(statusCode())};
+    }
   }
 };
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
+  AgencyReadResult(AsyncAgencyCommResult &&result, VPackSlice value) : AsyncAgencyCommResult(std::move(result)), _value(value) {}
   VPackSlice value() { return this->_value; }
 private:
   VPackSlice _value;
@@ -66,6 +75,10 @@ class AsyncAgencyComm;
 class AsyncAgencyCommManager final {
 public:
   static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
+
+  static void initialize() {
+    INSTANCE = std::make_unique<AsyncAgencyCommManager>();
+  };
 
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
@@ -90,11 +103,12 @@ public:
   using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
   using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
 
-  FutureResult getValues(std::string const& path);
+  FutureResult getValues(std::string const& path) const;
+  FutureReadResult getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
 
 public:
-  FutureResult sendWithFailover(fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
-  FutureResult sendWithFailover(fuerte::RestVerb method, std::string const& url, network::Timeout timeout, AgencyTransaction const& trx) const;
+  FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+  FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, AgencyTransaction const& trx) const;
 
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::INSTANCE.get()) {}
   AsyncAgencyComm(AsyncAgencyCommManager *manager) : _manager(manager) {}

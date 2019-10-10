@@ -44,6 +44,7 @@ StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
 StatusCode constexpr StatusPartial = 203;
 StatusCode constexpr StatusNoContent = 204;
+StatusCode constexpr StatusTemporaryRedirect = 307;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;

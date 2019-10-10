@@ -24,6 +24,7 @@
 
 #include <chrono>
 
+#include "Cluster/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
@@ -56,39 +57,34 @@ RestStatus RestSupervisionStateHandler::execute() {
     return RestStatus::DONE;
   }
 
-  VPackBuffer<uint8_t> bodyBuffer;
-  VPackBuilder bodyBuilder(bodyBuffer);
-  {
-    VPackArrayBuilder env(&bodyBuilder);
-    {
-      VPackArrayBuilder trx(&bodyBuilder);
-      bodyBuilder.add(VPackValue("/arango/Target"));
-    }
-  }
-
   auto self(shared_from_this());
 
   using namespace std::chrono_literals;
 
-  AsyncAgencyComm().sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 1s, std::move(bodyBuffer))
-    .then([this, self](arangodb::futures::Try<AsyncAgencyCommResult> &&out) {
-      if (out.hasValue()) {
-        auto &result = out.get();
+  return waitForFuture(AsyncAgencyComm().getValues(arangodb::cluster::paths::root()->arango()->target())
+    .thenValue([this, self](AgencyReadResult &&result) {
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
 
-        if (result.ok()) {
-          auto &response = result.response;
-
-          resetResponse(rest::ResponseCode::OK);
-          _response->setPayload(response->slice(), true);
-
-        } else {
-          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+        VPackBuffer<uint8_t> response;
+        {
+          VPackBuilder bodyBuilder(response);
+          VPackObjectBuilder ob(&bodyBuilder);
+          bodyBuilder.add("ToDo", result.value().get("ToDo"));
+          bodyBuilder.add("Pending", result.value().get("Pending"));
+          bodyBuilder.add("Finished", result.value().get("Finished"));
+          bodyBuilder.add("Failed", result.value().get("Failed"));
         }
-      } else {
-        generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
-      }
-      continueHandlerExecution();
-    });
 
-  return RestStatus::WAITING;
+        resetResponse(rest::ResponseCode::OK);
+        _response->setPayload(std::move(response), true);
+      } else {
+        generateError(result.asResult());
+      }
+    })
+    .thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    })
+    .thenError<std::exception>([this, self](std::exception const&) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+    }));
 }

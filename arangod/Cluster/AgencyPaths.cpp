@@ -25,3 +25,23 @@
 using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::cluster::paths;
+
+std::shared_ptr<Root::Arango const> arangodb::cluster::paths::aliases::arango() {
+  return root()->arango();
+}
+
+std::shared_ptr<Root::Arango::Plan const> arangodb::cluster::paths::aliases::plan() {
+  return root()->arango()->plan();
+}
+
+std::shared_ptr<Root::Arango::Current const> arangodb::cluster::paths::aliases::current() {
+  return root()->arango()->current();
+}
+
+std::shared_ptr<Root::Arango::Target const> arangodb::cluster::paths::aliases::target() {
+  return root()->arango()->target();
+}
+
+std::shared_ptr<Root::Arango::Supervision const> arangodb::cluster::paths::aliases::supervision() {
+  return root()->arango()->supervision();
+}
