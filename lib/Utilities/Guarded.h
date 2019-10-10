@@ -73,6 +73,11 @@ class Guarded {
   template <typename... Args>
   explicit Guarded(Args...);
 
+  Guarded(Guarded const&) = delete;
+  Guarded(Guarded&&) = delete;
+  Guarded& operator=(Guarded const&) = delete;
+  Guarded& operator=(Guarded&&) = delete;
+
   // TODO with C++17, these could be noexcept depending on callback being noexcept
   template <class F>
   std::result_of_t<F(T&)> doUnderLock(F callback);
