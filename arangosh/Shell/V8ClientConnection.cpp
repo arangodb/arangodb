@@ -1700,7 +1700,7 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     char const* str = reinterpret_cast<char const*>(sb.data());
 
     if (res->isContentTypeJSON()) {
-      char *error = nullptr;
+      char* error = nullptr;
       v8::Local<v8::Value> ret = TRI_FromJsonString(isolate, str, sb.size(), &error);
       if (error != nullptr) {
         std::string err("Error parsing the server JSON reply: ");
