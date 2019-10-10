@@ -927,7 +927,7 @@ bool AgencyComm::exists(std::string const& key) {
     return false;
   }
 
-  auto parts = arangodb::basics::StringUtils::split(key, "/");
+  auto parts = arangodb::basics::StringUtils::split(key, '/');
   std::vector<std::string> allParts;
   allParts.reserve(parts.size() + 1);
   allParts.push_back(AgencyCommManager::path());
