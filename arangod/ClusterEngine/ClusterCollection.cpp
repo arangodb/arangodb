@@ -406,11 +406,6 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Me
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void ClusterCollection::invokeOnAllElements(transaction::Methods* trx,
-                                            std::function<bool(LocalDocumentId const&)> /*callback*/) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 ////////////////////////////////////
 // -- SECTION DML Operations --
 ///////////////////////////////////

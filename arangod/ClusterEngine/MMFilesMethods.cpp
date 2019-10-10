@@ -22,10 +22,13 @@
 
 #include "MMFilesMethods.h"
 
-#include "Cluster/ClusterComm.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Futures/Utilities.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -44,8 +47,9 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
 
   auto& server = ce->server();
   // Set a few variables needed for our work:
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+  NetworkFeature const& nf = server.getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
@@ -59,25 +63,32 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
 
   std::string const baseUrl =
       "/_db/" + basics::StringUtils::urlEncode(dbname) + "/_api/collection/";
-  std::shared_ptr<std::string> body;
+
+  VPackBuffer<uint8_t> body;
+  network::Headers headers;
+  network::RequestOptions options;
+  options.timeout = network::Timeout(600.0);
 
   // now we notify all leader and follower shards
   std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
-  std::vector<ClusterCommRequest> requests;
+  std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
     for (ServerID const& server : shard.second) {
       std::string uri =
           baseUrl + basics::StringUtils::urlEncode(shard.first) + "/rotate";
-      requests.emplace_back("server:" + server, arangodb::rest::RequestType::PUT,
-                            std::move(uri), body);
+      auto f = network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Put,
+                                    std::move(uri), body, headers, options);
+      futures.emplace_back(std::move(f));
     }
   }
 
-  size_t nrGood = cc->performRequests(requests, 600.0, Logger::ENGINES, false);
-
-  if (nrGood < requests.size()) {
-    return TRI_ERROR_FAILED;
+  auto responses = futures::collectAll(futures).get();
+  for (auto const& r : responses) {
+    if (!r.hasValue() || r.get().fail()) {
+      return TRI_ERROR_FAILED;
+    }
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 

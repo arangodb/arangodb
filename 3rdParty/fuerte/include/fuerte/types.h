@@ -145,7 +145,7 @@ std::string to_string(ProtocolType type);
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType { Unset, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
+enum class ContentType { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 

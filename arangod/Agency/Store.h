@@ -148,6 +148,10 @@ class Store {
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
 
+  /// @brief Split strings by forward slashes, omitting empty strings
+  /// this function is only public so that it can be test by unit tests
+  static std::vector<std::string> split(std::string const& str);
+
  private:
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;

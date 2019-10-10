@@ -23,6 +23,10 @@
 #ifndef ARANGOD_FUTURES_UTILITIES_H
 #define ARANGOD_FUTURES_UTILITIES_H 1
 
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <vector>
 
 #include "Futures/Future.h"

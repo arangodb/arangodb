@@ -1,10 +1,9 @@
 devel
 -----
 
-* Bugfix: In an AQL cluster query, when gathering unsorted data in combination
-  with a LIMIT with non-zero offset, if this offset exactly matches the number
-  of documents in the first shards consumed, the rest of the documents was not
-  returned.
+* Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
+
+* Fixed search not working in document view while in code mode
 
 * Show shards of all collections (including system collections) in the web UI's shard
   distribution view.

@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
@@ -72,22 +74,26 @@ RestStatus RestTasksHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestTasksHandler::forwardingTarget() {
+std::string RestTasksHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }
 
 void RestTasksHandler::getTasks() {

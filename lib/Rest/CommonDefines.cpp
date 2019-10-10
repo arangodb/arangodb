@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,30 +21,34 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_TASKS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_TASKS_HANDLER_H 1
+#include <ostream>
+#include <string>
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "CommonDefines.h"
+
+#include "Basics/StaticStrings.h"
 
 namespace arangodb {
-class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
- public:
-  RestTasksHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+namespace rest {
 
- public:
-  char const* name() const override final { return "RestTasksHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
-  RestStatus execute() override;
+std::string contentTypeToString(ContentType type) {
+  switch (type) {
+    case ContentType::VPACK:
+      return StaticStrings::MimeTypeVPack;
+    case ContentType::TEXT:
+      return StaticStrings::MimeTypeText;
+    case ContentType::HTML:
+      return StaticStrings::MimeTypeHtml;
+    case ContentType::DUMP:
+      return StaticStrings::MimeTypeDump;
+    case ContentType::CUSTOM:
+      return "";  // use value from headers
+    case ContentType::UNSET:
+    case ContentType::JSON:
+    default:
+      return StaticStrings::MimeTypeJson;
+  }
+}
 
- protected:
-  virtual std::string forwardingTarget() override;
-
- private:
-  void getTasks();
-  void registerTask(bool byId);
-  void deleteTask();
-};
+}  // namespace rest
 }  // namespace arangodb
-
-#endif
