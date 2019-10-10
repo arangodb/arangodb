@@ -1751,9 +1751,8 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
           }
         }
 
-        if (!done) {
-          lastNode = current;
-        }
+        lastNode = current;
+        
       } else if (currentType == EN::INDEX || currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
                  currentType == EN::ENUMERATE_LIST || currentType == EN::TRAVERSAL ||
