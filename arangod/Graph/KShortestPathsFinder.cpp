@@ -50,6 +50,8 @@ KShortestPathsFinder::~KShortestPathsFinder() {}
 // Sets up k-shortest-paths traversal from start to end
 bool KShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
+  TRI_ASSERT(start.isString());
+  TRI_ASSERT(end.isString());
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
 

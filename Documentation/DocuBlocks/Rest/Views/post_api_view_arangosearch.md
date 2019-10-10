@@ -21,8 +21,7 @@ A primary sort order can be defined to enable an AQL optimization. If a query
 iterates over all documents of a View, wants to sort them by attribute values
 and the (left-most) fields to sort by as well as their sorting direction match
 with the *primarySort* definition, then the `SORT` operation is optimized away.
-This option is immutable.
-
+This option is immutable.<br/>
 Expects an array of objects, each specifying a field (attribute path) and a
 sort direction (`"asc` for ascending, `"desc"` for descending):
 `[ { "field": "attr", "direction": "asc"}, … ]`

@@ -279,7 +279,7 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
     } else if (maybeRev && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
       generatePreconditionFailed(result.slice());
     } else {
-      generateTransactionError(collectionName, result.result, key);
+      generateTransactionError(collectionName, result, key);
     }
     return;
   }
