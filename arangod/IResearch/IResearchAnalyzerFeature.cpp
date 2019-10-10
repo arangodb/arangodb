@@ -71,15 +71,18 @@
 #include "Basics/error.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
+#include "Futures/Utilities.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -747,13 +750,17 @@ arangodb::Result visitAnalyzers( // visit analyzers
   // FIXME TODO find a better way to query a cluster collection
   // workaround for aql::Query failing to execute on a cluster collection
   if (arangodb::ServerState::instance()->isDBServer()) {
-    auto cc = arangodb::ClusterComm::instance();
+    arangodb::NetworkFeature const& feature =
+        vocbase.server().getFeature<arangodb::NetworkFeature>();
+    arangodb::network::ConnectionPool* pool = feature.pool();
 
-    if (!cc) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failure to find 'ClusterComm' instance while visiting Analyzer collection '") + ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() + "'"
-      );
+    if (!pool) {
+      return arangodb::Result(      // result
+          TRI_ERROR_SHUTTING_DOWN,  // code
+          std::string("failure to find connection pool while visiting Analyzer "
+                      "collection '") +
+              ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() +
+              "', server is likely shutting down");
     }
 
     auto collection = getAnalyzerCollection(vocbase);
@@ -762,8 +769,15 @@ arangodb::Result visitAnalyzers( // visit analyzers
       return arangodb::Result(); // nothing to load
     }
 
-    static const std::string body("{}"); // RestSimpleQueryHandler::allDocuments() expects opbject (calls get() on slice)
-    std::vector<arangodb::ClusterCommRequest> requests;
+    // RestSimpleQueryHandler::allDocuments() expects opbject (calls get() on slice)
+    VPackBuffer<uint8_t> buffer;
+    {
+      VPackBuilder builder(buffer);
+      builder.openObject();
+      builder.close();
+    }
+    arangodb::network::Headers headers;
+    std::vector<arangodb::network::FutureRes> futures;
 
     // create a request for every shard
     //for (auto& entry: collection->errorNum()) {
@@ -774,50 +788,53 @@ arangodb::Result visitAnalyzers( // visit analyzers
         + arangodb::RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH
         + "?collection=" + shardId;
 
-      requests.emplace_back( // add shard request
-        "shard:" + shardId, // shard
-        arangodb::rest::RequestType::PUT, // request type as per SimpleQueryHandker
-        url, // request url
-        std::shared_ptr<std::string const>(&body, [](std::string const*)->void {}) // body
-      );
+      auto f = arangodb::network::sendRequest(pool,
+                                              "shard:" + shardId,  // shard
+                                              arangodb::fuerte::RestVerb::Put,  // request type as per SimpleQueryHandker
+                                              url,     // request url
+                                              buffer,  // body
+                                              arangodb::network::Timeout(120.0), headers);
+      futures.emplace_back(std::move(f));
     }
 
-    // same timeout as in ClusterMethods::getDocumentOnCoordinator()
-    cc->performRequests( // execute requests
-      requests, 120.0, arangodb::iresearch::TOPIC, false, false // args
-    );
+    auto results = arangodb::futures::collectAll(futures).get();
+    for (auto& r : results) {
+      auto& res = r.get();
+      if (res.error != arangodb::fuerte::Error::NoError) {
+        return arangodb::Result(arangodb::network::fuerteToArangoErrorCode(res));
+      }
 
-    for (auto& request: requests) {
-      if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == request.result.errorCode) {
+      if (res.response->statusCode() == arangodb::fuerte::StatusNotFound) {
         continue; // treat missing collection as if there are no analyzers
       }
 
-      if (TRI_ERROR_NO_ERROR != request.result.errorCode) {
-        return arangodb::Result( // result
-          request.result.errorCode, request.result.errorMessage // args
-        );
+      std::vector<VPackSlice> slices = res.response->slices();
+      if (slices.empty() || !slices[0].isObject()) {
+        return arangodb::Result(
+            TRI_ERROR_INTERNAL,
+            "got misformed result while visiting Analyzer collection'" + ANALYZER_COLLECTION_NAME +
+                "' in vocbase '" + vocbase.name() + "'");
       }
 
-      if (!request.result.answer) {
-        return arangodb::Result( // result
-          TRI_ERROR_INTERNAL, // code
-          std::string("failed to get answer from 'ClusterComm' instance while visiting Analyzer collection '") + ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() + "'"
-        );
+      VPackSlice answer = slices[0];
+      arangodb::Result result =
+          arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+      if (result.fail()) {
+        return result;
       }
 
-      auto slice = request.result.answer->payload();
-
-      if (!slice.hasKey("result")) {
-        return arangodb::Result( // result
-          TRI_ERROR_INTERNAL, // code
-          std::string("failed to parse result from 'ClusterComm' instance while visiting Analyzer collection '") + ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() + "'"
-        );
+      if (!answer.hasKey("result")) {
+        return arangodb::Result(  // result
+            TRI_ERROR_INTERNAL,   // code
+            std::string(
+                "failed to parse result while visiting Analyzer collection '") +
+                ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() +
+                "'");
       }
 
-      auto res = resultVisitor(visitor, vocbase, slice.get("result"));
-
-      if (!res.ok()) {
-        return res;
+      result = resultVisitor(visitor, vocbase, answer.get("result"));
+      if (!result.ok()) {
+        return result;
       }
     }
 

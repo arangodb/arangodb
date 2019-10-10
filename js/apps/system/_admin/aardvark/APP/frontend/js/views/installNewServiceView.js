@@ -56,17 +56,17 @@
 
     generateNewFoxxApp: function () {
       if (window.modalView.modalTestAll()) {
-        var mount, flag;
+        var mount, info, options;
         if (this._upgrade) {
           mount = window.App.replaceAppData.mount;
-          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
             mount = '/' + mount;
           }
         }
-        var info = {
+
+        info = {
           name: window.arangoHelper.escapeHtml($('#new-app-name').val()),
           documentCollections: _.map($('#new-app-document-collections').select2('data'), function (d) {
             return window.arangoHelper.escapeHtml(d.text);
@@ -79,7 +79,9 @@
           license: window.arangoHelper.escapeHtml($('#new-app-license').val()),
           description: window.arangoHelper.escapeHtml($('#new-app-description').val())
         };
-        this.collection.generate(info, mount, this.installCallback.bind(this), flag);
+
+        options = arangoHelper.getFoxxFlags();
+        this.collection.install('generate', info, mount, options, this.installCallback.bind(this));
       }
       window.modalView.hide();
     },

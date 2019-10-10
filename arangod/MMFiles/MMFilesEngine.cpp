@@ -1666,7 +1666,7 @@ MMFilesEngineCollectionFiles MMFilesEngine::scanCollectionDirectory(std::string 
     std::string extension = parts[1];
     std::string isDead = (parts.size() > 2) ? parts[2] : "";
 
-    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+    std::vector<std::string> next = StringUtils::split(parts[0], '-');
 
     if (next.size() < 2) {
       LOG_TOPIC("1f937", TRACE, Logger::DATAFILES)
@@ -2369,7 +2369,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
       continue;
     }
 
-    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+    std::vector<std::string> next = StringUtils::split(parts[0], '-');
     if (next.size() < 2) {
       continue;
     }
@@ -2833,7 +2833,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     std::string extension = parts[1];
     std::string isDead = (parts.size() > 2) ? parts[2] : "";
 
-    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+    std::vector<std::string> next = StringUtils::split(parts[0], '-');
 
     if (next.size() < 2) {
       LOG_TOPIC("25027", TRACE, Logger::DATAFILES)

@@ -268,10 +268,10 @@ function ahuacatlProfilerTestSuite () {
 
     testCountCollectBlock : function () {
       const query = 'FOR i IN 1..@rows COLLECT WITH COUNT INTO c RETURN c';
-      const genNodeList = (rows, batches) => [
+      const genNodeList = (rows) => [
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : EnumerateListBlock, calls : 1, items : rows },
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];
@@ -501,10 +501,10 @@ function ahuacatlProfilerTestSuite () {
     testLimitBlock3: function() {
       const query = 'FOR i IN 1..@rows LIMIT @offset, @limit RETURN i';
 
-      const genNodeList = (rows, batches) => [
+      const genNodeList = (rows) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows) + offsetBatches(rows), items: limit(rows) + offset(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows) + skipOffsetBatches(rows), items: limit(rows) + offset(rows)},
         {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
         {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];

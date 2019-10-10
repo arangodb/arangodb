@@ -37,7 +37,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
@@ -709,10 +708,10 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
-static bool findRefusal(std::vector<ClusterCommRequest> const& requests) {
-  for (auto const& it : requests) {
-    if (it.done && it.result.status == CL_COMM_RECEIVED &&
-        it.result.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
+static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
+  for (auto const& it : responses) {
+    if (it.hasValue() && it.get().ok() &&
+        it.get().response->statusCode() == fuerte::StatusNotAcceptable) {
       return true;
     }
   }
@@ -1178,42 +1177,6 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
   return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
-/// @brief Iterate over all elements of the collection.
-void transaction::Methods::invokeOnAllElements(std::string const& collectionName,
-                                               std::function<bool(LocalDocumentId const&)> callback) {
-  TRI_ASSERT(_state != nullptr && _state->status() == transaction::Status::RUNNING);
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_INTERNAL);
-  } else if (_state->isCoordinator()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
-  TRI_ASSERT(trxCol != nullptr);
-  std::shared_ptr<LogicalCollection> const& collection = trxCol->collection();
-  TRI_ASSERT(collection != nullptr);
-  _transactionContextPtr->pinData(collection.get());
-
-  Result lockResult =
-      trxCol->lockRecursive(AccessMode::Type::READ, _state->nestingLevel());
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    THROW_ARANGO_EXCEPTION(lockResult);
-  }
-
-  TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
-
-  collection->invokeOnAllElements(this, callback);
-
-  if (lockResult.is(TRI_ERROR_LOCKED)) {
-    Result res = trxCol->unlockRecursive(AccessMode::Type::READ, _state->nestingLevel());
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-}
-
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
@@ -1642,7 +1605,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value) -> Result {
+  auto workForOneDocument = [&](VPackSlice const value, bool isBabies) -> Result {
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
@@ -1680,7 +1643,13 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      // in the single document case no body needs to be created at all.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
+        TRI_ASSERT(prevDocResult.revisionId() != 0);
+        
+        arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
+                              0, nullptr, nullptr);
+      }
       return res;
     }
 
@@ -1711,14 +1680,14 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
-      res = workForOneDocument(s);
+      res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
       }
     }
     res.reset(); // With babies reporting is handled in the result body
   } else {
-    res = workForOneDocument(value);
+    res = workForOneDocument(value, false);
   }
 
   auto resDocs = resultBuilder.steal();
@@ -2493,42 +2462,43 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
 
     // Now replicate the good operations on all followers:
-    auto cc = arangodb::ClusterComm::instance();
-
-    if (cc != nullptr) {
+    NetworkFeature const& nf = vocbase().server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool != nullptr) {
       // nullptr only happens on controlled shutdown
       std::string path =
           "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) +
           "/truncate?isSynchronousReplication=" + ServerState::instance()->getId();
-      auto body = std::make_shared<std::string>();
+      VPackBuffer<uint8_t> body;
 
       // Now prepare the requests:
-      std::vector<ClusterCommRequest> requests;
-      requests.reserve(followers->size());
+      std::vector<network::FutureRes> futures;
+      futures.reserve(followers->size());
 
       for (auto const& f : *followers) {
-        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-        ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
-        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
-                              path, body, std::move(headers));
+        network::Headers headers;
+        ClusterTrxMethods::addTransactionHeader(*this, f, headers);
+        auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
+                                           path, body, std::move(headers));
+        futures.emplace_back(std::move(future));
       }
 
-      cc->performRequests(requests, 120.0, Logger::REPLICATION, false);
+      auto responses = futures::collectAll(futures).get();
       // If any would-be-follower refused to follow there must be a
       // new leader in the meantime, in this case we must not allow
       // this operation to succeed, we simply return with a refusal
       // error (note that we use the follower version, since we have
       // lost leadership):
-      if (findRefusal(requests)) {
+      if (findRefusal(responses)) {
         return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
-            requests[i].done && requests[i].result.status == CL_COMM_RECEIVED &&
-            (requests[i].result.answer_code == rest::ResponseCode::ACCEPTED ||
-             requests[i].result.answer_code == rest::ResponseCode::OK);
+            responses[i].hasValue() && responses[i].get().ok() &&
+            (responses[i].get().response->statusCode() == fuerte::StatusAccepted ||
+             responses[i].get().response->statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           Result res = followerInfo->remove((*followers)[i]);
@@ -2578,11 +2548,6 @@ futures::Future<OperationResult> transaction::Methods::countAsync(std::string co
 futures::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
   auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return futures::makeFuture(OperationResult(TRI_ERROR_SHUTTING_DOWN));
-  }
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:

@@ -34,8 +34,6 @@
 #include <vector>
 
 namespace arangodb {
-struct ClusterCommResult;
-
 namespace transaction {
 class Methods;
 }
