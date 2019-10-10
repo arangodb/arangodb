@@ -68,11 +68,11 @@ struct OperationResult {
   }
 
   // create result with details
-  OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
+  OperationResult(Result res, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   OperationOptions options = {},
                   std::unordered_map<int, size_t> countErrorCodes =
                       std::unordered_map<int, size_t>())
-      : result(std::move(result)),
+      : result(std::move(res)),
         buffer(std::move(buffer)),
         _options(std::move(options)),
         countErrorCodes(std::move(countErrorCodes)) {
