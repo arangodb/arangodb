@@ -1,11 +1,3 @@
-v3.5.2 (XXXX-XX-XX)
--------------------
-
-* Bugfix: In an AQL cluster query, when gathering unsorted data in combination
-  with a LIMIT with non-zero offset, if this offset exactly matches the number
-  of documents in the first shards consumed, the rest of the documents was not
-  returned.
-
 v3.5.1 (2019-10-07)
 -------------------
 
