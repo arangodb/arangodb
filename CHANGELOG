@@ -1,6 +1,8 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Improved performance of some agency helper functions.
+
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
