@@ -3,9 +3,7 @@ devel
 
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
-* Remove operations documents in the cluster will now use an optimization, if all sharding keys 
-  were specified. Should the sharding keys not match the values in the actual document
-  a not found error will be returned.
+* Fixed search not working in document view while in code mode
 
 * Bugfix: In an AQL cluster query, when gathering unsorted data in combination
   with a LIMIT with non-zero offset, if this offset exactly matches the number

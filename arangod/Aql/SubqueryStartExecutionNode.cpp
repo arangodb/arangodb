@@ -29,9 +29,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
-#include "Meta/static_assert_size.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
