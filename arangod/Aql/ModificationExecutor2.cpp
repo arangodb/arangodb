@@ -42,8 +42,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-class NoStats;
-
 // Extracts key, and rev in from input AqlValue value.
 //
 // value can either be an object or a string.
@@ -61,10 +59,6 @@ Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver con
   TRI_ASSERT(key.empty());
   TRI_ASSERT(rev.empty());
   if (value.isObject()) {
-    // // TODO:
-    // auto resolver = _infos._trx->resolver();
-    // TRI_ASSERT(resolver != nullptr);
-
     bool mustDestroy;
     AqlValue sub = value.get(resolver, StaticStrings::KeyString, mustDestroy, false);
     AqlValueGuard guard(sub, mustDestroy);
@@ -155,9 +149,10 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
   return {state, ModificationStats{}};
 }
 
-// Outputs accumulated results
+// Outputs accumulated results, and counts the statistics
 template <typename FetcherType, typename ModifierType>
-void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output) {
+void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
+                                                                Stats& stats) {
   // If we have made no modifications or are silent,
   // we can just copy rows; this is an optimisation for silent
   // queries
@@ -197,14 +192,23 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
               AqlValueGuard guard(value, true);
               output.moveValueInto(_infos._outputOldRegisterId, row, guard);
             }
+            if (_infos._doCount) {
+              stats.incrWritesExecuted();
+            }
             break;
           }
           case ModOperationType::IGNORE_RETURN: {
             output.copyRow(row);
+            if (_infos._doCount) {
+              stats.incrWritesIgnored();
+            }
             break;
           }
           case ModOperationType::IGNORE_SKIP: {
             output.copyRow(row);
+            if (_infos._doCount) {
+              stats.incrWritesIgnored();
+            }
             break;
           }
           case ModOperationType::APPLY_UPDATE:
@@ -222,6 +226,7 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
       }
     }
     output.advanceRow();
+    _modifier.advanceIterator();
   }
 }
 
@@ -242,14 +247,15 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
     return {ExecutionState::WAITING, std::move(stats)};
   }
 
-  auto operationResult = _modifier.transact();
-  // We have no way of handling anything other than .ok() here,
-  // and the modifier should have thrown an exception
-  // if something went wrong.
-  TRI_ASSERT(operationResult.ok());
+  auto transactResult = _modifier.transact();
 
-  // TODO: something about stats.
-  doOutput(output);
+  // If the transaction resulted in any errors,
+  // this function will throw an arango exception.
+  if (!transactResult.ok()) {
+    _modifier.throwTransactErrors();
+  }
+
+  doOutput(output, stats);
 
   // TODO:
   // We want to say "has more" if upstream still has rows.

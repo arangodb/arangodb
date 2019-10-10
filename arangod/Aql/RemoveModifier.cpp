@@ -69,12 +69,12 @@ Result RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
       _modifier._accumulator.add(keyDocBuilder.slice());
       _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
     } else {
-      _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
+      // error happened extracting key, record in operations map
+      _modifier._operations.push_back({ModOperationType::IGNORE_SKIP, row});
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
   } else {
-    // error happened extracting key, record in operations map
-    _modifier._operations.push_back({ModOperationType::IGNORE_SKIP, row});
-    // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+    _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
   }
 
   return Result{};

@@ -146,7 +146,6 @@ Result UpsertModifier::transact() {
     if (_insertResults.fail()) {
       THROW_ARANGO_EXCEPTION(_insertResults.result);
     }
-    // TODO: Stats
   }
 
   auto toUpdate = _updateAccumulator.slice();
@@ -161,8 +160,8 @@ Result UpsertModifier::transact() {
     if (_updateResults.fail()) {
       THROW_ARANGO_EXCEPTION(_updateResults.result);
     }
-    // TODO: stats
   }
+
   return Result{};
 }
 
@@ -170,6 +169,8 @@ size_t UpsertModifier::size() const {
   // TODO: spray around some asserts
   return _insertAccumulator.slice().length() + _updateAccumulator.slice().length();
 }
+
+void UpsertModifier::throwTransactErrors() { TRI_ASSERT(false); }
 
 Result UpsertModifier::setupIterator() {
   _operationsIterator = _operations.begin();

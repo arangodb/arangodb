@@ -49,6 +49,8 @@ class UpsertModifier {
 
   size_t size() const;
 
+  void throwTransactErrors();
+
   // TODO: Make this a real iterator
   Result setupIterator();
   bool isFinishedIterator();

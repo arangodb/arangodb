@@ -72,6 +72,18 @@ size_t SimpleModifier<ModifierCompletion>::size() const {
 }
 
 template <typename ModifierCompletion>
+void SimpleModifier<ModifierCompletion>::throwTransactErrors() {
+  std::string message;
+
+  auto const& errorCounter = _results.countErrorCodes;
+  // TODO: This mirrors the old code, but WTF?
+  auto code = errorCounter.begin()->first;
+
+  // TODO: this needs to be fixed
+  TRI_ASSERT(false);
+}
+
+template <typename ModifierCompletion>
 Result SimpleModifier<ModifierCompletion>::setupIterator() {
   _operationsIterator = _operations.begin();
   _resultsIterator = VPackArrayIterator{_results.slice()};

@@ -88,7 +88,7 @@ class ModificationExecutor2 {
 
  protected:
   std::pair<ExecutionState, Stats> doCollect(size_t const maxOutputs);
-  void doOutput(OutputAqlItemRow& output);
+  void doOutput(OutputAqlItemRow& output, Stats& stats);
 
   ModificationExecutorInfos& _infos;
   FetcherType& _fetcher;
