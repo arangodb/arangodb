@@ -37,6 +37,8 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 
+#include "FetcherTestHelper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1144,6 +1146,39 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
+
+class SingleRowFetcherWrapper
+    : public fetcherHelper::PatternTestWrapper<SingleRowFetcher<::arangodb::aql::BlockPassthrough::Disable>> {
+ public:
+  SingleRowFetcherWrapper() : PatternTestWrapper() {}
+
+  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    ExecutionState state = ExecutionState::HASMORE;
+
+    // Fetch all rows until done
+    for (auto const& it : dataResults) {
+      std::tie(state, row) = _fetcher.fetchRow();
+      if (it != dataResults.back()) {
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      }
+      // We cannot guarantee the DONE case on end, as we potentially need to fetch from upstream
+      ASSERT_TRUE(row.isInitialized());
+      EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
+    }
+    // Now assert that we will forever stay in the DONE state and do not move on.
+    std::tie(state, row) = _fetcher.fetchRow();
+    EXPECT_EQ(state, ExecutionState::DONE);
+    ASSERT_FALSE(row.isInitialized());
+  }
+};
+
+TEST_SHADOWROW_PATTERN_1(SingleRowFetcherWrapper, SingleRowFetcherPattern1Test);
+TEST_SHADOWROW_PATTERN_2(SingleRowFetcherWrapper, SingleRowFetcherPattern2Test);
+TEST_SHADOWROW_PATTERN_3(SingleRowFetcherWrapper, SingleRowFetcherPattern3Test);
+TEST_SHADOWROW_PATTERN_4(SingleRowFetcherWrapper, SingleRowFetcherPattern4Test);
+TEST_SHADOWROW_PATTERN_5(SingleRowFetcherWrapper, SingleRowFetcherPattern5Test);
+TEST_SHADOWROW_PATTERN_6(SingleRowFetcherWrapper, SingleRowFetcherPattern6Test);
 
 }  // namespace aql
 }  // namespace tests

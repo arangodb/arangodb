@@ -289,8 +289,7 @@ void ImportFeature::start() {
 
   int err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
-  auto dbName = client.databaseName();
-  bool createdDatabase = false;
+  auto const dbName = client.databaseName();
 
   auto successfulConnection = [&]() {
     std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(),
@@ -343,12 +342,15 @@ void ImportFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    successfulConnection();
-
     // restore old database name
     client.setDatabaseName(dbName);
-    versionString = _httpClient->getServerVersion(nullptr);
-    createdDatabase = true;
+    err = TRI_ERROR_NO_ERROR;
+    versionString = _httpClient->getServerVersion(&err);
+  
+    if (err != TRI_ERROR_NO_ERROR) {
+      // disconnecting here will abort arangoimport a few lines below
+      _httpClient->disconnect();
+    }
   }
 
   if (!_httpClient->isConnected()) {
@@ -359,10 +361,12 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  TRI_ASSERT(client.databaseName() == dbName);
+    
   // successfully connected
-  if (!createdDatabase) {
-    successfulConnection();
-  }
+  // print out connection info
+  successfulConnection();
+
   _httpClient->disconnect();  // we do not reuse this anymore
 
   SimpleHttpClientParams params = _httpClient->params();

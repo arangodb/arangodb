@@ -1,23 +1,23 @@
 @startDocuBlock put_api_view_rename
-@brief renames a view
+@brief renames a View
 
-@RESTHEADER{PUT /_api/view/{view-name}/rename, Rename a view, modifyView:rename}
+@RESTHEADER{PUT /_api/view/{view-name}/rename, Rename a View, modifyView:rename}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{view-name,string,required}
-The name of the view to rename.
+The name of the View to rename.
 
 @RESTDESCRIPTION
-Renames a view. Expects an object with the attribute(s)
+Renames a View. Expects an object with the attribute(s)
 - *name*: The new name
 
 It returns an object with the attributes
-- *id*: The identifier of the view.
-- *name*: The new name of the view.
-- *type*: The view type.
+- *id*: The identifier of the View.
+- *name*: The new name of the View.
+- *type*: The View type.
 
-**Note**: this method is not available in a cluster.
+**Note**: This method is not available in a cluster.
 
 @RESTRETURNCODES
 
@@ -29,7 +29,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestViewPutViewRename}
+@EXAMPLE_ARANGOSH_RUN{RestViewPutRename}
     var viewName = "products1";
     var viewType = "arangosearch";
 

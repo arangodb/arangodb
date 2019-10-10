@@ -139,10 +139,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///
   /// This method will be called to determine if the request should be
   /// forwarded to another server, and if so, which server. If it should be
-  /// handled by this server, the method should return 0. Otherwise, this
-  /// method should return a valid (non-zero) short ID (TransactionID) for the
+  /// handled by this server, the method should return an empty string.
+  /// Otherwise, this method should return a valid short name for the
   /// target server.
-  virtual uint32_t forwardingTarget() { return 0; }
+  virtual std::string forwardingTarget() { return ""; }
 
   void resetResponse(rest::ResponseCode);
 
@@ -161,12 +161,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    auto self = shared_from_this();
-    std::move(f).thenFinal([self, this, &done](futures::Try<T>) -> void {
-      if (std::this_thread::get_id() == _executionMutexOwner.load()) {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+      auto thisPtr = self.get();
+      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
-        this->continueHandlerExecution();
+        thisPtr->continueHandlerExecution();
       }
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;

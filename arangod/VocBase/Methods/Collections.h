@@ -131,6 +131,10 @@ struct Collections {
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
                               DocCallback const& cb);
+  
+  static arangodb::Result checksum(LogicalCollection& collection,
+                                   bool withRevisions, bool withData,
+                                   uint64_t& checksum, TRI_voc_rid_t& revId);
 };
 #ifdef USE_ENTERPRISE
 Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,

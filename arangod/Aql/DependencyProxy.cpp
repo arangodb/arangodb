@@ -210,11 +210,12 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
     _skipped += skippedNow;
 
     // When the current dependency is done, advance.
-    if (state == ExecutionState::DONE && !advanceDependency()) {
-      size_t skipped = _skipped;
-      _skipped = 0;
-      TRI_ASSERT(skipped <= toSkip);
-      return {state, skipped};
+    if (state == ExecutionState::DONE) {
+      if (!advanceDependency()) {
+        break;
+      } else {
+        state = ExecutionState::HASMORE;
+      }
     }
   }
 

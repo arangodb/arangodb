@@ -44,6 +44,7 @@
   for (let i = 0; i < 100; ++i) {
     col.save({ _key: "export" + i, value1: i, value2: "this is export", value3: "export" + i, value4: "%<>\"'" });
   }
+  col.save({ _key: "special", value1: "abc \"def\" ghi", value2: [1, 2], value3: { foo: "bar" }, value4: "abc\r\ncd" }); 
 }
 
 return {

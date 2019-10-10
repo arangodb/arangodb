@@ -25,6 +25,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
@@ -44,7 +45,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -257,6 +260,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
+      
+    if (ServerState::instance()->isCoordinator()) {
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server());
+      if (res.fail()) {
+        return res;
+      }
+    }
 
     if (info.name.empty()) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -305,10 +315,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       }
 
       if (!hasDistribute) {
-        auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
-        if (minReplicationFactorSlice.isNone()) {
-          auto factor = vocbase.minReplicationFactor();
-          helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
+        // not an error: for historical reasons the write concern is read from the
+        // variable "minReplicationFactor"
+        auto writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+        if (writeConcernSlice.isNone()) {
+          helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
         }
       }
     } else  { // single server
@@ -442,30 +453,30 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 void Collections::createSystemCollectionProperties(std::string collectionName,
                                                    VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
 
-  uint32_t defaultReplFactor = vocbase.replicationFactor();
-  uint32_t defaultMinReplFactor = vocbase.minReplicationFactor();
+  uint32_t defaultReplicationFactor = vocbase.replicationFactor();
+  uint32_t defaultWriteConcern = vocbase.writeConcern();
 
   auto& server = application_features::ApplicationServer::server();
   if (server.hasFeature<ClusterFeature>()) {
-    defaultReplFactor = std::max(defaultReplFactor, server.getFeature<ClusterFeature>().systemReplicationFactor());
+    defaultReplicationFactor = std::max(defaultReplicationFactor, server.getFeature<ClusterFeature>().systemReplicationFactor());
   }
 
   {
     VPackObjectBuilder scope(&bb);
-    bb.add("isSystem", VPackSlice::trueSlice());
-    bb.add("waitForSync", VPackSlice::falseSlice());
-    bb.add("journalSize", VPackValue(1024 * 1024));
-    bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplFactor));
-    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultMinReplFactor));
+    bb.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
+    bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
+    bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
+    bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
+    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));
 
     // that forces all collections to be on the same physical DBserver
     if (vocbase.isSystem()) {
       if (collectionName != StaticStrings::UsersCollection) {
-        bb.add("distributeShardsLike", VPackValue(StaticStrings::UsersCollection));
+        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::UsersCollection));
       }
     } else {
       if (collectionName != StaticStrings::GraphsCollection) {
-        bb.add("distributeShardsLike", VPackValue(StaticStrings::GraphsCollection));
+        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphsCollection));
       }
     }
   }
@@ -606,6 +617,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
                                  std::to_string(collection.id()));
+
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(props, collection.vocbase().server());
+    if (res.fail()) {
+      return res;
+    }
 
     return info->properties(props, partialUpdate);
   } else {
@@ -894,4 +910,63 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
 
     return trx.finish(res);
   }
+}
+
+arangodb::Result Collections::checksum(LogicalCollection& collection,
+                                       bool withRevisions, bool withData,
+                                       uint64_t& checksum, TRI_voc_rid_t& revId) {
+  if (ServerState::instance()->isCoordinator()) {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
+  auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
+  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
+  Result res = trx.begin();
+
+  if (res.fail()) {
+    return res;
+  }
+  
+  revId = collection.revision(&trx);
+  checksum = 0;
+
+  // We directly read the entire cursor. so batchsize == limit
+  OperationCursor opCursor(trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL));
+
+  opCursor.allDocuments([&](LocalDocumentId const& token, VPackSlice slice) {
+    uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
+
+    if (withRevisions) {
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
+    }
+
+    if (withData) {
+      // with data
+      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+
+      for (auto const& it : VPackObjectIterator(slice, false)) {
+        // loop over all attributes, but exclude _rev, _id and _key
+        // _id is different for each collection anyway, _rev is covered by
+        // withRevisions, and _key was already handled before
+        VPackValueLength keyLength;
+        char const* key = it.key.getString(keyLength);
+        if (keyLength >= 3 && key[0] == '_' &&
+            ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+             (keyLength == 4 &&
+              (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+          // exclude attribute
+          continue;
+        }
+
+        localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+        localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
+      }
+    }
+
+    checksum ^= localHash;
+
+  }, 1000);
+
+  return trx.finish(res);
 }

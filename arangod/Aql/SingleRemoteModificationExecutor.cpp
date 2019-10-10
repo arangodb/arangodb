@@ -28,7 +28,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "ModificationExecutorTraits.h"
