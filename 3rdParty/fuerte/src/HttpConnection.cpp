@@ -58,10 +58,11 @@ template <SocketType ST>
 int HttpConnection<ST>::on_status(http_parser* parser, const char* at,
                                   size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
-  self->_response->header.meta.emplace(
-      std::string("http/") + std::to_string(parser->http_major) + '.' +
-          std::to_string(parser->http_minor),
-      std::string(at, len));
+  // required for some arango shenanigans
+  self->_response->header.addMeta(std::string("http/") +
+                                      std::to_string(parser->http_major) + '.' +
+                                      std::to_string(parser->http_minor),
+                                  std::string(at, len));
   return 0;
 }
 
@@ -244,21 +245,16 @@ void HttpConnection<ST>::startWriting() {
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
     if (!_active.exchange(true)) {  // we are the only ones here now
-      auto cb = [self = Connection::shared_from_this()] {
-        auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-
-        // we might get in a race with shutdownConnection
-        Connection::State state = thisPtr->_state.load();
-        if (state != Connection::State::Connected) {
-          thisPtr->_active.store(false);
-          if (state == Connection::State::Disconnected) {
-            thisPtr->startConnection();
-          }
-          return;
+      // we might get in a race with shutdownConnection
+      Connection::State state = this->_state.load();
+      if (state != Connection::State::Connected) {
+        this->_active.store(false);
+        if (state == Connection::State::Disconnected) {
+          this->startConnection();
         }
-        thisPtr->asyncWriteNextRequest();
-      };
-      asio_ns::post(*this->_io_context, std::move(cb));
+        return;
+      }
+      this->asyncWriteNextRequest();
     }
   }
 }
@@ -299,18 +295,28 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
       header.append(http::urlEncode(p.first) + "=" + http::urlEncode(p.second));
     }
   }
-  header.append(" HTTP/1.1\r\n");
-  header.append("Host: ");
-  header.append(this->_config._host);
-  header.append("\r\n");
+  header.append(" HTTP/1.1\r\n")
+      .append("Host: ")
+      .append(this->_config._host)
+      .append("\r\n");
   if (_idleTimeout.count() > 0) {  // technically not required for http 1.1
     header.append("Connection: Keep-Alive\r\n");
   } else {
     header.append("Connection: Close\r\n");
   }
+
+  header.append("Content-Type: ")
+      .append(to_string(req.contentType()))
+      .append("\r\n")
+      .append("Accept: ")
+      .append(to_string(req.acceptType()))
+      .append("\r\n");
+
   bool haveAuth = false;
-  for (auto const& pair : req.header.meta) {
-    if (boost::iequals(fu_content_length_key, pair.first)) {
+  for (auto const& pair : req.header.meta()) {
+    if (boost::iequals(fu_content_length_key, pair.first) ||
+        boost::iequals(fu_content_type_key, pair.first) ||
+        boost::iequals(fu_accept_key, pair.first)) {
       continue;  // skip content-length header
     }
 

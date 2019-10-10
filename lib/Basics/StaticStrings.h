@@ -217,6 +217,8 @@ class StaticStrings {
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
+  static std::string const Sharding;
+  static std::string const Satellite;
 
   // graph attribute names
   static std::string const GraphCollection;

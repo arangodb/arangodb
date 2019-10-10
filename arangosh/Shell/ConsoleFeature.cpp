@@ -38,6 +38,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -89,7 +90,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
       _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
   if (!_supportsColors) {
     _colors = false;
   }

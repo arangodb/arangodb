@@ -89,7 +89,7 @@ inline OperationOptions convertOptions(ModificationOptions const& in,
 inline std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_list<RegisterId> regList) {
   auto rv = make_shared_unordered_set();
   for (RegisterId regId : regList) {
-    if (regId < ExecutionNode::MaxRegisterId) {
+    if (regId < RegisterPlan::MaxRegisterId) {
       rv->insert(regId);
     }
   }
@@ -103,23 +103,23 @@ struct BoolWrapper {
 };
 
 struct ProducesResults : BoolWrapper {
-  explicit ProducesResults(bool b) : BoolWrapper(b){}
+  explicit ProducesResults(bool b) : BoolWrapper(b) {}
 };
 struct ConsultAqlWriteFilter : BoolWrapper {
-  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b){}
+  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b) {}
 };
 struct IgnoreErrors : BoolWrapper {
-  explicit IgnoreErrors(bool b) : BoolWrapper(b){}
+  explicit IgnoreErrors(bool b) : BoolWrapper(b) {}
 };
 struct DoCount : BoolWrapper {
-  explicit DoCount(bool b) : BoolWrapper(b){}
+  explicit DoCount(bool b) : BoolWrapper(b) {}
 };
 struct IsReplace : BoolWrapper {
-  explicit IsReplace(bool b) : BoolWrapper(b){}
+  explicit IsReplace(bool b) : BoolWrapper(b) {}
 };
 
 struct IgnoreDocumentNotFound : BoolWrapper {
-  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b){}
+  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {}
 };
 
 struct ModificationExecutorInfos : public ExecutorInfos {
@@ -185,9 +185,9 @@ struct ModificationExecutorInfos : public ExecutorInfos {
 template <typename FetcherType>
 struct ModificationExecutorBase {
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize =
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize =
         false;  // Disabled because prefetch does not work in the Cluster
                 // Maybe This should ask for a 1:1 relation.
   };

@@ -132,6 +132,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
   REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
+  REG_ERROR(ERROR_CLUSTER_TOO_MANY_SHARDS, "too many shards");
   REG_ERROR(ERROR_CLUSTER_COLLECTION_ID_EXISTS, "collection ID already exists");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, "could not create collection in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, "could not create collection");
@@ -259,8 +260,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph '%s' not found");
   REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
   REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "vertex collection does not exist or is not part of the graph");
-  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
-  REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
+  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "collection not a vertex collection");
+  REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "collection is not in list of orphan collections");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");

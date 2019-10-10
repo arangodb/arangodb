@@ -34,17 +34,17 @@
 #endif
 
 #include <velocypack/Iterator.h>
-#include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 #include <set>
 
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -1264,9 +1264,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  while (!application_features::ApplicationServer::isStopping() &&
-         shouldInitializeStructure()) {
-
+  auto& server = application_features::ApplicationServer::server();
+  while (!server.isStopping() && shouldInitializeStructure()) {
     LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
 
@@ -1417,7 +1416,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    if (application_features::ApplicationServer::isStopping()) {
+    auto& server = application_features::ApplicationServer::server();
+    if (server.isStopping()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1437,7 +1437,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     }
 
     // Check again for shutdown, since some time has passed:
-    if (application_features::ApplicationServer::isStopping()) {
+    if (server.isStopping()) {
       LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1482,7 +1482,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Some reporting:
     if (tries > 20) {
-      std::string serverState = application_features::ApplicationServer::server->stringifyState();
+      auto& server = application_features::ApplicationServer::server();
+      std::string serverState = server.stringifyState();
       LOG_TOPIC("2f181", INFO, Logger::AGENCYCOMM)
           << "Flaky agency communication to " << endpoint
           << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
@@ -1524,7 +1525,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
 
       // got a result or shutdown, we are done
-      if (result.successful() || application_features::ApplicationServer::isStopping()) {
+      auto& server = application_features::ApplicationServer::server();
+      if (result.successful() || server.isStopping()) {
         AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
         break;
       }
@@ -1885,8 +1887,8 @@ bool AgencyComm::shouldInitializeStructure() {
 
   size_t nFail = 0;
 
-  while (!application_features::ApplicationServer::isStopping()) {
-
+  auto& server = application_features::ApplicationServer::server();
+  while (!server.isStopping()) {
     auto result = getValues("Plan");
 
     if (!result.successful()) { // Not 200 - 299

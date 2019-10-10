@@ -25,22 +25,22 @@
 #define ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortExecutor.h"
-#include "Aql/SortNode.h"
-#include "AqlValue.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace arangodb {
+class Result;
 namespace transaction {
 class Methods;
 }
 
 namespace aql {
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class AqlItemMatrix;
@@ -49,6 +49,7 @@ class ExecutorInfos;
 class InputAqlItemRow;
 class NoStats;
 class OutputAqlItemRow;
+class SortExecutorInfos;
 struct SortRegister;
 
 /**
@@ -57,9 +58,9 @@ struct SortRegister;
 class ConstrainedSortExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;

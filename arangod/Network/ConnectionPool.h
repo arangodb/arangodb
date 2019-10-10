@@ -39,6 +39,7 @@ class Connection;
 class ConnectionBuilder;
 }  // namespace v1
 }  // namespace fuerte
+class ClusterInfo;
 
 namespace network {
 
@@ -53,11 +54,12 @@ class ConnectionPool final {
 
  public:
   struct Config {
-    uint64_t minOpenConnections = 1;      /// minimum number of open connections
-    uint64_t maxOpenConnections = 25;     /// max number of connections
-    uint64_t connectionTtlMilli = 60000;  /// unused connection lifetime
+    ClusterInfo* clusterInfo;
+    uint64_t minOpenConnections = 1;       /// minimum number of open connections
+    uint64_t maxOpenConnections = 25;      /// max number of connections
+    uint64_t connectionTtlMilli = 60000;   /// unused connection lifetime
     uint64_t requestTimeoutMilli = 120000; /// request timeout
-    unsigned int numIOThreads = 1;            /// number of IO threads
+    unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
   };
@@ -84,11 +86,14 @@ class ConnectionPool final {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  Ref leaseConnection(EndpointSpec const&);
+  Ref leaseConnection(std::string const& endpoint);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
+  
+  /// @brief shutdown all connections
+  void drainConnections();
 
   /// @brief shutdown all connections
   void shutdown();
@@ -97,10 +102,12 @@ class ConnectionPool final {
   void pruneConnections();
   
   /// @brief cancel connections to this endpoint
-  void cancelConnections(EndpointSpec const&);
+  void cancelConnections(std::string const& endpoint);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;
+
+  Config const& config() const;
 
  protected:
   /// @brief connection container

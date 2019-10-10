@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
@@ -183,7 +184,7 @@ class LogicalCollection : public LogicalDataSource {
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const;
   size_t replicationFactor() const;
-  size_t minReplicationFactor() const;
+  size_t writeConcern() const;
   std::string distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
@@ -264,7 +265,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures() const;
+  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);

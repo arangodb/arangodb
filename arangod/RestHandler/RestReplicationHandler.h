@@ -69,7 +69,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
 
  protected:
@@ -308,7 +309,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
                                              bool force, uint64_t numberOfShards,
                                              uint64_t replicationFactor,
-                                             uint64_t minReplicationFactor,
+                                             uint64_t writeConcern,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////

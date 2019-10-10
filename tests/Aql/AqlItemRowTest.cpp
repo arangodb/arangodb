@@ -44,17 +44,17 @@ namespace aql {
 class AqlItemRowsTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
                           std::unordered_set<RegisterId> const& regsToKeep,
                           bool assertNotInline = false) {
     ASSERT_TRUE(result.isArray());
-    ASSERT_TRUE(in->size() == result.length());
+    ASSERT_EQ(in->size(), result.length());
     for (size_t rowIdx = 0; rowIdx < in->size(); ++rowIdx) {
       VPackSlice row = result.at(rowIdx);
       ASSERT_TRUE(row.isArray());
-      ASSERT_TRUE(in->getNrRegs() == row.length());
+      ASSERT_EQ(in->getNrRegs(), row.length());
       for (RegisterId regId = 0; regId < in->getNrRegs(); ++regId) {
         AqlValue v = in->getValueReference(rowIdx, regId);
         if (regsToKeep.find(regId) == regsToKeep.end()) {
@@ -65,10 +65,10 @@ class AqlItemRowsTest : public ::testing::Test {
           // Work around test as we are unable to check the type via API.
           if (assertNotInline) {
             // If this object is not inlined it requires some memory
-            ASSERT_TRUE(v.memoryUsage() != 0);
+            ASSERT_NE(v.memoryUsage(), 0);
           } else {
             // If it is inlined it does not require memory.
-            ASSERT_TRUE(v.memoryUsage() == 0);
+            ASSERT_EQ(v.memoryUsage(), 0);
           }
         }
       }
@@ -288,7 +288,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
         testee.cloneValueInto(j, source, v);
         if (j == 3) {
           // We are not allowed to declare an incomplete row as produced
-          ASSERT_TRUE(!testee.produced());
+          ASSERT_FALSE(testee.produced());
         }
       }
       ASSERT_TRUE(testee.produced());

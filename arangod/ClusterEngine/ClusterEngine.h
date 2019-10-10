@@ -66,7 +66,7 @@ class ClusterEngine final : public StorageEngine {
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
-  std::unique_ptr<transaction::Manager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
@@ -225,7 +225,7 @@ class ClusterEngine final : public StorageEngine {
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
@@ -246,7 +246,7 @@ class ClusterEngine final : public StorageEngine {
  private:
   /// @brief open an existing database. internal function
   std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
+                                                      VPackSlice args,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
  public:

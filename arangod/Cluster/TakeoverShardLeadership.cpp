@@ -95,7 +95,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   }
 }
 
-TakeoverShardLeadership::~TakeoverShardLeadership() {}
+TakeoverShardLeadership::~TakeoverShardLeadership() = default;
 
 static void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
                               std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
@@ -158,8 +158,9 @@ static void handleLeadership(LogicalCollection& collection,
       // This will block the thread until we fetched a new current version
       // in maintenance main thread.
       feature.waitForLargerCurrentCounter(oldCounter);
-      auto currentInfo = ClusterInfo::instance()->getCollectionCurrent(
-          databaseName, std::to_string(collection.planId()));
+      auto& ci = collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      auto currentInfo =
+          ci.getCollectionCurrent(databaseName, std::to_string(collection.planId()));
       if (currentInfo == nullptr) {
         // Collection has been dropped we cannot continue here.
         return;
@@ -253,4 +254,3 @@ bool TakeoverShardLeadership::first() {
   notify();
   return false;
 }
-

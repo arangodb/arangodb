@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
@@ -114,7 +115,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   for (std::string const& name : vertexCollections) {
     if (ss->isCoordinator()) {
       try {
-        auto coll = ClusterInfo::instance()->getCollection(vocbase.name(), name);
+        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+        auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
           return std::make_pair(
@@ -147,7 +149,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   for (std::string const& name : edgeCollections) {
     if (ss->isCoordinator()) {
       try {
-        auto coll = ClusterInfo::instance()->getCollection(vocbase.name(), name);
+        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+        auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
           return std::make_pair(
@@ -218,7 +221,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  startsAfter("V8Phase");
+  startsAfter<application_features::V8FeaturePhase>();
 }
 
 PregelFeature::~PregelFeature() {
@@ -245,7 +248,8 @@ void PregelFeature::start() {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    _recoveryManager.reset(new RecoveryManager());
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    _recoveryManager.reset(new RecoveryManager(ci));
   }
 }
 
@@ -324,12 +328,13 @@ void PregelFeature::cleanupAll() {
   for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // 100ms to send out cancel calls
 }
 
-void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice const& body,
-                                           VPackBuilder& outBuilder) {
-  if (application_features::ApplicationServer::isStopping()) {
+/* static */ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
+                                                        std::string const& path,
+                                                        VPackSlice const& body,
+                                                        VPackBuilder& outBuilder) {
+  if (vocbase.server().isStopping()) {
     return;  // shutdown ongoing
   }
 
@@ -365,7 +370,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
                                                    std::string const& path,
                                                    VPackSlice const& body,
                                                    VPackBuilder& outBuilder) {
-  if (application_features::ApplicationServer::isStopping()) {
+  if (vocbase.server().isStopping()) {
     return;  // shutdown ongoing
   }
 

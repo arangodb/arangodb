@@ -31,7 +31,8 @@ namespace arangodb {
 
 class MMFilesRestWalHandler : public RestVocbaseBaseHandler {
  public:
-  MMFilesRestWalHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestWalHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*);
 
  public:
   RequestLane lane() const override final {

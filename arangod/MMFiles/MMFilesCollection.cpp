@@ -653,7 +653,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   //  _revisionsCache;
 }
 
-MMFilesCollection::~MMFilesCollection() {}
+MMFilesCollection::~MMFilesCollection() = default;
 
 TRI_voc_rid_t MMFilesCollection::revision(arangodb::transaction::Methods*) const {
   return _lastRevision;
@@ -686,9 +686,7 @@ int MMFilesCollection::close() {
       // save new "count" value
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool const doSync =
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->forceSyncProperties();
+          _logicalCollection.vocbase().server().getFeature<DatabaseFeature>().forceSyncProperties();
 
       engine->changeCollection(_logicalCollection.vocbase(), _logicalCollection, doSync);
     }
@@ -3205,9 +3203,8 @@ void MMFilesCollection::setCurrentVersion() {
   _logicalCollection.setVersion(static_cast<LogicalCollection::CollectionVersions>(
       LogicalCollection::currentVersion()));
 
-  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-                          "Database")
-                          ->forceSyncProperties();
+  bool const doSync =
+      _logicalCollection.vocbase().server().getFeature<DatabaseFeature>().forceSyncProperties();
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   engine->changeCollection(_logicalCollection.vocbase(), _logicalCollection, doSync);
@@ -4062,7 +4059,7 @@ void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key)
       }
     }
     std::this_thread::yield();
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_logicalCollection.vocbase().server().isStopping());
 
   // we can only get here on shutdown
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);

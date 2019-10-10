@@ -70,20 +70,6 @@ function ahuacatlParseTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test empty query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -125,6 +111,11 @@ function ahuacatlParseTestSuite () {
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return -");
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return +");
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return ."); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 /* "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 \" foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ' foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 `foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ´foo "); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

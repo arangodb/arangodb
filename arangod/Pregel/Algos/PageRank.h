@@ -32,7 +32,8 @@ namespace algos {
 
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
-  explicit PageRank(arangodb::velocypack::Slice const& params);
+  explicit PageRank(application_features::ApplicationServer& server,
+                    arangodb::velocypack::Slice const& params);
 
   GraphFormat<float, float>* inputFormat() const override;
 

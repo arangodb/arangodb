@@ -26,9 +26,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-ClusterRestReplicationHandler::ClusterRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response) {}
+ClusterRestReplicationHandler::ClusterRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response) {}
 
 void ClusterRestReplicationHandler::handleCommandBatch() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

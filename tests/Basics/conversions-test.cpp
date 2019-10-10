@@ -44,8 +44,8 @@
 
 #define CHECK_CONVERSION_INT8(value, expectedValue, buffer)            \
   actualLength = TRI_StringInt8InPlace((int8_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                  \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                  \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint8_t
@@ -53,8 +53,8 @@
 
 #define CHECK_CONVERSION_UINT8(value, expectedValue, buffer)             \
   actualLength = TRI_StringUInt8InPlace((uint8_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                    \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                    \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an int16_t
@@ -62,8 +62,8 @@
 
 #define CHECK_CONVERSION_INT16(value, expectedValue, buffer)             \
   actualLength = TRI_StringInt16InPlace((int16_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                    \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                    \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint16_t
@@ -71,8 +71,8 @@
 
 #define CHECK_CONVERSION_UINT16(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt16InPlace((uint16_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                      \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                      \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an int32_t
@@ -80,8 +80,8 @@
 
 #define CHECK_CONVERSION_INT32(value, expectedValue, buffer)             \
   actualLength = TRI_StringInt32InPlace((int32_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                    \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                    \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint32_t
@@ -89,8 +89,8 @@
 
 #define CHECK_CONVERSION_UINT32(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt32InPlace((uint32_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                      \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                      \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an int64_t
@@ -98,8 +98,8 @@
 
 #define CHECK_CONVERSION_INT64(value, expectedValue, buffer)             \
   actualLength = TRI_StringInt64InPlace((int64_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                    \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                    \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64_t
@@ -107,8 +107,8 @@
 
 #define CHECK_CONVERSION_UINT64(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt64InPlace((uint64_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                      \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                      \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint32_t to hex
@@ -116,8 +116,8 @@
 
 #define CHECK_CONVERSION_UINT32_HEX(value, expectedValue, buffer)             \
   actualLength = TRI_StringUInt32HexInPlace((uint32_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                         \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                         \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64_t to hex
@@ -125,8 +125,8 @@
 
 #define CHECK_CONVERSION_UINT64_HEX(value, expectedValue, buffer)             \
   actualLength = TRI_StringUInt64HexInPlace((uint64_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                         \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                         \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint32_t to octal
@@ -134,8 +134,8 @@
 
 #define CHECK_CONVERSION_UINT32_OCTAL(value, expectedValue, buffer)             \
   actualLength = TRI_StringUInt32OctalInPlace((uint32_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                           \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                           \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64_t to octal
@@ -143,8 +143,8 @@
 
 #define CHECK_CONVERSION_UINT64_OCTAL(value, expectedValue, buffer)             \
   actualLength = TRI_StringUInt64OctalInPlace((uint64_t)value, (char*)&buffer); \
-  EXPECT_TRUE(actualLength == strlen(expectedValue));                           \
-  EXPECT_TRUE(std::string(buffer) == std::string(expectedValue));
+  EXPECT_EQ(actualLength, strlen(expectedValue));                           \
+  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test int8_t conversion

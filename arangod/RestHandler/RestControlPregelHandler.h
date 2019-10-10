@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestControlPregelHandler(GeneralRequest*, GeneralResponse*);
+  RestControlPregelHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestControlPregelHandler"; }

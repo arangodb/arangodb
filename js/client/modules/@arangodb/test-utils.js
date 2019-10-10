@@ -103,7 +103,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let env = {};
   let customInstanceInfos = {};
   let healthCheck = function () {return true;};
-
+  let beforeStart = time();
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
     healthCheck = startStopHandlers.healthCheck;
   }
@@ -162,7 +162,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     _.defaults(env, customInstanceInfos.postStart.env);
   }
 
-  let results = { shutdown: true };
+  let testrunStart = time();
+  let results = {
+    shutdown: true,
+    startupTime: testrunStart - beforeStart
+  };
   let continueTesting = true;
   let serverDead = false;
   let count = 0;
@@ -234,6 +238,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           continue;
         } else if (reply.hasOwnProperty('status')) {
           results[te] = reply;
+          results[te]['processStats'] = pu.getDeltaProcessStats(instanceInfo);
 
           if (results[te].status === false) {
             options.cleanup = false;
@@ -399,7 +404,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
-
+  let shutDownStart = time();
+  results['testDuration'] = shutDownStart - testrunStart;
   print(Date() + ' Shutting down...');
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
@@ -426,6 +432,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   }
   results.shutdown = results.shutdown && pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
+  loadClusterTestStabilityInfo(results, instanceInfo);
+  
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
                                                                  serverOptions,
@@ -437,6 +445,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       results.setup.message = 'custom postStop failed!';
     }
   }
+  results['shutdownTime'] = time() - shutDownStart;
+
   print('done.');
 
   return results;
@@ -447,11 +457,6 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 // //////////////////////////////////////////////////////////////////////////////
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
-  if (options.skipTest(testname, options)) {
-    whichFilter.filter = 'blacklist';
-    return false;
-  }
-
   // These filters require a proper setup, Even if we filter by testcase:
   if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
     whichFilter.filter = 'skip when running as rocksdb';
@@ -481,7 +486,19 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   // if we filter, we don't care about the other filters below:
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';
-    return testname.search(options.test) >= 0;
+    if (typeof options.test === 'string') {
+      return testname.search(options.test) >= 0;
+    } else {
+      let found = false;
+      options.test.forEach(
+        filter => {
+          if (testname.search(filter) >= 0) {
+            found = true;
+          }
+        }
+      );
+      return found;
+    }
   }
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
@@ -621,12 +638,47 @@ function scanTestPaths (paths, options) {
                                      }
                                      return rc;
                                    });
-  if (filteredTestCases.length === 0) {
+  if ((filteredTestCases.length === 0) && (options.extremeVerbosity !== 'silence')) {
     print("No testcase matched the filter: " + JSON.stringify(allFiltered));
     return [];
   }
 
   return allTestCases;
+}
+
+
+function loadClusterTestStabilityInfo(results, instanceInfo){
+  try {
+    if (instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
+      let status = true;
+      let slow = [];
+      let buf = fs.readBuffer(instanceInfo.clusterHealthMonitorFile);
+      let lineStart = 0;
+      let maxBuffer = buf.length;
+
+      for (let j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          const line = buf.asciiSlice(lineStart, j);
+          lineStart = j + 1;
+          let val = JSON.parse(line);
+          if (val.state === false) {
+            slow.push(val);
+            status = false;
+          }
+        }
+      }
+      if (!status) {
+        print('found ' + slow.length + ' slow lines!');
+        results.status = false;
+        results.message += 'found ' + slow.length + ' slow lines!';
+      } else {
+        print('everything fast!');
+      }
+    }
+  }
+  catch(x) {
+    print(x);
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -704,7 +756,7 @@ function runThere (options, instanceInfo, file) {
     };
   }
 }
-runThere.info = 'runThere';
+runThere.info = 'runInArangod';
 
 function readTestResult(path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
@@ -791,7 +843,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
   return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
-runInArangosh.info = 'arangosh';
+runInArangosh.info = 'runInExternalArangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file in the current arangosh
@@ -834,7 +886,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     };
   }
 }
-runInLocalArangosh.info = 'localarangosh';
+runInLocalArangosh.info = 'runInLocalArangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a unittest file using rspec
@@ -932,7 +984,9 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
+  let start = Date();
   const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
+  let end = Date();
 
   if (!res.status && res.timeout) {
     return {
@@ -947,6 +1001,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   let result = {
     total: 0,
     failed: 0,
+    duration: end - start,
     status: res.status
   };
 
@@ -977,7 +1032,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   fs.remove(tmpname);
   return result;
 }
-runInRSpec.info = 'runInRSpec';
+runInRSpec.info = 'runInLocalRSpec';
 
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;

@@ -25,17 +25,22 @@
 
 #include "HashedCollectExecutor.h"
 
+#include "Aql/Aggregator.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-#include "Logger/LogMacros.h"
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool HashedCollectExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough HashedCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr bool HashedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 static const AqlValue EmptyValue;
 
@@ -60,6 +65,28 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
       _count(count),
       _trxPtr(trxPtr) {
   TRI_ASSERT(!_groupRegisters.empty());
+}
+
+std::vector<std::pair<RegisterId, RegisterId>> HashedCollectExecutorInfos::getGroupRegisters() const {
+  return _groupRegisters;
+}
+
+std::vector<std::pair<RegisterId, RegisterId>> HashedCollectExecutorInfos::getAggregatedRegisters() const {
+  return _aggregateRegisters;
+}
+
+std::vector<std::string> HashedCollectExecutorInfos::getAggregateTypes() const {
+  return _aggregateTypes;
+}
+
+bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
+
+transaction::Methods* HashedCollectExecutorInfos::getTransaction() const {
+  return _trxPtr;
+}
+
+RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
+  return _collectRegister;
 }
 
 std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
@@ -136,7 +163,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
     TRI_ASSERT(aggregateValues->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (auto const& r : _infos.getAggregatedRegisters()) {
-      if (r.second == ExecutionNode::MaxRegisterId) {
+      if (r.second == RegisterPlan::MaxRegisterId) {
         (*aggregateValues)[j]->reduce(EmptyValue);
       } else {
         (*aggregateValues)[j]->reduce(input.getValue(r.second));
@@ -148,7 +175,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 
 void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) {
   // build the result
-  TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != RegisterPlan::MaxRegisterId);
 
   auto& keys = _currentGroup->first;
   TRI_ASSERT(_currentGroup->second != nullptr);
@@ -308,4 +335,8 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
     return {ExecutionState::HASMORE, rowsLeft};
   }
   return {ExecutionState::DONE, rowsLeft};
+}
+
+const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {
+  return _infos;
 }

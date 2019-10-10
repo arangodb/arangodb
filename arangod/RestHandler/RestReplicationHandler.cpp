@@ -49,6 +49,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -218,10 +219,12 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return Result{TRI_ERROR_NO_ERROR};
 }
 
-RestReplicationHandler::RestReplicationHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestReplicationHandler::RestReplicationHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
-RestReplicationHandler::~RestReplicationHandler() {}
+RestReplicationHandler::~RestReplicationHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
@@ -310,12 +313,11 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
       // track the number of parallel invocations of the tailing API
-      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>(
-          "Replication");
+      auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
       // this may throw when too many threads are going into tailing
-      rf->trackTailingStart();
+      rf.trackTailingStart();
 
-      auto guard = scopeGuard([rf]() { rf->trackTailingEnd(); });
+      auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
     } else if (command == OpenTransactions) {
@@ -607,7 +609,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -623,7 +625,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   while (applier->isInitializing()) {  // wait for initial sync
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_vocbase.server().isStopping()) {
       generateError(Result(TRI_ERROR_SHUTTING_DOWN));
       return;
     }
@@ -763,8 +765,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::vector<std::shared_ptr<LogicalCollection>> cols = ci->getCollections(dbName);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::vector<std::shared_ptr<LogicalCollection>> cols = ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
@@ -774,7 +776,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
+    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -844,13 +846,15 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
       _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
   uint64_t replicationFactor =
       _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1);
-  uint64_t minReplicationFactor =
+  // not an error: for historical reasons the write concern is read from the
+  // variable "minReplicationFactor"
+  uint64_t writeConcern =
       _request->parsedValue<uint64_t>(StaticStrings::MinReplicationFactor, 1);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, force, numberOfShards,
-                                              replicationFactor, minReplicationFactor,
+                                              replicationFactor, writeConcern,
                                               ignoreDistributeShardsLikeErrors);
   } else {
     res = processRestoreCollection(slice, overwrite, force);
@@ -1059,7 +1063,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 Result RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool force,
     uint64_t numberOfShards, uint64_t replicationFactor,
-    uint64_t minReplicationFactor, bool ignoreDistributeShardsLikeErrors) {
+    uint64_t writeConcern, bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1088,16 +1092,21 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     return Result();
   }
 
+  Result res = ShardingInfo::validateShardsAndReplicationFactor(parameters, server());
+  if (res.fail()) {
+    return res;
+  }
+
   auto& dbName = _vocbase.name();
-  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   try {
     // in a cluster, we only look up by name:
-    std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
+    std::shared_ptr<LogicalCollection> col = ci.getCollection(dbName, name);
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      auto result = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
+      auto result = ci.dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
       if (TRI_ERROR_FORBIDDEN == result.errorNumber()  // forbidden
           || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
@@ -1145,7 +1154,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.openObject();
 
   // We always need a new id
-  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+  TRI_voc_tick_t newIdTick = ci.uniqid(1);
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
@@ -1169,35 +1178,42 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // Replication Factor. Will be overwritten if not existent
-  VPackSlice const replFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
-  VPackSlice const minReplFactorSlice = parameters.get(StaticStrings::MinReplicationFactor);
+  VPackSlice const replicationFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
+  // not an error: for historical reasons the write concern is read from the
+  // variable "minReplicationFactor"
+  VPackSlice const writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
 
-  bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
-                                (replFactorSlice.isString() &&
-                                 replFactorSlice.isEqualString("satellite"));
+  bool isValidReplicationFactorSlice = replicationFactorSlice.isInteger() ||
+                                       (replicationFactorSlice.isString() &&
+                                        replicationFactorSlice.isEqualString(StaticStrings::Satellite));
 
-  bool isValidMinReplFactorSlice =
-      replFactorSlice.isInteger() && minReplFactorSlice.isInteger() &&
-      (minReplFactorSlice.getInt() <= replFactorSlice.getInt()) &&
-      minReplFactorSlice.getInt() > 0;
+  bool isValidWriteConcernSlice =
+      replicationFactorSlice.isInteger() && writeConcernSlice.isInteger() &&
+      (writeConcernSlice.getInt() <= replicationFactorSlice.getInt()) &&
+      writeConcernSlice.getInt() > 0;
 
-  if (!isValidReplFactorSlice) {
+  if (!isValidReplicationFactorSlice) {
     if (replicationFactor == 0) {
-      replicationFactor = 1;
+      replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
+      if (replicationFactor == 0) {
+        replicationFactor = 1;
+      }
     }
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
 
-  if (!isValidMinReplFactorSlice) {
-    if (replFactorSlice.isString() &&
-        replFactorSlice.isEqualString("satellite")) {
-      minReplicationFactor = 0;
-    } else if (minReplicationFactor == 0) {
-      minReplicationFactor = 1;
+  if (!isValidWriteConcernSlice) {
+    if (replicationFactorSlice.isString() &&
+        replicationFactorSlice.isEqualString(StaticStrings::Satellite)) {
+      writeConcern = 0;
+    } else if (writeConcern == 0) {
+      writeConcern = 1;
     }
-    TRI_ASSERT(minReplicationFactor <= replicationFactor);
-    toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
+    TRI_ASSERT(writeConcern <= replicationFactor);
+    // not an error: for historical reasons the write concern is stored in the
+    // variable "minReplicationFactor"
+    toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
   }
 
   // always use current version number when restoring a collection,
@@ -1247,12 +1263,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   s = parameters.get(StaticStrings::ReplicationFactor);
-  if (s.isString() && s.copyString() == "satellite") {
+  if (s.isString() && s.copyString() == StaticStrings::Satellite) {
     // set "satellite" replicationFactor to the default replication factor
-    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>(
-        "Cluster");
+    ClusterFeature& cl = _vocbase.server().getFeature<ClusterFeature>();
 
-    uint32_t replicationFactor = cl->systemReplicationFactor();
+    uint32_t replicationFactor = cl.systemReplicationFactor();
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
     changes.push_back(
         std::string("changed 'replicationFactor' attribute value to ") +
@@ -1289,9 +1304,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   try {
     bool createWaitsForSyncReplication =
-        application_features::ApplicationServer::getFeature<ClusterFeature>(
-            "Cluster")
-            ->createWaitsForSyncReplication();
+        _vocbase.server().getFeature<ClusterFeature>().createWaitsForSyncReplication();
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
     auto cols =
@@ -1887,8 +1900,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
   auto& dbName = _vocbase.name();
 
   // in a cluster, we only look up by name:
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col = ci->getCollectionNT(dbName, name);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(dbName, name);
   if (col == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             ClusterInfo::getCollectionNotFoundMsg(dbName, name)};
@@ -1896,8 +1909,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
   TRI_ASSERT(col != nullptr);
 
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
 
   Result res;
 
@@ -1911,9 +1923,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(*col,
-        idxDef, true, tmp,
-        cluster->indexCreationTimeout());
+    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
@@ -2047,7 +2057,8 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
+  auto config =
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, dbname);
 
   // will throw if invalid
   config.validate();
@@ -2228,14 +2239,12 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
         "global inventory can only be fetched from within _system database");
     return;
   }
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2940,10 +2949,8 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 
   if (global) {
-    auto replicationFeature =
-        application_features::ApplicationServer::getFeature<ReplicationFeature>(
-            "Replication");
-    return replicationFeature->globalReplicationApplier();
+    auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+    return replicationFeature.globalReplicationApplier();
   } else {
     return _vocbase.replicationApplier();
   }

@@ -36,7 +36,7 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
   TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered);
 
-  ~TraversalConditionFinder() {}
+  ~TraversalConditionFinder() = default;
 
   bool before(ExecutionNode*) override final;
 

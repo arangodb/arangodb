@@ -36,7 +36,7 @@ size_t const CollectionKeysRepository::MaxCollectCount = 32;
 /// @brief create a collection keys repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionKeysRepository::CollectionKeysRepository() : _lock(), _keys() {
+CollectionKeysRepository::CollectionKeysRepository() : _lock(), _keys(), _stopped(false) {
   _keys.reserve(64);
 }
 
@@ -82,7 +82,9 @@ CollectionKeysRepository::~CollectionKeysRepository() {
 
 void CollectionKeysRepository::store(std::unique_ptr<arangodb::CollectionKeys> keys) {
   MUTEX_LOCKER(mutexLocker, _lock);
-  _keys.emplace(keys->id(), std::move(keys));
+  if (!_stopped) {
+    _keys.emplace(keys->id(), std::move(keys));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,7 +212,8 @@ size_t CollectionKeysRepository::count() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run a garbage collection on the data
+/// @brief run a garbage collection on the data, returns if anything was left
+/// over.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectionKeysRepository::garbageCollect(bool force) {
@@ -218,6 +221,8 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
   found.reserve(MaxCollectCount);
 
   auto const now = TRI_microtime();
+
+  bool leftOvers;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -252,9 +257,11 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
         ++it;
       }
     }
+    leftOvers = !_keys.empty();
   }
 
   // when we get here, all instances in found will be destroyed
-  // outside the lock
-  return (!found.empty());
+  // outside the lock, since the vector with all its unique_ptrs
+  // will be destroyed.
+  return leftOvers;
 }

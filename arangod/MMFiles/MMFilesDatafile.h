@@ -395,7 +395,7 @@ struct MMFilesMarker {
 
  public:
   MMFilesMarker() : _size(0), _crc(0), _typeAndTick(0) {}
-  ~MMFilesMarker() {}
+  ~MMFilesMarker() = default;
 
   inline off_t offsetOfSize() const noexcept {
     return offsetof(MMFilesMarker, _size);

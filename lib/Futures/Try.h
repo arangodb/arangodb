@@ -211,7 +211,6 @@ class Try {
       case Content::None:
       default:
         throw std::logic_error("Using uninitialized Try");
-        return;
     }
   }
 

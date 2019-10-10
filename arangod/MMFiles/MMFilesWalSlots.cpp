@@ -39,7 +39,7 @@ static uint32_t const PrologueSize =
     encoding::alignedSize<uint32_t>(sizeof(MMFilesPrologueMarker));
 
 /// @brief create the slots
-MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager,
+MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager& logfileManager,
                                  size_t numberOfSlots, MMFilesWalSlot::TickType tick)
     : _logfileManager(logfileManager),
       _condition(),
@@ -111,7 +111,7 @@ int MMFilesWalSlots::flush(bool waitForSync) {
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _logfileManager->signalSync(true);
+    _logfileManager.signalSync(true);
 
     if (waitForSync) {
       // wait until data has been committed to disk
@@ -201,7 +201,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId,
 
             // advance to next slot
             slot = &_slots[_handoutIndex];
-            _logfileManager->setLogfileSealRequested(_logfile);
+            _logfileManager.setLogfileSealRequested(_logfile);
 
             _logfile = nullptr;
           }
@@ -240,7 +240,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId,
 
               // advance to next slot
               slot = &_slots[_handoutIndex];
-              _logfileManager->setLogfileOpen(_logfile);
+              _logfileManager.setLogfileOpen(_logfile);
             } else {
               TRI_ASSERT(status == MMFilesWalLogfile::StatusType::OPEN);
             }
@@ -292,7 +292,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId,
     CONDITION_LOCKER(guard, _condition);
     if (!hasWaited) {
       ++_waiting;
-      _logfileManager->signalSync(true);
+      _logfileManager.signalSync(true);
       hasWaited = true;
     }
 
@@ -339,12 +339,12 @@ int MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchro
   wakeUpSynchronizer |= waitUntilSyncDone;
 
   if (wakeUpSynchronizer) {
-    _logfileManager->signalSync(waitForSyncRequested);
+    _logfileManager.signalSync(waitForSyncRequested);
   }
 
   if (waitUntilSyncDone) {
     // on shutdown, return early
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_logfileManager.server().isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
@@ -389,7 +389,7 @@ MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
 
       region.logfileId = slot->logfileId();
       // the following call also updates status
-      region.logfile = _logfileManager->getLogfile(slot->logfileId(), status);
+      region.logfile = _logfileManager.getLogfile(slot->logfileId(), status);
       region.mem = static_cast<char*>(slot->mem());
       region.size = slot->size();
       region.logfileStatus = status;
@@ -545,7 +545,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             return res;
           }
 
-          _logfileManager->setLogfileSealRequested(_logfile);
+          _logfileManager.setLogfileSealRequested(_logfile);
 
           // advance to next slot
           slot = &_slots[_handoutIndex];
@@ -588,7 +588,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
               return res;
             }
 
-            _logfileManager->setLogfileOpen(_logfile);
+            _logfileManager.setLogfileOpen(_logfile);
             worked = true;
           } else {
             TRI_ASSERT(status == MMFilesWalLogfile::StatusType::OPEN);
@@ -745,13 +745,13 @@ int MMFilesWalSlots::newLogfile(uint32_t size, MMFilesWalLogfile::StatusType& st
 
   status = MMFilesWalLogfile::StatusType::UNKNOWN;
   MMFilesWalLogfile* logfile = nullptr;
-  int res = _logfileManager->getWriteableLogfile(size, status, logfile);
+  int res = _logfileManager.getWriteableLogfile(size, status, logfile);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(logfile != nullptr);
     _logfile = logfile;
   } else if (res == TRI_ERROR_LOCK_TIMEOUT) {
-    _logfileManager->logStatus();
+    _logfileManager.logStatus();
   }
 
   return res;

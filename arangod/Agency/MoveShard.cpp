@@ -94,7 +94,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-MoveShard::~MoveShard() {}
+MoveShard::~MoveShard() = default;
 
 void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 

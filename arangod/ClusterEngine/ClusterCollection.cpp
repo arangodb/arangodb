@@ -20,15 +20,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterCollection.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
-#include "ClusterCollection.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -104,7 +106,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection,
       _info(static_cast<ClusterCollection const*>(physical)->_info),
       _selectivityEstimates(collection) {}
 
-ClusterCollection::~ClusterCollection() {}
+ClusterCollection::~ClusterCollection() = default;
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -249,19 +251,16 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<VPackBuilder> ClusterCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  builder->close();
-
-  auto res = figuresOnCoordinator(_logicalCollection.vocbase().name(),
-                                  std::to_string(_logicalCollection.id()), builder);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return builder;
+futures::Future<std::shared_ptr<VPackBuilder>> ClusterCollection::figures() {
+  auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
+  return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
+                              std::to_string(_logicalCollection.id()))
+      .thenValue([](OperationResult&& opRes) -> std::shared_ptr<VPackBuilder> {
+        if (opRes.fail()) {
+          THROW_ARANGO_EXCEPTION(opRes.result);
+        }
+        return std::make_shared<VPackBuilder>(opRes.buffer);
+      });
 }
 
 void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {

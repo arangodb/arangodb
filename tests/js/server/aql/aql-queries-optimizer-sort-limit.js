@@ -52,20 +52,22 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, {numberOfShards: 9});
 
+      let docs = [];
       for (var i = 0; i < docCount; ++i) {
-        collection.save({ _key: "test" + i, value : i });
+        docs.push({ _key: "test" + i, value : i });
       }
+      collection.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 
@@ -380,6 +382,30 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 740);
       assertEqual(sorts[0].strategy, 'constrained-heap');
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test two consecutive sorts
+/// This is a regression test. Only the latter block may be a constrained sort.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionTwoSortBlocks : function () {
+      const query = `FOR c IN ${cn} SORT c.value ASC LET b = c.value*2 SORT b DESC LIMIT 10 RETURN b`;
+      var actual = getQueryResults(query);
+
+      assertEqual(10, actual.length);
+
+      assertEqual(1998, actual[0]);
+      assertEqual(1996, actual[1]);
+      assertEqual(1994, actual[2]);
+      assertEqual(1980, actual[9]);
+
+      var sorts = getSorts(query);
+      assertEqual(sorts.length, 2);
+      assertEqual(sorts[0].strategy, "standard");
+      assertEqual(sorts[1].limit, 10);
+      assertEqual(sorts[1].strategy, "constrained-heap");
     },
 
   };

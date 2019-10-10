@@ -23,13 +23,15 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCKUTILS_H
 #define ARANGOD_AQL_AQLITEMBLOCKUTILS_H
 
-#include "Aql/SharedAqlItemBlockPtr.h"
+#include <functional>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlockManager;
 class BlockCollector;
 class InputAqlItemRow;
+class SharedAqlItemBlockPtr;
 
 namespace itemBlock {
 
@@ -38,10 +40,6 @@ namespace itemBlock {
 /// set to nullptr, just to be sure.
 SharedAqlItemBlockPtr concatenate(AqlItemBlockManager&,
                                   std::vector<SharedAqlItemBlockPtr>& blocks);
-
-void forRowInBlock(SharedAqlItemBlockPtr const& block,
-                   std::function<void(InputAqlItemRow&&)> const& callback);
-
 }  // namespace itemBlock
 
 }  // namespace aql

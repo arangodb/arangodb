@@ -24,6 +24,7 @@
 #define ARANGOD_FUTURES_FUTURE_H 1
 
 #include <chrono>
+#include <condition_variable>
 #include <thread>
 
 #include "Basics/debugging.h"
@@ -126,6 +127,28 @@ template <class T>
 using decay_t = typename decay<T>::type;
 
 struct EmptyConstructor {};
+
+// uses a condition_variable to wait
+template<typename T>
+void waitImpl(Future<T>& f) {
+  if (f.isReady()) {
+    return; // short-circuit
+  }
+  
+  std::mutex m;
+  std::condition_variable cv;
+  
+  Promise<T> p;
+  Future<T> ret = p.getFuture();
+  f.thenFinal([&p, &cv, &m](Try<T>&& t) {
+    p.setTry(std::move(t));
+    std::lock_guard<std::mutex> guard(m);
+    cv.notify_one();
+  });
+  std::unique_lock<std::mutex> lock(m);
+  cv.wait(lock, [&ret]{ return ret.isReady(); });
+  f = std::move(ret);
+}
 }  // namespace detail
 
 /// @brief Specifies state of a future as returned by wait_for and wait_until
@@ -238,14 +261,6 @@ class Future {
     return std::move(getStateTryChecked());
   }
 
-  /// Returns a reference to the result value if it is ready, with a reference
-  /// category and const-qualification like those of the future.
-  /// Does not `wait()`; see `get()` for that.
-  /*T& value() &;
-  T const& value() const&;
-  T&& value() &&;
-  T const&& value() const&&;*/
-
   /// Returns a reference to the result's Try if it is ready, with a reference
   /// category and const-qualification like those of the future.
   /// Does not `wait()`; see `get()` for that.
@@ -255,10 +270,12 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() const {
-    while (!isReady()) {
+  void wait() {
+    unsigned i = 8;
+    while (!isReady() && i--) {
       std::this_thread::yield();
     }
+    detail::waitImpl(*this);
   }
 
   /// waits for the result, returns if it is not available

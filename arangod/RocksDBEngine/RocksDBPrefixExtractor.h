@@ -41,7 +41,7 @@ namespace arangodb {
 class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
  public:
   RocksDBPrefixExtractor() {}
-  ~RocksDBPrefixExtractor() {}
+  ~RocksDBPrefixExtractor() = default;
 
   const char* Name() const override { return "RocksDBPrefixExtractor"; }
 

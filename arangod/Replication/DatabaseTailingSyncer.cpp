@@ -118,7 +118,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   auto startTime = clock.now();
 
   while (true) {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (vocbase()->server().isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
