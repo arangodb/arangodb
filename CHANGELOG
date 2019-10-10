@@ -1,7 +1,7 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
-* Fixed search not working in document view while in code mode
+* Fixed search not working in document view while in code mode.
 
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
