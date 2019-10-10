@@ -50,6 +50,7 @@
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
