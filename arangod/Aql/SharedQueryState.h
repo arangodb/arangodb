@@ -56,25 +56,7 @@ class SharedQueryState {
   /// This will lead to the following: The original request that led to
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
-  template <typename F>
-  bool execute(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    if (!_valid) {
-      return false;
-    }
-
-    std::forward<F>(cb)();
-    if (_hasHandler) {
-      if (ADB_UNLIKELY(!executeContinueCallback())) {
-        return false;  // likely shutting down
-      }
-    } else {
-      _wasNotified = true;
-      // simon: bad experience on macOS guard.unloack();
-      _condition.notify_one();
-    }
-    return true;
-  }
+  bool execute();
 
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
   void waitForAsyncResponse();

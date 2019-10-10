@@ -31,7 +31,6 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
@@ -39,6 +38,8 @@
 #include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalInitialSyncer.h"
@@ -46,6 +47,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -336,7 +338,7 @@ RestStatus RestReplicationHandler::execute() {
       // DEL  - delete batchid
 
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleUnforwardedTrampolineCoordinator();
       } else {
         handleCommandBatch();
       }
@@ -366,7 +368,7 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleUnforwardedTrampolineCoordinator();
       } else {
         handleCommandInventory();
       }
@@ -418,7 +420,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleUnforwardedTrampolineCoordinator();
       } else {
         handleCommandDump();
       }
@@ -584,6 +586,29 @@ BAD_CALL:
   return RestStatus::DONE;
 }
 
+/// @brief returns the short id of the server which should handle this request
+std::string RestReplicationHandler::forwardingTarget() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return "";
+  }
+
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    auto const type = _request->requestType();
+    std::string const& command = suffixes[0];
+    if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
+        (command == Dump && type == rest::RequestType::GET)) {
+      ServerID const& DBserver = _request->value("DBserver");
+      if (!DBserver.empty()) {
+        return DBserver;
+      }
+    }
+  }
+
+  return "";
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_put_api_replication_makeSlave
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,14 +665,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward a command in the coordinator case
+/// @brief handle an unforwarded command in the coordinator case
+/// If the request is well-formed and has the DBserver set, then the request
+/// should already be forwarded by other means. We should only get here if
+/// the request is null or the DBserver parameter is missing. This method
+/// now just does a bit of error handling.
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleTrampolineCoordinator() {
-  bool useVst = false;
-  if (_request->transportType() == Endpoint::TransportType::VST) {
-    useVst = true;
-  }
+void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
@@ -661,100 +686,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     return;
   }
 
-  std::string const& dbname = _request->databaseName();
-
-  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>(
-      arangodb::getForwardableRequestHeaders(_request.get()));
-  std::unordered_map<std::string, std::string> values = _request->values();
-  std::string params;
-
-  for (auto const& i : values) {
-    if (i.first != "DBserver") {
-      if (params.empty()) {
-        params.push_back('?');
-      } else {
-        params.push_back('&');
-      }
-      params.append(StringUtils::urlEncode(i.first));
-      params.push_back('=');
-      params.append(StringUtils::urlEncode(i.second));
-    }
-  }
-
-  // Set a few variables needed for our work:
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return;
-  }
-
-  std::unique_ptr<ClusterCommResult> res;
-  if (!useVst) {
-    TRI_ASSERT(_request->transportType() == Endpoint::TransportType::HTTP);
-
-    VPackStringRef body = _request->rawPayload();
-    // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
-                          _request->requestType(),
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              _request->requestPath() + params,
-                          body.toString(), *headers, 300.0);
-  } else {
-    // do we need to handle multiple payloads here - TODO
-    // here we switch from vst to http?!
-    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
-                          _request->requestType(),
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              _request->requestPath() + params,
-                          _request->payload().toJson(), *headers, 300.0);
-  }
-
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
-                  "timeout within cluster");
-    return;
-  }
-  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    // there is no result
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                  "lost connection within cluster");
-    return;
-  }
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    TRI_ASSERT(nullptr != res->result && res->result->isComplete());
-    // In this case a proper HTTP error was reported by the DBserver,
-    // we simply forward the result.
-    // We intentionally fall through here.
-  }
-
-  bool dummy;
-  resetResponse(static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
-
-  _response->setContentType(
-      res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-
-  if (!useVst) {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-    if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
-    httpResponse->body().swap(&(res->result->getBody()));
-  } else {
-    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
-    std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
-    _response->setPayload(std::move(*buf),
-                          true);  // do we need to generate the body?!
-  }
-
-  auto const& resultHeaders = res->result->getHeaderFields();
-  for (auto const& it : resultHeaders) {
-    _response->setHeader(it.first, it.second);
-  }
+  TRI_ASSERT(false);  // should only get here if request is not well-formed
 }
 
 ////////////////////////////////////////////////////////////////////////////////

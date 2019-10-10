@@ -70,8 +70,8 @@ struct MessageHeader {
  protected:
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
-  ContentType _contentType;
-  ContentType _acceptType;
+  ContentType _contentType = ContentType::Unset;
+  ContentType _acceptType = ContentType::Unset;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -91,6 +91,7 @@ struct RequestHeader final : public MessageHeader {
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }
+  void acceptType(std::string const& type) { _acceptType = to_ContentType(type); }
 
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
@@ -207,7 +208,7 @@ class Request final : public Message {
 };
 
 // Response contains the message resulting from a request to a server.
-class Response final : public Message {
+class Response : public Message {
  public:
   Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
