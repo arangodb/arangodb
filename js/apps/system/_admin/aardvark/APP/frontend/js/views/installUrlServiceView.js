@@ -65,11 +65,9 @@
 
     installFoxxFromUrl: function () {
       if (window.modalView.modalTestAll()) {
-        var url, mount, flag;
-
+        var mount, info, options, url;
         if (this._upgrade) {
           mount = window.App.replaceAppData.mount;
-          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
@@ -77,13 +75,14 @@
           }
         }
         url = window.arangoHelper.escapeHtml($('#repository').val());
-        var info = {
-          url: url,
-          version: 'master'
+
+        info = {
+          url: url
         };
 
         // send server req through collection
-        this.collection.installFromUrl(info, mount, this.installCallback.bind(this), null, flag);
+        options = arangoHelper.getFoxxFlags();
+        this.collection.install('url', info, mount, options, this.installCallback.bind(this));
       }
     },
 
