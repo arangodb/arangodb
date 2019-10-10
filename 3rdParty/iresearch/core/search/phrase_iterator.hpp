@@ -57,7 +57,8 @@ class phrase_iterator final : public conjunction {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (approx_.seek(target) == target) {
+    const auto doc = conjunction::seek(target);
+    if (doc == target) {
       return target;
     }
 
