@@ -2574,6 +2574,13 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   RebootId rebootId(0);
   std::string serverId;
 
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'collection', "
+                  "'ttl' and 'id'");
+    return;
+  }
+  
   VPackSlice collection = body.get("collection");
   VPackSlice ttlSlice = body.get("ttl");
   VPackSlice idSlice = body.get("id");
