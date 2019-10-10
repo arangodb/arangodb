@@ -416,11 +416,11 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
   bool isSatellite = false;
   uint64_t replicationFactor = getReplicationFactor(options, parameters, isSatellite);
   if (isSatellite) {
-    newOptions.add("replicationFactor", VPackValue("satellite"));
+    newOptions.add(StaticStrings::ReplicationFactor, VPackValue(StaticStringS::Satellite));
   } else {
-    newOptions.add("replicationFactor", VPackValue(replicationFactor));
+    newOptions.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
-  newOptions.add("numberOfShards", VPackValue(getNumberOfShards(options, parameters)));
+  newOptions.add(StaticStrings::NumberOfShards, VPackValue(getNumberOfShards(options, parameters)));
   newOptions.close();
 
   VPackBuilder b;

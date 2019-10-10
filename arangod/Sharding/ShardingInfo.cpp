@@ -499,6 +499,8 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
         res.reset(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
             std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
       }
+
+      TRI_ASSERT((cl.forceOneShard() && numberOfShards == 1) || !cl.forceOneShard()); 
     }
 
     auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
