@@ -158,6 +158,25 @@ struct ExecContextScope {
  private:
   ExecContext const* _old;
 };
+
+struct ExecContextSuperuserScope {
+  explicit ExecContextSuperuserScope()
+  : _old(ExecContext::CURRENT) {
+    ExecContext::CURRENT = ExecContext::superuser();
+  }
+
+  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
+    if (cond) {
+      ExecContext::CURRENT = ExecContext::superuser();
+    }
+  }
+
+  ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
+
+private:
+  ExecContext const* _old;
+};
+
 }  // namespace arangodb
 
 #endif

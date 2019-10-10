@@ -1,0 +1,7 @@
+@Q:
+RETURN <span class="hljs-string">"this will be returned"</span>
+
+@R
+[
+  <span class="hljs-string">"this will be returned"</span>
+]

@@ -318,10 +318,12 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(authentication != nullptr);
 
 #ifdef USE_ENTERPRISE
+#ifndef _WIN32
   HotBackupFeature* backup =
     application_features::ApplicationServer::getFeature<HotBackupFeature>(
           "HotBackup");
   TRI_ASSERT(backup != nullptr);
+#endif
 #endif
 
 
@@ -563,10 +565,12 @@ void GeneralServerFeature::defineHandlers() {
   }
 
 #ifdef USE_ENTERPRISE
+#ifndef _WIN32
   if (backup->isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
                                     RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+#endif
 #endif
 
 

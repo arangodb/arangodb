@@ -1109,7 +1109,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   gzFile gzFd(gzopen(filename,"rb"));
   auto fdGuard = arangodb::scopeGuard([&gzFd](){ if (nullptr != gzFd) gzclose(gzFd); });
-  char * retPtr = nullptr;
+  char* retPtr = nullptr;
 
   if (nullptr != gzFd) {
     TRI_string_buffer_t result;
@@ -2426,7 +2426,11 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 
 std::string TRI_LocateInstallDirectory(char const* argv0, char const* binaryPath) {
   std::string thisPath = TRI_LocateBinaryPath(argv0);
-  return TRI_GetInstallRoot(thisPath, binaryPath) + TRI_DIR_SEPARATOR_CHAR;
+  std::string ret = TRI_GetInstallRoot(thisPath, binaryPath);
+  if (ret.length() != 1 || ret != TRI_DIR_SEPARATOR_STR) {
+    ret += TRI_DIR_SEPARATOR_CHAR;
+  }
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2445,8 +2449,14 @@ std::string TRI_LocateConfigDirectory(char const* binaryPath) {
   }
 
   std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
-
-  r += _SYSCONFDIR_;
+  std::string scDir =  _SYSCONFDIR_;
+  if (r.length() == 1 &&
+      r == TRI_DIR_SEPARATOR_STR &&
+      scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
+    r = scDir;
+  } else {
+    r += _SYSCONFDIR_;
+  }
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
   return r;
@@ -2642,21 +2652,4 @@ bool TRI_GETENV(char const* which, std::string& value) {
   return true;
 #endif
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief bug fix for some race on libmusl and static linking
-//////////////////////////////////////////////////////////////////////////////
-
-// The following function just throws an exception and catches it. This is
-// used on Linux for the case that we link statically and the underlying
-// C-library is libmusl. This configuration has a bug in libgcc which
-// triggers a shutdown busy loop (after main), provided the very first
-// exception being thrown in the life of the process happens in two threads
-// at the same time. By throwing right at the beginning of main() when the
-// process is still single-threaded, we circumvent this problem.
-#ifdef __linux__
-void ThrowSomeException() {
-  try { throw 42; } catch(int const&) {};
-}
-#endif
 

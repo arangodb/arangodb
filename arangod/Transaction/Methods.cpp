@@ -1788,7 +1788,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value) -> Result {
+  auto workForOneDocument = [&](VPackSlice const value, bool isBabies) -> Result {
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
@@ -1826,7 +1826,13 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      // in the single document case no body needs to be created at all.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
+        TRI_ASSERT(prevDocResult.revisionId() != 0);
+        
+        arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
+        buildDocumentIdentity(collection, resultBuilder, cid, key, prevDocResult.revisionId(),
+                              0, nullptr, nullptr);
+      }
       return res;
     }
 
@@ -1857,7 +1863,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
-      res = workForOneDocument(s);
+      res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res);
       }
@@ -1865,7 +1871,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     // With babies the reporting is handled in the body of the result
     res = Result(TRI_ERROR_NO_ERROR);
   } else {
-    res = workForOneDocument(value);
+    res = workForOneDocument(value, false);
   }
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);

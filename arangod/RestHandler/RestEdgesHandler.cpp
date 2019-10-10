@@ -219,8 +219,7 @@ bool RestEdgesHandler::readEdges() {
   Result res = trx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -265,7 +264,7 @@ bool RestEdgesHandler::readEdges() {
       // name for error reporting:
       collectionName = trx->resolver()->getCollectionNameCluster(cid);
     }
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -360,7 +359,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   Result res = trx->begin();
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 
@@ -406,7 +405,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
       // name for error reporting:
       collectionName = trx->resolver()->getCollectionNameCluster(cid);
     }
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
 

@@ -49,6 +49,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1090,6 +1091,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     return Result();
   }
 
+  Result res = ShardingInfo::validateShardsAndReplicationFactor(parameters);
+  if (res.fail()) {
+    return res;
+  }
+
   auto& dbName = _vocbase.name();
   ClusterInfo* ci = ClusterInfo::instance();
 
@@ -1185,7 +1191,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
-      replicationFactor = 1;
+      replicationFactor = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->defaultReplicationFactor();
+      if (replicationFactor == 0) {
+        replicationFactor = 1;
+      }
     }
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));

@@ -363,7 +363,7 @@ class ClusterInfo final {
      public:
       explicit constexpr KnownServer(RebootId rebootId) : _rebootId(rebootId) {}
 
-      RebootId rebootId() const noexcept { return _rebootId; }
+      RebootId rebootId() const { return _rebootId; }
 
      private:
       RebootId _rebootId;
@@ -371,7 +371,7 @@ class ClusterInfo final {
 
     std::unordered_map<ServerID, KnownServer> const& serversKnown() const noexcept;
 
-    std::unordered_map<ServerID, RebootId> rebootIds() const noexcept;
+    std::unordered_map<ServerID, RebootId> rebootIds() const;
 
    private:
     std::unordered_map<ServerID, KnownServer> _serversKnown;
@@ -722,6 +722,11 @@ class ClusterInfo final {
 
   std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
 
+//////////////////////////////////////////////////////////////////////////////
+  /// @brief triggers a new background thread to obtain the next batch of ids
+  //////////////////////////////////////////////////////////////////////////////
+  void triggerBackgroundGetIds();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard list of a collection, sorted numerically
   //////////////////////////////////////////////////////////////////////////////
@@ -792,6 +797,8 @@ class ClusterInfo final {
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
   std::unordered_map<ServerID, std::string> getServerTimestamps();
+
+  std::unordered_map<ServerID, RebootId> rebootIds() const;
 
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
@@ -898,7 +905,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    Mutex mutex;
+    mutable Mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     arangodb::basics::ReadWriteLock lock;
@@ -984,6 +991,9 @@ class ClusterInfo final {
   struct {
     uint64_t _currentValue;
     uint64_t _upperValue;
+    uint64_t _nextBatchStart;
+    uint64_t _nextUpperValue;
+    bool _backgroundJobIsRunning;
   } _uniqid;
 
   //////////////////////////////////////////////////////////////////////////////

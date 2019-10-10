@@ -90,7 +90,11 @@ router.get('/config.js', function (req, res) {
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
-      foxxApiEnabled: !internal.isFoxxApiDisabled()
+      foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      minReplicationFactor: internal.minReplicationFactor,
+      maxReplicationFactor: internal.maxReplicationFactor,
+      defaultReplicationFactor: internal.defaultReplicationFactor,
+      maxNumberOfShards: internal.maxNumberOfShards
     })}`
   );
 })
@@ -447,9 +451,13 @@ authRouter.get('/replication/mode', function (req, res) {
   let mode = 0;
   let role = null;
   // active failover
-  if (endpoints.statusCode === 200 && endpoints.json.endpoints.length) {
+  if (endpoints.statusCode === 200) {
     mode = 3;
     role = 'leader';
+  } else if (endpoints.statusCode === 503) {
+    // 503 will be returned in case there is a leadership challenge ongoing
+    mode = 3;
+    // role unknown
   } else {
     // check if global applier (ga) is running
     // if that is true, this node is replicating from another arangodb instance

@@ -2036,6 +2036,12 @@ YY_RULE_SETUP
   /* newline character inside backtick */
 }
 	YY_BREAK
+case YY_STATE_EOF(BACKTICK):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
+}
+	YY_BREAK
 case 68:
 YY_RULE_SETUP
 {
@@ -2072,6 +2078,12 @@ case 72:
 YY_RULE_SETUP
 {
   /* newline character inside forwardtick */
+}
+	YY_BREAK
+case YY_STATE_EOF(FORWARDTICK):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 	YY_BREAK
 case 73:
@@ -2114,6 +2126,12 @@ YY_RULE_SETUP
   /* newline character inside quote */
 }
 	YY_BREAK
+case YY_STATE_EOF(DOUBLE_QUOTE):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
+}
+	YY_BREAK
 case 78:
 YY_RULE_SETUP
 {
@@ -2149,6 +2167,12 @@ case 82:
 YY_RULE_SETUP
 {
   /* newline character inside quote */
+}
+	YY_BREAK
+case YY_STATE_EOF(SINGLE_QUOTE):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 	YY_BREAK
 case 83:
@@ -2301,6 +2325,12 @@ YY_RULE_SETUP
   // eat the lone star
 }
 	YY_BREAK
+case YY_STATE_EOF(COMMENT_MULTI):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated multi-line comment", yylloc->first_line, yylloc->first_column);
+}
+	YY_BREAK
 case 97:
 /* rule 97 can match eol */
 YY_RULE_SETUP
@@ -2321,12 +2351,7 @@ YY_RULE_SETUP
 ECHO;
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-case YY_STATE_EOF(BACKTICK):
-case YY_STATE_EOF(FORWARDTICK):
-case YY_STATE_EOF(SINGLE_QUOTE):
-case YY_STATE_EOF(DOUBLE_QUOTE):
 case YY_STATE_EOF(COMMENT_SINGLE):
-case YY_STATE_EOF(COMMENT_MULTI):
 	yyterminate();
 
 	case YY_END_OF_BUFFER:
