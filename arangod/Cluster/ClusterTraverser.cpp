@@ -22,17 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTraverser.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Transaction/Helpers.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -152,9 +156,9 @@ void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid
 
 void ClusterTraverser::destroyEngines() {
   // We have to clean up the engines in Coordinator Case.
-  auto cc = ClusterComm::instance();
-
-  if (cc != nullptr) {
+  NetworkFeature const& nf = _trx->vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool != nullptr) {
     // nullptr only happens on controlled server shutdown
     std::string const url(
         "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name()) +
@@ -162,24 +166,26 @@ void ClusterTraverser::destroyEngines() {
 
     if (_enumerator != nullptr) {
       _enumerator->incHttpRequests(_engines->size());
-    } 
+    }
+
+    VPackBuffer<uint8_t> body;
+    network::Headers headers;
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+
     for (auto const& it : *_engines) {
-      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-      std::unordered_map<std::string, std::string> headers;
-      auto res = cc->syncRequest(coordTransactionID, "server:" + it.first,
-                                 RequestType::DELETE_REQ,
-                                 url + arangodb::basics::StringUtils::itoa(it.second),
-                                 "", headers, 30.0);
+      auto res =
+          network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                               url + arangodb::basics::StringUtils::itoa(it.second),
+                               body, headers, options);
+      res.wait();
 
-      if (res->status != CL_COMM_SENT) {
-        // Note If there was an error on server side we do not have
-        // CL_COMM_SENT
+      if (!res.hasValue() || res.get().fail()) {
+        // Note If there was an error on server side we do not have ok()
         std::string message("Could not destroy all traversal engines");
-
-        if (!res->errorMessage.empty()) {
-          message += std::string(": ") + res->errorMessage;
+        if (res.hasValue()) {
+          message += ": " + network::fuerteToArangoErrorMessage(res.get());
         }
-
         LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
       }
     }

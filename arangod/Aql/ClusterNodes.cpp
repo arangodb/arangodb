@@ -21,6 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <type_traits>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ClusterNodes.h"
 
 #include "Aql/AqlValue.h"
@@ -45,10 +50,8 @@
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
-
-#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;

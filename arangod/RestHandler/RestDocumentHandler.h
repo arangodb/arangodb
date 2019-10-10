@@ -56,7 +56,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
-  uint32_t forwardingTarget() override final;
+  std::string forwardingTarget() override final;
 
  private:
   // inserts a document
