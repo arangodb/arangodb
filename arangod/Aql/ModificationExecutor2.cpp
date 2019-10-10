@@ -27,6 +27,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Aql/InsertModifier.h"
@@ -119,6 +121,13 @@ ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(FetcherT
   // important for mmfiles
   // TODO: Why is this important for mmfiles?
   _infos._trx->pinData(this->_infos._aqlCollection->id());
+
+  // TODO: explain this abomination
+  auto* trx = _infos._trx;
+  TRI_ASSERT(trx != nullptr);
+  bool const isDBServer = trx->state()->isDBServer();
+  _infos._producesResults = ProducesResults(
+      _infos._producesResults || (isDBServer && _infos._ignoreDocumentNotFound));
 }
 
 template <typename FetcherType, typename ModifierType>
