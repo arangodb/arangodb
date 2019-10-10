@@ -288,8 +288,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   AstNode* expressionAst = funDist;
 
   //// build filter condition for
-  if (!isNear) {
-    if (!params.radius->isNumericValue()) {
+  if (!isNear) {  // WITHIN(coll, lat, lon, radius, distName)
+    if (!params.radius || !params.radius->isNumericValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                      "radius argument is not a numeric value");
     }
