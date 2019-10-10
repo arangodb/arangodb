@@ -1152,722 +1152,526 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "BOOST(ANALYZER(x NONE IN d.a.b.c.e.f, 'test_analyzer'), 1.5) RETURN d",
         expected, &ctx);
   }
-  /*
+
+  // empty array ANY
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::empty>();
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY IN d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY == d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY == d['a'] RETURN d", expected);  
+  }
+  
+  // empty array ALL/NONE
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::all>();
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL IN d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL == d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL == d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE IN d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE == d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE == d['a'] RETURN d", expected);
+  }
+
+  // Auxilary check lambdas. Need them to check root part of expected filterd
+  // direct == check is not possible as we will have byExpresssion filters generated on the fly
+  auto checkAny = [](irs::Or& actual, iresearch::boost_t boost) {
+    EXPECT_EQ(1, actual.size());
+    auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
+    EXPECT_EQ(irs::Or::type(), root.type());
+    EXPECT_EQ(3, root.size());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
+  auto checkAll = [](irs::Or& actual, iresearch::boost_t boost) {
+    EXPECT_EQ(1, actual.size());
+    auto& root = dynamic_cast<const irs::And&>(*actual.begin());
+    EXPECT_EQ(irs::And::type(), root.type());
+    EXPECT_EQ(3, root.size());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
+  auto checkNone = [](irs::Or& actual, iresearch::boost_t boost) {
+    EXPECT_EQ(1, actual.size());
+    auto & not = dynamic_cast<irs::Not&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::Or&>(*not.filter());
+    EXPECT_EQ(irs::Or::type(), root.type());
+    EXPECT_EQ(3, root.size());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
+  
   // nondeterministic value
   {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', RAND(), '3' ] RETURN "
-        "d";
-    std::string const refName = "d";
+    std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+       { "FOR d IN collection FILTER [ '1', RAND(), '3' ] ANY IN d.a.b.c.e.f RETURN d ", checkAny},
+       { "FOR d IN collection FILTER [ '1', RAND(), '3' ] ALL IN d.a.b.c.e.f RETURN d ", checkAll},
+       { "FOR d IN collection FILTER [ '1', RAND(), '3' ] NONE IN d.a.b.c.e.f RETURN d ", checkNone},
+       { "FOR d IN collection FILTER [ '1', RAND(), '3' ] ANY == d.a.b.c.e.f RETURN d ", checkAny},
+       { "FOR d IN collection FILTER [ '1', RAND(), '3' ] ALL == d.a.b.c.e.f RETURN d ", checkAll},
+       { "FOR d IN collection FILTER [ '1', RAND(), '3' ] NONE == d.a.b.c.e.f RETURN d ", checkNone}
+    };
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    for (auto caseData : testCases) {
+      const auto& queryString = caseData.first;
+      SCOPED_TRACE(testing::Message("Testing with non-determenistic value. Query: ") << queryString);
+      std::string const refName = "d";
 
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
 
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
 
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
 
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
 
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
+
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(filterNode);
+      ASSERT_TRUE(filterNode);
 
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(ref);
+      ASSERT_TRUE(ref);
 
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
 
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
+        {
+          auto begin = caseData.second(actual, 1);
+
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
+
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
+
+          // 3rd filter
+          {
+            ++begin;
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            EXPECT_EQ(expected, *begin);
+          }
+        }
+      }
+    }
+  }
+  
+  // self-referenced value
+  {
+    std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+      {"FOR d IN collection FILTER [ '1', d, '3' ] ANY IN d.a.b.c.e.f RETURN d", checkAny},
+      {"FOR d IN collection FILTER [ '1', d, '3' ] ALL IN d.a.b.c.e.f RETURN d", checkAll},
+      {"FOR d IN collection FILTER [ '1', d, '3' ] NONE IN d.a.b.c.e.f RETURN d", checkNone},
+      {"FOR d IN collection FILTER [ '1', d, '3' ] ANY == d.a.b.c.e.f RETURN d", checkAny},
+      {"FOR d IN collection FILTER [ '1', d, '3' ] ALL == d.a.b.c.e.f RETURN d", checkAll},
+      {"FOR d IN collection FILTER [ '1', d, '3' ] NONE == d.a.b.c.e.f RETURN d", checkNone}
+    };
+    for (auto caseData : testCases) {
+      const auto& queryString = caseData.first;
+      SCOPED_TRACE(testing::Message("Testing with self-referenced value. Query: ") << queryString);
+      std::string const refName = "d";
+
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
+
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
+
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
+
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
+
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
+
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
+
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(filterNode);
+
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
+      }
+      ASSERT_TRUE(ref);
+
+      // supportsFilterCondition
       {
-        EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
-        EXPECT_EQ(irs::Or::type(), root.type());
-        EXPECT_EQ(3, root.size());
-        auto begin = root.begin();
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
+      }
 
-        // 1st filter
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
+
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
+
         {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
+          auto begin = caseData.second(actual, 1);
 
-        // 2nd filter
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
+
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
+
+          // 3rd filter
+          {
+            ++begin;
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            EXPECT_EQ(expected, *begin);
+          }
+        }
+      }
+    }
+  }
+  
+
+  // self-referenced value
+  {
+    std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+      {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY IN d.a.b.c.e.f RETURN d", checkAny},
+      {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL IN d.a.b.c.e.f RETURN d", checkAll},
+      {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE IN d.a.b.c.e.f RETURN d", checkNone},
+      {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY == d.a.b.c.e.f RETURN d", checkAny},
+      {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL == d.a.b.c.e.f RETURN d", checkAll},
+      {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE == d.a.b.c.e.f RETURN d", checkNone},
+    };
+    for (auto caseData : testCases) {
+      const auto& queryString = caseData.first;
+      SCOPED_TRACE(testing::Message("Testing with self-referenced value. Query: ") << queryString);
+      std::string const refName = "d";
+
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
+
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
+
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
+
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
+
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
+
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
+
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(filterNode);
+
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
+      }
+      ASSERT_TRUE(ref);
+
+      // supportsFilterCondition
+      {
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
+      }
+
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
+
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
+
         {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
+          auto begin = caseData.second(actual, 1);
 
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
 
-        EXPECT_EQ(root.end(), ++begin);
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
+
+          // 3rd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
+        }
       }
     }
   }
 
   // self-referenced value
   {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', d, '3' ] RETURN d";
-    std::string const refName = "d";
+      std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+      {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY IN d.a.b.c.e.f, 2.5) RETURN d", checkAny},
+      {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ALL IN d.a.b.c.e.f, 2.5) RETURN d", checkAll},
+      {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] NONE IN d.a.b.c.e.f, 2.5) RETURN d", checkNone},
+      {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY == d.a.b.c.e.f, 2.5) RETURN d", checkAny},
+      {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ALL == d.a.b.c.e.f, 2.5) RETURN d", checkAll},
+      {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] NONE == d.a.b.c.e.f, 2.5) RETURN d", checkNone},
+    };
+    for (auto caseData : testCases) {
+      const auto& queryString = caseData.first;
+      SCOPED_TRACE(testing::Message("Testing with self-referenced value. Query: ") << queryString);
+      std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
 
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
 
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
 
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
 
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(filterNode);
+      ASSERT_TRUE(filterNode);
 
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(ref);
+      ASSERT_TRUE(ref);
 
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
+      // supportsFilterCondition
+      {
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
+      }
 
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
-      {
-        EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
-        EXPECT_EQ(irs::Or::type(), root.type());
-        EXPECT_EQ(3, root.size());
-        auto begin = root.begin();
-
-        // 1st filter
         {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
+          auto begin = caseData.second(actual, 2.5);
 
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
 
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
 
-        EXPECT_EQ(root.end(), ++begin);
+          // 3rd filter
+          {
+            ++begin;
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            EXPECT_EQ(expected, *begin);
+          }
+        }
       }
     }
   }
-
-  // self-referenced value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', d.e, d.a.b.c.e.f ] "
-        "RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
-        EXPECT_EQ(irs::Or::type(), root.type());
-        EXPECT_EQ(3, root.size());
-        auto begin = root.begin();
-
-        // 1st filter
-        {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
-
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        // 3rd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        EXPECT_EQ(root.end(), ++begin);
-      }
-    }
-  }
-
-  // self-referenced value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', 1+d.b, '3' ] RETURN "
-        "d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
-        EXPECT_EQ(irs::Or::type(), root.type());
-        EXPECT_EQ(3, root.size());
-        auto begin = root.begin();
-
-        // 1st filter
-        {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
-
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
-
-        EXPECT_EQ(root.end(), ++begin);
-      }
-    }
-  }
-
-  // nondeterministic attribute access in value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER 4 in [ 1, d.a[_NONDETERM_('abc')], 4 ] "
-        "RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
-        EXPECT_EQ(irs::Or::type(), root.type());
-        EXPECT_EQ(3, root.size());
-        auto begin = root.begin();
-
-        // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
-
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
-
-        EXPECT_EQ(root.end(), ++begin);
-      }
-    }
-  }
-
-  // self-reference in value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER 4 in [ 1, d.b.a, 4 ] RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
-        EXPECT_EQ(irs::Or::type(), root.type());
-        EXPECT_EQ(3, root.size());
-        auto begin = root.begin();
-
-        // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
-
-        // 2nd filter
-        {
-          irs::numeric_token_stream stream;
-          stream.reset(4.0);
-          auto& term = stream.attributes().get<irs::term_attribute>();
-          EXPECT_TRUE(stream.next());
-
-          irs::by_term expected;
-          expected.field(mangleNumeric("b.a")).term(term->value());
-          EXPECT_EQ(expected, *++begin);
-        }
-
-        // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
-
-        EXPECT_EQ(root.end(), ++begin);
-      }
-    }
-  }
-
-  assertExpressionFilter(
-      vocbase(), "FOR d IN collection FILTER 4 in [ 1, 1+d.b, 4 ] RETURN d");
-
-  // heterogeneous references and expression in array
+  // not array as left argument
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
-    ctx.vars.emplace("boolVal",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
-
-    irs::numeric_token_stream stream;
-    stream.reset(3.);
-    EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
-
-    irs::Or expected;
-    auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
-
-    // not a constant in array
-    assertFilterSuccess(
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
+    ctx.vars.emplace("b", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("e", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    assertFilterExecutionFail(
         vocbase(),
-        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER d.a.b.c.e.f in ['1', strVal, boolVal, "
-        "numVal+1, nullVal] RETURN d",
-        expected,
-        &ctx  // expression context
-    );
-  }
-
-  // heterogeneous references and expression in array, boost
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
-    ctx.vars.emplace("boolVal",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
-
-    irs::numeric_token_stream stream;
-    stream.reset(3.);
-    EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
-
-    irs::Or expected;
-    auto& root = expected.add<irs::Or>();
-    root.boost(1.5);
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
-
-    // not a constant in array
-    assertFilterSuccess(
+        "LET a=null LET b='b' LET c=4 LET e=5.6 FOR d IN collection FILTER a ANY IN d.a RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
         vocbase(),
-        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER boost(boost(d.a.b.c.e.f in ['1', strVal, "
-        "boolVal, numVal+1, nullVal], 1), 1.5) RETURN d",
-        expected,
-        &ctx  // expression context
-    );
-  }
-
-  // heterogeneous references and expression in array, analyzer
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
-    ctx.vars.emplace("boolVal",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
-
-    irs::numeric_token_stream stream;
-    stream.reset(3.);
-    EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
-
-    irs::Or expected;
-    auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
-
-    // not a constant in array
-    assertFilterSuccess(
+        "LET a=null LET b='b' LET c=4 LET e=5.6 FOR d IN collection FILTER b ANY == d.a  RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
         vocbase(),
-        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER ANALYZER(d.a.b.c.e.f in ['1', strVal, boolVal, "
-        "numVal+1, nullVal], 'test_analyzer') RETURN d",
-        expected,
-        &ctx  // expression context
-    );
+        "LET a=null LET b='b' LET c=4 LET e=5.6 FOR d IN collection FILTER c ALL IN d.a RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET a=null LET b='b' LET c=4 LET e=5.6 FOR d IN collection FILTER e ALL == d.a RETURN d",
+        &ctx);
   }
-
-  // heterogeneous references and expression in array, analyzer, boost
+    
+  // heterogeneous references and expression in array, analyzer, boost ANY
   {
+    SCOPED_TRACE("heterogeneous references and expression in array, analyzer, boost ANY");
     ExpressionContextMock ctx;
     ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
     ctx.vars.emplace("boolVal",
@@ -1897,101 +1701,284 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER boost(ANALYZER(d.a.b.c.e.f in ['1', strVal, "
-        "boolVal, numVal+1, nullVal], 'test_analyzer'),2.5) RETURN d",
+        "d IN collection FILTER boost(ANALYZER(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ANY IN d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
         &ctx  // expression context
     );
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER ANALYZER(boost(d.a.b.c.e.f in ['1', strVal, "
-        "boolVal, numVal+1, nullVal], 2.5), 'test_analyzer') RETURN d",
+        "d IN collection FILTER ANALYZER(boost(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ANY IN d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER boost(ANALYZER(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ANY == d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER ANALYZER(boost(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ANY == d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
         &ctx  // expression context
     );
   }
+  // heterogeneous references and expression in array, analyzer, boost ALL
+  {
+    SCOPED_TRACE("heterogeneous references and expression in array, analyzer, boost ALL");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
+    ctx.vars.emplace("boolVal",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    EXPECT_TRUE(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.boost(2.5);
+    root.add<irs::by_term>()
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
+        .term("1");
+    root.add<irs::by_term>()
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
+        .term("str");
+    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
+    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
+    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+
+    // not a constant in array
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER boost(ANALYZER(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ALL IN d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER ANALYZER(boost(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ALL IN d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER boost(ANALYZER(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ALL == d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER ANALYZER(boost(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ALL == d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+  }
+  // heterogeneous references and expression in array, analyzer, boost NONE
+  {
+    SCOPED_TRACE("heterogeneous references and expression in array, analyzer, boost NONE");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
+    ctx.vars.emplace("boolVal",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    EXPECT_TRUE(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    root.boost(2.5);
+    root.add<irs::by_term>()
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
+        .term("1");
+    root.add<irs::by_term>()
+        .field(mangleString("a.b.c.e.f", "test_analyzer"))
+        .term("str");
+    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
+    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
+    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+
+    // not a constant in array
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER boost(ANALYZER(['1', strVal, "
+        "boolVal, numVal+1, nullVal] NONE IN d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER ANALYZER(boost(['1', strVal, "
+        "boolVal, numVal+1, nullVal] NONE IN d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER boost(ANALYZER(['1', strVal, "
+        "boolVal, numVal+1, nullVal] NONE == d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER ANALYZER(boost(['1', strVal, "
+        "boolVal, numVal+1, nullVal] NONE == d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+  }
+  
+  // self-reference
   assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER [1,2,'3'] in d.a RETURN d");
-
+                         "FOR d IN myView FILTER [1,2,'3'] ANY IN d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER [1,2,'3'] ALL IN d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER [1,2,'3'] NONE IN d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER [1,2,'3'] ANY == d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER [1,2,'3'] ALL == d RETURN d");
+  assertExpressionFilter(vocbase(),
+                         "FOR d IN myView FILTER [1,2,'3'] NONE == d RETURN d");
+  
   // non-deterministic expression name in array
   assertExpressionFilter(
       vocbase(),
       "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
       "collection FILTER "
-      "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
-      "in ['1','2','3'] RETURN d");
-
-  // self-reference
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d in [1,2,3] RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d[*] in [1,2,3] RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d.a[*] in [1,2,3] RETURN d");
+      " ['1','2','3'] ANY IN d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]  RETURN d");
+  assertExpressionFilter(
+      vocbase(),
+      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+      "collection FILTER "
+      " ['1','2','3'] ALL IN d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]  RETURN d");
+  assertExpressionFilter(
+      vocbase(),
+      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+      "collection FILTER "
+      " ['1','2','3'] NONE IN d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]  RETURN d");
+  assertExpressionFilter(
+      vocbase(),
+      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+      "collection FILTER "
+      " ['1','2','3'] ANY == d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]  RETURN d");
+  assertExpressionFilter(
+      vocbase(),
+      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+      "collection FILTER "
+      " ['1','2','3'] ALL == d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]  RETURN d");
+  assertExpressionFilter(
+      vocbase(),
+      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+      "collection FILTER "
+      " ['1','2','3'] NONE == d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]  RETURN d");
 
   // no reference provided
   assertFilterExecutionFail(
-      vocbase(), "LET x={} FOR d IN myView FILTER d.a in [1,x.a,3] RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ANY IN d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ALL IN d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE IN d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ANY == d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ALL == d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE == d.a RETURN d",
       &ExpressionContextMock::EMPTY);
 
-  // false expression
-  {
-    irs::Or expected;
-    expected.add<irs::empty>();
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER [] in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER ['d'] in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 'd.a' in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER null in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER true in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER false in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4 in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4.5 in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 1..2 in [1,2,3] RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);  // by some reason arangodb evaluates it to false
-  }
-
-  // true expression
-  {
-    irs::Or expected;
-    expected.add<irs::all>();
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4 in [1,2,3,4] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-  }
-
   // not a value in array
-  assertFilterFail(
-      vocbase(), "FOR d IN collection FILTER d.a in ['1',['2'],'3'] RETURN d");
-  assertFilterFail(
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ANY IN d.a RETURN d");
+  assertFilterExecutionFail(
       vocbase(),
-      "FOR d IN collection FILTER d.a in ['1', {\"abc\": \"def\"},'3'] RETURN "
-      "d");
-  */
+      "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ANY IN d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ANY == d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ANY == d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ALL IN d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ALL IN d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ALL == d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ALL == d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] NONE IN d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] NONE IN d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] NONE == d.a RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] NONE == d.a RETURN d");
 }
 
 TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
-  // simple attribute
+  // simple attribute ANY
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ANY NOT IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ANY NOT IN d['a'] RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ANY != d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ANY != d['a'] RETURN d", expected);
+  }
+  
+  // simple attribute ALL
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
@@ -2001,13 +1988,57 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a not in ['1','2','3'] RETURN d", expected);
+        "FOR d IN collection FILTER ['1','2','3'] ALL NOT IN d.a RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d['a'] not in ['1','2','3'] RETURN d", expected);
+        "FOR d IN collection FILTER ['1','2','3'] ALL NOT IN d['a'] RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ALL != d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ALL != d['a'] RETURN d", expected);
   }
 
-  // simple offset
+  // simple attribute NONE
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] NONE NOT IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] NONE NOT IN d['a'] RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] NONE != d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] NONE != d['a'] RETURN d", expected);
+  }
+  
+  // simple offset ANY
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ANY NOT IN d[1] RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ANY != d[1] RETURN d", expected);
+  }
+
+  // simple offset ALL
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
@@ -2017,99 +2048,33 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d[1] not in ['1','2','3'] RETURN d", expected);
+        "FOR d IN collection FILTER ['1','2','3'] ALL NOT IN d[1] RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ['1','2','3'] ALL != d[1] RETURN d", expected);
   }
 
-  // complex attribute name
+  // simple offset NONE
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f not in ['1','2','3'] RETURN d", expected);
+        "FOR d IN collection FILTER ['1','2','3'] NONE NOT IN d[1] RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.a['b'].c.e.f not in ['1','2','3'] RETURN "
-        "d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'].e.f not in ['1','2','3'] "
-        "RETURN d",
-        expected);
+        "FOR d IN collection FILTER ['1','2','3'] NONE != d[1] RETURN d", expected);
   }
-
-  // complex attribute name, offset
+  
+  // complex attribute name, offset, analyzer, boost ANY
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[323].e.f"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[323].e.f"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[323].e.f"))
-        .term("3");
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c[323].e.f not in ['1','2','3'] "
-        "RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b'].c[323].e.f not in ['1','2','3'] "
-        "RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b']['c'][323].e.f not in "
-        "['1','2','3'] RETURN d",
-        expected);
-  }
-
-  // complex attribute name, offset
-  {
-    irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[323].e.f"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[323].e.f"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[323].e.f"))
-        .term("3");
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a.b.c[323].e.f not in "
-        "['1','2','3'], 1.5) RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a['b'].c[323].e.f not in "
-        "['1','2','3'], 1.5) RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a['b']['c'][323].e.f not in "
-        "['1','2','3'], 1.5) RETURN d",
-        expected);
-  }
-
-  // complex attribute name, offset, analyzer
-  {
-    irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.boost(2.5);
     root.add<irs::by_term>()
         .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
         .term("1");
@@ -2122,22 +2087,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER analyzer(d.a.b.c[323].e.f not in "
-        "['1','2','3'], 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER boost(analyzer( "
+        "['1','2','3'] ANY NOT IN d.a.b.c[323].e.f , 'test_analyzer'), 2.5) RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER analyzer(d.a['b'].c[323].e.f not in "
-        "['1','2','3'], 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER analyzer(boost( "
+        "['1','2','3'] ANY NOT IN d.a['b'].c[323].e.f, 2.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER analyzer(d.a['b']['c'][323].e.f not in "
-        "['1','2','3'], 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER boost(analyzer("
+        "['1','2','3'] ANY NOT IN d.a['b']['c'][323].e.f, 'test_analyzer'), 2.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer( "
+        "['1','2','3'] ANY != d.a.b.c[323].e.f , 'test_analyzer'), 2.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER analyzer(boost( "
+        "['1','2','3'] ANY != d.a['b'].c[323].e.f, 2.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer("
+        "['1','2','3'] ANY != d.a['b']['c'][323].e.f, 'test_analyzer'), 2.5) RETURN d",
         expected);
   }
-
-  // complex attribute name, offset, analyzer, boost
+  // complex attribute name, offset, analyzer, boost ALL
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
@@ -2154,59 +2133,86 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost(analyzer(d.a.b.c[323].e.f not in "
-        "['1','2','3'], 'test_analyzer'), 2.5) RETURN d",
+        "FOR d IN collection FILTER boost(analyzer( "
+        "['1','2','3'] ALL NOT IN d.a.b.c[323].e.f , 'test_analyzer'), 2.5) RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER analyzer(boost(d.a['b'].c[323].e.f not in "
-        "['1','2','3'], 2.5), 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER analyzer(boost( "
+        "['1','2','3'] ALL NOT IN d.a['b'].c[323].e.f, 2.5), 'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER boost(analyzer(d.a['b']['c'][323].e.f not "
-        "in ['1','2','3'], 'test_analyzer'), 2.5) RETURN d",
+        "FOR d IN collection FILTER boost(analyzer("
+        "['1','2','3'] ALL NOT IN d.a['b']['c'][323].e.f, 'test_analyzer'), 2.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer( "
+        "['1','2','3'] ALL != d.a.b.c[323].e.f , 'test_analyzer'), 2.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER analyzer(boost( "
+        "['1','2','3'] ALL != d.a['b'].c[323].e.f, 2.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer("
+        "['1','2','3'] ALL != d.a['b']['c'][323].e.f, 'test_analyzer'), 2.5) RETURN d",
         expected);
   }
-
-  // heterogeneous array values
+  // complex attribute name, offset, analyzer, boost NONE
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    auto& root = expected.add<irs::And>();
+    root.boost(2.5);
     root.add<irs::by_term>()
-        .field(mangleStringIdentity("quick.brown.fox"))
+        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
         .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
-    {
-      irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
-      stream.reset(2.);
-      EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
-    }
+    root.add<irs::by_term>()
+        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
+        .term("2");
+    root.add<irs::by_term>()
+        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
+        .term("3");
 
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER d.quick.brown.fox not in "
-                        "['1',null,true,false,2] RETURN d",
-                        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.quick['brown'].fox not in "
-        "['1',null,true,false,2] RETURN d",
+        "FOR d IN collection FILTER boost(analyzer( "
+        "['1','2','3'] NONE NOT IN d.a.b.c[323].e.f , 'test_analyzer'), 2.5) RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER analyzer(d.quick['brown'].fox not in "
-        "['1',null,true,false,2], 'identity') RETURN d",
+        "FOR d IN collection FILTER analyzer(boost( "
+        "['1','2','3'] NONE NOT IN d.a['b'].c[323].e.f, 2.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer("
+        "['1','2','3'] NONE NOT IN d.a['b']['c'][323].e.f, 'test_analyzer'), 2.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer( "
+        "['1','2','3'] NONE != d.a.b.c[323].e.f , 'test_analyzer'), 2.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER analyzer(boost( "
+        "['1','2','3'] NONE != d.a['b'].c[323].e.f, 2.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER boost(analyzer("
+        "['1','2','3'] NONE != d.a['b']['c'][323].e.f, 'test_analyzer'), 2.5) RETURN d",
         expected);
   }
-
-  // heterogeneous array values, analyzer
+  // heterogeneous array values, analyzer, boost ANY
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.boost(1.5);
     root.add<irs::by_term>()
         .field(mangleString("quick.brown.fox", "test_analyzer"))
         .term("1");
@@ -2223,17 +2229,26 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER ANALYZER(d.quick.brown.fox not in "
-        "['1',null,true,false,2], 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER BOOST(ANALYZER(['1',null,true,false,2] ANY NOT IN "
+        "d.quick.brown.fox, 'test_analyzer'), 1.5) RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER ANALYZER(d.quick['brown'].fox not in "
-        "['1',null,true,false,2], 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER ANALYZER(BOOST(['1',null,true,false,2] ANY NOT IN "
+        "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST(ANALYZER(['1',null,true,false,2] ANY != "
+        "d.quick.brown.fox, 'test_analyzer'), 1.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ANALYZER(BOOST(['1',null,true,false,2] ANY != "
+        "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
         expected);
   }
-
-  // heterogeneous array values, analyzer, boost
+  // heterogeneous array values, analyzer, boost ALL
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
@@ -2254,27 +2269,104 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER BOOST(ANALYZER(d.quick.brown.fox not in "
-        "['1',null,true,false,2], 'test_analyzer'), 1.5) RETURN d",
+        "FOR d IN collection FILTER BOOST(ANALYZER(['1',null,true,false,2] ALL NOT IN "
+        "d.quick.brown.fox, 'test_analyzer'), 1.5) RETURN d",
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER ANALYZER(BOOST(d.quick['brown'].fox not in "
-        "['1',null,true,false,2], 1.5), 'test_analyzer') RETURN d",
+        "FOR d IN collection FILTER ANALYZER(BOOST(['1',null,true,false,2] ALL NOT IN "
+        "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST(ANALYZER(['1',null,true,false,2] ALL != "
+        "d.quick.brown.fox, 'test_analyzer'), 1.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ANALYZER(BOOST(['1',null,true,false,2] ALL != "
+        "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
         expected);
   }
-
-  // empty array
+  // heterogeneous array values, analyzer, boost NONE
   {
     irs::Or expected;
-    expected.add<irs::all>();
+    auto& root = expected.add<irs::And>();
+    root.boost(1.5);
+    root.add<irs::by_term>()
+        .field(mangleString("quick.brown.fox", "test_analyzer"))
+        .term("1");
+    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
+    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
+    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      irs::numeric_token_stream stream;
+      auto& term = stream.attributes().get<irs::term_attribute>();
+      stream.reset(2.);
+      EXPECT_TRUE(stream.next());
+      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+    }
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d", expected);
+        "FOR d IN collection FILTER BOOST(ANALYZER(['1',null,true,false,2] NONE NOT IN "
+        "d.quick.brown.fox, 'test_analyzer'), 1.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ANALYZER(BOOST(['1',null,true,false,2] NONE NOT IN "
+        "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST(ANALYZER(['1',null,true,false,2] NONE != "
+        "d.quick.brown.fox, 'test_analyzer'), 1.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER ANALYZER(BOOST(['1',null,true,false,2] NONE != "
+        "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
+        expected);
   }
+  
+  // dynamic complex attribute name ANY
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
-  // dynamic complex attribute name
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .term("1");
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .term("2");
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .term("3");
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        " ['1','2','3'] ANY NOT IN "
+        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        " ['1','2','3'] ANY != "
+        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
+        expected, &ctx);
+  }
+  // dynamic complex attribute name ALL
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
@@ -2300,12 +2392,56 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in ['1','2','3'] RETURN d",
+        " ['1','2','3'] ALL NOT IN "
+        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        " ['1','2','3'] ALL != "
+        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
         expected, &ctx);
   }
+  // dynamic complex attribute name NONE
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
 
-  // invalid dynamic attribute name
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .term("1");
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .term("2");
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+        .term("3");
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        " ['1','2','3'] NONE NOT IN "
+        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        " ['1','2','3'] NONE != "
+        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
+        expected, &ctx);
+  }
+  
+  // invalid dynamic attribute name ANY
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
@@ -2317,82 +2453,65 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         vocbase(),
         "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
         "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in ['1','2','3'] RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name (null value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in ['1','2','3'] RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name (bool value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in ['1','2','3'] RETURN d",
-        &ctx);
-  }
-
-  // array as reference
-  {
-    auto obj = arangodb::velocypack::Parser::fromJson("[ \"1\", 2, \"3\"]");
-    arangodb::aql::AqlValue value(obj->slice());
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    irs::numeric_token_stream stream;
-    stream.reset(2.);
-    EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("x", value);
-
-    irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET x=['1', 2, '3'] FOR d IN collection FILTER d.a.b.c.e.f not in x "
+        "['1','2','3'] ANY NOT IN d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
         "RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
+        &ctx);
+    assertFilterExecutionFail(
         vocbase(),
-        "LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(d.a.b.c.e.f "
-        "not in x, 'identity') RETURN d",
-        expected, &ctx);
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        "['1','2','3'] ANY != d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
+        "RETURN d",
+        &ctx);
+  }
+  // invalid dynamic attribute name ALL
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        "['1','2','3'] ALL NOT IN d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
+        "RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        "['1','2','3'] ALL != d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
+        "RETURN d",
+        &ctx);
+  }
+  // invalid dynamic attribute name NONE
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                                      arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        "['1','2','3'] NONE NOT IN d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
+        "RETURN d",
+        &ctx);
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
+        "collection FILTER "
+        "['1','2','3'] NONE != d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
+        "RETURN d",
+        &ctx);
   }
 
-  // array as reference, analyzer
+  // array as reference, analyzer, boost ANY
   {
     auto obj = arangodb::velocypack::Parser::fromJson("[ \"1\", 2, \"3\"]");
     arangodb::aql::AqlValue value(obj->slice());
@@ -2407,7 +2526,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.boost(3.5);
     root.add<irs::by_term>()
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .term("1");
@@ -2418,12 +2538,28 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     assertFilterSuccess(
         vocbase(),
-        "LET x=['1', 2, '3'] FOR d IN collection FILTER analyzer(d.a.b.c.e.f "
-        "not in x, 'test_analyzer') RETURN d",
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "boost(analyzer(x ANY NOT IN d.a.b.c.e.f, 'test_analyzer'), 3.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "analyzer(boost(x ANY NOT IN d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "boost(analyzer(x ANY != d.a.b.c.e.f, 'test_analyzer'), 3.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "analyzer(boost(x ANY != d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
         expected, &ctx);
   }
 
-  // array as reference, analyzer, boost
+  // array as reference, analyzer, boost ALL
   {
     auto obj = arangodb::velocypack::Parser::fromJson("[ \"1\", 2, \"3\"]");
     arangodb::aql::AqlValue value(obj->slice());
@@ -2451,19 +2587,30 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     assertFilterSuccess(
         vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
-        "boost(analyzer(d.a.b.c.e.f not in x, 'test_analyzer'), 3.5) RETURN d",
+        "boost(analyzer(x ALL NOT IN d.a.b.c.e.f, 'test_analyzer'), 3.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
-        "analyzer(boost(d.a.b.c.e.f not in x, 3.5), 'test_analyzer') RETURN d",
+        "analyzer(boost(x ALL NOT IN d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "boost(analyzer(x ALL != d.a.b.c.e.f, 'test_analyzer'), 3.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "analyzer(boost(x ALL != d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
         expected, &ctx);
   }
 
-  // reference in array
+  // array as reference, analyzer, boost NONE
   {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
+    auto obj = arangodb::velocypack::Parser::fromJson("[ \"1\", 2, \"3\"]");
+    arangodb::aql::AqlValue value(obj->slice());
     arangodb::aql::AqlValueGuard guard(value, true);
 
     irs::numeric_token_stream stream;
@@ -2472,40 +2619,11 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
+    ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
-
-    // not a constant in array
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a.b.c.e.f not in ['1', c, '3'] "
-        "RETURN d",
-        expected,
-        &ctx  // expression context
-    );
-  }
-
-  // reference in array, analyzer
-  {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    irs::numeric_token_stream stream;
-    stream.reset(2.);
-    EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
-
-    irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    auto& root = expected.add<irs::And>();
+    root.boost(3.5);
     root.add<irs::by_term>()
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .term("1");
@@ -2514,809 +2632,377 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .term("3");
 
-    // not a constant in array
     assertFilterSuccess(
         vocbase(),
-        "LET c=2 FOR d IN collection FILTER analyzer(d.a.b.c.e.f not in ['1', "
-        "c, '3'], 'test_analyzer') RETURN d",
-        expected,
-        &ctx  // expression context
-    );
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "boost(analyzer(x NONE NOT IN d.a.b.c.e.f, 'test_analyzer'), 3.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "analyzer(boost(x NONE NOT IN d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "boost(analyzer(x NONE != d.a.b.c.e.f, 'test_analyzer'), 3.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x=['1', 2, '3'] FOR d IN collection FILTER "
+        "analyzer(boost(x NONE != d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
   }
-
-  // reference in array, analyzer, boost
-  {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    irs::numeric_token_stream stream;
-    stream.reset(2.);
-    EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
-
-    irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
-
-    // not a constant in array
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER boost(analyzer(d.a.b.c.e.f not in "
-        "['1', c, '3'], 'test_analyzer'), 1.5) RETURN d",
-        expected,
-        &ctx  // expression context
-    );
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER analyzer(boost(d.a.b.c.e.f not in "
-        "['1', c, '3'], 1.5), 'test_analyzer') RETURN d",
-        expected,
-        &ctx  // expression context
-    );
-  }
-
+  // Auxilary check lambdas. Need them to check root part of expected filterd
+  // direct == check is not possible as we will have byExpresssion filters generated on the fly
+  auto checkNotAny = [](irs::Or& actual, iresearch::boost_t boost) {
+    EXPECT_EQ(1, actual.size());
+    auto & not = dynamic_cast<irs::Not&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::And&>(*not.filter());
+    EXPECT_EQ(irs::And::type(), root.type());
+    EXPECT_EQ(3, root.size());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
+  auto checkNotAll = [](irs::Or& actual, iresearch::boost_t boost) {
+    EXPECT_EQ(1, actual.size());
+    auto & not = dynamic_cast<irs::Not&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::Or&>(*not.filter());
+    EXPECT_EQ(irs::Or::type(), root.type());
+    EXPECT_EQ(3, root.size());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
+  auto checkNotNone = [](irs::Or& actual, iresearch::boost_t boost) {
+    EXPECT_EQ(1, actual.size());
+    auto& root = dynamic_cast<const irs::And&>(*actual.begin());
+    EXPECT_EQ(irs::And::type(), root.type());
+    EXPECT_EQ(3, root.size());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
   // nondeterministic value
   {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f not in [ '1', RAND(), '3' ] "
-        "RETURN d";
-    std::string const refName = "d";
+    std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+      {"FOR d IN collection FILTER [ '1', RAND(), '3' ] ANY NOT IN d.a.b.c.e.f RETURN d", checkNotAny},
+      {"FOR d IN collection FILTER [ '1', RAND(), '3' ] ALL NOT IN d.a.b.c.e.f RETURN d", checkNotAll},
+      {"FOR d IN collection FILTER [ '1', RAND(), '3' ] NONE NOT IN d.a.b.c.e.f RETURN d", checkNotNone},
+      {"FOR d IN collection FILTER [ '1', RAND(), '3' ] ANY != d.a.b.c.e.f RETURN d", checkNotAny},
+      {"FOR d IN collection FILTER [ '1', RAND(), '3' ] ALL != d.a.b.c.e.f RETURN d", checkNotAll},
+      {"FOR d IN collection FILTER [ '1', RAND(), '3' ] NONE != d.a.b.c.e.f RETURN d", checkNotNone}
+    };
+    for (auto& testData : testCases) {
+      auto const& queryString = testData.first;
+      SCOPED_TRACE(testing::Message("Query: ") << queryString);
+      std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
 
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
 
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
 
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
 
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(filterNode);
+      ASSERT_TRUE(filterNode);
 
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(ref);
+      ASSERT_TRUE(ref);
 
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
+      // supportsFilterCondition
+      {
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
+      }
 
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
-      {
-        EXPECT_EQ(1, actual.size());
-
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-
-        auto begin = orNode->begin();
-
-        // 1st filter
         {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
+         
+          auto begin = testData.second(actual, 1);
 
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
 
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
 
-        EXPECT_EQ(orNode->end(), ++begin);
+          // 3rd filter
+          {
+            ++begin;
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            EXPECT_EQ(expected, *begin);
+          }
+        }
       }
     }
   }
-
+  
   // self-referenced value
   {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f not in [ '1', d.a, '3' ] "
-        "RETURN d";
-    std::string const refName = "d";
+    std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+      {"FOR d IN collection FILTER [ '1', d.a, '3' ] ANY NOT IN d.a.b.c.e.f RETURN d", checkNotAny},
+      {"FOR d IN collection FILTER [ '1', d.a, '3' ] ALL NOT IN d.a.b.c.e.f RETURN d", checkNotAll},
+      {"FOR d IN collection FILTER [ '1', d.a, '3' ] NONE NOT IN d.a.b.c.e.f RETURN d", checkNotNone},
+      {"FOR d IN collection FILTER [ '1', d.a, '3' ] ANY != d.a.b.c.e.f RETURN d", checkNotAny},
+      {"FOR d IN collection FILTER [ '1', d.a, '3' ] ALL != d.a.b.c.e.f RETURN d", checkNotAll},
+      {"FOR d IN collection FILTER [ '1', d.a, '3' ] NONE != d.a.b.c.e.f RETURN d", checkNotNone}
+    };
+    for (auto testData : testCases) {
+      auto const& queryString = testData.first;
+      SCOPED_TRACE(testing::Message("Query:") << queryString);
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+      std::string const refName = "d";
 
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
 
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
 
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
 
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
 
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
+
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(filterNode);
+      ASSERT_TRUE(filterNode);
 
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(ref);
+      ASSERT_TRUE(ref);
 
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
+      // supportsFilterCondition
+      {
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
+      }
 
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
-      {
-        EXPECT_EQ(1, actual.size());
-
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-
-        auto begin = orNode->begin();
-
-        // 1st filter
         {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
+          auto begin = testData.second(actual, 1);
 
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
 
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
 
-        EXPECT_EQ(orNode->end(), ++begin);
+          // 3rd filter
+          {
+            ++begin;
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            EXPECT_EQ(expected, *begin);
+          }
+        }
       }
     }
   }
-
-  // self-referenced value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f not in [ '1', 1+d.a, '3' ] "
-        "RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-
-        auto begin = orNode->begin();
-
-        // 1st filter
-        {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
-
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
-
-        EXPECT_EQ(orNode->end(), ++begin);
-      }
-    }
-  }
-
+  
   // self-referenced value, boost
   {
-    std::string const queryString =
-        "FOR d IN collection FILTER boost(d.a.b.c.e.f not in [ '1', 1+d.a, '3' "
-        "], 1.5) RETURN d";
-    std::string const refName = "d";
+    std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
+      {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ANY NOT IN d.a.b.c.e.f, 1.5) RETURN d", checkNotAny},
+      {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ALL NOT IN d.a.b.c.e.f, 1.5) RETURN d", checkNotAll},
+      {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] NONE NOT IN d.a.b.c.e.f, 1.5) RETURN d", checkNotNone},
+      {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ANY NOT IN d.a.b.c.e.f, 1.5) RETURN d", checkNotAny},
+      {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ALL NOT IN d.a.b.c.e.f, 1.5) RETURN d", checkNotAll},
+      {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] NONE NOT IN d.a.b.c.e.f, 1.5) RETURN d", checkNotNone}
+    };
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    for (auto testData : testCases) {
+      auto const& queryString = testData.first;
+      SCOPED_TRACE(testing::Message("Query:") << queryString);
+      std::string const refName = "d";
 
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
+      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+      auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
+      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+        nullptr, options, arangodb::aql::PART_MAIN);
 
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
+      auto const parseResult = query.parse();
+      ASSERT_TRUE(parseResult.result.ok());
 
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
+      auto* ast = query.ast();
+      ASSERT_TRUE(ast);
 
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
+      auto* root = ast->root();
+      ASSERT_TRUE(root);
 
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
+      // find first FILTER node
+      arangodb::aql::AstNode* filterNode = nullptr;
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        auto* node = root->getMemberUnchecked(i);
+        ASSERT_TRUE(node);
+
+        if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+          filterNode = node;
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(filterNode);
+      ASSERT_TRUE(filterNode);
 
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
+      // find referenced variable
+      auto* allVars = ast->variables();
+      ASSERT_TRUE(allVars);
+      arangodb::aql::Variable* ref = nullptr;
+      for (auto entry : allVars->variables(true)) {
+        if (entry.second == refName) {
+          ref = allVars->getVariable(entry.first);
+          break;
+        }
       }
-    }
-    ASSERT_TRUE(ref);
+      ASSERT_TRUE(ref);
 
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
+      // supportsFilterCondition
+      {
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
+      }
 
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
+      // iteratorForCondition
+      {
+        arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+          {}, {}, {}, arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
+        irs::Or actual;
+        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
+                                                    &ExpressionContextMock::EMPTY, ref };
+        EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
-      {
-        EXPECT_EQ(1, actual.size());
-
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-        EXPECT_EQ(1.5f, orNode->boost());
-
-        auto begin = orNode->begin();
-
-        // 1st filter
         {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
+          auto begin = testData.second(actual, 1.5);
 
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
+          // 1st filter
+          {
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            EXPECT_EQ(expected, *begin);
+          }
 
-        // 3rd filter
-        {
-          ++begin;
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
-          EXPECT_EQ(expected, *begin);
-        }
+          // 2nd filter
+          {
+            ++begin;
+            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+          }
 
-        EXPECT_EQ(orNode->end(), ++begin);
+          // 3rd filter
+          {
+            ++begin;
+            irs::by_term expected;
+            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            EXPECT_EQ(expected, *begin);
+          }
+        }
       }
     }
   }
-
-  // self-referenced value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER d.a.b.c.e.f not in [ '1', d.e, d.a.b.c.e.f "
-        "] RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-
-        auto begin = orNode->begin();
-
-        // 1st filter
-        {
-          irs::by_term expected;
-          expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
-          EXPECT_EQ(expected, *begin);
-        }
-
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        // 3rd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        EXPECT_EQ(orNode->end(), ++begin);
-      }
-    }
-  }
-
-  // nondeterministic attribute access in value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER 4 not in [ 1, d.a[_NONDETERM_('abc')], 4 ] "
-        "RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-        auto begin = orNode->begin();
-
-        // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
-
-        // 2nd filter
-        {
-          ++begin;
-          EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-          EXPECT_TRUE(nullptr !=
-                      dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
-        }
-
-        // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
-
-        EXPECT_EQ(orNode->end(), ++begin);
-      }
-    }
-  }
-
-  // self-reference in value
-  {
-    std::string const queryString =
-        "FOR d IN collection FILTER 4 not in [ 1, d.b.a, 4 ] RETURN d";
-    std::string const refName = "d";
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-
-    auto const parseResult = query.parse();
-    ASSERT_TRUE(parseResult.result.ok());
-
-    auto* ast = query.ast();
-    ASSERT_TRUE(ast);
-
-    auto* root = ast->root();
-    ASSERT_TRUE(root);
-
-    // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      auto* node = root->getMemberUnchecked(i);
-      ASSERT_TRUE(node);
-
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
-        filterNode = node;
-        break;
-      }
-    }
-    ASSERT_TRUE(filterNode);
-
-    // find referenced variable
-    auto* allVars = ast->variables();
-    ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
-    for (auto entry : allVars->variables(true)) {
-      if (entry.second == refName) {
-        ref = allVars->getVariable(entry.first);
-        break;
-      }
-    }
-    ASSERT_TRUE(ref);
-
-    // supportsFilterCondition
-    {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
-    }
-
-    // iteratorForCondition
-    {
-      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                         {}, {}, {}, arangodb::transaction::Options());
-
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
-      irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-
-      {
-        EXPECT_EQ(1, actual.size());
-
-        auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
-        EXPECT_EQ(irs::Not::type(), notNode.type());
-
-        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
-        EXPECT_TRUE(orNode);
-        EXPECT_EQ(irs::Or::type(), orNode->type());
-        EXPECT_EQ(3, orNode->size());
-
-        auto begin = orNode->begin();
-
-        // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
-
-        // 2nd filter
-        {
-          irs::numeric_token_stream stream;
-          stream.reset(4.0);
-          auto& term = stream.attributes().get<irs::term_attribute>();
-          EXPECT_TRUE(stream.next());
-
-          irs::by_term expected;
-          expected.field(mangleNumeric("b.a")).term(term->value());
-          EXPECT_EQ(expected, *++begin);
-        }
-
-        // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
-
-        EXPECT_EQ(orNode->end(), ++begin);
-      }
-    }
-  }
-
-  assertExpressionFilter(
-      vocbase(),
-      "FOR d IN collection FILTER 4 not in [ 1, 1+d.b, 4 ] RETURN d");
-
-  // heterogeneous references and expression in array
+  // heterogeneous references and expression in array ANY
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
@@ -3331,7 +3017,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.boost(2.5);
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>()
         .field(mangleStringIdentity("a.b.c.e.f"))
@@ -3344,14 +3031,22 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER d.a.b.c.e.f not in ['1', strVal, boolVal, "
-        "numVal+1, nullVal] RETURN d",
+        "d IN collection FILTER BOOST(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ANY NOT IN d.a.b.c.e.f, 2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER BOOST(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ANY != d.a.b.c.e.f, 2.5) RETURN d",
         expected,
         &ctx  // expression context
     );
   }
-
-  // heterogeneous references and expression in array
+  // heterogeneous references and expression in array ALL
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
@@ -3380,1130 +3075,130 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
-        "d IN collection FILTER BOOST(d.a.b.c.e.f not in ['1', strVal, "
-        "boolVal, numVal+1, nullVal], 2.5) RETURN d",
+        "d IN collection FILTER BOOST(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ALL NOT IN d.a.b.c.e.f, 2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER BOOST(['1', strVal, "
+        "boolVal, numVal+1, nullVal] ALL != d.a.b.c.e.f, 2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+  }
+  // heterogeneous references and expression in array NONE
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
+    ctx.vars.emplace("boolVal",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    EXPECT_TRUE(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.boost(2.5);
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
+    root.add<irs::by_term>()
+        .field(mangleStringIdentity("a.b.c.e.f"))
+        .term("str");
+    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
+    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
+    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+
+    // not a constant in array
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER BOOST(['1', strVal, "
+        "boolVal, numVal+1, nullVal] NONE NOT IN d.a.b.c.e.f, 2.5) RETURN d",
+        expected,
+        &ctx  // expression context
+    );
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
+        "d IN collection FILTER BOOST(['1', strVal, "
+        "boolVal, numVal+1, nullVal] NONE != d.a.b.c.e.f, 2.5) RETURN d",
         expected,
         &ctx  // expression context
     );
   }
 
-  assertExpressionFilter(
-      vocbase(), "FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
-
-  // self-reference
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d not in [1,2,3] RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d[*] not in [1,2,3] RETURN d");
-  assertExpressionFilter(
-      vocbase(), "FOR d IN myView FILTER d.a[*] not in [1,2,3] RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER 4 not in [1,d,3] RETURN d");
-
   // no reference provided
   assertFilterExecutionFail(
-      vocbase(), "LET x={} FOR d IN myView FILTER d.a not in [1,x.a,3] RETURN d",
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ANY NOT IN d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ANY != d.a RETURN d",
       &ExpressionContextMock::EMPTY);
 
-  // false expression
-  {
-    irs::Or expected;
-    expected.add<irs::empty>();
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4 not in [1,2,3,4] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // true expression
-  {
-    irs::Or expected;
-    expected.add<irs::all>();
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER [] not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER ['d'] not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 'd.a' not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER null not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER true not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER false not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4 not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4.5 not in [1,2,3] RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 1..2 not in [1,2,3] RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);  // by some reason arangodb evaluates it to true
-  }
-
-  // true expression, boost
-  {
-    irs::Or expected;
-    expected.add<irs::all>().boost(1.5);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST([] not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(['d'] not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST('d.a' not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(null not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(true not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(false not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER BOOST(4 not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(4.5 not in [1,2,3],1.5) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(1..2 not in [1,2,3],1.5) RETURN d", expected,
-        &ExpressionContextMock::EMPTY);  // by some reason arangodb evaluates it to true
-  }
-
-  // not a value in array
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN collection FILTER d.a not in ['1',['2'],'3'] RETURN d");
-
-  // numeric range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b.c.e.f'] not in 4..5 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric range, boost
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.boost(2.5);
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a.b.c.e.f not in 4..5, 2.5) RETURN "
-        "d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER BOOST(d.a['b.c.e.f'] not in 4..5, 2.5) "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric range, attribute offset
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b[4].c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b[4].c.e.f not in 4..5 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b[4].c.e.f'] not in 4..5 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric floating range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f not in 4.5..5.0 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b'].c.e.f not in 4.5..5.0 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric floating range, boost
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.boost(1.5);
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a.b.c.e.f not in 4.5..5.0, 1.5) "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a['b'].c.e.f not in 4.5..5.0, 1.5) "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric floating range, attribute offset
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a[3].b[1].c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a[3].b[1].c.e.f not in 4.5..5.0 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a[3]['b'][1].c.e.f not in 4.5..5.0 "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER analyzer(d.a[3]['b'][1].c.e.f not in "
-        "4.5..5.0, 'test_analyzer') RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric int-float range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5.0 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c['e'].f not in 4..5.0 RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // numeric expression in range
-  {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(2.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(102.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a[100].b.c[1].e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
-        "c..c+100 RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
-        "c..c+100 LIMIT 100 RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100]['b'].c[1].e.f not in "
-        "c..c+100 RETURN d",
-        expected, &ctx);
-  }
-
-  // dynamic complex attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(2.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(102.0);
-
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in 2..102 RETURN d",
-        expected, &ctx);
-  }
-
-  // invalid dynamic attribute name
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in 2..102 RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name (null value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in 2..102 RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name (bool value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in 2..102 RETURN d",
-        &ctx);
-  }
-
-  // string range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f not in '4'..'5' RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b'].c.e.f not in '4'..'5' RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // string range, boost
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.boost(2.5);
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a.b.c.e.f not in '4'..'5', 2.5) "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER boost(d.a['b'].c.e.f not in '4'..'5', 2.5) "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // string range, attribute offset
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(4.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b[3].c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b[3].c.e.f not in '4'..'5' RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a['b'][3].c.e.f not in '4'..'5' RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // string expression in range
-  {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(2.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(4.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a[100].b.c[1].e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
-        "TO_STRING(c)..TO_STRING(c+2) RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in "
-        "TO_STRING(c)..TO_STRING(c+2) RETURN d",
-        expected, &ctx);
-  }
-
-  // dynamic complex attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(2.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(4.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in '2'..'4' RETURN d",
-        expected, &ctx);
-  }
-
-  // invalid dynamic attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in '2'..'4' RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name in range (null value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in '2'..'4' RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name in range (bool value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in '2'..'4' RETURN d",
-        &ctx);
-  }
-
-  // boolean range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(1.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f not in false..true RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d['a'].b.c.e.f not in false..true RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // boolean range, attribute offset
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(1.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f[1]"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f[1] not in false..true RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d['a'].b.c.e.f[1] not in false..true "
-        "RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // boolean expression in range
-  {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(1.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a[100].b.c[1].e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
-        "TO_BOOL(c)..IS_NULL(TO_BOOL(c-2)) RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in "
-        "TO_BOOL(c)..TO_BOOL(c-2) RETURN d",
-        expected, &ctx);
-  }
-
-  // dynamic complex attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(1.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in true..false RETURN d",
-        expected, &ctx);
-  }
-
-  // invalid dynamic attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in true..false RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name in range (null value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in true..false RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name in range (bool value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in false..true RETURN d",
-        &ctx);
-  }
-
-  // null range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e.f not in null..null RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c['e'].f not in null..null RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // null range, attribute offset
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e[3].f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c.e[3].f not in null..null RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER d.a.b.c['e'][3].f not in null..null RETURN "
-        "d",
-        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // null expression in range
-  {
-    arangodb::aql::Variable var("c", 0);
-    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(var.name, value);
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a[100].b.c[1].e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=null FOR d IN collection FILTER d.a[100].b.c[1].e.f not in "
-        "c..null RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET c=null FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in "
-        "c..null RETURN d",
-        expected, &ctx);
-  }
-
-  // dynamic complex attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in null..null RETURN d",
-        expected, &ctx);
-  }
-
-  // invalid dynamic attribute name in range
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in null..null RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name in range (null value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in null..null RETURN d",
-        &ctx);
-  }
-
-  // invalid dynamic attribute name in range (bool value)
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
-
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-        "collection FILTER "
-        "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-        "not in null..null RETURN d",
-        &ctx);
-  }
-
-  // heterogeneous range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(4.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in 'a'..4 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // heterogeneous range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(1.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(0.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in 1..null RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // heterogeneous range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(5.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in false..5.5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in 1..4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // heterogeneous range
-  {
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(0.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(1.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in 'false'..1 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in 0..true RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.a not in null..true RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-  }
-
-  // range as reference
-  {
-    arangodb::aql::AqlValue value(1, 3);
-    arangodb::aql::AqlValueGuard guard(value, true);
-
-    irs::numeric_token_stream stream;
-    stream.reset(2.);
-    EXPECT_TRUE(stream.next());
-
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(1, 3));
-
-    irs::numeric_token_stream minTerm;
-    minTerm.reset(1.0);
-    irs::numeric_token_stream maxTerm;
-    maxTerm.reset(3.0);
-    irs::Or expected;
-    auto& range =
-        expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
-    range.field(mangleNumeric("a.b.c.e.f"));
-    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
-
-    assertFilterSuccess(
-        vocbase(),
-        "LET x=1..3 FOR d IN collection FILTER d.a.b.c.e.f not in x RETURN d",
-        expected, &ctx);
-  }
-
-  // non-deterministic expression name in range
-  assertExpressionFilter(
-      vocbase(),
-      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-      "collection FILTER "
-      "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] "
-      "not in 4..5 RETURN d");
-  assertExpressionFilter(
-      vocbase(),
-      "LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN "
-      "collection FILTER "
-      "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] "
-      "not in _NONDETERM_(4)..5 RETURN d");
-
-  // self-reference
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d not in 4..5 RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "for d IN myView FILTER d[*] not in 4..5 RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "for d IN myView FILTER d.a[*] not in 4..5 RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER d.a not in d.b..5 RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER 4..5 not in d.a RETURN d");
-  assertExpressionFilter(
-      vocbase(), "FOR d IN myView FILTER [1,2,'3'] not in d.a RETURN d");
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER 4 not in d.a RETURN d");
   assertFilterExecutionFail(
-      vocbase(), "LET x={} FOR d IN myView FILTER 4..5 not in x.a RETURN d",
-      &ExpressionContextMock::EMPTY);  // no reference to x
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ALL NOT IN d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  
   assertFilterExecutionFail(
-      vocbase(), "LET x={} FOR d IN myView FILTER 4 in not x.a RETURN d",
-      &ExpressionContextMock::EMPTY);  // no reference to x
-  assertExpressionFilter(vocbase(),
-                         "for d IN myView filter 4..5 not in d.a return d");  // self-reference
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN myView FILTER 4 not in d.b..5 RETURN d");  // self-reference
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ALL != d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
 
-  // true expression
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE NOT IN d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+  
+  assertFilterExecutionFail(
+      vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE != d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::all>();
+    auto& root = expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER [] not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER ['d'] not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 'd.a' not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER null not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER true not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER false not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4.3 not in 4..5 RETURN d", expected,
-                        &ExpressionContextMock::EMPTY);  // ArangoDB feature
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY NOT IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY NOT IN d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY != d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ANY != d['a'] RETURN d", expected);  
   }
 
-  // false expression
+  // empty array ALL/NONE
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    auto& root = expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4 not in 4..5 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER 4 not in 4..4+1 RETURN d",
-                        expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL NOT IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL NOT IN d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL != d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] ALL != d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE NOT IN d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE NOT IN d['a'] RETURN d", expected);
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE != d.a RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER [] NONE != d['a'] RETURN d", expected);
   }
 }
