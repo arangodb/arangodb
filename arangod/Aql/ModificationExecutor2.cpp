@@ -255,9 +255,15 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
   return {ExecutionState::DONE, std::move(stats)};
 }
 
-template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, InsertModifier>;
-template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, RemoveModifier>;
-template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, ReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, UpdateModifier>;
-template class ::arangodb::aql::ModificationExecutor2<SingleRowFetcher<false>, UpsertModifier>;
-// template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpdateModifier>;
+using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
+
+template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, ReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, ReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpdateModifier>;
+template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpdateModifier>;
+template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpsertModifier>;
+template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpsertModifier>;
