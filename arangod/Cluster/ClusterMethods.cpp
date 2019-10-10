@@ -3559,7 +3559,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
 
     try {
       if (!Helper::equal(agency->slice()[0].get(versionPath),
-                                           agencyCheck->slice()[0].get(versionPath), false)) {
+                         agencyCheck->slice()[0].get(versionPath), false)) {
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
                      "backup: backup's consistency is not guaranteed");
