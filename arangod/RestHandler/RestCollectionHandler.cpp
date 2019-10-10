@@ -147,13 +147,17 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
           bool withRevisions = _request->parsedValue("withRevisions", false);
           bool withData = _request->parsedValue("withData", false);
-          auto result = coll->checksum(withRevisions, withData);
-
-          if (result.ok()) {
+          
+          uint64_t checksum;
+          TRI_voc_rid_t revId;
+          auto res = methods::Collections::checksum(*coll, withRevisions, withData,
+                                                    checksum, revId);
+          
+          if (res.ok()) {
             VPackObjectBuilder obj(&_builder, true);
 
-            obj->add("checksum", result.slice().get("checksum"));
-            obj->add("revision", result.slice().get("revision"));
+            obj->add("checksum", VPackValue(std::to_string(checksum)));
+            obj->add("revision", VPackValue(TRI_RidToString(revId)));
 
             // We do not need a transaction here
             methods::Collections::Context ctxt(_vocbase, *coll);
@@ -165,7 +169,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                      /*detailedCount*/ true);
           } else {
             skipGenerate = true;
-            this->generateError(result.result());
+            this->generateError(res);
           }
         } else if (sub == "figures") {
           // /_api/collection/<identifier>/figures

@@ -1178,42 +1178,6 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
   return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
-/// @brief Iterate over all elements of the collection.
-void transaction::Methods::invokeOnAllElements(std::string const& collectionName,
-                                               std::function<bool(LocalDocumentId const&)> callback) {
-  TRI_ASSERT(_state != nullptr && _state->status() == transaction::Status::RUNNING);
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_INTERNAL);
-  } else if (_state->isCoordinator()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
-  TRI_ASSERT(trxCol != nullptr);
-  std::shared_ptr<LogicalCollection> const& collection = trxCol->collection();
-  TRI_ASSERT(collection != nullptr);
-  _transactionContextPtr->pinData(collection.get());
-
-  Result lockResult =
-      trxCol->lockRecursive(AccessMode::Type::READ, _state->nestingLevel());
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    THROW_ARANGO_EXCEPTION(lockResult);
-  }
-
-  TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
-
-  collection->invokeOnAllElements(this, callback);
-
-  if (lockResult.is(TRI_ERROR_LOCKED)) {
-    Result res = trxCol->unlockRecursive(AccessMode::Type::READ, _state->nestingLevel());
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-}
-
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
