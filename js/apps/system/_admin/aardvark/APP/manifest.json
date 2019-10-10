@@ -68,6 +68,7 @@
     "/img": "frontend/compressed-img",
     "/data": "frontend/data",
     "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
+    "/ext-searchbox.js": "frontend/src/ext-searchbox.js",
     "/worker-json.js": {
       "path": "frontend/src/worker-json.js",
       "gzip": true

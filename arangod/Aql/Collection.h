@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_COLLECTION_H
 #define ARANGOD_AQL_COLLECTION_H 1
 
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 

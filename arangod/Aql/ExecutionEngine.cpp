@@ -39,9 +39,9 @@
 #include "Aql/ReturnExecutor.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -467,8 +467,10 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     // QueryIds are filled by responses of DBServer parts.
     MapRemoteToSnippet queryIds{};
 
-    auto cleanupGuard = scopeGuard([this, &queryIds]() {
-      _dbserverParts.cleanupEngines(ClusterComm::instance(), TRI_ERROR_INTERNAL,
+    NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
+      _dbserverParts.cleanupEngines(pool, TRI_ERROR_INTERNAL,
                                     _query.vocbase().name(), queryIds);
     });
     std::unordered_map<size_t, size_t> nodeAliases;

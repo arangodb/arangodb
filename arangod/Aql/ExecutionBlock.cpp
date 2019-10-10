@@ -35,8 +35,8 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -178,9 +178,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
       auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("07a60", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " items=" << items;
+          << "getSome done type=" << node->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << node->id()
+          << " state=" << stateToString(state) << " items=" << items;
 
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
@@ -248,9 +248,9 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
       auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("d1950", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " skipped=" << skipped;
+          << "skipSome done type=" << node->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << node->id()
+          << " state=" << stateToString(state) << " skipped=" << skipped;
     }
   }
   return res;
