@@ -1836,10 +1836,8 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    filtered += Helper::getNumericValue<size_t>(resSlice,
-                                                                            "filtered", 0);
-    read += Helper::getNumericValue<size_t>(resSlice,
-                                                                        "readIndex", 0);
+    filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
