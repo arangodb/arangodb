@@ -150,7 +150,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     trxOptions.fromVelocyPack(builder.slice());
   }
   if (trxOptions.lockTimeout < 0.0) {
-    rv.reset(TRI_ERROR_BAD_PARAMETER, "<lockTiemout> needs to be positive");
+    rv.reset(TRI_ERROR_BAD_PARAMETER, "<lockTimeout> needs to be positive");
     return rv;
   }
 
