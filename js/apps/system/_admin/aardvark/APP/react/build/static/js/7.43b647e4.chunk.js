@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[7],{465:function(s,a){(function(){(function(s){"use strict";if("undefined"===typeof sigma)throw"sigma is not declared";sigma.utils.pkg("sigma.canvas.edges.labels"),sigma.canvas.edges.labels.curvedArrow=function(s,a,e,i,n){sigma.canvas.edges.labels.curve(s,a,e,i,n)}}).call(this)}).call(window)}}]);
-//# sourceMappingURL=7.43b647e4.chunk.js.map

@@ -4,16 +4,13 @@
   "author": "ArangoDB GmbH",
   "version": "4.0.0",
   "license": "Apache-2.0",
-
   "engines": {
     "arangodb": "^3.0.0-0 || ^3.0.0"
   },
-
   "repository": {
     "type": "git",
     "url": "https://github.com/arangodb/arangodb.git"
   },
-
   "contributors": [
     {
       "name": "Heiko Kernbach",
@@ -24,18 +21,13 @@
       "email": "michael@arangodb.com"
     }
   ],
-
   "main": "index.js",
   "defaultDocument": "react/build/index.html",
-
-  "configuration": {
-  },
-
+  "configuration": {},
   "files": {
     "/static": "react/build/static",
     "/img": "frontend/img",
     "/static/css/static/media": "react/build/static/media",
-
     "/js/arango/aqltemplates.json": "react/public/assets/aqltemplates.json",
     "/favicon.ico": {
       "path": "react/build/favicon.ico",
@@ -52,18 +44,7 @@
     "/mode-aql.js": {
       "path": "react/build/assets/src/mode-aql.js",
       "gzip": false
-<<<<<<< HEAD
-=======
     },
-    "/fonts": "frontend/fonts",
-    "/img": "frontend/compressed-img",
-    "/data": "frontend/data",
-    "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
-    "/ext-searchbox.js": "frontend/src/ext-searchbox.js",
-    "/worker-json.js": {
-      "path": "frontend/src/worker-json.js",
-      "gzip": true
->>>>>>> 69dc50622aabd1413b33a9e9caa33d53b7ca51e0
-    }
+    "/ext-searchbox.js": "frontend/src/ext-searchbox.js"
   }
 }
