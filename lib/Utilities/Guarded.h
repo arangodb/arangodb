@@ -73,6 +73,7 @@ class Guarded {
   template <typename... Args>
   explicit Guarded(Args...);
 
+  ~Guarded() = default;
   Guarded(Guarded const&) = delete;
   Guarded(Guarded&&) = delete;
   Guarded& operator=(Guarded const&) = delete;
