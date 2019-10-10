@@ -377,8 +377,9 @@ template void addTransactionHeader<std::unordered_map<std::string, std::string>>
     std::unordered_map<std::string, std::string>&);
 
 /// @brief add transaction ID header for setting up AQL snippets
-void addAQLTransactionHeader(transaction::Methods const& trx, ServerID const& server,
-                             std::unordered_map<std::string, std::string>& headers) {
+template <typename MapT>
+void addAQLTransactionHeader(transaction::Methods const& trx,
+                             ServerID const& server, MapT& headers) {
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isCoordinator());
   if (!ClusterTrxMethods::isElCheapo(trx)) {
@@ -402,6 +403,11 @@ void addAQLTransactionHeader(transaction::Methods const& trx, ServerID const& se
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
+template void addAQLTransactionHeader<std::map<std::string, std::string>>(
+    transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);
+template void addAQLTransactionHeader<std::unordered_map<std::string, std::string>>(
+    transaction::Methods const&, ServerID const&,
+    std::unordered_map<std::string, std::string>&);
 
 bool isElCheapo(transaction::Methods const& trx) {
   return isElCheapo(*trx.state());

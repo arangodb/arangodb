@@ -25,6 +25,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -102,9 +104,9 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestDocumentHandler::forwardingTarget() {
+std::string RestDocumentHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return 0;
+    return "";
   }
 
   bool found = false;
@@ -113,13 +115,17 @@ uint32_t RestDocumentHandler::forwardingTarget() {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
       TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return 0;
+      return "";
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
-    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+    if (sourceServer == ServerState::instance()->getShortId()) {
+      return "";
+    }
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    return ci.getCoordinatorByShortID(sourceServer);
   }
 
-  return 0;
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

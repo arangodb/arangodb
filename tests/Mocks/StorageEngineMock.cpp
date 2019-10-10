@@ -648,20 +648,6 @@ arangodb::Result PhysicalCollectionMock::insert(
   return arangodb::Result();
 }
 
-void PhysicalCollectionMock::invokeOnAllElements(
-    arangodb::transaction::Methods*,
-    std::function<bool(arangodb::LocalDocumentId const&)> callback) {
-  before();
-
-  for (size_t i = 0, count = documents.size(); i < count; ++i) {
-    arangodb::LocalDocumentId token(i + 1);  // '_data' always > 0
-
-    if (documents[i].second && !callback(token)) {
-      return;
-    }
-  }
-}
-
 arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(
     arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
   before();

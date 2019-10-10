@@ -25,6 +25,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
@@ -46,6 +47,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -908,4 +910,63 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
 
     return trx.finish(res);
   }
+}
+
+arangodb::Result Collections::checksum(LogicalCollection& collection,
+                                       bool withRevisions, bool withData,
+                                       uint64_t& checksum, TRI_voc_rid_t& revId) {
+  if (ServerState::instance()->isCoordinator()) {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
+  auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
+  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
+  Result res = trx.begin();
+
+  if (res.fail()) {
+    return res;
+  }
+  
+  revId = collection.revision(&trx);
+  checksum = 0;
+
+  // We directly read the entire cursor. so batchsize == limit
+  OperationCursor opCursor(trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL));
+
+  opCursor.allDocuments([&](LocalDocumentId const& token, VPackSlice slice) {
+    uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
+
+    if (withRevisions) {
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
+    }
+
+    if (withData) {
+      // with data
+      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+
+      for (auto const& it : VPackObjectIterator(slice, false)) {
+        // loop over all attributes, but exclude _rev, _id and _key
+        // _id is different for each collection anyway, _rev is covered by
+        // withRevisions, and _key was already handled before
+        VPackValueLength keyLength;
+        char const* key = it.key.getString(keyLength);
+        if (keyLength >= 3 && key[0] == '_' &&
+            ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+             (keyLength == 4 &&
+              (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+          // exclude attribute
+          continue;
+        }
+
+        localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+        localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
+      }
+    }
+
+    checksum ^= localHash;
+
+  }, 1000);
+
+  return trx.finish(res);
 }

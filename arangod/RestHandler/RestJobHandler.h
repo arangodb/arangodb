@@ -85,7 +85,7 @@ class RestJobHandler : public RestBaseHandler {
   void deleteJob();
 
  protected:
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

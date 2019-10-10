@@ -40,6 +40,7 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "v8-query.h"
@@ -343,14 +344,24 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
       withData = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
+  
+  uint64_t checksum;
+  TRI_voc_rid_t revId;
+  
+  Result r = methods::Collections::checksum(*col, withRevisions,
+                                            withData, checksum, revId);
 
-  auto result = col->checksum(withRevisions, withData);
-
-  if (!result.ok()) {
-    TRI_V8_THROW_EXCEPTION(std::move(result).result());
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
+  
+  v8::Local<v8::Object> obj = v8::Object::New(isolate);
+  obj->Set(TRI_V8_ASCII_STRING(isolate, "checksum"),
+           TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum)));
+  obj->Set(TRI_V8_ASCII_STRING(isolate, "revision"),
+           TRI_V8_ASCII_STD_STRING(isolate, TRI_RidToString(revId)));
 
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.builder().slice()));
+  TRI_V8_RETURN(obj);
   TRI_V8_TRY_CATCH_END
 }
 

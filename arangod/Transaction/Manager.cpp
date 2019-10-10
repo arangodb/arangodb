@@ -26,14 +26,16 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -872,13 +874,19 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     TRI_ASSERT(ServerState::instance()->isCoordinator());
     auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
-    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    if (cc == nullptr) {
+    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    std::vector<ClusterCommRequest> requests;
+    std::vector<network::FutureRes> futures;
     auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+
+    VPackBuffer<uint8_t> body;
 
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
@@ -886,10 +894,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         continue;
       }
 
-      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
-        // when in superuser mode, username is empty
-        // in this case ClusterComm will add the default superuser token
         if (!username.empty()) {
           VPackBuilder builder;
           {
@@ -897,31 +903,38 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             payload->add("preferred_username", VPackValue(username));
           }
           VPackSlice slice = builder.slice();
-          headers->emplace(StaticStrings::Authorization,
-                           "bearer " + auth->tokenCache().generateJwt(slice));
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        } else {
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
-      requests.emplace_back("server:" + coordinator, rest::RequestType::GET,
-                            "/_db/" + database + "/_api/transaction?local=true",
-                            std::make_shared<std::string>(), std::move(headers));
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
+                                    "/_db/" + database +
+                                        "/_api/transaction?local=true",
+                                    body, std::move(headers), options);
+      futures.emplace_back(std::move(f));
     }
 
-    if (!requests.empty()) {
-      size_t nrGood = cc->performRequests(requests, 30.0, Logger::COMMUNICATION, false);
-
-      if (nrGood != requests.size()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-      }
-      for (auto const& it : requests) {
-        if (it.result.result && it.result.result->getHttpReturnCode() == 200) {
-          auto const body = it.result.result->getBodyVelocyPack();
-          VPackSlice slice = body->slice();
-          if (slice.isObject()) {
-            slice = slice.get("transactions");
-            if (slice.isArray()) {
-              for (auto const& it : VPackArrayIterator(slice)) {
-                builder.add(it);
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& res = it.get();
+        if (res.response && res.response->statusCode() == fuerte::StatusOK) {
+          auto slices = res.response->slices();
+          if (!slices.empty()) {
+            VPackSlice slice = slices[0];
+            if (slice.isObject()) {
+              slice = slice.get("transactions");
+              if (slice.isArray()) {
+                for (auto const& it : VPackArrayIterator(slice)) {
+                  builder.add(it);
+                }
               }
             }
           }
