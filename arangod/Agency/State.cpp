@@ -80,7 +80,7 @@ inline static std::string timestamp(uint64_t m) {
   std::time_t t = (m == 0) ? std::time(nullptr) :
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
-  return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::localtime(&t))
+  return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::gmtime(&t))
              ? std::string(mbstr)
              : std::string();
 }
@@ -293,7 +293,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     FATAL_ERROR_EXIT();
   }
 
-  logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
+  logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
 
   return _log.back().index;
 }
@@ -1027,7 +1027,7 @@ bool State::loadRemaining() {
   MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray() && result.length() > 0) {
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
-    std::string clientId;
+    std::string clientId, tstamp;
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
     index_t lastIndex = _cur;
@@ -1041,6 +1041,18 @@ bool State::loadRemaining() {
 
       clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
                                         : std::string();
+
+      
+      std::tm tm = {};
+      std::stringstream ts(ii.get("timestamp").copyString());
+      ts >> std::get_time(&tm, "%Y-%m-%d %H:%M:%SZ");
+      auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+      auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(
+        tp.time_since_epoch());
+      auto d = dur.count();
+      auto s = timestamp(d);
+      LOG_DEVEL << ts.str() << " " << s;
+
 
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
