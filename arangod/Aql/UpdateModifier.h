@@ -25,45 +25,26 @@
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
+#include "Aql/SimpleModifier.h"
 
 namespace arangodb {
 namespace aql {
 
 struct ModificationExecutorInfos;
 
-class UpdateModifier {
+class UpdateModifierCompletion {
  public:
-  using OutputTuple = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
-  using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
-
- public:
-  UpdateModifier(ModificationExecutorInfos& infos);
-  ~UpdateModifier();
-
-  void reset();
-  void close();
+  UpdateModifierCompletion(SimpleModifier<UpdateModifierCompletion>& infos);
+  ~UpdateModifierCompletion();
 
   Result accumulate(InputAqlItemRow& row);
   Result transact();
 
-  size_t size() const;
-
-  // TODO: Make this a real iterator
-  Result setupIterator();
-  bool isFinishedIterator();
-  OutputTuple getOutput();
-  void advanceIterator();
-
  private:
-  ModificationExecutorInfos& _infos;
-  std::vector<ModOp> _operations;
-  VPackBuilder _accumulator;
-
-  OperationResult _results;
-
-  std::vector<ModOp>::const_iterator _operationsIterator;
-  VPackArrayIterator _resultsIterator;
+  SimpleModifier<UpdateModifierCompletion>& _modifier;
 };
+
+using UpdateModifier = SimpleModifier<UpdateModifierCompletion>;
 
 }  // namespace aql
 }  // namespace arangodb

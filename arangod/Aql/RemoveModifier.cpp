@@ -39,86 +39,52 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-RemoveModifier::RemoveModifier(ModificationExecutorInfos& infos)
-    : _infos(infos), _resultsIterator(VPackSlice::emptyArraySlice()) {}
+RemoveModifierCompletion::RemoveModifierCompletion(SimpleModifier<RemoveModifierCompletion>& modifier)
+    : _modifier(modifier) {}
 
-RemoveModifier::~RemoveModifier() = default;
+RemoveModifierCompletion::~RemoveModifierCompletion() = default;
 
-void RemoveModifier::reset() {
-  _accumulator.clear();
-  _operations.clear();
-  _results = OperationResult{};
-}
-
-Result RemoveModifier::accumulate(InputAqlItemRow& row) {
+Result RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
-  RegisterId const inDocReg = _infos._input1RegisterId;
+  RegisterId const inDocReg = _modifier._infos._input1RegisterId;
 
   // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  if (!_infos._consultAqlWriteFilter ||
-      !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
-                                                               StaticStrings::Empty)) {
-    TRI_ASSERT(_infos._trx->resolver() != nullptr);
-    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+  if (!_modifier._infos._consultAqlWriteFilter ||
+      !_modifier._infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
+                                                                         StaticStrings::Empty)) {
+    TRI_ASSERT(_modifier._infos._trx->resolver() != nullptr);
+    CollectionNameResolver const& collectionNameResolver{*_modifier._infos._trx->resolver()};
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs);
+                               _modifier._infos._options.ignoreRevs);
 
     if (result.ok()) {
       VPackBuilder keyDocBuilder;
       buildKeyDocument(keyDocBuilder, key, rev);
       // This deletes _rev if rev is empty or ignoreRevs is set in
       // options.
-      _accumulator.add(keyDocBuilder.slice());
-      _operations.push_back({ModOperationType::APPLY_RETURN, row});
+      _modifier._accumulator.add(keyDocBuilder.slice());
+      _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
     } else {
-      _operations.push_back({ModOperationType::IGNORE_RETURN, row});
+      _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
     }
   } else {
     // error happened extracting key, record in operations map
-    _operations.push_back({ModOperationType::IGNORE_SKIP, row});
+    _modifier._operations.push_back({ModOperationType::IGNORE_SKIP, row});
     // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
   }
 
   return Result{};
 }
 
-Result RemoveModifier::transact() {
-  auto toRemove = _accumulator.slice();
-  _results = _infos._trx->remove(_infos._aqlCollection->name(), toRemove, _infos._options);
+Result RemoveModifierCompletion::transact() {
+  auto toRemove = _modifier._accumulator.slice();
+  _modifier._results =
+      _modifier._infos._trx->remove(_modifier._infos._aqlCollection->name(),
+                                    toRemove, _modifier._infos._options);
 
   return Result{};
-}
-
-size_t RemoveModifier::size() const {
-  // TODO: spray around some asserts
-  return _accumulator.slice().length();
-}
-
-Result RemoveModifier::setupIterator() {
-  _operationsIterator = _operations.begin();
-  _resultsIterator = VPackArrayIterator{_results.slice()};
-
-  return Result{};
-}
-
-bool RemoveModifier::isFinishedIterator() {
-  // TODO: Spray in some assserts
-  return _operationsIterator == _operations.end();
-}
-
-void RemoveModifier::advanceIterator() {
-  _operationsIterator++;
-  _resultsIterator++;
-}
-
-// TODO: This is a bit ugly, explain at least what's going on
-//       can we use local variables and just rely on the compiler not doing
-//       anything silly?
-// Super ugly pointer/iterator shenanigans
-RemoveModifier::OutputTuple RemoveModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, *_resultsIterator};
 }

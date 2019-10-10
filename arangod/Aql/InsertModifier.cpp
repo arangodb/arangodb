@@ -39,68 +39,36 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-InsertModifier::InsertModifier(ModificationExecutorInfos& infos)
-    : _infos(infos), _resultsIterator(VPackSlice::emptyArraySlice()) {}
+InsertModifierCompletion::InsertModifierCompletion(SimpleModifier<InsertModifierCompletion>& modifier)
+    : _modifier(modifier) {}
 
-InsertModifier::~InsertModifier() = default;
+InsertModifierCompletion::~InsertModifierCompletion() = default;
 
-void InsertModifier::reset() {
-  _accumulator.clear();
-  _operations.clear();
-  _results = OperationResult{};
-}
-
-Result InsertModifier::accumulate(InputAqlItemRow& row) {
-  RegisterId const inDocReg = _infos._input1RegisterId;
+Result InsertModifierCompletion::accumulate(InputAqlItemRow& row) {
+  RegisterId const inDocReg = _modifier._infos._input1RegisterId;
 
   // The document to be UPDATEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  if (!_infos._consultAqlWriteFilter ||
-      !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
-                                                               StaticStrings::Empty)) {
-    _accumulator.add(inDoc.slice());
-    _operations.push_back({ModOperationType::APPLY_RETURN, row});
+  if (!_modifier._infos._consultAqlWriteFilter ||
+      !_modifier._infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
+                                                                         StaticStrings::Empty)) {
+    _modifier._accumulator.add(inDoc.slice());
+    _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
   } else {
-    _operations.push_back({ModOperationType::IGNORE_RETURN, row});
+    _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
   }
 
   return Result{};
 }
 
-Result InsertModifier::transact() {
-  auto toInsert = _accumulator.slice();
-  _results = _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+Result InsertModifierCompletion::transact() {
+  auto toInsert = _modifier._accumulator.slice();
+  _modifier._results =
+      _modifier._infos._trx->insert(_modifier._infos._aqlCollection->name(),
+                                    toInsert, _modifier._infos._options);
 
   return Result{};
 }
 
-size_t InsertModifier::size() const {
-  // TODO: spray around some asserts
-  return _accumulator.slice().length();
-}
-
-Result InsertModifier::setupIterator() {
-  _operationsIterator = _operations.begin();
-  _resultsIterator = VPackArrayIterator{_results.slice()};
-
-  return Result{};
-}
-
-bool InsertModifier::isFinishedIterator() {
-  // TODO: Spray in some assserts
-  return _operationsIterator == _operations.end();
-}
-
-void InsertModifier::advanceIterator() {
-  _operationsIterator++;
-  _resultsIterator++;
-}
-
-// TODO: This is a bit ugly, explain at least what's going on
-//       can we use local variables and just rely on the compiler not doing
-//       anything silly?
-// Super ugly pointer/iterator shenanigans
-InsertModifier::OutputTuple InsertModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, *_resultsIterator};
-}
+template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

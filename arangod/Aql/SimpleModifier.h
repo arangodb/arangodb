@@ -20,31 +20,58 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REMOVE_MODIFIER_H
-#define ARANGOD_AQL_REMOVE_MODIFIER_H
+#ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
+#define ARANGOD_AQL_SIMPLE_MODIFIER_H
 
 #include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutor2.h"
 #include "Aql/ModificationExecutorTraits.h"
-#include "Aql/SimpleModifier.h"
 
 namespace arangodb {
 namespace aql {
 
 struct ModificationExecutorInfos;
 
-class RemoveModifierCompletion {
+template <typename ModifierCompletion>
+class SimpleModifier {
+  friend class InsertModifierCompletion;
+  friend class UpdateModifierCompletion;
+  friend class ReplaceModifierCompletion;
+  friend class RemoveModifierCompletion;
+
  public:
-  RemoveModifierCompletion(SimpleModifier<RemoveModifierCompletion>& modifier);
-  ~RemoveModifierCompletion();
+  using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
+
+ public:
+  SimpleModifier(ModificationExecutorInfos& infos);
+  ~SimpleModifier();
+
+  void reset();
+  void close();
 
   Result accumulate(InputAqlItemRow& row);
   Result transact();
 
- private:
-  SimpleModifier<RemoveModifierCompletion>& _modifier;
-};
+  size_t size() const;
 
-using RemoveModifier = SimpleModifier<RemoveModifierCompletion>;
+  // TODO: Make this a real iterator
+  Result setupIterator();
+  bool isFinishedIterator();
+  ModifierOutput getOutput();
+  void advanceIterator();
+
+ private:
+  ModificationExecutorInfos& _infos;
+  ModifierCompletion const& _completion;
+
+  std::vector<ModOp> _operations;
+  VPackBuilder _accumulator;
+
+  OperationResult _results;
+
+  std::vector<ModOp>::const_iterator _operationsIterator;
+  VPackArrayIterator _resultsIterator;
+};
 
 }  // namespace aql
 }  // namespace arangodb

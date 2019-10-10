@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR2_H
 
 #include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 
 namespace arangodb {
 namespace aql {
@@ -45,6 +46,9 @@ Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
 // The modification-specific code is spliced in via a template for performance
 // reasons (TODO: verify that this is true)
 //
+
+using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
+
 template <typename FetcherType, typename ModifierType>
 class ModificationExecutor2 {
  public:
