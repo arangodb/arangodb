@@ -328,7 +328,6 @@ void PregelFeature::cleanupAll() {
   for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // 100ms to send out cancel calls
 }
 
 /* static */ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,

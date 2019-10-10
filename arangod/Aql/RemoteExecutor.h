@@ -115,14 +115,16 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned _lastTicket;  /// used to check for canceled requests
   
   bool _hasTriggeredShutdown;
+
+  // _communicationMutex *must* be locked for this!
+  unsigned generateNewTicket();
   
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _didSendShutdownRequest = false;
-#endif
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
-  void traceRequest(const char* rpc, velocypack::Slice slice, size_t atMost);
+  void traceShutdownRequest(velocypack::Slice slice, int errorCode);
+  void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 };
 
 }  // namespace aql

@@ -4566,7 +4566,10 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           // ready to rumble!
           break;
         }
-
+        // late-materialization should be set only after sort nodes are distributed
+        // in cluster as it accounts this disctribution. So we should not encounter this 
+        // kind of nodes for now
+        case EN::MATERIALIZE: 
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:

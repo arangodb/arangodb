@@ -107,7 +107,6 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
   ExecutionState state;
   LimitStats stats{};
 
@@ -119,7 +118,6 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       return {state, stats};
     }
   }
-
   while (LimitState::RETURNING == currentState()) {
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
@@ -249,8 +247,8 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
     }
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
-      auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      return {rv.first, LimitStats{}, std::move(rv.second)};
+      auto rv = _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
+      return { rv.first, LimitStats{}, std::move(rv.second) };
   }
   // The control flow cannot reach this. It is only here to make MSVC happy,
   // which is unable to figure out that the switch above is complete.
@@ -293,3 +291,4 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
 
   return std::make_tuple(state, LimitStats{}, reportSkipped);
 }
+

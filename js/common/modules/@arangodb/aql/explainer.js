@@ -1125,8 +1125,14 @@ function processQuery(query, explain, planIndex) {
             return variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join(', ');
         }
-
-        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
+        let viewAnnotation = '/* view query';
+        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+          viewAnnotation += ' with late materialization';
+        }
+        viewAnnotation +=  ' */';
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + 
+               view(node.view) + condition + sortCondition + scorers +
+               '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
@@ -1640,6 +1646,8 @@ function processQuery(query, explain, planIndex) {
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+      case 'MaterializeNode':
+      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }
 
     return 'unhandled node type (' + node.type + ')';

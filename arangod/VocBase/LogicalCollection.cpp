@@ -29,7 +29,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -354,12 +353,6 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Me
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
   return _physical->getAnyIterator(trx);
 }
-
-void LogicalCollection::invokeOnAllElements(transaction::Methods* trx,
-                                            std::function<bool(LocalDocumentId const&)> callback) {
-  _physical->invokeOnAllElements(trx, callback);
-}
-
 // @brief Return the number of documents in this collection
 uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
                                             transaction::CountType type) {
@@ -1061,75 +1054,4 @@ VPackSlice LogicalCollection::keyOptions() const {
     return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
-}
-
-ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
-  auto ctx = transaction::StandaloneContext::Create(vocbase());
-  SingleCollectionTransaction trx(ctx, *this, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    return ChecksumResult(std::move(res));
-  }
-
-  trx.pinData(id());  // will throw when it fails
-
-  // get last tick
-  LogicalCollection* collection = trx.documentCollection();
-  auto physical = collection->getPhysical();
-  TRI_ASSERT(physical != nullptr);
-  std::string const revisionId = TRI_RidToString(physical->revision(&trx));
-  uint64_t hash = 0;
-
-  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx,
-                                   &collection](LocalDocumentId const& token) {
-    collection->readDocumentWithCallback(&trx, token, [&](LocalDocumentId const&, VPackSlice slice) {
-      uint64_t localHash =
-          transaction::helpers::extractKeyFromDocument(slice).hashString();
-
-      if (withRevisions) {
-        localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
-      }
-
-      if (withData) {
-        // with data
-        uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-        uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
-
-        for (auto const& it : VPackObjectIterator(slice, false)) {
-          // loop over all attributes, but exclude _rev, _id and _key
-          // _id is different for each collection anyway, _rev is covered by
-          // withRevisions, and _key was already handled before
-          VPackValueLength keyLength;
-          char const* key = it.key.getString(keyLength);
-          if (keyLength >= 3 && key[0] == '_' &&
-              ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
-               (keyLength == 4 &&
-                (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
-            // exclude attribute
-            continue;
-          }
-
-          localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
-          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
-        }
-      }
-
-      hash ^= localHash;
-    });
-    return true;
-  });
-
-  trx.finish(res);
-
-  std::string const hashString = std::to_string(hash);
-
-  VPackBuilder b;
-  {
-    VPackObjectBuilder o(&b);
-    b.add("checksum", VPackValue(hashString));
-    b.add("revision", VPackValue(revisionId));
-  }
-
-  return ChecksumResult(std::move(b));
 }

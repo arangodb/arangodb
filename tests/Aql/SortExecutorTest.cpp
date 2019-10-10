@@ -35,6 +35,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
@@ -135,6 +136,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_FALSE(result.produced());
 }
+
 
 TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   SortExecutorInfos infos(std::move(sortRegisters),

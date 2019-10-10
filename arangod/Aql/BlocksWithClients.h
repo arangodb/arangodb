@@ -47,8 +47,6 @@ namespace transaction {
 class Methods;
 }
 
-struct ClusterCommResult;
-
 namespace aql {
 class AqlItemBlock;
 struct Collection;

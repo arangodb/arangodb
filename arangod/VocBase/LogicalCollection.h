@@ -59,31 +59,6 @@ namespace transaction {
 class Methods;
 }
 
-class ChecksumResult {
- public:
-  explicit ChecksumResult(Result&& result) : _result(std::move(result)) {}
-  explicit ChecksumResult(velocypack::Builder&& builder)
-      : _result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
-
-  velocypack::Builder builder() { return _builder; }
-
-  velocypack::Slice slice() { return _builder.slice(); }
-
-  // forwarded methods
-  bool ok() const { return _result.ok(); }
-  bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
-
-  // access methods
-  Result const& result() const& { return _result; }
-  Result result() && { return std::move(_result); }
-
- private:
-  Result _result;
-  velocypack::Builder _builder;
-};
-
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
 /// additionally, do not put any volatile state into this object in the
@@ -212,9 +187,6 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
-
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback);
 
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -357,8 +329,6 @@ class LogicalCollection : public LogicalDataSource {
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
 
   transaction::CountCache& countCache() { return _countCache; }
-
-  ChecksumResult checksum(bool, bool) const;
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
