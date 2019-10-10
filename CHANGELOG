@@ -5,22 +5,6 @@ v3.5.2 (XXXX-XX-XX)
   from occurring when this is not the case. Due to a data race, the message could
   previously also occur if the queue was empty.
 
-* Make the scheduler enforce the configured queue lengths. The values of the options
-  `--server.scheduler-queue-size`, `--server.prio1-size` and `--server.maximal-queue-size`
-  will now be honored and not exceeded.
-
-  The default queue sizes in the scheduler for requests buffering have
-  also been changed as follows:
-
-      request type        before      now
-      -----------------------------------
-      high priority          128     4096
-      medium priority    1048576     4096
-      low priority          4096     4096
-
-  The queue sizes can still be adjusted at server start using the above-
-  mentioned startup options.
-
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 

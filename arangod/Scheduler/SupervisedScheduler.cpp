@@ -216,7 +216,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   TRI_ASSERT(queueNo <= 2);
   TRI_ASSERT(isStopping() == false);
 
-  if (!_queues[queueNo].bounded_push(work.get())) {
+  if (!_queues[queueNo].push(work.get())) {
     _jobsSubmitted.fetch_sub(1, std::memory_order_release);
 
     uint64_t maxSize = _maxFifoSize;
