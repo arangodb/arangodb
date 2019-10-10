@@ -25,6 +25,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include "Basics/debugging.h"
@@ -212,6 +213,9 @@ class Future {
 
   // True when the result (or exception) is ready
   bool isReady() const { return getState().hasResult(); }
+
+  /// True if the future already has a callback set
+  bool hasCallback() const { return getState().hasCallback(); }
 
   /// True if the result is a value (not an exception)
   bool hasValue() const {

@@ -30,6 +30,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Futures/Future.h"
+#include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
 #include "Utils/OperationResult.h"
@@ -56,7 +57,7 @@ int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
 /// @brief creates a copy of all HTTP headers to forward
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> getForwardableRequestHeaders(GeneralRequest*);
+network::Headers getForwardableRequestHeaders(GeneralRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two vpack
