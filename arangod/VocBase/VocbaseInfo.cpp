@@ -134,6 +134,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
 
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
