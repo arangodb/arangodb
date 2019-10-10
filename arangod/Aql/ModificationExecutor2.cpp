@@ -26,6 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Aql/InsertModifier.h"
@@ -35,9 +36,11 @@
 #include "Aql/UpsertModifier.h"
 
 #include <algorithm>
+#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 class NoStats;
 
@@ -176,8 +179,7 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
     while (!_modifier.isFinishedIterator()) {
       std::tie(modOp, row, elm) = _modifier.getOutput();
 
-      bool error =
-          arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+      bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
       if (!error) {
         switch (modOp) {
           case ModOperationType::APPLY_RETURN: {
