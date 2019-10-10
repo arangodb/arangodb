@@ -40,14 +40,14 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 InsertModifier::InsertModifier(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
+    : _infos(infos), _resultsIterator(VPackSlice::emptyArraySlice()) {}
 
 InsertModifier::~InsertModifier() = default;
 
 void InsertModifier::reset() {
   _accumulator.clear();
   _operations.clear();
-  //  _operationResults = VPackValue.reset();
+  _results = OperationResult{};
 }
 
 Result InsertModifier::accumulate(InputAqlItemRow& row) {
@@ -68,9 +68,11 @@ Result InsertModifier::accumulate(InputAqlItemRow& row) {
   return Result{};
 }
 
-OperationResult InsertModifier::transact() {
+Result InsertModifier::transact() {
   auto toInsert = _accumulator.slice();
-  return _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+  _results = _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+
+  return Result{};
 }
 
 size_t InsertModifier::size() const {
@@ -80,7 +82,7 @@ size_t InsertModifier::size() const {
 
 Result InsertModifier::setupIterator() {
   _operationsIterator = _operations.begin();
-  _resultsIterator = std::make_unique<VPackArrayIterator>(_operationResults);
+  _resultsIterator = VPackArrayIterator{_results.slice()};
 
   return Result{};
 }
@@ -92,7 +94,7 @@ bool InsertModifier::isFinishedIterator() {
 
 void InsertModifier::advanceIterator() {
   _operationsIterator++;
-  (*_resultsIterator)++;
+  _resultsIterator++;
 }
 
 // TODO: This is a bit ugly, explain at least what's going on
@@ -100,5 +102,5 @@ void InsertModifier::advanceIterator() {
 //       anything silly?
 // Super ugly pointer/iterator shenanigans
 InsertModifier::OutputTuple InsertModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, **_resultsIterator};
+  return OutputTuple{_operationsIterator->first, _operationsIterator->second, *_resultsIterator};
 }

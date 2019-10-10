@@ -44,8 +44,7 @@ class UpdateModifier {
   void close();
 
   Result accumulate(InputAqlItemRow& row);
-
-  OperationResult transact();
+  Result transact();
 
   size_t size() const;
 
@@ -60,10 +59,10 @@ class UpdateModifier {
   std::vector<ModOp> _operations;
   VPackBuilder _accumulator;
 
-  VPackSlice _operationResults;
+  OperationResult _results;
 
   std::vector<ModOp>::const_iterator _operationsIterator;
-  std::unique_ptr<VPackArrayIterator> _resultsIterator;
+  VPackArrayIterator _resultsIterator;
 };
 
 }  // namespace aql

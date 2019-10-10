@@ -241,12 +241,10 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
   }
 
   auto operationResult = _modifier.transact();
-
-  // operation result contains results for all things committed
-  // This could now be moved into the modifier
-  if (operationResult.fail()) {
-    THROW_ARANGO_EXCEPTION(operationResult.result);
-  }
+  // We have no way of handling anything other than .ok() here,
+  // and the modifier should have thrown an exception
+  // if something went wrong.
+  TRI_ASSERT(operationResult.ok());
 
   // TODO: something about stats.
   doOutput(output);

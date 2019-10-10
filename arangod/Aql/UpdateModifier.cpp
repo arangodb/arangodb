@@ -40,7 +40,7 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 UpdateModifier::UpdateModifier(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
+    : _infos(infos), _resultsIterator(VPackSlice::emptyArraySlice()) {}
 
 UpdateModifier::~UpdateModifier() = default;
 
@@ -106,9 +106,11 @@ Result UpdateModifier::accumulate(InputAqlItemRow& row) {
   return Result{};
 }
 
-OperationResult UpdateModifier::transact() {
+Result UpdateModifier::transact() {
   auto toUpdate = _accumulator.slice();
-  return _infos._trx->update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+  _results = _infos._trx->update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+
+  return Result{};
 }
 
 size_t UpdateModifier::size() const {
@@ -118,7 +120,7 @@ size_t UpdateModifier::size() const {
 
 Result UpdateModifier::setupIterator() {
   _operationsIterator = _operations.begin();
-  _resultsIterator = std::make_unique<VPackArrayIterator>(_operationResults);
+  _resultsIterator = VPackArrayIterator{_results.slice()};
 
   return Result{};
 }
@@ -130,7 +132,7 @@ bool UpdateModifier::isFinishedIterator() {
 
 void UpdateModifier::advanceIterator() {
   _operationsIterator++;
-  (*_resultsIterator)++;
+  _resultsIterator++;
 }
 
 // TODO: This is a bit ugly, explain at least what's going on
@@ -138,5 +140,5 @@ void UpdateModifier::advanceIterator() {
 //       anything silly?
 // Super ugly pointer/iterator shenanigans
 UpdateModifier::OutputTuple UpdateModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, **_resultsIterator};
+  return OutputTuple{_operationsIterator->first, _operationsIterator->second, *_resultsIterator};
 }

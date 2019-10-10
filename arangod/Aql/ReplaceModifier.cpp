@@ -40,14 +40,14 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 ReplaceModifier::ReplaceModifier(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
+    : _infos(infos), _resultsIterator(VPackSlice::emptyArraySlice()) {}
 
 ReplaceModifier::~ReplaceModifier() = default;
 
 void ReplaceModifier::reset() {
   _accumulator.clear();
   _operations.clear();
-  //  _operationResults = VPackValue.reset();
+  _results = OperationResult{};
 }
 
 Result ReplaceModifier::accumulate(InputAqlItemRow& row) {
@@ -58,7 +58,7 @@ Result ReplaceModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const keyReg = _infos._input2RegisterId;
   bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
-  // The document to be UPDATEd
+  // The document to be REPLACEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   // A separate register for the key/rev is available
@@ -106,9 +106,11 @@ Result ReplaceModifier::accumulate(InputAqlItemRow& row) {
   return Result{};
 }
 
-OperationResult ReplaceModifier::transact() {
-  auto toUpdate = _accumulator.slice();
-  return _infos._trx->replace(_infos._aqlCollection->name(), toUpdate, _infos._options);
+Result ReplaceModifier::transact() {
+  auto toReplace = _accumulator.slice();
+  _results =
+      _infos._trx->replace(_infos._aqlCollection->name(), toReplace, _infos._options);
+  return {};
 }
 
 size_t ReplaceModifier::size() const {
@@ -118,7 +120,7 @@ size_t ReplaceModifier::size() const {
 
 Result ReplaceModifier::setupIterator() {
   _operationsIterator = _operations.begin();
-  _resultsIterator = std::make_unique<VPackArrayIterator>(_operationResults);
+  _resultsIterator = VPackArrayIterator{_results.slice()};
 
   return Result{};
 }
@@ -130,7 +132,7 @@ bool ReplaceModifier::isFinishedIterator() {
 
 void ReplaceModifier::advanceIterator() {
   _operationsIterator++;
-  (*_resultsIterator)++;
+  _resultsIterator++;
 }
 
 // TODO: This is a bit ugly, explain at least what's going on
@@ -138,5 +140,5 @@ void ReplaceModifier::advanceIterator() {
 //       anything silly?
 // Super ugly pointer/iterator shenanigans
 ReplaceModifier::OutputTuple ReplaceModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, **_resultsIterator};
+  return OutputTuple{_operationsIterator->first, _operationsIterator->second, *_resultsIterator};
 }

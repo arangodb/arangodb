@@ -45,7 +45,7 @@ class UpsertModifier {
 
   Result accumulate(InputAqlItemRow& row);
 
-  OperationResult transact();
+  Result transact();
 
   size_t size() const;
 
@@ -56,14 +56,22 @@ class UpsertModifier {
   void advanceIterator();
 
  private:
+  Result updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
+                    InputAqlItemRow const& row);
+  Result insertCase(AqlValue const& insertDoc, InputAqlItemRow const& row);
+
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
-  VPackBuilder _accumulator;
+  VPackBuilder _insertAccumulator;
+  VPackBuilder _updateAccumulator;
 
-  VPackSlice _operationResults;
+  OperationResult _updateResults;
+  OperationResult _insertResults;
 
   std::vector<ModOp>::const_iterator _operationsIterator;
-  std::unique_ptr<VPackArrayIterator> _resultsIterator;
+
+  VPackArrayIterator _updateResultsIterator;
+  VPackArrayIterator _insertResultsIterator;
 };
 
 }  // namespace aql

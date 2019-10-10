@@ -40,14 +40,14 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 RemoveModifier::RemoveModifier(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
+    : _infos(infos), _resultsIterator(VPackSlice::emptyArraySlice()) {}
 
 RemoveModifier::~RemoveModifier() = default;
 
 void RemoveModifier::reset() {
   _accumulator.clear();
   _operations.clear();
-  //  _operationResults = VPackValue.reset();
+  _results = OperationResult{};
 }
 
 Result RemoveModifier::accumulate(InputAqlItemRow& row) {
@@ -86,9 +86,11 @@ Result RemoveModifier::accumulate(InputAqlItemRow& row) {
   return Result{};
 }
 
-OperationResult RemoveModifier::transact() {
+Result RemoveModifier::transact() {
   auto toRemove = _accumulator.slice();
-  return _infos._trx->remove(_infos._aqlCollection->name(), toRemove, _infos._options);
+  _results = _infos._trx->remove(_infos._aqlCollection->name(), toRemove, _infos._options);
+
+  return Result{};
 }
 
 size_t RemoveModifier::size() const {
@@ -98,7 +100,7 @@ size_t RemoveModifier::size() const {
 
 Result RemoveModifier::setupIterator() {
   _operationsIterator = _operations.begin();
-  _resultsIterator = std::make_unique<VPackArrayIterator>(_operationResults);
+  _resultsIterator = VPackArrayIterator{_results.slice()};
 
   return Result{};
 }
@@ -110,7 +112,7 @@ bool RemoveModifier::isFinishedIterator() {
 
 void RemoveModifier::advanceIterator() {
   _operationsIterator++;
-  (*_resultsIterator)++;
+  _resultsIterator++;
 }
 
 // TODO: This is a bit ugly, explain at least what's going on
@@ -118,5 +120,5 @@ void RemoveModifier::advanceIterator() {
 //       anything silly?
 // Super ugly pointer/iterator shenanigans
 RemoveModifier::OutputTuple RemoveModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, **_resultsIterator};
+  return OutputTuple{_operationsIterator->first, _operationsIterator->second, *_resultsIterator};
 }

@@ -40,85 +40,141 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
+    : _infos(infos),
+      _updateResultsIterator(VPackSlice::emptyArraySlice()),
+      _insertResultsIterator(VPackSlice::emptyArraySlice()) {}
 
 UpsertModifier::~UpsertModifier() = default;
 
 void UpsertModifier::reset() {
-  _accumulator.clear();
+  _insertAccumulator.clear();
+  _updateAccumulator.clear();
   _operations.clear();
-  //  _operationResults = VPackValue.reset();
+  _insertResults = OperationResult{};
+  _updateResults = OperationResult{};
 }
 
-Result UpsertModifier::accumulate(InputAqlItemRow& row) {
+Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
+                                  InputAqlItemRow const& row) {
   std::string key, rev;
   Result result;
 
-  RegisterId const inDocReg = _infos._input1RegisterId;
-  RegisterId const keyReg = _infos._input2RegisterId;
-  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
+  if (!_infos._consultAqlWriteFilter ||
+      !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
+                                                               StaticStrings::Empty)) {
+    TRI_ASSERT(_infos._trx->resolver() != nullptr);
+    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
 
-  // The document to be UPDATEd
-  AqlValue const& inDoc = row.getValue(inDocReg);
+    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev, true);
 
-  // A separate register for the key/rev is available
-  // so we use that
-  //
-  // WARNING
-  //
-  // We must never take _rev from the document if there is a key
-  // expression.
-  TRI_ASSERT(_infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
-  if (hasKeyVariable) {
-    AqlValue const& keyDoc = row.getValue(keyReg);
-    result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _infos._options.ignoreRevs);
-  } else {
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs);
-  }
-
-  if (result.ok()) {
-    if (!_infos._consultAqlWriteFilter ||
-        !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(), key)) {
-      if (hasKeyVariable) {
+    if (result.ok()) {
+      if (updateDoc.isObject()) {
+        VPackSlice toUpdate = updateDoc.slice();
         VPackBuilder keyDocBuilder;
 
         buildKeyDocument(keyDocBuilder, key, rev);
-        // This deletes _rev if rev is empty or ignoreRevs is set in
-        // options.
-        VPackCollection::merge(_accumulator, inDoc.slice(),
-                               keyDocBuilder.slice(), false, true);
+
+        VPackCollection::merge(_updateAccumulator, toUpdate,
+                               keyDocBuilder.slice(), false, false);
+        _operations.push_back({ModOperationType::APPLY_UPDATE, row});
       } else {
-        _accumulator.add(inDoc.slice());
+        _operations.push_back({ModOperationType::IGNORE_SKIP, row});
+        return Result{TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                      std::string("expecting 'Object', got: ") +
+                          updateDoc.slice().typeName() +
+                          std::string(" while handling: UPSERT")};
       }
-      _operations.push_back({ModOperationType::APPLY_RETURN, row});
     } else {
-      _operations.push_back({ModOperationType::IGNORE_RETURN, row});
+      return Result{TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                    std::string("expecting 'Object', got: ") + updateDoc.slice().typeName() +
+                        std::string(" while handling: UPSERT")};
     }
   } else {
-    // error happened extracting key, record in operations map
-    _operations.push_back({ModOperationType::IGNORE_SKIP, row});
-    // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+    _operations.push_back({ModOperationType::IGNORE_RETURN, row});
   }
-
   return Result{};
 }
 
-OperationResult UpsertModifier::transact() {
-  auto toUpdate = _accumulator.slice();
-  return _infos._trx->update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+Result UpsertModifier::insertCase(AqlValue const& insertDoc, InputAqlItemRow const& row) {
+  auto const& toInsert = insertDoc.slice();
+  if (insertDoc.isObject()) {
+    if (!_infos._consultAqlWriteFilter ||
+        !_infos._aqlCollection->getCollection()->skipForAqlWrite(toInsert, StaticStrings::Empty)) {
+      _insertAccumulator.add(toInsert);
+      _operations.push_back({ModOperationType::APPLY_INSERT, row});
+    } else {
+      // not relevant for ourselves... just pass it on to the next block
+      _operations.push_back({ModOperationType::IGNORE_RETURN, row});
+    }
+  } else {
+    _operations.push_back({ModOperationType::IGNORE_SKIP, row});
+    // handle stats?
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                  std::string("expecting 'Object', got: ") +
+                      insertDoc.slice().typeName() + " while handling: UPSERT");
+  }
+  return Result{};
+}
+
+Result UpsertModifier::accumulate(InputAqlItemRow& row) {
+  RegisterId const inDocReg = _infos._input1RegisterId;
+  RegisterId const insertReg = _infos._input2RegisterId;
+  RegisterId const updateReg = _infos._input3RegisterId;
+
+  // The document to be UPSERTed
+  AqlValue const& inDoc = row.getValue(inDocReg);
+
+  // if there is a document in the input register, we
+  // update that document, otherwise, we insert
+  // TODO: What if inDoc is a string? Should that
+  // be an error?
+  if (inDoc.isObject()) {
+    auto const& updateDoc = row.getValue(updateReg);
+    updateCase(inDoc, updateDoc, row);
+  } else {
+    auto const& insertDoc = row.getValue(insertReg);
+    insertCase(insertDoc, row);
+  }
+  return Result{};
+}
+
+Result UpsertModifier::transact() {
+  auto toInsert = _insertAccumulator.slice();
+  if (toInsert.isArray() && toInsert.length() > 0) {
+    _insertResults =
+        _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+    if (_insertResults.fail()) {
+      THROW_ARANGO_EXCEPTION(_insertResults.result);
+    }
+    // TODO: Stats
+  }
+
+  auto toUpdate = _updateAccumulator.slice();
+  if (toUpdate.isArray() && toUpdate.length() > 0) {
+    if (_infos._isReplace) {
+      _updateResults = _infos._trx->update(_infos._aqlCollection->name(),
+                                           toUpdate, _infos._options);
+    } else {
+      _updateResults = _infos._trx->replace(_infos._aqlCollection->name(),
+                                            toInsert, _infos._options);
+    }
+    if (_updateResults.fail()) {
+      THROW_ARANGO_EXCEPTION(_updateResults.result);
+    }
+    // TODO: stats
+  }
+  return Result{};
 }
 
 size_t UpsertModifier::size() const {
   // TODO: spray around some asserts
-  return _accumulator.slice().length();
+  return _insertAccumulator.slice().length() + _updateAccumulator.slice().length();
 }
 
 Result UpsertModifier::setupIterator() {
   _operationsIterator = _operations.begin();
-  _resultsIterator = std::make_unique<VPackArrayIterator>(_operationResults);
+  _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
+  _updateResultsIterator = VPackArrayIterator(_updateResults.slice());
 
   return Result{};
 }
@@ -129,8 +185,14 @@ bool UpsertModifier::isFinishedIterator() {
 }
 
 void UpsertModifier::advanceIterator() {
+  TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
+             _operationsIterator->first == ModOperationType::APPLY_INSERT);
+  if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
+    _updateResultsIterator++;
+  } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
+    _insertResultsIterator++;
+  }
   _operationsIterator++;
-  (*_resultsIterator)++;
 }
 
 // TODO: This is a bit ugly, explain at least what's going on
@@ -138,5 +200,16 @@ void UpsertModifier::advanceIterator() {
 //       anything silly?
 // Super ugly pointer/iterator shenanigans
 UpsertModifier::OutputTuple UpsertModifier::getOutput() {
-  return OutputTuple{_operationsIterator->first, _operationsIterator->second, **_resultsIterator};
+  TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
+             _operationsIterator->first == ModOperationType::APPLY_INSERT);
+
+  if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
+    return OutputTuple{ModOperationType::APPLY_RETURN,
+                       _operationsIterator->second, *_updateResultsIterator};
+  } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
+    return OutputTuple{ModOperationType::APPLY_RETURN,
+                       _operationsIterator->second, *_insertResultsIterator};
+  } else {
+    TRI_ASSERT(false);
+  }
 }
