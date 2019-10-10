@@ -38,10 +38,11 @@ if ! [[ $version_string =~ $re ]]; then
 fi
 
 ## find relevant files
+        #-type f "(" -name "*.cpp" -o -name "*.h" ")" \
 files="$(
     find arangod arangosh lib enterprise \
         -name Zip -prune -o \
-        -type f "(" -name "*.cpp" -o -name "*.h" ")" \
+        -type f "(" -name "*.cpp" ")" \
         "!" "(" -name "tokens.*" -o -name "v8-json.*" -o -name "voc-errors.*" -o -name "grammar.*" -o -name "xxhash.*" -o -name "exitcodes.*" ")"
 )"
 
