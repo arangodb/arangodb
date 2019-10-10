@@ -1,2 +1,12 @@
-arangosh&gt; db._query(<span class="hljs-string">"FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'kShortestPathsGraph' LIMIT 3 RETURN p"</span>);
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+@Q:
+  FOR p IN OUTBOUND K_SHORTEST_PATHS <span class="hljs-string">'places/Aberdeen'</span> TO <span class="hljs-string">'places/Toronto'</span>
+  GRAPH <span class="hljs-string">'kShortestPathsGraph'</span>
+      LIMIT <span class="hljs-number">3</span>
+      RETURN {
+          <span class="hljs-attr">places</span>: p.vertices[*].label,
+          <span class="hljs-attr">travelTimes</span>: p.edges[*].travelTime,
+          <span class="hljs-attr">travelTimeTotal</span>: SUM(p.edges[*].travelTime)
+      }
+
+@R
+[]

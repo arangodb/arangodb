@@ -24,7 +24,7 @@ x-content-type-options: nosniff
           <span class="hljs-number">1</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">11</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">4.321928094887362</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">4.3719280948873624</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
@@ -42,9 +42,9 @@ x-content-type-options: nosniff
         <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"69409"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"70066"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1641835673325404160"</span>, 
+            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1646382074264813570"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"id"</span> 
             ], 
@@ -105,7 +105,7 @@ x-content-type-options: nosniff
           <span class="hljs-number">11</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">5.321928094887362</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">5.3719280948873624</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
@@ -147,7 +147,7 @@ x-content-type-options: nosniff
           <span class="hljs-number">4</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">6.321928094887362</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">6.3719280948873624</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
@@ -160,7 +160,7 @@ x-content-type-options: nosniff
           <span class="hljs-number">5</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">9</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">7.321928094887362</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">7.3719280948873624</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"offset"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"limit"</span> : <span class="hljs-number">1</span>, 
@@ -172,7 +172,7 @@ x-content-type-options: nosniff
           <span class="hljs-number">9</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">8.321928094887362</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">8.371928094887362</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
@@ -200,7 +200,7 @@ x-content-type-options: nosniff
           <span class="hljs-number">6</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">10</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">9.321928094887362</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">9.371928094887362</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
@@ -248,7 +248,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span> 
       } 
     ], 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">9.321928094887362</span>, 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">9.371928094887362</span>, 
     <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"isModificationQuery"</span> : <span class="hljs-literal">false</span> 

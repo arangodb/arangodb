@@ -363,6 +363,11 @@ class Parser;
   /* newline character inside backtick */
 }
 
+<BACKTICK><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
+}
+
 <BACKTICK>. {
   /* any character (except newline) inside backtick */
 }
@@ -389,6 +394,11 @@ class Parser;
 
 <FORWARDTICK>\n {
   /* newline character inside forwardtick */
+}
+
+<FORWARDTICK><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 
 <FORWARDTICK>. {
@@ -421,6 +431,11 @@ class Parser;
   /* newline character inside quote */
 }
 
+<DOUBLE_QUOTE><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
+}
+
 <DOUBLE_QUOTE>. {
   /* any character (except newline) inside quote */
 }
@@ -445,6 +460,11 @@ class Parser;
 
 <SINGLE_QUOTE>\n {
   /* newline character inside quote */
+}
+
+<SINGLE_QUOTE><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 
 <SINGLE_QUOTE>. {
@@ -570,6 +590,11 @@ class Parser;
 
 <COMMENT_MULTI>"*" {
   // eat the lone star
+}
+
+<COMMENT_MULTI><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated multi-line comment", yylloc->first_line, yylloc->first_column);
 }
 
 <COMMENT_MULTI>\n {

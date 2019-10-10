@@ -1,5 +1,5 @@
 arangosh&gt; db._explain("LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1", {}, {colors: false});
-Query String:
+Query String (47 chars, cacheable: false):
  LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1
 
 Execution plan:

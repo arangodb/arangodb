@@ -22,6 +22,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "Cluster/ClusterTypes.h"
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
@@ -3230,6 +3232,10 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
   // Now check results
   for (auto const& req : requests) {
     auto res = req.result;
+    if (res.answer == NULL) {
+      continue;
+    }
+
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
@@ -3278,31 +3284,38 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
 
   for (auto& i : dbsBackups) {
     // check if the backup is on all dbservers
-    if (i.second.size() == dbServers.size()) {
-      bool valid = true;
+    bool valid = true;
 
-      // check here that the backups are all made with the same version
-      std::string version;
+    // check here that the backups are all made with the same version
+    std::string version;
+    size_t totalSize = 0;
+    size_t totalFiles = 0;
 
-      for (BackupMeta const& meta : i.second) {
-        if (version.empty()) {
-          version = meta._version;
-        } else {
-          if (version != meta._version) {
-            LOG_TOPIC("aaaaa", WARN, Logger::BACKUP)
-                << "Backup " << meta._id
-                << " has different versions accross dbservers: " << version
-                << " and " << meta._version;
-            valid = false;
-            break;
-          }
+    for (BackupMeta const& meta : i.second) {
+      if (version.empty()) {
+        version = meta._version;
+      } else {
+        if (version != meta._version) {
+          LOG_TOPIC("aaaaa", WARN, Logger::BACKUP)
+              << "Backup " << meta._id
+              << " has different versions accross dbservers: " << version
+              << " and " << meta._version;
+          valid = false;
+          break;
         }
       }
+      totalSize += meta._sizeInBytes;
+      totalFiles += meta._nrFiles;
+    }
 
-      if (valid) {
-        BackupMeta& front = i.second.front();
-        hotBackups.insert(std::make_pair(front._id, front));
-      }
+    if (valid) {
+      BackupMeta& front = i.second.front();
+      front._sizeInBytes = totalSize;
+      front._nrFiles = totalFiles;
+      front._serverId = "";  // makes no sense for whole cluster
+      front._isAvailable = i.second.size() == dbServers.size();
+      front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
+      hotBackups.insert(std::make_pair(front._id, front));
     }
   }
 
@@ -3662,9 +3675,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   // We keep the currently registered timestamps in Current/ServersRegistered,
   // such that we can wait until all have reregistered and are up:
-  ci->loadServers();
-  std::unordered_map<std::string, std::string> serverTimestamps =
-      ci->getServerTimestamps();
+  ci->loadCurrentDBServers();
+  auto const preServersKnown = ci->rebootIds();
 
   // Restore all db servers
   std::string previous;
@@ -3684,13 +3696,17 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Not all DBservers came back in time!");
     }
-    ci->loadServers();
-    std::unordered_map<std::string, std::string> newServerTimestamps =
-        ci->getServerTimestamps();
+    ci->loadCurrentDBServers();
+    auto const postServersKnown = ci->rebootIds();
+    if (ci->getCurrentDBServers().size() < dbServers.size()) {
+      LOG_TOPIC("8dce7", INFO, Logger::BACKUP) << "Waiting for all db servers to return";
+      continue;
+    }
+
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (serverTimestamps[dbs] != newServerTimestamps[dbs]) {
+      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
         ++good;
       }
     }
@@ -3710,8 +3726,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   return arangodb::Result();
 }
 
-std::vector<std::string> lockPath =
-    std::vector<std::string>{"result", "lockId"};
+std::vector<std::string> lockPath = std::vector<std::string>{"result", "lockId"};
 
 arangodb::Result lockDBServerTransactions(std::string const& backupId,
                                           std::vector<ServerID> const& dbServers,
@@ -3735,6 +3750,7 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
     VPackObjectBuilder o(&lock);
     lock.add("id", VPackValue(backupId));
     lock.add("timeout", VPackValue(lockWait));
+    lock.add("unlockTimeout", VPackValue(5.0 + lockWait));
   }
 
   LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
@@ -3854,7 +3870,8 @@ std::vector<std::string> idPath{"result", "id"};
 
 arangodb::Result hotBackupDBServers(std::string const& backupId, std::string const& timeStamp,
                                     std::vector<ServerID> dbServers,
-                                    VPackSlice agencyDump, bool force) {
+                                    VPackSlice agencyDump, bool force,
+                                    BackupMeta& meta) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -3868,6 +3885,7 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
     builder.add("allowInconsistent", VPackValue(force));
+    builder.add("nrDBServers", VPackValue(dbServers.size()));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -3884,6 +3902,10 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
   LOG_TOPIC("478ef", DEBUG, Logger::BACKUP) << "Inquiring about backup " << backupId;
 
   // Now listen to the results:
+  size_t totalSize = 0;
+  size_t totalFiles = 0;
+  std::string version;
+  bool sizeValid = true;
   for (auto const& req : requests) {
     auto res = req.result;
     int commError = handleGeneralCommErrors(&res);
@@ -3894,14 +3916,16 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
-    if (!resSlice.isObject()) {
+    if (!resSlice.isObject() || !resSlice.hasKey("result")) {
       // Response has invalid format
       return arangodb::Result(TRI_ERROR_HTTP_CORRUPTED_JSON,
                               std::string("result to take snapshot on ") +
-                                  req.destination + " not an object");
+                                  req.destination + " not an object or has no 'result' attribute");
     }
+    resSlice = resSlice.get("result");
 
-    if (!resSlice.hasKey(idPath) || !resSlice.get(idPath).isString()) {
+    if (!resSlice.hasKey(BackupMeta::ID) ||
+        !resSlice.get(BackupMeta::ID).isString()) {
       LOG_TOPIC("6240a", ERR, Logger::BACKUP)
           << "DB server " << req.destination << "is missing backup " << backupId;
       return arangodb::Result(TRI_ERROR_FILE_NOT_FOUND,
@@ -3909,10 +3933,35 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
                                   " on server " + req.destination);
     }
 
+    if (resSlice.hasKey(BackupMeta::SIZEINBYTES)) {
+      totalSize += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
+    } else {
+      sizeValid = false;
+    }
+    if (resSlice.hasKey(BackupMeta::NRFILES)) {
+      totalFiles += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
+    } else {
+      sizeValid = false;
+    }
+    if (version.empty() && resSlice.hasKey(BackupMeta::VERSION)) {
+      VPackSlice verSlice = resSlice.get(BackupMeta::VERSION);
+      if (verSlice.isString()) {
+        version = verSlice.copyString();
+      }
+    }
+
     LOG_TOPIC("b370d", DEBUG, Logger::BACKUP) << req.destination << " created local backup "
-                                              << resSlice.get(idPath).copyString();
+                                              << resSlice.get(BackupMeta::ID).copyString();
   }
 
+  if (sizeValid) {
+    meta = BackupMeta(backupId, version, timeStamp, totalSize, totalFiles, static_cast<unsigned int>(dbServers.size()), "", force);
+  } else {
+    meta = BackupMeta(backupId, version, timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", force);
+    LOG_TOPIC("54265", WARN, Logger::BACKUP)
+      << "Could not determine total size of backup with id '" << backupId
+      << "'!";
+  }
   LOG_TOPIC("5c5e9", DEBUG, Logger::BACKUP) << "Have created backup " << backupId;
 
   return arangodb::Result();
@@ -4101,13 +4150,12 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     }
     std::vector<ServerID> dbServers = ci->getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait = 2.0;
+    double lockWait(0.1);
     while (cc != nullptr && steady_clock::now() < end) {
-      auto iterEnd = steady_clock::now() + duration<double>(lockWait);
-
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
+        lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
           ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
           return result;
@@ -4116,12 +4164,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         break;
       }
       if (lockWait < 30.0) {
-        lockWait *= 1.1;
+        lockWait *= 1.25;
       }
-      double tmp = duration<double>(iterEnd - steady_clock::now()).count();
-      if (tmp > 0) {
-        std::this_thread::sleep_for(duration<double>(tmp));
-      }
+      std::this_thread::sleep_for(seconds(1));
     }
 
     bool gotLocks = result.ok();
@@ -4140,8 +4185,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       return result;
     }
 
+    BackupMeta meta(backupId, "", timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
     result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(),
-                                /* force */ !gotLocks);
+                                /* force */ !gotLocks, meta);
     if (!result.ok()) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
@@ -4189,6 +4235,10 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     {
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(timeStamp + "_" + backupId));
+      report.add("sizeInBytes", VPackValue(meta._sizeInBytes));
+      report.add("nrFiles", VPackValue(meta._nrFiles));
+      report.add("nrDBServers", VPackValue(meta._nrDBServers));
+      report.add("datetime", VPackValue(meta._datetime));
       if (!gotLocks) {
         report.add("potentiallyInconsistent", VPackValue(true));
       }
@@ -4199,7 +4249,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
   } catch (std::exception const& e) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
-        std::string("caught exception cretaing cluster backup: ") + e.what());
+        std::string("caught exception creating cluster backup: ") + e.what());
   }
 }
 
@@ -4264,7 +4314,7 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
         return arangodb::Result(
           TRI_ERROR_CLUSTER_TIMEOUT, "timeout waiting for all db servers to report backup list");
       } else {
-        LOG_TOPIC("f9u3f", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
+        LOG_TOPIC("76865", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
         std::this_thread::sleep_for(wait);
         wait *= 1.1;
       }

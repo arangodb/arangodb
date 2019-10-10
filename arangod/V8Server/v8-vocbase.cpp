@@ -50,6 +50,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -2065,6 +2066,36 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Boolean::New(isolate,
                                            StatisticsFeature::enabled()))
       .FromMaybe(false);  // ignore result  //, v8::ReadOnly);
+  
+  // replication factors
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->defaultReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+  
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->minReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+  
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->maxReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
+  
+  // max number of shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
+                          v8::Number::New(isolate,
+                                          application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->maxNumberOfShards()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break
