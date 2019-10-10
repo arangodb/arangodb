@@ -58,6 +58,9 @@ class phrase_iterator final : public conjunction {
 
   virtual doc_id_t seek(doc_id_t target) override {
     const auto doc = conjunction::seek(target);
+    if (doc == target) {
+      return target;
+    }
 
     if (type_limits<type_t::doc_id_t>::eof(doc) || (phrase_freq_.value = phrase_freq())) {
       return doc;
