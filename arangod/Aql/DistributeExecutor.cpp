@@ -27,6 +27,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/RegisterPlan.h"
 #include "Basics/StaticStrings.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
