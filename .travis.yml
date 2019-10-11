@@ -15,15 +15,18 @@ matrix:
       compiler: g++
       addons:
         apt:
-          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
-          #packages: [ 'clang-9', 'clang-tools-9', 'clang-tidy-9' ]
+          sources:
+            - [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
+              key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
+          packages: [ 'clang-9', 'clang-tools-9', 'clang-tidy-9' ]
       env:
         - MATRIX_ENV="export CXX=clang++-9 CC=clang-9"
 
 before_install:
-  - wget https://apt.llvm.org/llvm.sh
-  - chmod +x llvm.sh
-  - sudo ./llvm.sh 9 || sudo apt-get install -f -y clang-9 lldb-9 lld-9 clangd-9 llvm-9-tools
+  #  - wget https://apt.llvm.org/llvm.sh
+  #- chmod +x llvm.sh
+  #- sudo ./llvm.sh 9 || sudo apt-get install -f -y clang-9 lldb-9 lld-9 clangd-9 llvm-9-tools
 
 install:
 before_script:
