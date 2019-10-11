@@ -13,14 +13,9 @@ matrix:
     - name: "clang-format"
       compiler: g++
       addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-
-        packages:
-          - clang-8
-          - clang-tools-8
-          - clang-tidy-8
+        apt:
+          sources: [ 'ubuntu-toolchain-r-test' ]
+          packages: [ 'clang-8', 'clang-tools-8', 'clang-tidy-8' ]
 
 before_install:
 install:
