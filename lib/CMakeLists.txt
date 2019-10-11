@@ -223,6 +223,7 @@ add_library(arango STATIC
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
+  Rest/CommonDefines.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
   Rest/VstRequest.cpp

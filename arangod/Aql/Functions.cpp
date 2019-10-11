@@ -1484,7 +1484,7 @@ AqlValue Functions::ToHex(ExpressionContext*, transaction::Methods* trx,
   ::appendAsString(trx, adapter, value);
 
   std::string encoded =
-      basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
+      basics::StringUtils::encodeHex(buffer->begin(), buffer->length());
 
   return AqlValue(encoded);
 }
@@ -1500,7 +1500,7 @@ AqlValue Functions::EncodeURIComponent(ExpressionContext*, transaction::Methods*
   ::appendAsString(trx, adapter, value);
 
   std::string encoded = basics::StringUtils::encodeURIComponent(
-      std::string(buffer->begin(), buffer->length()));
+      buffer->begin(), buffer->length());
 
   return AqlValue(encoded);
 }
@@ -5505,18 +5505,16 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(identifier, "/");
-
-  if (parts.size() != 2) {
+  size_t pos = identifier.find('/');
+  if (pos == std::string::npos) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
   transaction::BuilderLeaser builder(trx);
   builder->openObject();
-  builder->add("collection", VPackValue(parts[0]));
-  builder->add("key", VPackValue(parts[1]));
+  builder->add("collection", VPackValuePair(identifier.data(), pos, VPackValueType::String));
+  builder->add("key", VPackValuePair(identifier.data() + pos + 1, identifier.size() - pos - 1, VPackValueType::String));
   builder->close();
   return AqlValue(builder.get());
 }

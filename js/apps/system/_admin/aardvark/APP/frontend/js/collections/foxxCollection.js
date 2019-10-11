@@ -28,19 +28,25 @@
       this.sortOptions.desc = val;
     },
 
-    // Install Foxx from github repo
-    // info is expected to contain: "url" and "version"
-    installFromGithub: function (info, mount, callback, isLegacy, flag) {
-      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/git?mount=' + encodeURIComponent(mount));
-      if (isLegacy) {
+    install: function (mode, info, mount, options, callback) {
+      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/' + mode + '?mount=' + encodeURIComponent(mount));
+      if (options.legacy) {
         url += '&legacy=true';
       }
-      if (flag !== undefined) {
-        if (flag) {
-          url += '&replace=true';
-        } else {
-          url += '&upgrade=true';
-        }
+      if (options.setup === true) {
+        url += '&setup=true';
+      } else if (options.setup === false) {
+        url += '&setup=false';
+      }
+      if (options.teardown === true) {
+        url += '&teardown=true';
+      } else if (options.teardown === false) {
+        url += '&teardown=false';
+      }
+      if (options.replace === true) {
+        url += '&replace=true';
+      } else if (options.replace === false) {
+        url += '&upgrade=true';
       }
       $.ajax({
         cache: false,
@@ -57,116 +63,6 @@
         }
       });
     },
-
-    // Install Foxx from public url
-    // info is expected to contain: "url" and "version"
-    installFromUrl: function (info, mount, callback, isLegacy, flag) {
-      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/url?mount=' + encodeURIComponent(mount));
-      if (isLegacy) {
-        url += '&legacy=true';
-      }
-      if (flag !== undefined) {
-        if (flag) {
-          url += '&replace=true';
-        } else {
-          url += '&upgrade=true';
-        }
-      }
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: url,
-        data: JSON.stringify(info),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(data);
-        },
-        error: function (err) {
-          callback(err);
-        }
-      });
-    },
-
-    // Install Foxx from arango store
-    // info is expected to contain: "name" and "version"
-    installFromStore: function (info, mount, callback, flag) {
-      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/store?mount=' + encodeURIComponent(mount));
-      if (flag !== undefined) {
-        if (flag) {
-          url += '&replace=true';
-        } else {
-          url += '&upgrade=true';
-        }
-      }
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: url,
-        data: JSON.stringify(info),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(data);
-        },
-        error: function (err) {
-          callback(err);
-        }
-      });
-    },
-
-    installFromZip: function (fileName, mount, callback, isLegacy, flag) {
-      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/zip?mount=' + encodeURIComponent(mount));
-      if (isLegacy) {
-        url += '&legacy=true';
-      }
-      if (flag !== undefined) {
-        if (flag) {
-          url += '&replace=true';
-        } else {
-          url += '&upgrade=true';
-        }
-      }
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: url,
-        data: JSON.stringify({zipFile: fileName}),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(data);
-        },
-        error: function (err) {
-          callback(err);
-        }
-      });
-    },
-
-    generate: function (info, mount, callback, flag) {
-      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/generate?mount=' + encodeURIComponent(mount));
-      if (flag !== undefined) {
-        if (flag) {
-          url += '&replace=true';
-        } else {
-          url += '&upgrade=true';
-        }
-      }
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: url,
-        data: JSON.stringify(info),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(data);
-        },
-        error: function (err) {
-          callback(err);
-        }
-      });
-    }
 
   });
 }());

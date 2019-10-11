@@ -381,6 +381,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
                 VPackValue(static_cast<int32_t>(rest::ResponseCode::PRECONDITION_FAILED)));
     builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
+
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
       builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
@@ -487,7 +488,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       return;
 
     case TRI_ERROR_ARANGO_CONFLICT:
-      if (result.buffer != nullptr) {
+      if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
         generatePreconditionFailed(result.slice());

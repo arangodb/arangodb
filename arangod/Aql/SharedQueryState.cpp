@@ -73,3 +73,21 @@ bool SharedQueryState::executeContinueCallback() const {
   //  then backs up libcurl callbacks to other objects
   return scheduler->queue(RequestLane::CLIENT_AQL, _continueCallback);
 }
+
+bool SharedQueryState::execute() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  if (!_valid) {
+    return false;
+  }
+
+  if (_hasHandler) {
+    if (ADB_UNLIKELY(!executeContinueCallback())) {
+      return false;  // likely shutting down
+    }
+  } else {
+    _wasNotified = true;
+    // simon: bad experience on macOS guard.unlock();
+    _condition.notify_one();
+  }
+  return true;
+}
