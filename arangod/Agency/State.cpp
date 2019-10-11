@@ -76,10 +76,10 @@ State::~State() = default;
 inline static std::string timestamp(uint64_t m) {
 
   //TRI_ASSERT(m != 0);
-  
+
   using namespace std::chrono;
-  
-  std::time_t t = 
+
+  std::time_t t =
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
   return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::gmtime(&t))
@@ -529,7 +529,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
-  
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
     if (!clientId.empty()) {
@@ -662,31 +662,31 @@ VPackBuilder State::slices(index_t start, index_t end) const {
   slices.openArray();
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-  
+
   if (!_log.empty()) {
     if (start < _log.front().index) {  // no start specified
       start = _log.front().index;
     }
-    
+
     if (start > _log.back().index) {  // no end specified
       slices.close();
       return slices;
     }
-    
+
     if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
       end = _log.back().index;
     }
-    
+
     for (size_t i = start - _cur; i <= end - _cur; ++i) {
       try { //{ "a" : {"op":"set", "ttl":20, ...}}
         auto slice = VPackSlice(_log.at(i).entry->data());
         VPackObjectBuilder o(&slices);
         for (auto const& oper : VPackObjectIterator(slice)) {
           slices.add(VPackValue(oper.key.copyString()));
-          
+
           if (oper.value.isObject() && oper.value.hasKey("op") &&
               oper.value.get("op").isEqualString("set") && oper.value.hasKey("ttl")) {
-            VPackObjectBuilder oo(&slices); 
+            VPackObjectBuilder oo(&slices);
             for (auto const& i : VPackObjectIterator(oper.value)) {
               slices.add(i.key.copyString(), i.value);
             }
@@ -1082,7 +1082,7 @@ bool State::loadRemaining() {
           FATAL_ERROR_EXIT();
         }
       }
-      
+
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
 
@@ -1622,7 +1622,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(builder.isOpenObject());
-  
+
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
@@ -1642,7 +1642,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   VPackSlice result = logQueryResult.data->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
-  
+
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
     { VPackObjectBuilder guard(&builder);
@@ -1679,7 +1679,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::string const compQueryStr =
       std::string("FOR c in compact FILTER c._key >= '") + firstIndex
       + std::string("' SORT c._key LIMIT 1 RETURN c");
-        
+
     arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -1688,7 +1688,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     if (compQueryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
-    
+
     result = compQueryResult.data->slice().resolveExternals();
 
     if (result.isArray()) {
@@ -1704,7 +1704,6 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       }
     }
   }
-  
+
   return n;
 }
-
