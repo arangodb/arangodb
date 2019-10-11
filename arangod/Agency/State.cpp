@@ -75,7 +75,7 @@ State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
-  TRI_ASSERT(m != 0);
+  //TRI_ASSERT(m != 0);
   
   using namespace std::chrono;
   
@@ -662,24 +662,39 @@ VPackBuilder State::slices(index_t start, index_t end) const {
   slices.openArray();
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-
+  
   if (!_log.empty()) {
     if (start < _log.front().index) {  // no start specified
       start = _log.front().index;
     }
-
+    
     if (start > _log.back().index) {  // no end specified
       slices.close();
       return slices;
     }
-
+    
     if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
       end = _log.back().index;
     }
-
+    
     for (size_t i = start - _cur; i <= end - _cur; ++i) {
-      try {
-        slices.add(VPackSlice(_log.at(i).entry->data()));
+      try { //{ "a" : {"op":"set", "ttl":20, ...}}
+        auto slice = VPackSlice(_log.at(i).entry->data());
+        VPackObjectBuilder o(&slices);
+        for (auto const& oper : VPackObjectIterator(slice)) {
+          slices.add(VPackValue(oper.key.copyString()));
+          
+          if (oper.value.isObject() && oper.value.hasKey("op") &&
+              oper.value.get("op").isEqualString("set") && oper.value.hasKey("ttl")) {
+            VPackObjectBuilder oo(&slices); 
+            for (auto const& i : VPackObjectIterator(oper.value)) {
+              slices.add(i.key.copyString(), i.value);
+            }
+            slices.add("timestamp", VPackValue(_log.at(i).timestamp.count()));
+          } else {
+            slices.add(oper.value);
+          }
+        }
       } catch (std::exception const&) {
         break;
       }
@@ -687,9 +702,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
   }
 
   mutexLocker.unlock();
-
   slices.close();
-
   return slices;
 }
 
@@ -1058,7 +1071,7 @@ bool State::loadRemaining() {
       if (ii.hasKey("epoch_millis")) {
         if (ii.get("epoch_millis").isInteger()) {
           try {
-            millis = req.get("epoch_millis").getNumber<uint64_t>();
+            millis = ii.get("epoch_millis").getNumber<uint64_t>();
           } catch (std::exception const& e) {
             LOG_TOPIC("2ee75", ERR, Logger::AGENCY)
               << "Failed to parse integer value for epoch_millis " << e.what();
@@ -1572,7 +1585,8 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
             req.hasKey("clientId") ? req.get("clientId").copyString() : std::string();
 
         uint64_t epoch_millis =
-          req.hasKey("epoch_millis") ? req.get("epoch_millis").getNumber<uint64_t>() : 0;
+          (req.hasKey("epoch_millis") && req.get("epoch_millis").isInteger()) ?
+          req.get("epoch_millis").getNumber<uint64_t>() : 0;
 
         log_t entry(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                     ii.get("term").getNumber<uint64_t>(), tmp, clientId, epoch_millis);

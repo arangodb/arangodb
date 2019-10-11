@@ -456,6 +456,8 @@ namespace consensus {
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
 
+  using namespace std::chrono;
+  
   if (!slice.hasKey("new")) {
     LOG_TOPIC("ad662", WARN, Logger::AGENCY)
         << "Operator set without new value: " << slice.toJson();
@@ -481,9 +483,16 @@ bool Node::handle<SET>(VPackSlice const& slice) {
     if (ttl_v.isNumber()) {
       long ttl =
           1000l * ((ttl_v.isDouble())
-                       ? static_cast<long>(slice.get("ttl").getNumber<double>())
-                       : static_cast<long>(slice.get("ttl").getNumber<int>()));
-      addTimeToLive(ttl);
+                   ? static_cast<long>(slice.get("ttl").getNumber<double>())
+                   : static_cast<long>(slice.get("ttl").getNumber<int>()));
+
+      if (slice.hasKey("timestamp")) {
+        ttl +=
+          (milliseconds(slice.get("timestamp").getNumber<uint64_t>()) - 
+           duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
+      }
+
+      addTimeToLive((ttl > 0) ? ttl : 0);
     } else {
       LOG_TOPIC("66da2", WARN, Logger::AGENCY)
           << "Non-number value assigned to ttl: " << ttl_v.toJson();
