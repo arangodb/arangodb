@@ -95,6 +95,7 @@ void RestJobHandler::putJob() {
   TRI_ASSERT(response != nullptr);
 
   // return the original response
+  response->setMessageId(_response->messageId());
   _response.reset(response);
 
   // plus a new header

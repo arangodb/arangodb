@@ -36,6 +36,8 @@ class VstResponse : public GeneralResponse {
 
   // required by base
   uint64_t messageId() const override { return _messageId; }
+  void setMessageId(uint64_t msgId) { _messageId = msgId; }
+
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
