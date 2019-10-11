@@ -25,6 +25,7 @@ before_script:
   - eval "${MATRIX_ENV}"
   - mkdir build && cd build || exit 1
   - cmake ..
+  - cd ..
 script:
   - exort ARANGODB_CLANG_FORMAT_VERSION=9.0.0
   - ./utils/clang-format-check
