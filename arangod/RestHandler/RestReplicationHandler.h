@@ -107,6 +107,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const HoldReadLockCollection;
 
  protected:
+  std::string forwardingTarget() override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
@@ -123,7 +125,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief forward a command in the coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleTrampolineCoordinator();
+  void handleUnforwardedTrampolineCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the cluster inventory, only on coordinator

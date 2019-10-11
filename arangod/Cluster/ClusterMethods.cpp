@@ -791,11 +791,11 @@ int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
 /// @brief creates a copy of all HTTP headers to forward
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> getForwardableRequestHeaders(arangodb::GeneralRequest* request) {
+network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request) {
   std::unordered_map<std::string, std::string> const& headers = request->headers();
   std::unordered_map<std::string, std::string>::const_iterator it = headers.begin();
 
-  std::unordered_map<std::string, std::string> result;
+  network::Headers result;
 
   while (it != headers.end()) {
     std::string const& key = (*it).first;
