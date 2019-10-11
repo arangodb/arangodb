@@ -27,6 +27,7 @@ before_install:
   #  - wget https://apt.llvm.org/llvm.sh
   #- chmod +x llvm.sh
   #- sudo ./llvm.sh 9 || sudo apt-get install -f -y clang-9 lldb-9 lld-9 clangd-9 llvm-9-tools
+  - sudo apt-get -y remove clang-7
 
 install:
 before_script:
