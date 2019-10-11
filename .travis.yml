@@ -23,7 +23,7 @@ matrix:
 before_install:
   - wget https://apt.llvm.org/llvm.sh
   - chmod +x llvm.sh
-  - sudo ./llvm.sh 9 || sudo apt-get install -y clang-9 lldb-9 lld-9 clangd-9 llvm-9-dev
+  - sudo ./llvm.sh 9 || sudo apt-get install -y clang-9 lldb-9 lld-9 clangd-9 llvm-9-dev llvm-9-tools
 
 install:
 before_script:
