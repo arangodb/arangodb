@@ -14,10 +14,10 @@ matrix:
       compiler: g++
       addons:
         apt:
-          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
-          packages: [ 'clang-8', 'clang-tools-8', 'clang-tidy-8' ]
+          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-9']
+          packages: [ 'clang-9', 'clang-tools-9', 'clang-tidy-9' ]
       env:
-        - MATRIX_ENV="export CXX=clang++-8 CC=clang-8"
+        - MATRIX_ENV="export CXX=clang++-9 CC=clang-9"
 
 before_install:
 install:
@@ -26,7 +26,8 @@ before_script:
   - mkdir build && cd build || exit 1
   - cmake ..
 script:
-  ./utils/clang-format-check
+  - exort ARANGODB_CLANG_FORMAT_VERSION=9.0.0
+  - ./utils/clang-format-check
 
 after_suceess:
 after_failure: 
