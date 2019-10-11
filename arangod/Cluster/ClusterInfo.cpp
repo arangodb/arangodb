@@ -42,6 +42,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -1011,6 +1012,29 @@ void ClusterInfo::loadPlan() {
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
         << ", doneVersion=" << _planProt.doneVersion;
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
+    if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
+      // sharding prototype of _system database defaults to _users nowadays
+      systemDB->setShardingPrototype(ShardingPrototype::Users);
+      // but for "old" databases it may still be "_graphs". we need to find out!
+      // find _system database in Plan
+      auto it = newCollections.find(StaticStrings::SystemDatabase);
+      if (it != newCollections.end()) {
+        // find _graphs collection in Plan
+        auto it2 = (*it).second.find(StaticStrings::GraphCollection);
+        if (it2 != (*it).second.end()) {
+          // found!
+          if ((*it2).second->distributeShardsLike().empty()) {
+            // _graphs collection has no distributeShardsLike, so it is
+            // the prototype!
+            systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+          }
+        }
+      }
+    }
   }
 
   WRITE_LOCKER(writeLocker, _planProt.lock);

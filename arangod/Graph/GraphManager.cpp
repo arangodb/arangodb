@@ -114,10 +114,12 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
     if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
       // force a single shard with shards distributed like "_graph"
       helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-      helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+      char const* prototype = vocbase.shardingPrototype() == ShardingPrototype::Users ? TRI_COL_NAME_USERS : StaticStrings::GraphCollection.data();
+      helper.add(StaticStrings::DistributeShardsLike, VPackValue(prototype));
     } else if (vocbase.name() == "single" && numberOfShards <= 1) {
       helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-      helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+      char const* prototype = vocbase.shardingPrototype() == ShardingPrototype::Users ? TRI_COL_NAME_USERS : StaticStrings::GraphCollection.data();
+      helper.add(StaticStrings::DistributeShardsLike, VPackValue(prototype));
     }
   
   }
