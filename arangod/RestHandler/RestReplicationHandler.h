@@ -106,6 +106,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const HoldReadLockCollection;
 
  protected:
+  std::string forwardingTarget() override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
@@ -122,7 +124,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief forward a command in the coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleTrampolineCoordinator();
+  void handleUnforwardedTrampolineCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the cluster inventory, only on coordinator
@@ -309,7 +311,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
                                              bool force, uint64_t numberOfShards,
                                              uint64_t replicationFactor,
-                                             uint64_t minReplicationFactor,
+                                             uint64_t writeConcern,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////

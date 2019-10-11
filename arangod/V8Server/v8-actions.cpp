@@ -33,12 +33,16 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -1415,41 +1419,42 @@ static int clusterSendToAllServers(std::string const& dbname,
                                    arangodb::rest::RequestType const& method,
                                    std::string const& body) {
   auto& server = application_features::ApplicationServer::server();
-  ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+  network::ConnectionPool* pool = server.getFeature<NetworkFeature>().pool();
+  if (!pool || !pool->config().clusterInfo) {
+    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
   }
+  ClusterInfo& ci = *pool->config().clusterInfo;
+
+  network::Headers headers;
+  fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
+  auto timeout = std::chrono::seconds(3600);
+
+  std::vector<futures::Future<network::Response>> futures;
 
   // Have to propagate to DB Servers
-  std::vector<ServerID> DBServers;
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  auto reqBodyString = std::make_shared<std::string>(body);
-
-  DBServers = ci.getCurrentDBServers();
-  std::unordered_map<std::string, std::string> headers;
+  std::vector<ServerID> DBServers = ci.getCurrentDBServers();
   for (auto const& sid : DBServers) {
-    cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
-                     reqBodyString, headers, nullptr, 3600.0);
+    VPackBuffer<uint8_t> buffer(body.size());
+    buffer.append(body);
+    auto f = network::sendRequest(pool, "server:" + sid, verb, url,
+                                  std::move(buffer), timeout, headers);
+    futures.emplace_back(std::move(f));
   }
 
-  // Now listen to the results:
-  size_t count = DBServers.size();
-
-  for (; count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_TIMEOUT) {
-      cc->drop(coordTransactionID, 0, "");
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
-        res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-      cc->drop(coordTransactionID, 0, "");
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
+  return futures::collectAll(futures)
+      .thenValue([](std::vector<futures::Try<network::Response>>&& responses) -> int {
+        for (futures::Try<network::Response> const& tryRes : responses) {
+          network::Response const& res = tryRes.get();  // throws exceptions upwards
+          int commError = network::fuerteToArangoErrorCode(res);
+          if (commError != TRI_ERROR_NO_ERROR) {
+            return commError;
+          }
+        }
+        return TRI_ERROR_NO_ERROR;
+      })
+      .get();
 }
 #endif
 

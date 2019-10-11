@@ -267,10 +267,6 @@ class Methods {
   bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
 
-  /// @brief Iterate over all elements of the collection.
-  ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
-                                           std::function<bool(arangodb::LocalDocumentId const&)>);
-
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
   ///        (as an external on single_server)  and this function will return

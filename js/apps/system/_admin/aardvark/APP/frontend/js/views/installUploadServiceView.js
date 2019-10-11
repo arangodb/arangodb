@@ -71,18 +71,23 @@
         this._uploadData = window.foxxData.data;
       }
       if (window.foxxData.data && window.modalView.modalTestAll()) {
-        var mount, flag, isLegacy;
+        var mount, info, options;
         if (this._upgrade) {
           mount = window.App.replaceAppData.mount;
-          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
             mount = '/' + mount;
           }
         }
-        isLegacy = Boolean($('#zip-app-islegacy').prop('checked'));
-        this.collection.installFromZip(window.foxxData.data.filename, mount, this.installCallback.bind(this), isLegacy, flag);
+
+        info = {
+          zipFile: window.foxxData.data.filename
+        };
+
+        options = arangoHelper.getFoxxFlags();
+        options.legacy = Boolean($('#zip-app-islegacy')[0].checked);
+        this.collection.install('zip', info, mount, options, this.installCallback.bind(this));
       }
       window.modalView.hide();
     },

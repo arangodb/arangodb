@@ -72,6 +72,27 @@ class AqlItemBlockTest : public ::testing::Test {
         << testee->getValueReference(row, column).slice().toJson() << " vs "
         << dummyData(dummyIndex).toJson();
   }
+
+  void assertShadowRowIndexes(SharedAqlItemBlockPtr const& testee,
+                              std::vector<size_t> indexes) {
+    if (indexes.empty()) {
+      EXPECT_FALSE(testee->hasShadowRows());
+    } else {
+      EXPECT_TRUE(testee->hasShadowRows());
+    }
+
+    EXPECT_EQ(testee->getShadowRowIndexes().size(), indexes.size());
+    for (auto const& it : indexes) {
+      EXPECT_NE(testee->getShadowRowIndexes().find(it),
+                testee->getShadowRowIndexes().end());
+    }
+    size_t old = 0;
+    // Set is ordered increasingly
+    for (auto const& it : testee->getShadowRowIndexes()) {
+      ASSERT_LE(old, it);
+      old = it;
+    }
+  }
 };
 
 TEST_F(AqlItemBlockTest, test_read_values_reference) {
@@ -121,6 +142,21 @@ TEST_F(AqlItemBlockTest, test_emplace_values) {
   EXPECT_EQ(block->getValueReference(1, 1).toInt64(), 4);
 }
 
+TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
+  auto block = buildBlock<1>(itemBlockManager, {{{{{5}}}, {{{6}}}, {{{7}}}, {{{8}}}}});
+  // No shadow Rows included
+  assertShadowRowIndexes(block, {});
+
+  // add a shadow row
+  block->makeShadowRow(2);
+  assertShadowRowIndexes(block, {2});
+
+  // add another shadow row
+  block->makeShadowRow(1);
+
+  assertShadowRowIndexes(block, {1, 2});
+}
+
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_1) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
 
@@ -146,6 +182,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_1) {
   compareWithDummy(testee, 0, 1, 1);
   compareWithDummy(testee, 1, 0, 2);
   compareWithDummy(testee, 1, 1, 4);
+  assertShadowRowIndexes(testee, {});
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
@@ -177,6 +214,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
         EXPECT_TRUE(testee->getValueReference(0, i).isEmpty());
       }
     }
+    assertShadowRowIndexes(testee, {});
   }
 }
 
@@ -212,6 +250,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
         EXPECT_TRUE(testee->getValueReference(0, i).isEmpty());
       }
     }
+    assertShadowRowIndexes(testee, {});
   }
 }
 
@@ -231,6 +270,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
   block->emplaceValue(3, 0, dummyData(2));
   block->emplaceValue(3, 1, dummyData(4));
   block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+
+  assertShadowRowIndexes(block, {1, 3});
 
   VPackBuilder result;
   result.openObject();
@@ -261,6 +302,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
   EXPECT_TRUE(testee->isShadowRow(3));
   compareWithDummy(testee, 3, 0, 2);
   compareWithDummy(testee, 3, 1, 4);
+
+  assertShadowRowIndexes(testee, {1, 3});
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
@@ -303,6 +346,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
+
+    assertShadowRowIndexes(testee, {});
   }
 }
 
@@ -346,6 +391,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
+    assertShadowRowIndexes(testee, {});
   }
 }
 

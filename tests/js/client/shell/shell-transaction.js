@@ -4083,15 +4083,22 @@ function transactionTTLStreamSuite () {
 
     testAbortIdleTrx: function () {
       let trx = db._createTransaction({
-        collections: { read: cn }
+        collections: { write: cn }
       });
 
-      internal.sleep(12);
-      try {
-        trx.collection(cn).save({key:'val'});
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      trx.collection(cn).save({value:'val'});
+
+      let x = 60;
+      do {
+        internal.sleep(1);
+
+        if (trx.status().status === "aborted") {
+          return;
+        }
+
+      } while(--x > 0);
+      if (x <= 0) {
+        fail(); // should not be reached
       }
     }
   };

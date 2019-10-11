@@ -392,8 +392,8 @@ function unitTestPrettyPrintResults (options, results) {
       }
     },
     endTestSuite: function(options, state, testSuite, testSuiteName) {
-      failedTestsCount++;
       if (failsOfOneSuiteCount !== 0) {
+        failedTestsCount += failsOfOneSuiteCount;
         failedCases[testSuiteName] = failsOfOneSuite;
         failsOfOneSuite = {};
         failsOfOneSuiteCount = 0;
