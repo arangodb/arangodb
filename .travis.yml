@@ -8,18 +8,20 @@ language: cpp
 #cache: ccache
 sudo: required
 
+#see https://apt.llvm.org/
 matrix:
   include:
     - name: "clang-format"
       compiler: g++
       addons:
         apt:
-          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6']
-          packages: [ 'clang-6', 'clang-tools-6', 'clang-tidy-6' ]
+          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-9']
+          packages: [ 'clang-9', 'clang-tools-9', 'clang-tidy-9' ]
       env:
-        - MATRIX_ENV="export CXX=clang++-6 CC=clang-6"
+        - MATRIX_ENV="export CXX=clang++-9 CC=clang-9"
 
 before_install:
+
 install:
 before_script:
   - eval "${MATRIX_ENV}"
