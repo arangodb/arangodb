@@ -488,11 +488,10 @@ bool Node::handle<SET>(VPackSlice const& slice) {
                    : static_cast<long>(slice.get("ttl").getNumber<int>()));
 
       // calclate expiry time
-      auto const expires =
-        slice.hasKey("epoch_millis") ?
+      auto const expires = slice.hasKey("epoch_millis") ?
         time_point<system_clock>(
           milliseconds(slice.get("epoch_millis").getNumber<uint64_t>() + ttl)) :
-        system_clock::now();
+        system_clock::now() + milliseconds(ttl);
 
       // set ttl limit
       addTimeToLive(expires);
