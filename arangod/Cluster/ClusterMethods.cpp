@@ -3764,27 +3764,42 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
   }
 
   // Perform the requests
-  cc->performRequests(requests, lockWait + 1.0, Logger::BACKUP, false, false);
+  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
 
-  // Now listen to the results:
+  // Now listen to the results and report the aggregated final result:
+  arangodb::Result finalRes(TRI_ERROR_NO_ERROR);
+  auto reportError = [&](int c, std::string const& m) {
+    if (finalRes.ok()) {
+      finalRes = arangodb::Result(c, m);
+    } else {
+      // If we see at least one TRI_ERROR_LOCAL_LOCK_FAILED it is a failure
+      // if all errors are TRI_ERROR_LOCK_TIMEOUT, then we report this and
+      // this will lead to a retry:
+      if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
+        c = TRI_ERROR_LOCAL_LOCK_FAILED;
+      }
+      finalRes = arangodb::Result(c, finalRes.errorMessage() + ", " + m);
+    }
+  };
   for (auto const& req : requests) {
     auto res = req.result;
     int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("Communication error locking transactions on ") + req.destination);
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("Communication error locking transactions on ")
+                  + req.destination);
+      continue;
     }
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
     if (!slc.isObject() || !slc.hasKey("error") || !slc.get("error").isBoolean()) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("invalid response from ") + req.destination +
-              " when trying to freeze transactions for hot backup " + backupId +
-              ": " + slc.toJson());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to freeze transactions for hot backup " +
+                  backupId + ": " + slc.toJson());
+      continue;
     }
 
     if (slc.get("error").getBoolean()) {
@@ -3792,22 +3807,23 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
           << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
       auto errorNum = slc.get("errorNum").getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
+        reportError(errorNum, slc.get("errorMessage").copyString());
+        continue;
       }
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("lock was denied from ") + req.destination +
-              " when trying to check for lockId for hot backup " + backupId +
-              ": " + slc.toJson());
+          " when trying to check for lockId for hot backup " + backupId +
+          ": " + slc.toJson());
+      continue;
     }
 
     if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
         !slc.hasKey("result") || !slc.get("result").isObject()) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("invalid response from ") + req.destination +
-              " when trying to check for lockId for hot backup " + backupId +
-              ": " + slc.toJson());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to check for lockId for hot backup " +
+                  backupId + ": " + slc.toJson());
+      continue;
     }
 
     uint64_t lockId = 0;
@@ -3817,19 +3833,22 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
           << "acquired lock from " << req.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
-      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
-                              std::string("invalid response from ") + req.destination +
-                                  " when trying to get lockId for hot backup " + backupId +
-                                  ": " + slc.toJson() + ", msg: " + e.what());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to get lockId for hot backup " + backupId +
+                  ": " + slc.toJson() + ", msg: " + e.what());
+      continue;
     }
 
     lockedServers.push_back(req.destination.substr(strlen("server:"), std::string::npos));
   }
 
-  LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-      << "acquired transaction locks on all db servers";
+  if (finalRes.ok()) {
+    LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
+        << "acquired transaction locks on all db servers";
+  }
 
-  return arangodb::Result();
+  return finalRes;
 }
 
 arangodb::Result unlockDBServerTransactions(std::string const& backupId,
