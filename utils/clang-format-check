@@ -44,12 +44,10 @@ fi
 
 diff_target="HEAD"
 if $TRAVIS; then
-    # TODO - enable this once done
-    # if ! $TRAVIS_PULL_REQUEST; then
-    #     echo "NOT A PULL REQUEST"
-    #     exit 0
-    # fi
     diff_target="${TRAVIS_BRANCH}"
+    if ! $TRAVIS_PULL_REQUEST; then
+        diff_target="${diff_target}^"
+    fi
     echo "diffing against ${diff_target}"
 fi
 

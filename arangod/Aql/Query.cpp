@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-  #include "Query.h"
+   #include "Query.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
