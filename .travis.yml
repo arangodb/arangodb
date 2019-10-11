@@ -24,11 +24,6 @@ matrix:
         - MATRIX_ENV="export CXX=clang++-9 CC=clang-9"
 
 before_install:
-  #  - wget https://apt.llvm.org/llvm.sh
-  #- chmod +x llvm.sh
-  #- sudo ./llvm.sh 9 || sudo apt-get install -f -y clang-9 lldb-9 lld-9 clangd-9 llvm-9-tools
-  - dpkg -l | grep clang
-
 install:
 before_script:
   - eval "${MATRIX_ENV}"
@@ -36,14 +31,12 @@ before_script:
   - cmake ..
   - cd ..
 script:
-  - dpkg -L clang-9
-  - dpkg -L show clang-tools-9
   - export ARANGODB_CLANG_FORMAT_VERSION=9.0.0
   - ./utils/clang-format-check
 
 after_suceess:
-after_failure: 
-after_script: 
+after_failure:
+after_script:
 
 #notifications:
 #  slack:
