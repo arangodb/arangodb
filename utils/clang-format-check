@@ -43,12 +43,17 @@ fi
 
 
 diff_target="HEAD"
-if $TRAVIS;
+if $TRAVIS; then
+    # TODO - enable this once done
+    # if ! $TRAVIS_PULL_REQUEST; then
+    #     echo "NOT A PULL REQUEST"
+    #     exit 0
+    # fi
     diff_target="${TRAVIS_BRANCH}"
     echo "diffing against ${diff_target}"
-then
+fi
 
-diff="$(git diff -U0 --no-color "${diff_target}")"
+diff="$(git diff -U0 --no-color "${diff_target}" )"
 
 if type colordiff 2>/dev/null; then
     #need pipefail option
