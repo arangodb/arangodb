@@ -75,7 +75,7 @@ State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
-  //TRI_ASSERT(m != 0);
+  TRI_ASSERT(m != 0);
 
   using namespace std::chrono;
 
@@ -690,7 +690,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
             for (auto const& i : VPackObjectIterator(oper.value)) {
               slices.add(i.key.copyString(), i.value);
             }
-            slices.add("timestamp", VPackValue(_log.at(i).timestamp.count()));
+            slices.add("epoch_millis", VPackValue(_log.at(i).timestamp.count()));
           } else {
             slices.add(oper.value);
           }
@@ -780,6 +780,11 @@ bool State::ready() const { return _ready; }
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {
+
+  using namespace std::chrono;
+  auto const epoch_millis =
+    duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
   _vocbase = vocbase;
   _queryRegistry = queryRegistry;
 
@@ -794,8 +799,8 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
-      _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string()));
-      persist(0, 0, 0, value, std::string());
+      _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string(), epoch_millis));
+      persist(0, 0, epoch_millis, value, std::string());
     }
     _ready = true;
     return true;
