@@ -313,7 +313,7 @@ void EnvironmentFeature::prepare() {
       std::string content;
       auto rv = basics::FileUtils::slurp("/proc/self/numa_maps", content);
       if (rv.ok()) {
-        auto values = basics::StringUtils::split(content, '\n', '\0');
+        auto values = basics::StringUtils::split(content, '\n');
 
         if (!values.empty()) {
           auto first = values[0];
