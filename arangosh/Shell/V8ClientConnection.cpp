@@ -216,7 +216,8 @@ void V8ClientConnection::connect(ClientFeature* client) {
   
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  
+  _forceJson = client->forceJson();
+
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
@@ -239,6 +240,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
+  _forceJson = client->forceJson();
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
   if (!client->jwtSecret().empty()) {
@@ -1198,6 +1200,39 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "forceJson"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // get the connection
+  V8ClientConnection* v8connection =
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("forceJson(bool)");
+  }
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  bool forceJson = TRI_ObjectToBoolean(isolate, args[0]);
+  v8connection->setForceJson(forceJson);
+
+  client->setForceJson(forceJson);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "timeout"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1507,7 +1542,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     }
   }
   if (req->header.acceptType() == fuerte::ContentType::Unset) {
-    req->header.acceptType(fuerte::ContentType::VPack);
+    if (_forceJson) {
+      req->header.acceptType(fuerte::ContentType::Json);
+    } else {
+      req->header.acceptType(fuerte::ContentType::VPack);
+    }
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
@@ -1806,6 +1845,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
   connection_proto->Set(isolate, "isConnected",
                         v8::FunctionTemplate::New(isolate, ClientConnection_isConnected));
 
+  connection_proto->Set(isolate, "forceJson",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_forceJson, v8client));
+
   connection_proto->Set(isolate, "reconnect",
                         v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
 
@@ -1814,7 +1856,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
                                                   v8client));
 
   connection_proto->Set(isolate, "timeout",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_timeout));
+                        v8::FunctionTemplate::New(isolate, ClientConnection_timeout, v8client));
 
   connection_proto->Set(isolate, "toString",
                         v8::FunctionTemplate::New(isolate, ClientConnection_toString));
