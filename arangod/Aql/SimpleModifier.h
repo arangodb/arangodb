@@ -77,6 +77,18 @@ class SimpleModifier {
   ModifierOutput getOutput();
   void advanceIterator();
 
+  // For SmartGraphs in the Enterprise Edition this is used to skip write
+  // operations because they would otherwise be executed twice.
+  //
+  // In the community edition this will always return true
+  bool writeRequired(VPackSlice const& doc, std::string const& key) const;
+
+  // We need to have a function that adds a document because returning a
+  // (reference to a) slice has scoping problems
+  void addDocument(VPackSlice const& doc);
+
+  ModificationExecutorInfos& getInfos();
+
  private:
   ModificationExecutorInfos& _infos;
   ModifierCompletion const& _completion;

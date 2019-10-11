@@ -44,7 +44,7 @@ ReplaceModifierCompletion::ReplaceModifierCompletion(SimpleModifier<ReplaceModif
 
 ReplaceModifierCompletion::~ReplaceModifierCompletion() = default;
 
-Result ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
+ModOperationType ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
@@ -74,38 +74,35 @@ Result ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
   }
 
   if (result.ok()) {
-    if (!_modifier._infos._consultAqlWriteFilter ||
-        !_modifier._infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(), key)) {
+    if (_modifier.writeRequired(inDoc.slice(), key)) {
       if (hasKeyVariable) {
         VPackBuilder keyDocBuilder;
 
         buildKeyDocument(keyDocBuilder, key, rev);
         // This deletes _rev if rev is empty or ignoreRevs is set in
         // options.
-        VPackCollection::merge(_modifier._accumulator, inDoc.slice(),
-                               keyDocBuilder.slice(), false, true);
+        auto merger =
+            VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
+        _modifier.addDocument(merger.slice());
       } else {
-        _modifier._accumulator.add(inDoc.slice());
+        _modifier.addDocument(inDoc.slice());
       }
-      _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
+      return ModOperationType::APPLY_RETURN;
     } else {
-      _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
+      return ModOperationType::IGNORE_RETURN;
     }
   } else {
     // error happened extracting key, record in operations map
-    _modifier._operations.push_back({ModOperationType::IGNORE_SKIP, row});
+    // TODO: Throw errors ?
     // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+    return ModOperationType::IGNORE_SKIP;
   }
-
-  return Result{};
 }
 
-Result ReplaceModifierCompletion::transact() {
+OperationResult ReplaceModifierCompletion::transact() {
   auto toReplace = _modifier._accumulator.slice();
-  _modifier._results =
-      _modifier._infos._trx->replace(_modifier._infos._aqlCollection->name(),
-                                     toReplace, _modifier._infos._options);
-  return {};
+  return _modifier._infos._trx->replace(_modifier._infos._aqlCollection->name(),
+                                        toReplace, _modifier._infos._options);
 }
 
 template class ::arangodb::aql::SimpleModifier<ReplaceModifierCompletion>;

@@ -31,6 +31,9 @@
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 
+#include "Aql/InsertModifier.h"
+#include "Aql/ModificationExecutor2.h"
+
 using namespace arangodb::aql;
 
 ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -181,6 +184,12 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.close();
 }
 
+using AllRowsInsertExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
+//    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, InsertModifier>>;
+using SingleRowInsertExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -209,11 +218,9 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<AllRowsInsertExecutionBlock>(&engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<SingleRowInsertExecutionBlock>(&engine, this, std::move(infos));
   }
 }
 

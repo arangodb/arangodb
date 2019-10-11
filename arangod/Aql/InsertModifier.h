@@ -37,8 +37,8 @@ class InsertModifierCompletion {
   InsertModifierCompletion(SimpleModifier<InsertModifierCompletion>& modifier);
   ~InsertModifierCompletion();
 
-  Result accumulate(InputAqlItemRow& row);
-  Result transact();
+  ModOperationType accumulate(InputAqlItemRow& row);
+  OperationResult transact();
 
  private:
   SimpleModifier<InsertModifierCompletion>& _modifier;

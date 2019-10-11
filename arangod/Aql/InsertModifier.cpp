@@ -44,31 +44,25 @@ InsertModifierCompletion::InsertModifierCompletion(SimpleModifier<InsertModifier
 
 InsertModifierCompletion::~InsertModifierCompletion() = default;
 
-Result InsertModifierCompletion::accumulate(InputAqlItemRow& row) {
-  RegisterId const inDocReg = _modifier._infos._input1RegisterId;
+ModOperationType InsertModifierCompletion::accumulate(InputAqlItemRow& row) {
+  RegisterId const inDocReg = _modifier.getInfos()._input1RegisterId;
 
-  // The document to be UPDATEd
+  // The document to be INSERTed
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  if (!_modifier._infos._consultAqlWriteFilter ||
-      !_modifier._infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
-                                                                         StaticStrings::Empty)) {
-    _modifier._accumulator.add(inDoc.slice());
-    _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
+  if (_modifier.writeRequired(inDoc.slice(), StaticStrings::Empty)) {
+    _modifier.addDocument(inDoc.slice());
+    return ModOperationType::APPLY_RETURN;
   } else {
-    _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
+    return ModOperationType::IGNORE_RETURN;
   }
-
-  return Result{};
 }
 
-Result InsertModifierCompletion::transact() {
+OperationResult InsertModifierCompletion::transact() {
   auto toInsert = _modifier._accumulator.slice();
-  _modifier._results =
-      _modifier._infos._trx->insert(_modifier._infos._aqlCollection->name(),
-                                    toInsert, _modifier._infos._options);
 
-  return Result{};
+  return _modifier.getInfos()._trx->insert(_modifier._infos._aqlCollection->name(),
+                                           toInsert, _modifier._infos._options);
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

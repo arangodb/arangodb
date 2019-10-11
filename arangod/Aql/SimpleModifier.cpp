@@ -53,16 +53,23 @@ void SimpleModifier<ModifierCompletion>::reset() {
   _accumulator.clear();
   _operations.clear();
   _results = OperationResult{};
+  _accumulator.openArray();
 }
 
 template <typename ModifierCompletion>
 Result SimpleModifier<ModifierCompletion>::accumulate(InputAqlItemRow& row) {
-  return _completion.accumulate(row);
+  auto result = _completion.accumulate(row);
+  TRI_ASSERT(!_accumulator.isClosed());
+  _operations.push_back(result.first, row);
+  return Result{};
 }
 
 template <typename ModifierCompletion>
 Result SimpleModifier<ModifierCompletion>::transact() {
-  return _completion.transact();
+  TRI_ASSERT(_accumulator.isClosed());
+  _results = std::move(_completion.transact());
+  TRI_ASSERT(_results.slice().length() == _accumulator.slice().length());
+  return Result{};
 }
 
 template <typename ModifierCompletion>
@@ -103,10 +110,28 @@ void SimpleModifier<ModifierCompletion>::advanceIterator() {
   _resultsIterator++;
 }
 
+template <typename ModifierCompletion>
+bool SimpleModifier<ModifierCompletion>::writeRequired(VPackSlice const& doc,
+                                                       std::string const& key) const {
+  return (!_infos._consultAqlWriteFilter ||
+          !_infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
+}
+
+template <typename ModifierCompletion>
+void SimpleModifier<ModifierCompletion>::addDocument(VPackSlice const& doc) {
+  _accumulator.add(doc);
+}
+
+template <typename ModifierCompletion>
+ModificationExecutorInfos& SimpleModifier<ModifierCompletion>::getInfos() {
+  return _infos;
+}
+
 // TODO: This is a bit ugly, explain at least what's going on
 //       can we use local variables and just rely on the compiler not doing
 //       anything silly?
-// Super ugly pointer/iterator shenanigans
+// The ModifierOuptut is a triple consisting of the ModOperationType, the InputRow,
+// and the result returned by the transaction method called in transact.
 template <typename ModifierCompletion>
 ModifierOutput SimpleModifier<ModifierCompletion>::getOutput() {
   return ModifierOutput{_operationsIterator->first, _operationsIterator->second,

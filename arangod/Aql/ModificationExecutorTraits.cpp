@@ -195,10 +195,10 @@ bool Insert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   RegisterId const inReg = info._input1RegisterId;
   TRI_ASSERT(_block != nullptr);
-  
+
   for (std::size_t index = 0; index < _block->size(); ++index) {
     InputAqlItemRow row{_block, index};
-    
+
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -467,7 +467,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, ModificationStats&
 
   for (std::size_t index = 0; index < _block->size(); ++index) {
     InputAqlItemRow row{_block, index};
-    
+
     errorMessage.clear();
     errorCode = TRI_ERROR_NO_ERROR;
     auto const& inVal = row.getValue(inDocReg);
@@ -664,7 +664,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 
   for (std::size_t index = 0; index < _block->size(); ++index) {
     InputAqlItemRow row{_block, index};
-  
+
     auto const& inVal = row.getValue(inDocReg);
     errorCode = TRI_ERROR_NO_ERROR;
     errorMessage.clear();

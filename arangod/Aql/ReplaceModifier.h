@@ -34,11 +34,11 @@ struct ModificationExecutorInfos;
 
 class ReplaceModifierCompletion {
  public:
-  ReplaceModifierCompletion(SimpleModifier<ReplaceModifierCompletion>& infos);
+  ReplaceModifierCompletion(SimpleModifier<ReplaceModifierCompletion>& modifier);
   ~ReplaceModifierCompletion();
 
-  Result accumulate(InputAqlItemRow& row);
-  Result transact();
+  ModOperationType accumulate(InputAqlItemRow& row);
+  OperationResult transact();
 
  private:
   SimpleModifier<ReplaceModifierCompletion>& _modifier;

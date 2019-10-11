@@ -44,7 +44,7 @@ UpdateModifierCompletion::UpdateModifierCompletion(SimpleModifier<UpdateModifier
 
 UpdateModifierCompletion::~UpdateModifierCompletion() = default;
 
-Result UpdateModifierCompletion::accumulate(InputAqlItemRow& row) {
+ModOperationType UpdateModifierCompletion::accumulate(InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
@@ -82,31 +82,27 @@ Result UpdateModifierCompletion::accumulate(InputAqlItemRow& row) {
         buildKeyDocument(keyDocBuilder, key, rev);
         // This deletes _rev if rev is empty or ignoreRevs is set in
         // options.
-        VPackCollection::merge(_modifier._accumulator, inDoc.slice(),
-                               keyDocBuilder.slice(), false, true);
+        auto merger =
+            VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
+        _modifier.addDocument(merger.slice());
       } else {
-        _modifier._accumulator.add(inDoc.slice());
+        _modifier.addDocument(inDoc.slice());
       }
-      _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
+      return ModOperationType::APPLY_RETURN;
     } else {
-      _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
+      return ModOperationType::IGNORE_RETURN;
     }
   } else {
     // error happened extracting key, record in operations map
-    _modifier._operations.push_back({ModOperationType::IGNORE_SKIP, row});
     // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+    return ModOperationType::IGNORE_SKIP;
   }
-
-  return Result{};
 }
 
-Result UpdateModifierCompletion::transact() {
+OperationResult UpdateModifierCompletion::transact() {
   auto toUpdate = _modifier._accumulator.slice();
-  _modifier._results =
-      _modifier._infos._trx->update(_modifier._infos._aqlCollection->name(),
-                                    toUpdate, _modifier._infos._options);
-
-  return Result{};
+  return _modifier._infos._trx->update(_modifier._infos._aqlCollection->name(),
+                                       toUpdate, _modifier._infos._options);
 }
 
 template class ::arangodb::aql::SimpleModifier<UpdateModifierCompletion>;

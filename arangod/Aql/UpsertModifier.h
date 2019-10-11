@@ -44,7 +44,6 @@ class UpsertModifier {
   void close();
 
   Result accumulate(InputAqlItemRow& row);
-
   Result transact();
 
   size_t size() const;

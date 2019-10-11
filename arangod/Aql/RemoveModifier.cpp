@@ -44,19 +44,17 @@ RemoveModifierCompletion::RemoveModifierCompletion(SimpleModifier<RemoveModifier
 
 RemoveModifierCompletion::~RemoveModifierCompletion() = default;
 
-Result RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
+ModOperationType RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
-  RegisterId const inDocReg = _modifier._infos._input1RegisterId;
+  RegisterId const inDocReg = _modifier.getInfos()._input1RegisterId;
 
   // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  if (!_modifier._infos._consultAqlWriteFilter ||
-      !_modifier._infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
-                                                                         StaticStrings::Empty)) {
-    TRI_ASSERT(_modifier._infos._trx->resolver() != nullptr);
+  if (_modifier.writeRequired(inDoc.slice(), StaticStrings::Empty)) {
+    TRI_ASSERT(_modifier.getInfos()._trx->resolver() != nullptr);
     CollectionNameResolver const& collectionNameResolver{*_modifier._infos._trx->resolver()};
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
                                _modifier._infos._options.ignoreRevs);
@@ -66,25 +64,20 @@ Result RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
       buildKeyDocument(keyDocBuilder, key, rev);
       // This deletes _rev if rev is empty or ignoreRevs is set in
       // options.
-      _modifier._accumulator.add(keyDocBuilder.slice());
-      _modifier._operations.push_back({ModOperationType::APPLY_RETURN, row});
+      _modifier.addDocument(keyDocBuilder.slice());
+      return ModOperationType::APPLY_RETURN;
     } else {
       // error happened extracting key, record in operations map
-      _modifier._operations.push_back({ModOperationType::IGNORE_SKIP, row});
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      return ModOperationType::IGNORE_SKIP;
     }
   } else {
-    _modifier._operations.push_back({ModOperationType::IGNORE_RETURN, row});
+    return ModOperationType::IGNORE_RETURN;
   }
-
-  return Result{};
 }
 
-Result RemoveModifierCompletion::transact() {
+OperationResult RemoveModifierCompletion::transact() {
   auto toRemove = _modifier._accumulator.slice();
-  _modifier._results =
-      _modifier._infos._trx->remove(_modifier._infos._aqlCollection->name(),
-                                    toRemove, _modifier._infos._options);
-
-  return Result{};
+  return _modifier.getInfos()._trx->remove(_modifier.getInfos()._aqlCollection->name(),
+                                           toRemove, _modifier.getInfos()._options);
 }

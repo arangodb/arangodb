@@ -37,8 +37,8 @@ class RemoveModifierCompletion {
   RemoveModifierCompletion(SimpleModifier<RemoveModifierCompletion>& modifier);
   ~RemoveModifierCompletion();
 
-  Result accumulate(InputAqlItemRow& row);
-  Result transact();
+  ModOperationType accumulate(InputAqlItemRow& row);
+  OperationResult transact();
 
  private:
   SimpleModifier<RemoveModifierCompletion>& _modifier;
