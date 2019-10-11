@@ -420,9 +420,9 @@ Store* Node::getStore() {
 ValueType Node::valueType() const { return slice().type(); }
 
 // file time to live entry for this node to now + millis
-bool Node::addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tp) {
-  store().timeTable().insert(std::pair<TimePoint, std::string>(tp, uri()));
-  _ttl = tp;
+bool Node::addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tkey) {
+  store().timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
+  _ttl = tkey;
   return true;
 }
 
