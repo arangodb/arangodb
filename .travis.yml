@@ -36,10 +36,8 @@ before_script:
   - cmake ..
   - cd ..
 script:
-  - sudo apt-get install apt-file
-  - sudo apt-file update
-  - apt-file show clang-9
-  - apt-file show clang-tools-9
+  - dpkg -L clang-9
+  - dpkg -L show clang-tools-9
   - export ARANGODB_CLANG_FORMAT_VERSION=9.0.0
   - ./utils/clang-format-check
 
