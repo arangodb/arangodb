@@ -65,6 +65,7 @@ def main():
   # Extract changed lines for each file.
   filename = None
   lines_by_file = {}
+  status = 0
   for line in sys.stdin:
     match = re.search(r'^\+\+\+\ (.*?/){%s}(\S*)' % args.p, line)
     if match:
@@ -122,6 +123,9 @@ def main():
       diff_string = ''.join(diff)
       if len(diff_string) > 0:
         sys.stdout.write(diff_string)
+        status = 1
+
+  return status
 
 if __name__ == '__main__':
-  main()
+  sys.exit(main())
