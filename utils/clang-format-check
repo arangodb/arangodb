@@ -42,7 +42,14 @@ if ! [[ $version_string =~ $re ]]; then
 fi
 
 
-diff="$(git diff -U0 --no-color HEAD^)"
+diff_target="HEAD"
+if $TRAVIS;
+    diff_target="${TRAVIS_BRANCH}"
+    echo "diffing against ${diff_target}"
+then
+
+diff="$(git diff -U0 --no-color "${diff_target}")"
+
 if type colordiff 2>/dev/null; then
     #need pipefail option
     ${bash_source_dir}/lib/clang-format-diff.py --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff" | colordiff -u3
