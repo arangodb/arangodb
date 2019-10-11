@@ -26,6 +26,8 @@ before_script:
   - mkdir build && cd build || exit 1
   - cmake ..
 script:
+  ./utils/clang-format-check
+
 after_suceess:
 after_failure: 
 after_script: 
