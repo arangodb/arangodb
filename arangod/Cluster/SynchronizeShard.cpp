@@ -404,6 +404,7 @@ static inline bool isStopping() {
 }
 
 arangodb::Result SynchronizeShard::getReadLock(
+  network::ConnectionPool* pool,
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
   uint64_t rlid, bool soft, double timeout) {
@@ -417,7 +418,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   
   using namespace std::chrono;
   auto const start = steady_clock::now();
-  auto cc = arangodb::ClusterComm::instance();
 
   // nullptr only happens during controlled shutdown
   if (cc == nullptr) {  
@@ -438,23 +438,20 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
   // SynchroShard anew. 
-  #warning fuerte
-  
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
   network::RequestOptions options;
     options.timeout = network::Timeout(timeout);
     auto res = network::sendRequest(
       pool, endpoint, fuerte::RestVerb::Post,
       url, std::move(*body.steal()), network::Headers(), options).get();
   
-  if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) { // Habemus clausum, we have a lock
+  if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
+    // Habemus clausum, we have a lock
     return arangodb::Result();
   }
     
   LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't POST lock body, "
-    << postres->result->getHttpReturnMessage() << ", giving up.";
+    << network::fuerteToArangoErrorMessage(res) << ", giving up.";
 
   // We MUSTN'T exit without trying to clean up a lock that was maybe acquired   
   if (postres->status == CL_COMM_SENT) {
