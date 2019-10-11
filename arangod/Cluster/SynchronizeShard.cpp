@@ -420,9 +420,9 @@ arangodb::Result SynchronizeShard::getReadLock(
   auto const start = steady_clock::now();
 
   // nullptr only happens during controlled shutdown
-  if (cc == nullptr) {  
-    return arangodb::Result(
-      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+  if (pool == nullptr) {
+    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
+                            "cancelReadLockOnLeader: Shutting down");
   }
 
   VPackBuilder body;
@@ -433,6 +433,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId()));
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
+  auto buf = body.steal();
 
   auto const url = DB + database + REPL_HOLD_READ_LOCK;
 
@@ -442,7 +443,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     options.timeout = network::Timeout(timeout);
     auto res = network::sendRequest(
       pool, endpoint, fuerte::RestVerb::Post,
-      url, std::move(*body.steal()), network::Headers(), options).get();
+      url, *buf, network::Headers(), options).get();
   
   if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
     // Habemus clausum, we have a lock
@@ -453,8 +454,8 @@ arangodb::Result SynchronizeShard::getReadLock(
     << "startReadLockOnLeader: couldn't POST lock body, "
     << network::fuerteToArangoErrorMessage(res) << ", giving up.";
 
-  // We MUSTN'T exit without trying to clean up a lock that was maybe acquired   
-  if (postres->status == CL_COMM_SENT) {
+  // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
+  if (res.error == fuerte::Error::CouldNotConnect) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       "startReadLockOnLeader: couldn't POST lock body, giving up.");
@@ -469,7 +470,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
     auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, url,
-                                  *body, network::Headers(), options)
+                                  *buf, network::Headers(), options)
                  .get();
     if (r.fail() || r.response->statusCode() != fuerte::StatusOK) {
       std::string addendum = network::fuerteToArangoErrorMessage(r);
