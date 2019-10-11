@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Query.h"
+  #include "Query.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
@@ -29,10 +29,10 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-    #include "Aql/Parser.h"
-    #include "Aql/PlanCache.h"
-    #include "Aql/QueryCache.h"
-    #include "Aql/QueryList.h"
+#include "Aql/Parser.h"
+#include "Aql/PlanCache.h"
+#include "Aql/QueryCache.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
