@@ -215,7 +215,7 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
   builder.openObject();
-  addVocbaseOptionsToOpenObject(builder, defaults);
+  addVocbaseReplicationOptionsToOpenObject(builder, defaults);
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
