@@ -402,8 +402,9 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
 /// Should result in an elements vector filled with the new index entries
 /// uses the _unique field to determine the kind of key structure
 int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& documentId,
-                                   VPackSlice const& doc, SmallVector<RocksDBKey>& elements,
-                                   SmallVector<uint64_t>& hashes) {
+                                   VPackSlice const& doc,
+                                   ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                                   ::arangodb::containers::SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
     LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
@@ -461,8 +462,8 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
   } else {
     // other path for handling array elements, too
 
-    SmallVector<VPackSlice>::allocator_type::arena_type sliceStackArena;
-    SmallVector<VPackSlice> sliceStack{sliceStackArena};
+    ::arangodb::containers::SmallVector<VPackSlice>::allocator_type::arena_type sliceStackArena;
+    ::arangodb::containers::SmallVector<VPackSlice> sliceStack{sliceStackArena};
 
     try {
       buildIndexValues(leased, documentId, doc, 0, elements, hashes, sliceStack);
@@ -479,11 +480,11 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
   return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, LocalDocumentId const& documentId,
-                                      VPackSlice const& document,
-                                      SmallVector<RocksDBKey>& elements,
-                                      SmallVector<uint64_t>& hashes,
-                                      SmallVector<VPackSlice>& sliceStack) {
+void RocksDBVPackIndex::addIndexValue(
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice const& document,
+    ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+    ::arangodb::containers::SmallVector<uint64_t>& hashes,
+    ::arangodb::containers::SmallVector<VPackSlice>& sliceStack) {
   leased.clear();
   leased.openArray(true);  // unindexed
   for (VPackSlice const& s : sliceStack) {
@@ -511,12 +512,11 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, LocalDocumentId cons
 }
 
 /// @brief helper function to create a set of index combinations to insert
-void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
-                                         LocalDocumentId const& documentId,
-                                         VPackSlice const doc, size_t level,
-                                         SmallVector<RocksDBKey>& elements,
-                                         SmallVector<uint64_t>& hashes,
-                                         SmallVector<VPackSlice>& sliceStack) {
+void RocksDBVPackIndex::buildIndexValues(
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice const doc,
+    size_t level, ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+    ::arangodb::containers::SmallVector<uint64_t>& hashes,
+    ::arangodb::containers::SmallVector<VPackSlice>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
@@ -657,10 +657,10 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
                                  Index::OperationMode mode) {
   Result res;
   rocksdb::Status s;
-  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-  SmallVector<RocksDBKey> elements{elementsArena};
-  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-  SmallVector<uint64_t> hashes{hashesArena};
+  ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+  ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
 
   {
     // rethrow all types of exceptions from here...
@@ -812,10 +812,10 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   
   Result res;
   // more expensive method to
-  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-  SmallVector<RocksDBKey> elements{elementsArena};
-  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-  SmallVector<uint64_t> hashes{hashesArena};
+  ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+  ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
@@ -853,10 +853,10 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
   }
   Result res;
   rocksdb::Status s;
-  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-  SmallVector<RocksDBKey> elements{elementsArena};
-  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-  SmallVector<uint64_t> hashes{hashesArena};
+  ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+  ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
 
   {
     // rethrow all types of exceptions from here...

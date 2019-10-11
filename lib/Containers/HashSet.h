@@ -18,29 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ASSOC_HELPERS_H
-#define ARANGODB_BASICS_ASSOC_HELPERS_H 1
+#ifndef ARANGODB_CONTAINERS_HASH_SET_H
+#define ARANGODB_CONTAINERS_HASH_SET_H 1
 
-#include <cstdint>
+#include "Containers/details/HashSetImpl.h"
 
-#include "Basics/Common.h"
+// map emilib::HashSet into arangodb namespace
+namespace arangodb {
+namespace containers {
 
-/// @brief incrementing a uint64_t modulo a number with wraparound
-static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
-  // Note that the dummy variable gives the compiler a (good) chance to
-  // use a conditional move instruction instead of a branch. This actually
-  // works on modern gcc.
-  uint64_t dummy;
-  dummy = (++i) - len;
-  return i < len ? i : dummy;
-}
+template <typename T>
+using HashSetEqualTo = emilib::HashSetEqualTo<T>;
 
-/// @brief a trivial hash function for uint64_t to uint32_t
-static inline uint32_t TRI_64To32(uint64_t x) {
-  return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
-}
+template <typename KeyT, typename HashT = std::hash<KeyT>, typename EqT = HashSetEqualTo<KeyT>>
+using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
+
+}  // namespace containers
+}  // namespace arangodb
 
 #endif
