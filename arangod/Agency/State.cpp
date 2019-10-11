@@ -106,6 +106,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
     body.add("request", entry);
     body.add("clientId", Value(clientId));
     body.add("timestamp", Value(timestamp(millis)));
+    body.add("epoch_millis", Value(millis));
   }
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -154,6 +155,7 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
     log.add("request", entry);
     log.add("clientId", Value(clientId));
     log.add("timestamp", Value(timestamp(millis)));
+    log.add("epoch_millis", Value(millis));
   }
 
   // The new configuration to be persisted.-------------------------------------
@@ -1042,18 +1044,22 @@ bool State::loadRemaining() {
       clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
                                         : std::string();
 
+      uint64_t millis = 0;
+      if (ii.hasKey("epoch_millis")) {
+        if (ii.get("epoch_millis").isInteger()) {
+          try {
+            millis = req.get("epoch_millis").getNumber<uint64_t>();
+          } catch (std::exception const& e) {
+            LOG_TOPIC("2ee75", ERR, Logger::AGENCY)
+              << "Failed to parse integer value for epoch_millis " << e.what();
+            FATAL_ERROR_EXIT();
+          }
+        } else {
+          LOG_TOPIC("52ee7", ERR, Logger::AGENCY) << "epoch_millis is not an integer type";
+          FATAL_ERROR_EXIT();
+        }
+      }
       
-      std::tm tm = {};
-      std::stringstream ts(ii.get("timestamp").copyString());
-      ts >> std::get_time(&tm, "%Y-%m-%d %H:%M:%SZ");
-      auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-      auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(
-        tp.time_since_epoch());
-      auto d = dur.count();
-      auto s = timestamp(d);
-      LOG_DEVEL << ts.str() << " " << s;
-
-
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
 
@@ -1079,7 +1085,7 @@ bool State::loadRemaining() {
           // Real entries
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                  ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+                  ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
           lastIndex = index;
         }
       }
@@ -1555,8 +1561,11 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         std::string clientId =
             req.hasKey("clientId") ? req.get("clientId").copyString() : std::string();
 
+        uint64_t epoch_millis =
+          req.hasKey("epoch_millis") ? req.get("epoch_millis").getNumber<uint64_t>() : 0;
+
         log_t entry(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                    ii.get("term").getNumber<uint64_t>(), tmp, clientId);
+                    ii.get("term").getNumber<uint64_t>(), tmp, clientId, epoch_millis);
 
         if (entry.index <= index) {
           LOG_TOPIC("c8f91", WARN, Logger::AGENCY)
