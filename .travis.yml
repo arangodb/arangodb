@@ -14,14 +14,17 @@ matrix:
       compiler: g++
       addons:
         apt:
-          sources: [ 'ubuntu-toolchain-r-test' ]
+          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
           packages: [ 'clang-8', 'clang-tools-8', 'clang-tidy-8' ]
+      env:
+        - MATRIX_ENV="export CXX=clang++-8 CC=clang-8"
 
 before_install:
 install:
-before_script: 
+before_script:
+  - eval "${MATRIX_ENV}"
   - mkdir build && cd build || exit 1
-  - CXX=clang++-8 CC=clang-8 cmake ..
+  - cmake ..
 script:
 after_suceess:
 after_failure: 
