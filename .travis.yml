@@ -26,10 +26,11 @@ matrix:
 before_install:
 install:
 before_script:
-  - eval "${MATRIX_ENV}"
-  - mkdir build && cd build || exit 1
-  - cmake ..
-  - cd ..
+  # we need this only to create the compilation databse for clang tidy
+  # - eval "${MATRIX_ENV}"
+  # - mkdir build && cd build || exit 1
+  # - cmake ..
+  # - cd ..
 script:
   - export ARANGODB_CLANG_FORMAT_VERSION=9.0.0
   - ./utils/clang-format-check
