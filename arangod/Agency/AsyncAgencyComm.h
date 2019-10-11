@@ -63,10 +63,12 @@ struct AsyncAgencyCommResult {
 };
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
-  AgencyReadResult(AsyncAgencyCommResult &&result, VPackSlice value) : AsyncAgencyCommResult(std::move(result)), _value(value) {}
-  VPackSlice value() { return this->_value; }
+  AgencyReadResult(AsyncAgencyCommResult &&result, std::shared_ptr<const arangodb::cluster::paths::Path> const& valuePath)
+    : AsyncAgencyCommResult(std::move(result)), _value(nullptr), _valuePath(valuePath) {}
+  VPackSlice value() { if (this->_value.start() == nullptr) { this->_value = slice().at(0).get(std::move(_valuePath->vec())); } return this->_value; }
 private:
   VPackSlice _value;
+  std::shared_ptr<const arangodb::cluster::paths::Path> _valuePath;
 };
 
 
@@ -105,6 +107,8 @@ public:
 
   FutureResult getValues(std::string const& path) const;
   FutureReadResult getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
+
+  FutureResult sendTransaction(network::Timeout timeout, AgencyReadTransaction const&) const;
 
 public:
   FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;

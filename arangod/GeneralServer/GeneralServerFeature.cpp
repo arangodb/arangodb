@@ -47,6 +47,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
@@ -490,6 +491,9 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // /_admin
   // ...........................................................................
+
+  _handlerFactory->addPrefixHandler("/_admin/cluster",
+                                    RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);

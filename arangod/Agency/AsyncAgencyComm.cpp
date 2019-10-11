@@ -336,14 +336,17 @@ AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(std::shared_ptr<con
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s, AgencyReadTransaction(path->str()))
     .thenValue([path](AsyncAgencyCommResult &&result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-        VPackSlice value = result.slice().at(0).get(std::move(path->vec()));
         return futures::makeFuture(
-          AgencyReadResult{std::move(result), value});
+          AgencyReadResult{std::move(result), std::move(path)});
       }
 
       return futures::makeFuture(
-        AgencyReadResult{std::move(result), VPackSlice::noneSlice()});
+        AgencyReadResult{std::move(result), nullptr});
     });
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(network::Timeout timeout, AgencyReadTransaction const& trx) const {
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout, trx);
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;

@@ -61,18 +61,19 @@ RestStatus RestSupervisionStateHandler::execute() {
 
   using namespace std::chrono_literals;
 
-  return waitForFuture(AsyncAgencyComm().getValues(arangodb::cluster::paths::root()->arango()->target())
-    .thenValue([this, self](AgencyReadResult &&result) {
+  auto targetPath = arangodb::cluster::paths::root()->arango()->target();
+  return waitForFuture(AsyncAgencyComm().getValues(targetPath)
+    .thenValue([this, self, targetPath = std::move(targetPath)](AgencyReadResult &&result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
 
         VPackBuffer<uint8_t> response;
         {
           VPackBuilder bodyBuilder(response);
           VPackObjectBuilder ob(&bodyBuilder);
-          bodyBuilder.add("ToDo", result.value().get("ToDo"));
-          bodyBuilder.add("Pending", result.value().get("Pending"));
-          bodyBuilder.add("Finished", result.value().get("Finished"));
-          bodyBuilder.add("Failed", result.value().get("Failed"));
+          bodyBuilder.add("ToDo", result.slice().at(0).get(targetPath->toDo()->vec()));
+          bodyBuilder.add("Pending", result.slice().at(0).get(targetPath->pending()->vec()));
+          bodyBuilder.add("Finished", result.slice().at(0).get(targetPath->finished()->vec()));
+          bodyBuilder.add("Failed", result.slice().at(0).get(targetPath->failed()->vec()));
         }
 
         resetResponse(rest::ResponseCode::OK);

@@ -30,6 +30,7 @@
 #include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
+#include <exception>
 #include <atomic>
 #include <thread>
 
@@ -40,7 +41,7 @@ class ApplicationServer;
 namespace basics {
 class Exception;
 }
-  
+
 namespace futures {
 template<typename T>
 class Future;
@@ -153,7 +154,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // generates an error
   void generateError(arangodb::Result const&);
-  
+
   template<typename T>
   RestStatus waitForFuture(futures::Future<T>&& f) {
     if (f.isReady()) {  // fast-path out

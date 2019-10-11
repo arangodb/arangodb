@@ -158,6 +158,103 @@ auto collectAll(Collection&& c) -> decltype(collectAll(std::begin(c), std::end(c
   return collectAll(std::begin(c), std::end(c));
 }
 
+
+namespace detail{
+namespace collectAll {
+
+template<int i, typename C>
+void thenFinalAll(C &c) {}
+
+template<int i, typename C, typename T, typename... Ts>
+void thenFinalAll(C& c, Future<T>&& t, Future<Ts>&&... ts) {
+  std::move(t).thenFinal([c](Try<T> &&t) { std::get<i>(c->results) = std::move(t); });
+  thenFinalAll<i+1>(c, std::forward<Future<Ts>>(ts)...);
+}
+
+}
+}
+
+// like collectAll but uses a tuple instead and works with different types
+// returns a Future<std::tuple<Try<Ts>>...>
+template<typename... Ts>
+auto gather(Future<Ts>&&... r) {
+
+  using try_tuple = std::tuple<Try<Ts>...>;
+
+  struct Context {
+    ~Context() { p.setValue(std::move(results)); }
+    std::tuple<Try<Ts>...> results;
+    Promise<try_tuple> p;
+  };
+
+  auto ctx = std::make_shared<Context>();
+  detail::collectAll::thenFinalAll<0>(ctx, std::forward<Future<Ts>>(r)...);
+  return ctx->p.getFuture();
+};
+
+template<typename T>
+T gather(T t) { return t; };
+
+namespace detail {
+namespace collect {
+
+template<int i, typename C>
+void thenFinalAll(C &c) {}
+
+template<int i, typename C, typename T, typename... Ts>
+void thenFinalAll(C& c, Future<T>&& t, Future<Ts>&&... ts) {
+  thenFinalAll<i+1>(c, std::forward<Future<Ts>>(ts)...);
+  std::move(t).thenFinal([c](Try<T> &&t) {
+    if (t.hasException()) {
+      if (c->hadError.exchange(true, std::memory_order_release) == false) {
+        c->p.setException(std::move(t).exception());
+      }
+    } else {
+      std::get<i>(c->results) = std::move(t);
+    }
+  });
+}
+
+template <class T, std::size_t... I>
+auto unpackAll(T&& t, std::index_sequence<I...>) {
+  return std::make_tuple(std::move(std::get<I>(std::forward<T>(t))).get()...);
+}
+
+template <class T>
+auto unpackAll(T&& t) {
+  return unpackAll(std::forward<T>(t),
+    std::make_index_sequence<std::tuple_size<std::remove_reference_t<T>>::value>{});
+}
+
+}
+}
+
+// like collectAll but uses a tuple instead and works with different types
+// returns a Future<std::tuple<Try<Ts>>...>
+template<typename... Ts>
+auto collect(Future<Ts>&&... r) {
+
+  using try_tuple = std::tuple<Try<Ts>...>;
+  using value_tuple = std::tuple<Ts...>;
+
+  struct Context {
+    Context() : hadError(false) {}
+    ~Context() { if(hadError.load(std::memory_order_acquire) == false) {
+      p.setValue(detail::collect::unpackAll(std::move(results))); } }
+    try_tuple results;
+    Promise<value_tuple> p;
+    std::atomic<bool> hadError;
+  };
+
+  auto ctx = std::make_shared<Context>();
+  detail::collect::thenFinalAll<0>(ctx, std::forward<Future<Ts>>(r)...);
+  return ctx->p.getFuture();
+};
+
+template<typename T>
+T collect(T t) { return t; };
+
+
 }  // namespace futures
 }  // namespace arangodb
 #endif  // ARANGOD_FUTURES_UTILITIES_H
