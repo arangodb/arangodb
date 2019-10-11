@@ -2524,7 +2524,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
         serverId = body.get("serverId").copyString();
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "'rebootId' must be accompanied by string atttibute 'serverId'");
+                      "'rebootId' must be accompanied by string attribute 'serverId'");
         return;
       }
     } else {
