@@ -4,13 +4,13 @@ v3.5.2 (XXXX-XX-XX)
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
-* Fixed issue #10193: Arangoexport does not handle line feeds when exporting as 
+* Fixed issue #10193: Arangoexport does not handle line feeds when exporting as
   csv.
 
 * Removed debug log messages "found comm task ..." that could be logged
   on server shutdown.
 
-* Fixed issue #10183: Arangoimport imports on _system when you try to 
+* Fixed issue #10183: Arangoimport imports on _system when you try to
   create a new database.
 
   This bugfix fixes the output of arangoimport, which could display a
@@ -21,6 +21,8 @@ v3.5.2 (XXXX-XX-XX)
 
   This fixes traversal queries that are run on a static empty start vertex
   string.
+
+* agency ttl bug fix
 
 
 v3.5.1 (2019-10-07)
