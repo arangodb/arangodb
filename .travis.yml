@@ -5,7 +5,7 @@ branches:
     - feature/clang-tidy-format
 
 language: cpp
-cache: ccache
+#cache: ccache
 sudo: required
 
 matrix:
@@ -25,6 +25,8 @@ matrix:
 before_install:
 install:
 before_script: 
+  - mkdir build && cd build || exit 1
+  - CXX=clang++-8 CC=clang-8 cmake ..
 script:
 after_suceess:
 after_failure: 
