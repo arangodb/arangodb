@@ -5506,7 +5506,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
   }
 
   size_t pos = identifier.find('/');
-  if (pos == std::string::npos) {
+  if (pos == std::string::npos || identifier.find('/', pos + 1) != std::string::npos) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
