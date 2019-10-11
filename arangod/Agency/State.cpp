@@ -75,14 +75,16 @@ State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
+  TRI_ASSERT(m != 0);
+  
   using namespace std::chrono;
   
-  std::time_t t = (m == 0) ? std::time(nullptr) :
+  std::time_t t = 
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
   return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::gmtime(&t))
-             ? std::string(mbstr)
-             : std::string();
+    ? std::string(mbstr)
+    : std::string();
 }
 
 inline static std::string stringify(index_t index) {
@@ -230,6 +232,9 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
 std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
                                            std::vector<apply_ret_t> const& applicable,
                                            term_t term) {
+
+  using namespace std::chrono;
+
   std::vector<index_t> idx(applicable.size());
   size_t j = 0;
   auto const& slice = transactions->slice();
@@ -262,8 +267,10 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
       TRI_ASSERT(transaction.length() > 0);
       size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
 
-      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, 0, clientId, true,
-                              pos == 0 || pos == 1);
+      idx[j] = logNonBlocking(
+        _log.back().index + 1, i[0], term,
+        duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(),
+        clientId, true, pos == 0 || pos == 1);
     }
     ++j;
   }
@@ -274,7 +281,10 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
                                std::string const& clientId) {
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  return logNonBlocking(_log.back().index + 1, slice, term, 0, clientId, true);
+  using namespace std::chrono;
+  return logNonBlocking(
+    _log.back().index + 1, slice, term,
+    duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(), clientId, true);
 }
 
 /// Log transaction (leader)
