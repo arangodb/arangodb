@@ -15,12 +15,13 @@ matrix:
       compiler: g++
       addons:
         apt:
-          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-9']
-          packages: [ 'clang-9', 'clang-tools-9', 'clang-tidy-9' ]
+          sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+          #packages: [ 'clang-9', 'clang-tools-9', 'clang-tidy-9' ]
       env:
         - MATRIX_ENV="export CXX=clang++-9 CC=clang-9"
 
 before_install:
+  - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" 
 
 install:
 before_script:
@@ -29,7 +30,7 @@ before_script:
   - cmake ..
   - cd ..
 script:
-  - exort ARANGODB_CLANG_FORMAT_VERSION=6.0.0
+  - export ARANGODB_CLANG_FORMAT_VERSION=9.0.0
   - ./utils/clang-format-check
 
 after_suceess:
