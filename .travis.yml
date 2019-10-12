@@ -1,8 +1,8 @@
-branches:
-  only:
-    - master
-    - devel
-    - feature/clang-tidy-format
+#branches:
+#  only:
+#    - master
+#    - devel
+#    - feature/clang-tidy-format
 
 language: cpp
 #cache: ccache
