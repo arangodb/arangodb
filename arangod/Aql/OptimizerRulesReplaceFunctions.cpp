@@ -34,11 +34,11 @@
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -557,8 +557,8 @@ void arangodb::aql::replaceNearWithinFulltextRule(Optimizer* opt,
                                                   OptimizerRule const& rule) {
   bool modified = false;
 
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
 
   for (auto const& node : nodes) {

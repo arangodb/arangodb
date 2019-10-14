@@ -38,6 +38,7 @@ const _ = require('lodash');
 
 const replication = require('@arangodb/replication');
 const compareTicks = require('@arangodb/replication-common').compareTicks;
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const console = require('console');
 const internal = require('internal');
@@ -55,11 +56,11 @@ const replicatorUser = 'replicator-user';
 const replicatorPassword = 'replicator-password';
 
 const connectToMaster = function () {
-  arango.reconnect(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
+  reconnectRetry(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
 };
 
 const connectToSlave = function () {
-  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
+  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
 };
 
 const collectionChecksum = function (name) {

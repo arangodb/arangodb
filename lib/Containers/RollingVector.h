@@ -21,15 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ROLLING_VECTOR_H
-#define ARANGODB_BASICS_ROLLING_VECTOR_H 1
-
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
+#ifndef ARANGODB_CONTAINER_ROLLING_VECTOR_H
+#define ARANGODB_CONTAINER_ROLLING_VECTOR_H 1
 
 #include <type_traits>
 
+#include "Basics/debugging.h"
+
 namespace arangodb {
+namespace containers {
 
 /// @brief a vector wrapper that also provides amortized O(1) pop_front()
 /// functionality. pop_front() is implemented by adjusting a start index into
@@ -153,6 +153,7 @@ class RollingVector {
   std::vector<T> _data;
 };
 
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

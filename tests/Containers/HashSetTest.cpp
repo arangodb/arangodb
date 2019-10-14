@@ -26,13 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 
 #include "gtest/gtest.h"
 
 /// @brief test size
 TEST(HashSetTest, test_size) {
-  arangodb::HashSet<size_t> values;
+  arangodb::containers::HashSet<size_t> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -76,7 +76,7 @@ TEST(HashSetTest, test_size) {
 
 /// @brief test with int
 TEST(HashSetTest, test_int) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -103,7 +103,7 @@ TEST(HashSetTest, test_int) {
 
 /// @brief test with std::string
 TEST(HashSetTest, test_string) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -131,7 +131,7 @@ TEST(HashSetTest, test_string) {
 
 /// @brief test with std::string
 TEST(HashSetTest, test_long_string) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -161,7 +161,7 @@ TEST(HashSetTest, test_long_string) {
 
 /// @brief test with std::string
 TEST(HashSetTest, test_string_duplicates) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -200,7 +200,7 @@ TEST(HashSetTest, test_string_duplicates) {
 
 /// @brief test erase
 TEST(HashSetTest, test_erase) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -236,7 +236,7 @@ TEST(HashSetTest, test_erase) {
 
 /// @brief test reserve
 TEST(HashSetTest, test_reserve) {
-  arangodb::HashSet<size_t> values;
+  arangodb::containers::HashSet<size_t> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -267,7 +267,7 @@ TEST(HashSetTest, test_reserve) {
 
 /// @brief test few values
 TEST(HashSetTest, test_few) {
-  arangodb::HashSet<size_t> values;
+  arangodb::containers::HashSet<size_t> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -289,7 +289,7 @@ TEST(HashSetTest, test_few) {
 
 /// @brief test many values
 TEST(HashSetTest, test_many) {
-  arangodb::HashSet<size_t> values;
+  arangodb::containers::HashSet<size_t> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -311,7 +311,7 @@ TEST(HashSetTest, test_many) {
 
 /// @brief test copying
 TEST(HashSetTest, test_copy_construct_local) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -321,7 +321,7 @@ TEST(HashSetTest, test_copy_construct_local) {
   }
 
   // copy
-  arangodb::HashSet<int> copy(values);
+  arangodb::containers::HashSet<int> copy(values);
 
   EXPECT_EQ(values.size(), 2);
   EXPECT_FALSE(values.empty());
@@ -349,7 +349,7 @@ TEST(HashSetTest, test_copy_construct_local) {
 
 /// @brief test copying
 TEST(HashSetTest, test_copy_construct_heap) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -359,7 +359,7 @@ TEST(HashSetTest, test_copy_construct_heap) {
   }
 
   // copy
-  arangodb::HashSet<int> copy(values);
+  arangodb::containers::HashSet<int> copy(values);
 
   EXPECT_EQ(values.size(), 100);
   EXPECT_FALSE(values.empty());
@@ -387,7 +387,7 @@ TEST(HashSetTest, test_copy_construct_heap) {
 
 /// @brief test copying
 TEST(HashSetTest, test_copy_construct_heap_huge) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -398,7 +398,7 @@ TEST(HashSetTest, test_copy_construct_heap_huge) {
   }
 
   // copy
-  arangodb::HashSet<std::string> copy(values);
+  arangodb::containers::HashSet<std::string> copy(values);
 
   EXPECT_EQ(values.size(), 100);
   EXPECT_FALSE(values.empty());
@@ -438,7 +438,7 @@ TEST(HashSetTest, test_copy_construct_heap_huge) {
 
 /// @brief test copying
 TEST(HashSetTest, test_copy_assign_local) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -448,7 +448,7 @@ TEST(HashSetTest, test_copy_assign_local) {
   }
 
   // copy
-  arangodb::HashSet<int> copy = values;
+  arangodb::containers::HashSet<int> copy = values;
 
   EXPECT_EQ(values.size(), 2);
   EXPECT_FALSE(values.empty());
@@ -476,7 +476,7 @@ TEST(HashSetTest, test_copy_assign_local) {
 
 /// @brief test copying
 TEST(HashSetTest, test_copy_assign_heap) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -486,7 +486,7 @@ TEST(HashSetTest, test_copy_assign_heap) {
   }
 
   // copy
-  arangodb::HashSet<int> copy = values;
+  arangodb::containers::HashSet<int> copy = values;
 
   EXPECT_EQ(values.size(), 100);
   EXPECT_FALSE(values.empty());
@@ -514,7 +514,7 @@ TEST(HashSetTest, test_copy_assign_heap) {
 
 /// @brief test copying
 TEST(HashSetTest, test_copy_assign_heap_huge) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -525,7 +525,7 @@ TEST(HashSetTest, test_copy_assign_heap_huge) {
   }
 
   // copy
-  arangodb::HashSet<std::string> copy = values;
+  arangodb::containers::HashSet<std::string> copy = values;
 
   EXPECT_EQ(values.size(), 100);
   EXPECT_FALSE(values.empty());
@@ -565,7 +565,7 @@ TEST(HashSetTest, test_copy_assign_heap_huge) {
 
 /// @brief test moving
 TEST(HashSetTest, test_move_construct_local) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -575,7 +575,7 @@ TEST(HashSetTest, test_move_construct_local) {
   }
 
   // move
-  arangodb::HashSet<int> copy(std::move(values));
+  arangodb::containers::HashSet<int> copy(std::move(values));
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -591,7 +591,7 @@ TEST(HashSetTest, test_move_construct_local) {
 
 /// @brief test moving
 TEST(HashSetTest, test_move_construct_heap) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -601,7 +601,7 @@ TEST(HashSetTest, test_move_construct_heap) {
   }
 
   // move
-  arangodb::HashSet<int> copy(std::move(values));
+  arangodb::containers::HashSet<int> copy(std::move(values));
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -617,7 +617,7 @@ TEST(HashSetTest, test_move_construct_heap) {
 
 /// @brief test moving
 TEST(HashSetTest, test_move_construct_heap_huge) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -628,7 +628,7 @@ TEST(HashSetTest, test_move_construct_heap_huge) {
   }
 
   // move
-  arangodb::HashSet<std::string> copy(std::move(values));
+  arangodb::containers::HashSet<std::string> copy(std::move(values));
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -650,7 +650,7 @@ TEST(HashSetTest, test_move_construct_heap_huge) {
 
 /// @brief test moving
 TEST(HashSetTest, test_move_assign_local) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -660,7 +660,7 @@ TEST(HashSetTest, test_move_assign_local) {
   }
 
   // move
-  arangodb::HashSet<int> copy = std::move(values);
+  arangodb::containers::HashSet<int> copy = std::move(values);
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -676,7 +676,7 @@ TEST(HashSetTest, test_move_assign_local) {
 
 /// @brief test moving
 TEST(HashSetTest, test_move_assign_heap) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -686,7 +686,7 @@ TEST(HashSetTest, test_move_assign_heap) {
   }
 
   // move
-  arangodb::HashSet<int> copy = std::move(values);
+  arangodb::containers::HashSet<int> copy = std::move(values);
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -702,7 +702,7 @@ TEST(HashSetTest, test_move_assign_heap) {
 
 /// @brief test moving
 TEST(HashSetTest, test_move_assign_heap_huge) {
-  arangodb::HashSet<std::string> values;
+  arangodb::containers::HashSet<std::string> values;
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -713,7 +713,7 @@ TEST(HashSetTest, test_move_assign_heap_huge) {
   }
 
   // move
-  arangodb::HashSet<std::string> copy = std::move(values);
+  arangodb::containers::HashSet<std::string> copy = std::move(values);
 
   EXPECT_EQ(values.size(), 0);
   EXPECT_TRUE(values.empty());
@@ -735,7 +735,7 @@ TEST(HashSetTest, test_move_assign_heap_huge) {
 
 /// @brief test iterator
 TEST(HashSetTest, test_iterator) {
-  arangodb::HashSet<int> values;
+  arangodb::containers::HashSet<int> values;
 
   EXPECT_EQ(values.begin(), values.end());
 

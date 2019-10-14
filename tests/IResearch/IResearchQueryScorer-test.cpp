@@ -513,8 +513,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -619,8 +619,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -730,8 +730,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -840,8 +840,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -951,8 +951,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1062,8 +1062,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1182,8 +1182,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1293,8 +1293,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1380,8 +1380,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1468,8 +1468,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1587,8 +1587,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1674,8 +1674,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // only one scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
@@ -1756,8 +1756,8 @@ TEST_F(IResearchQueryScorerTest, test) {
     auto* plan = query.plan();
     ASSERT_TRUE(plan);
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
     // 2 scorers scorer
     plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);

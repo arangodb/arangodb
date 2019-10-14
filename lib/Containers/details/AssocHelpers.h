@@ -18,22 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SMALL_VECTOR_H
-#define ARANGODB_BASICS_SMALL_VECTOR_H 1
+#ifndef ARANGODB_CONTAINERS_ASSOC_HELPERS_H
+#define ARANGODB_CONTAINERS_ASSOC_HELPERS_H 1
 
-#include <vector>
+#include <cstdint>
 
-#include "Basics/Common.h"
-#include "Basics/short_alloc.h"
+/// @brief incrementing a uint64_t modulo a number with wraparound
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  // Note that the dummy variable gives the compiler a (good) chance to
+  // use a conditional move instruction instead of a branch. This actually
+  // works on modern gcc.
+  uint64_t dummy;
+  dummy = (++i) - len;
+  return i < len ? i : dummy;
+}
 
-namespace arangodb {
-
-template <class T, std::size_t BufSize = 64>
-using SmallVector = std::vector<T, short_alloc<T, BufSize, alignof(T)>>;
-
-}  // namespace arangodb
+/// @brief a trivial hash function for uint64_t to uint32_t
+static inline uint32_t TRI_64To32(uint64_t x) {
+  return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
+}
 
 #endif
