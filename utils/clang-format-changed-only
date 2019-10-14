@@ -9,7 +9,7 @@ clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"6.0.1"}"
 if [[ -z $clang_format ]]; then
     for candidate in "$HOME/.local/bin/clang-format" "clang-format-arangodb" "clang-format-6" "clang-format"; do
         echo "checking candidate $candidate"
-        path="$(type -p ${candidate})"
+        path="$(type -p "${candidate}")"
         if [[ -n $path ]]; then
             clang_format="$path"
             echo "selecting this candidate"
@@ -50,7 +50,7 @@ for gf in ${git_files[@]}; do
     echo "---------------------"
     for f in ${files[@]}; do
         echo "$gf -- $f"
-        if [[ $gf == $f ]]; then
+        if [[ $gf == "$f" ]]; then
             files_final+=( "$f" )
             continue
         fi

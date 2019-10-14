@@ -15,7 +15,7 @@ clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"9.0.0"}"
 if [[ -z $clang_format ]]; then
     for candidate in "$HOME/.local/bin/clang-format" "clang-format-arangodb" "clang-format-9" "clang-format"; do
         echo "checking candidate $candidate"
-        path="$(type -p ${candidate})"
+        path="$(type -p "${candidate}")"
         if [[ -n $path ]]; then
             clang_format="$path"
             echo "selecting this candidate"
@@ -55,8 +55,8 @@ diff="$(git diff -U0 --no-color "${diff_target}" )"
 
 if type colordiff 2>/dev/null; then
     #need pipefail option
-    ${bash_source_dir}/lib/clang-format-diff.py --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff" | colordiff -u3
+    "${bash_source_dir}/lib/clang-format-diff.py" --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff" | colordiff -u3
 else
-    ${bash_source_dir}/lib/clang-format-diff.py --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff"
+    "${bash_source_dir}/lib/clang-format-diff.py" --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff"
 fi
 

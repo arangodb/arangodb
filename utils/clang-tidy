@@ -11,7 +11,7 @@ clang_tidy_version="${ARANGODB_CLANG_TIDY_VERSION:-"9.0.0"}"
 if [[ -z $clang_tidy ]]; then
     for candidate in "$HOME/.local/bin/clang-tidy" "clang-tidy-arangodb" "clang-tidy-9" "clang-tidy"; do
         echo "checking candidate $candidate"
-        path="$(type -p ${candidate})"
+        path="$(type -p "${candidate}")"
         if [[ -n $path ]]; then
             clang_tidy="$path"
             echo "selecting this candidate"
