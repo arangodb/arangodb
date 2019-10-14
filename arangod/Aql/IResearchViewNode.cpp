@@ -858,7 +858,7 @@ void IResearchViewNode::planNodeRegisters(
     std::vector<aql::RegisterId>& nrRegsHere, std::vector<aql::RegisterId>& nrRegs,
     std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
     unsigned int& totalNrRegs, unsigned int depth) const {
-  nrRegsHere.emplace_back(isLateMaterialized()? 0 : 1);
+  nrRegsHere.emplace_back(0);
 
   // create a copy of the last value here
   // this is requried because back returns a reference and emplace/push_back

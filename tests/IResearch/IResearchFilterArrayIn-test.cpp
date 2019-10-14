@@ -271,7 +271,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "'identity') RETURN d",
         expected);
   }
-  
+
   // complex attribute name with offset, analyzer ANY
   {
     irs::Or expected;
@@ -380,7 +380,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "['1','2','3'] NONE == d.a.b.c[412].e.f, 'test_analyzer') RETURN d",
         expected);
   }
-  
+
   // complex attribute name with offset, boost ANY
   {
     irs::Or expected;
@@ -417,7 +417,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "2.5) RETURN d",
         expected);
   }
-    
+
   // complex attribute name with offset, boost ALL
   {
     irs::Or expected;
@@ -490,7 +490,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "2.5) RETURN d",
         expected);
   }
-  
+
   // complex attribute name with offset, boost, analyzer ANY
   {
     irs::Or expected;
@@ -722,7 +722,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "['1',null,true,false,2] NONE == d.quick['brown'].fox, 'test_analyzer'), 1.5) RETURN d",
         expected);
   }
-  
+
   // empty array ANY
   {
     irs::Or expected;
@@ -867,7 +867,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         " RETURN d",
         expected, &ctx);
   }
-  
+
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
@@ -956,7 +956,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "in ['1','2','3'] RETURN d",
         &ctx);
   }
-  
+
   // reference in array ANY
   {
     arangodb::aql::Variable var("c", 0);
@@ -983,8 +983,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "LET c=2 FOR d IN collection FILTER ['1', c, '3'] ANY IN d.a.b.c.e.f "
         "RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // reference in array ALL
   {
@@ -1012,8 +1011,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "LET c=2 FOR d IN collection FILTER ['1', c, '3'] ALL IN d.a.b.c.e.f "
         "RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // reference in array NONE
   {
@@ -1041,8 +1039,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "LET c=2 FOR d IN collection FILTER ['1', c, '3'] NONE IN d.a.b.c.e.f "
         "RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // array as reference, boost, analyzer ANY
   {
@@ -1166,9 +1163,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER [] ANY == d.a RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ANY == d['a'] RETURN d", expected);  
+        vocbase(), "FOR d IN collection FILTER [] ANY == d['a'] RETURN d", expected);
   }
-  
   // empty array ALL/NONE
   {
     irs::Or expected;
@@ -1215,14 +1211,14 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   };
   auto checkNone = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto & not = dynamic_cast<irs::Not&>(*actual.begin());
-    auto& root = dynamic_cast<const irs::Or&>(*not.filter());
+    auto& notFilter = dynamic_cast<irs::Not&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
     EXPECT_EQ(irs::Or::type(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  
+
   // nondeterministic value
   {
     std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
@@ -1308,7 +1304,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -1323,7 +1319,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       }
     }
   }
-  
+
   // self-referenced value
   {
     std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
@@ -1414,7 +1410,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -1429,7 +1425,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       }
     }
   }
-  
 
   // self-referenced value
   {
@@ -1521,7 +1516,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -1627,7 +1622,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -1668,7 +1663,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "LET a=null LET b='b' LET c=4 LET e=5.6 FOR d IN collection FILTER e ALL == d.a RETURN d",
         &ctx);
   }
-    
+
   // heterogeneous references and expression in array, analyzer, boost ANY
   {
     SCOPED_TRACE("heterogeneous references and expression in array, analyzer, boost ANY");
@@ -1704,32 +1699,28 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "d IN collection FILTER boost(ANALYZER(['1', strVal, "
         "boolVal, numVal+1, nullVal] ANY IN d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(['1', strVal, "
         "boolVal, numVal+1, nullVal] ANY IN d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER boost(ANALYZER(['1', strVal, "
         "boolVal, numVal+1, nullVal] ANY == d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(['1', strVal, "
         "boolVal, numVal+1, nullVal] ANY == d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // heterogeneous references and expression in array, analyzer, boost ALL
   {
@@ -1766,32 +1757,28 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "d IN collection FILTER boost(ANALYZER(['1', strVal, "
         "boolVal, numVal+1, nullVal] ALL IN d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(['1', strVal, "
         "boolVal, numVal+1, nullVal] ALL IN d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER boost(ANALYZER(['1', strVal, "
         "boolVal, numVal+1, nullVal] ALL == d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(['1', strVal, "
         "boolVal, numVal+1, nullVal] ALL == d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // heterogeneous references and expression in array, analyzer, boost NONE
   {
@@ -1828,34 +1815,30 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         "d IN collection FILTER boost(ANALYZER(['1', strVal, "
         "boolVal, numVal+1, nullVal] NONE IN d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(['1', strVal, "
         "boolVal, numVal+1, nullVal] NONE IN d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER boost(ANALYZER(['1', strVal, "
         "boolVal, numVal+1, nullVal] NONE == d.a.b.c.e.f, 'test_analyzer'),2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
     assertFilterSuccess(
         vocbase(),
         "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR "
         "d IN collection FILTER ANALYZER(boost(['1', strVal, "
         "boolVal, numVal+1, nullVal] NONE == d.a.b.c.e.f , 2.5), 'test_analyzer') RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
-  
+
   // self-reference
   assertExpressionFilter(vocbase(),
                          "FOR d IN myView FILTER [1,2,'3'] ANY IN d RETURN d");
@@ -1869,7 +1852,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                          "FOR d IN myView FILTER [1,2,'3'] ALL == d RETURN d");
   assertExpressionFilter(vocbase(),
                          "FOR d IN myView FILTER [1,2,'3'] NONE == d RETURN d");
-  
+
   // non-deterministic expression name in array
   assertExpressionFilter(
       vocbase(),
@@ -1977,7 +1960,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         vocbase(),
         "FOR d IN collection FILTER ['1','2','3'] ANY != d['a'] RETURN d", expected);
   }
-  
+
   // simple attribute ALL
   {
     irs::Or expected;
@@ -2021,7 +2004,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         vocbase(),
         "FOR d IN collection FILTER ['1','2','3'] NONE != d['a'] RETURN d", expected);
   }
-  
+
   // simple offset ANY
   {
     irs::Or expected;
@@ -2069,7 +2052,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         vocbase(),
         "FOR d IN collection FILTER ['1','2','3'] NONE != d[1] RETURN d", expected);
   }
-  
+
   // complex attribute name, offset, analyzer, boost ANY
   {
     irs::Or expected;
@@ -2328,7 +2311,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d.quick['brown'].fox, 1.5), 'test_analyzer') RETURN d",
         expected);
   }
-  
+
   // dynamic complex attribute name ANY
   {
     ExpressionContextMock ctx;
@@ -2440,7 +2423,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')] RETURN d",
         expected, &ctx);
   }
-  
+
   // invalid dynamic attribute name ANY
   {
     ExpressionContextMock ctx;
@@ -2546,7 +2529,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "analyzer(boost(x ANY NOT IN d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
         expected, &ctx);
-    
     assertFilterSuccess(
         vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
@@ -2594,7 +2576,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "analyzer(boost(x ALL NOT IN d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
         expected, &ctx);
-    
     assertFilterSuccess(
         vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
@@ -2642,7 +2623,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
         "analyzer(boost(x NONE NOT IN d.a.b.c.e.f, 3.5), 'test_analyzer') RETURN d",
         expected, &ctx);
-    
     assertFilterSuccess(
         vocbase(),
         "LET x=['1', 2, '3'] FOR d IN collection FILTER "
@@ -2658,8 +2638,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // direct == check is not possible as we will have byExpresssion filters generated on the fly
   auto checkNotAny = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto & not = dynamic_cast<irs::Not&>(*actual.begin());
-    auto& root = dynamic_cast<const irs::And&>(*not.filter());
+    auto & notFilter = dynamic_cast<irs::Not&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::And&>(*notFilter.filter());
     EXPECT_EQ(irs::And::type(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -2667,8 +2647,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   };
   auto checkNotAll = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto & not = dynamic_cast<irs::Not&>(*actual.begin());
-    auto& root = dynamic_cast<const irs::Or&>(*not.filter());
+    auto & notFilter = dynamic_cast<irs::Not&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
     EXPECT_EQ(irs::Or::type(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -2759,7 +2739,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
         {
-         
           auto begin = testData.second(actual, 1);
 
           // 1st filter
@@ -2773,7 +2752,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -2788,7 +2767,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       }
     }
   }
-  
+
   // self-referenced value
   {
     std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
@@ -2880,7 +2859,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -2895,7 +2874,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       }
     }
   }
-  
+
   // self-referenced value, boost
   {
     std::vector<std::pair<std::string, std::function<irs::boolean_filter::const_iterator(irs::Or&, iresearch::boost_t)>>> const testCases = {
@@ -2987,7 +2966,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {
             ++begin;
             EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
-            EXPECT_TRUE(nullptr !=
+            EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
 
@@ -3034,8 +3013,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d IN collection FILTER BOOST(['1', strVal, "
         "boolVal, numVal+1, nullVal] ANY NOT IN d.a.b.c.e.f, 2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
 
     assertFilterSuccess(
         vocbase(),
@@ -3043,8 +3021,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d IN collection FILTER BOOST(['1', strVal, "
         "boolVal, numVal+1, nullVal] ANY != d.a.b.c.e.f, 2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // heterogeneous references and expression in array ALL
   {
@@ -3078,8 +3055,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d IN collection FILTER BOOST(['1', strVal, "
         "boolVal, numVal+1, nullVal] ALL NOT IN d.a.b.c.e.f, 2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
 
     assertFilterSuccess(
         vocbase(),
@@ -3087,8 +3063,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d IN collection FILTER BOOST(['1', strVal, "
         "boolVal, numVal+1, nullVal] ALL != d.a.b.c.e.f, 2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
   // heterogeneous references and expression in array NONE
   {
@@ -3122,8 +3097,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d IN collection FILTER BOOST(['1', strVal, "
         "boolVal, numVal+1, nullVal] NONE NOT IN d.a.b.c.e.f, 2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
 
     assertFilterSuccess(
         vocbase(),
@@ -3131,15 +3105,14 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "d IN collection FILTER BOOST(['1', strVal, "
         "boolVal, numVal+1, nullVal] NONE != d.a.b.c.e.f, 2.5) RETURN d",
         expected,
-        &ctx  // expression context
-    );
+        &ctx);
   }
 
   // no reference provided
   assertFilterExecutionFail(
       vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ANY NOT IN d.a RETURN d",
       &ExpressionContextMock::EMPTY);
-  
+
   assertFilterExecutionFail(
       vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ANY != d.a RETURN d",
       &ExpressionContextMock::EMPTY);
@@ -3147,7 +3120,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   assertFilterExecutionFail(
       vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ALL NOT IN d.a RETURN d",
       &ExpressionContextMock::EMPTY);
-  
+
   assertFilterExecutionFail(
       vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] ALL != d.a RETURN d",
       &ExpressionContextMock::EMPTY);
@@ -3155,7 +3128,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   assertFilterExecutionFail(
       vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE NOT IN d.a RETURN d",
       &ExpressionContextMock::EMPTY);
-  
+
   assertFilterExecutionFail(
       vocbase(), "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE != d.a RETURN d",
       &ExpressionContextMock::EMPTY);
@@ -3173,7 +3146,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER [] ANY != d.a RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ANY != d['a'] RETURN d", expected);  
+        vocbase(), "FOR d IN collection FILTER [] ANY != d['a'] RETURN d", expected);
   }
 
   // empty array ALL/NONE

@@ -48,6 +48,11 @@
     return {
       setUpAll : function () {
         analyzers.save("text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", [ "frequency", "norm", "position" ]);
+        
+        db._drop("AuxUnitTestsCollection");
+        let auxCol = db._create("AuxUnitTestsCollection");
+        auxCol.save({ foobar: ['foo', 'bar'], foo: ['foo'], bar:['bar'], empty: []});
+        
         db._drop("UnitTestsCollection");
         c = db._create("UnitTestsCollection", args);
 
@@ -56,6 +61,12 @@
 
         db._drop("AnotherUnitTestsCollection");
         var ac = db._create("AnotherUnitTestsCollection", args);
+
+        db._drop("UnitTestsWithArrayCollection");
+        let arrayCol = db._create("UnitTestsWithArrayCollection");
+        arrayCol.save({ c: 0, a: ['foo', 'bar', 'baz']});
+        // this will allow to catch if accidentally "all" filter will be used
+        arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
 
         db._dropView("UnitTestsView");
         v = db._createView("UnitTestsView", "arangosearch", {});
@@ -130,6 +141,21 @@
 
         g.save({ _from: "UnitTestsGraphCollection/begin", _to: "UnitTestsGraphCollection/intermediate" });
         g.save({ _from: "UnitTestsGraphCollection/intermediate", _to: "UnitTestsGraphCollection/end" });
+
+        db._dropView("UnitTestsViewArrayView");
+
+        let arrayV = db._createView("UnitTestsWithArrayView", "arangosearch", {});
+        meta = {
+          links: { 
+            UnitTestsWithArrayCollection: { 
+              includeAllFields: true,
+              fields: {
+                a: { analyzers: [ "identity" ] }
+             }
+            }
+          }
+        };
+        arrayV.properties(meta);
       },
 
       tearDownAll : function () {
@@ -148,6 +174,9 @@
         db._drop("AnotherUnitTestsCollection");
         db._drop("UnitTestsGraph");
         db._drop("UnitTestsGraphCollection");
+        db._drop("AuxUnitTestsCollection");
+        db._dropView("UnitTestsWithArrayView");
+        db._drop("UnitTestsWithArrayCollection");
       },
 
       testViewInFunctionCall : function () {
@@ -1028,6 +1057,508 @@
         });
 
         docs.forEach(function(element, i) { assertEqual(res[i].length, 1); });
+      },
+      testArrayComparsionOperatorsInOnSimpleField : function () {
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo', 'bar'] ANY IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(15, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a === 'foo' || doc.a === 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  [] ANY IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo', 'bar'] ANY NOT IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  [] ANY NOT IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo'] ANY NOT IN d.a RETURN d").toArray();
+          assertEqual(18, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a !== 'foo');
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo', 'bar'] NONE IN d.a RETURN d").toArray();
+          assertEqual(13, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a !== 'foo' && doc.a !== 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  [] NONE IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo', 'bar'] NONE NOT IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['bar'] NONE NOT IN d.a RETURN d").toArray();
+          assertEqual(5, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a === 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  [] NONE NOT IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo', 'bar'] ALL IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  [] ALL IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['bar'] ALL IN d.a RETURN d").toArray();
+          assertEqual(5, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a === 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  ['foo', 'bar'] ALL NOT IN d.a RETURN d").toArray();
+          assertEqual(13, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a !== 'foo' && doc.a !== 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH  [] ALL NOT IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+      },
+      testArrayComparsionOperatorsInOnSimpleFieldWitScopedValue : function () {
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foobar ANY IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(15, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a === 'foo' || doc.a === 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.empty ANY IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foobar ANY NOT IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.empty ANY NOT IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foo ANY NOT IN d.a RETURN d").toArray();
+          assertEqual(18, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a !== 'foo');
+          });
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foobar NONE IN d.a RETURN d").toArray();
+          assertEqual(13, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a !== 'foo' && doc.a !== 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.empty NONE IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foobar NONE NOT IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.bar NONE NOT IN d.a RETURN d").toArray();
+          assertEqual(5, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a === 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.empty NONE NOT IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foobar ALL IN d.a RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.empty ALL IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.bar ALL IN d.a RETURN d").toArray();
+          assertEqual(5, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a === 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.foobar ALL NOT IN d.a RETURN d").toArray();
+          assertEqual(13, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.a !== 'foo' && doc.a !== 'bar');
+          });
+        }
+        {
+          var result = db._query("FOR a IN AuxUnitTestsCollection " + 
+            "FOR d IN UnitTestsView SEARCH  a.empty ALL NOT IN d.a RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+      },
+      testArrayComparsionOperatorsInOnArrayField : function() {
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['foo', 'bar'] ALL IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(1, result.length);
+          assertEqual(0, result[0].c);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['foo', 'bar', 'none'] ALL IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  [ 'none', 'nani', 'afoo'] ALL NOT IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(1, result.length);
+          assertEqual(0, result[0].c);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['afoo', 'foo', 'none', 'nani'] ALL NOT IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['none', 'bar'] ANY IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(1, result.length);
+          assertEqual(0, result[0].c);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  [ 'nani', 'none'] ANY IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  [ 'foo', 'none', 'nani', 'afoo'] ANY NOT IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+          assertEqual(2, result.length);
+          assertEqual(0, result[0].c);
+          assertEqual(1, result[1].c);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  [ 'foo', 'bar'] ANY NOT IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].c);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['none', 'nani', 'afoo'] NONE IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(1, result.length);
+          assertEqual(0, result[0].c);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['none', 'nani', 'bar', 'afoo'] NONE IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['none', 'foo', 'bar'] NONE NOT IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo'] NONE NOT IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(1, result.length);
+          assertEqual(0, result[0].c);
+        }
+      },
+      testArrayComparsionOperatorsGreaterOnSimpleField : function() {
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [2, 3, 4] ALL > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 0 || doc.c === 1);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[2, 3, 4]] FOR d IN UnitTestsView SEARCH a ALL > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 0 || doc.c === 1);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [2, 3, 4] ALL >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(12, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 0 || doc.c === 1 || doc.c === 2);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[2, 3, 4]] FOR d IN UnitTestsView SEARCH a ALL >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(12, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 0 || doc.c === 1 || doc.c === 2);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ALL > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ALL > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ALL >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ALL >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [1, 2] ANY > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c < 2);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[1, 2]] FOR d IN UnitTestsView SEARCH a ANY > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c < 2);
+          });
+
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [1, 2] ANY >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(12, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c <= 2);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[1, 2]] FOR d IN UnitTestsView SEARCH a ANY >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(12, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c <= 2);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ANY > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ANY > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ANY >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ANY >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [1, 2, 3] NONE > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4 || doc.c === 3);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[1, 2, 3]] FOR d IN UnitTestsView SEARCH a NONE > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4 || doc.c === 3);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [1, 2, 3] NONE >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[1, 2, 3]] FOR d IN UnitTestsView SEARCH a NONE >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] NONE > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a NONE > d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] NONE >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a NONE >= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+      },
+      testArrayComparsionOperatorsLessOnSimpleField : function() {
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [2, 3] ALL < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[2,3]] FOR d IN UnitTestsView SEARCH a ALL < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [2, 3] ALL <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4 || doc.c == 3);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[2,3]] FOR d IN UnitTestsView SEARCH a ALL <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4 || doc.c === 3);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ALL < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ALL < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ALL <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ALL <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [3, 4] ANY < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[3,4]] FOR d IN UnitTestsView SEARCH a ANY < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [3, 4] ANY <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4 || doc.c === 3);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[3,4]] FOR d IN UnitTestsView SEARCH a ANY <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 4 || doc.c === 3);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ANY < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ANY < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] ANY <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a ANY <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(0, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [1, 2, 3] NONE < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 1 || doc.c === 0);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[1,2,3]] FOR d IN UnitTestsView SEARCH a NONE < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(8, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 1 || doc.c === 0);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [1, 2, 3] NONE <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue( doc.c === 0);
+          });
+        }
+        {
+          var result = db._query("FOR a IN [[1,2,3]] FOR d IN UnitTestsView SEARCH a NONE <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(4, result.length);
+          result.forEach(function(doc) {
+            assertTrue(doc.c === 0);
+          });
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] NONE < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a NONE < d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR d IN UnitTestsView SEARCH [] NONE <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
+        {
+          var result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a NONE <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
+          assertEqual(28, result.length);
+        }
       }
     };
   };

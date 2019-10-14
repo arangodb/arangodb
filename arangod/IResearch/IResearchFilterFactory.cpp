@@ -999,8 +999,8 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
           return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
         }
       } else {
-        auto rv = min ? byRange<irs::Bound::MIN>(filter, normalized, incl, ctx, filterCtx)
-                      : byRange<irs::Bound::MAX>(filter, normalized, incl, ctx, filterCtx);
+        auto rv = min ? byRange<irs::Bound::MIN>(filter, normalized, incl, ctx, subFilterCtx)
+                      : byRange<irs::Bound::MAX>(filter, normalized, incl, ctx, subFilterCtx);
         if (rv.fail()) {
           return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
         }
@@ -1223,7 +1223,7 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
   if (qualifierNode->type != arangodb::aql::NODE_TYPE_QUANTIFIER) {
     return {TRI_ERROR_BAD_PARAMETER, "wrong qualifier node type for Array comparison operator"};
   }
-
+  
   if (arangodb::aql::NODE_TYPE_ARRAY == valueNode->type) {
     return fromArrayInArray(filter, ctx, filterCtx, node);
   }
