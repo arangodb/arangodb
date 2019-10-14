@@ -139,6 +139,7 @@ struct TRI_vocbase_t {
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo const&);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -220,7 +221,7 @@ struct TRI_vocbase_t {
   State state() const { return _state; }
   void setState(State state) { _state = state; }
 
-  arangodb::Result toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }

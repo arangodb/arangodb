@@ -33,7 +33,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -44,6 +44,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 namespace arangodb {
 namespace tests {

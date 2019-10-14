@@ -30,7 +30,7 @@
 #include "gtest/gtest.h"
 
 #include "Basics/voc-errors.h"
-#include "MMFiles/MMFilesSkiplist.h"
+#include "Containers/Skiplist.h"
 #include "Random/RandomGenerator.h"
 
 #include <vector>
@@ -40,7 +40,7 @@ static bool Initialized = false;
 using namespace std;
 
 static int CmpElmElm(void*, void const* left, void const* right,
-                     arangodb::MMFilesSkiplistCmpType cmptype) {
+                     arangodb::containers::SkiplistCmpType cmptype) {
   auto l = *(static_cast<int const*>(left));
   auto r = *(static_cast<int const*>(right));
 
@@ -81,7 +81,8 @@ class CSkiplistTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(CSkiplistTest, tst_unique_forward) {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::containers::Skiplist<void, void> skiplist(CmpElmElm, CmpKeyElm,
+                                                      FreeElm, true, false);
 
   // check start node
   EXPECT_EQ(nullptr, skiplist.startNode()->nextNode());
@@ -112,7 +113,7 @@ TEST_F(CSkiplistTest, tst_unique_forward) {
   // check end node
   EXPECT_EQ(nullptr, skiplist.endNode());
 
-  arangodb::MMFilesSkiplistNode<void, void>* current;
+  arangodb::containers::SkiplistNode<void, void>* current;
 
   // do a forward iteration
   current = skiplist.startNode()->nextNode();
@@ -161,7 +162,8 @@ TEST_F(CSkiplistTest, tst_unique_forward) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CSkiplistTest, tst_unique_reverse) {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::containers::Skiplist<void, void> skiplist(CmpElmElm, CmpKeyElm,
+                                                      FreeElm, true, false);
 
   // check start node
   EXPECT_EQ(nullptr, skiplist.startNode()->nextNode());
@@ -192,7 +194,7 @@ TEST_F(CSkiplistTest, tst_unique_reverse) {
   // check end node
   EXPECT_EQ(nullptr, skiplist.endNode());
 
-  arangodb::MMFilesSkiplistNode<void, void>* current;
+  arangodb::containers::SkiplistNode<void, void>* current;
 
   // do a forward iteration
   current = skiplist.startNode()->nextNode();
@@ -241,7 +243,8 @@ TEST_F(CSkiplistTest, tst_unique_reverse) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CSkiplistTest, tst_unique_lookup) {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::containers::Skiplist<void, void> skiplist(CmpElmElm, CmpKeyElm,
+                                                      FreeElm, true, false);
 
   std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
@@ -284,7 +287,8 @@ TEST_F(CSkiplistTest, tst_unique_lookup) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CSkiplistTest, tst_unique_remove) {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::containers::Skiplist<void, void> skiplist(CmpElmElm, CmpKeyElm,
+                                                      FreeElm, true, false);
 
   std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
@@ -388,7 +392,8 @@ TEST_F(CSkiplistTest, tst_unique_remove) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CSkiplistTest, tst_unique_remove_all) {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::containers::Skiplist<void, void> skiplist(CmpElmElm, CmpKeyElm,
+                                                      FreeElm, true, false);
 
   std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {

@@ -32,6 +32,7 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 var analyzers = require("@arangodb/analyzers");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
 const _ = require('lodash');
 
@@ -49,12 +50,12 @@ const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
 
 const connectToMaster = function () {
-  arango.reconnect(masterEndpoint, db._name(), 'root', '');
+  reconnectRetry(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
 const connectToSlave = function () {
-  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
+  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 

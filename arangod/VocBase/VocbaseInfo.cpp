@@ -134,11 +134,10 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
 
   if (ServerState::instance()->isCoordinator()) {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
-    builder.add(StaticStrings::Sharding, VPackValue(_sharding));
+    addVocbaseReplicationOptionsToOpenObject(builder, _sharding, _replicationFactor, _writeConcern);
   }
 
   if (withUsers) {
@@ -365,7 +364,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   return vocbaseOptions;
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
+void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern) {
   TRI_ASSERT(builder.isOpenObject());
@@ -378,8 +377,8 @@ void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sha
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
+void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
+  addVocbaseReplicationOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
                                 opt.writeConcern);
 }
 }  // namespace arangodb

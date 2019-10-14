@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,30 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_HELPER_H
-#define ARANGOD_AQL_AST_HELPER_H 1
+#ifndef ARANGODB_CONTAINERS_SMALL_VECTOR_H
+#define ARANGODB_CONTAINERS_SMALL_VECTOR_H 1
 
-#include <string>
-#include <unordered_set>
+#include <vector>
 
-#include "Containers/SmallVector.h"
+#include "Containers/details/short_alloc.h"
 
 namespace arangodb {
-namespace aql {
-struct AstNode;
-struct Variable;
-namespace ast {
+namespace containers {
 
-/// @brief determines the to-be-kept attribute of an INTO expression
-std::unordered_set<std::string> getReferencedAttributesForKeep(
-    AstNode const* node, ::arangodb::containers::SmallVector<Variable const*> searchVariables,
-    bool& isSafeForOptimization);
+template <class T, std::size_t BufSize = 64>
+using SmallVector = std::vector<T, short_alloc<T, BufSize, alignof(T)>>;
 
-}  // namespace ast
-}  // namespace aql
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

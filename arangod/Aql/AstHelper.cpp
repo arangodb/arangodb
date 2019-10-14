@@ -65,7 +65,8 @@ bool accessesSearchVariableViaReference(AstNode const* current, Variable const* 
   return false;
 };
 
-bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables,
+bool isTargetVariable(AstNode const* node,
+                      ::arangodb::containers::SmallVector<Variable const*>& searchVariables,
                       bool& isSafeForOptimization) {
   TRI_ASSERT(!searchVariables.empty());
 
@@ -143,7 +144,7 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 }  // namespace
 
 std::unordered_set<std::string> arangodb::aql::ast::getReferencedAttributesForKeep(
-    const AstNode* node, SmallVector<const Variable*, 64> searchVariables,
+    const AstNode* node, ::arangodb::containers::SmallVector<const Variable*, 64> searchVariables,
     bool& isSafeForOptimization) {
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
