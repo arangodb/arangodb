@@ -54,6 +54,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   RequestLane lane() const override;
 
+  Result returnError(int errorNumber);
+
+  Result returnError(int errorNumber, char const* message);
+  
  private:
   arangodb::Result executeGharial();
 
