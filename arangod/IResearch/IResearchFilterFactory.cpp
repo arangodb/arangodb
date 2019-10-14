@@ -1242,7 +1242,7 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
   if (!value.execute(ctx)) {
     // can't execute expression
     auto message = "Unable to extract value from Array comparison operator";
-    LOG_TOPIC("f7a13", WARN, arangodb::iresearch::TOPIC) << message;
+    LOG_TOPIC("f7a14", WARN, arangodb::iresearch::TOPIC) << message;
     return {TRI_ERROR_BAD_PARAMETER, message};
   }
   switch (value.type()) {
