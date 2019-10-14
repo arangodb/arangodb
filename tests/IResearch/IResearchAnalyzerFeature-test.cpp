@@ -343,7 +343,7 @@ std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
 
 // AqlValue entries must be explicitly deallocated
 struct VPackFunctionParametersWrapper {
-  arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
   arangodb::aql::VPackFunctionParameters instance;
   VPackFunctionParametersWrapper() : instance(arena) {}
   ~VPackFunctionParametersWrapper() {
@@ -2604,7 +2604,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // test invalid arg count
   // Zero count (less than expected)
   {
-    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+    arangodb::containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
     EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, args)), arangodb::basics::Exception);
   }

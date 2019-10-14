@@ -26,11 +26,11 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
+#include "Containers/Skiplist.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
-#include "MMFiles/MMFilesSkiplist.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
@@ -163,9 +163,8 @@ class MMFilesSkiplistInLookupBuilder final : public MMFilesBaseSkiplistLookupBui
 class MMFilesSkiplistIterator final : public IndexIterator {
  private:
   // Shorthand for the skiplist node
-  typedef MMFilesSkiplistNode<VPackSlice, MMFilesSkiplistIndexElement> Node;
-
-  typedef MMFilesSkiplist<VPackSlice, MMFilesSkiplistIndexElement> TRI_Skiplist;
+  using Node = containers::SkiplistNode<VPackSlice, MMFilesSkiplistIndexElement>;
+  using TRI_Skiplist = containers::Skiplist<VPackSlice, MMFilesSkiplistIndexElement>;
 
  private:
   TRI_Skiplist const* _skiplistIndex;
@@ -183,16 +182,15 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   MMFilesBaseSkiplistLookupBuilder* _builder;
   std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 
-  std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> _CmpElmElm;
+  std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*, containers::SkiplistCmpType)> _CmpElmElm;
 
  public:
-  MMFilesSkiplistIterator(
-      LogicalCollection* collection, transaction::Methods* trx,
-      arangodb::MMFilesSkiplistIndex const* index,
-      TRI_Skiplist const* skiplist, size_t numPaths,
-      std::function<int(void*, MMFilesSkiplistIndexElement const*,
-                        MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> const& CmpElmElm,
-      bool reverse, MMFilesBaseSkiplistLookupBuilder* builder);
+  MMFilesSkiplistIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          arangodb::MMFilesSkiplistIndex const* index,
+                          TRI_Skiplist const* skiplist, size_t numPaths,
+                          std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
+                                            containers::SkiplistCmpType)> const& CmpElmElm,
+                          bool reverse, MMFilesBaseSkiplistLookupBuilder* builder);
 
   ~MMFilesSkiplistIterator() { delete _builder; }
 
@@ -242,7 +240,7 @@ class MMFilesSkiplistIndex : public MMFilesPathBasedIndex {
   struct ElementElementComparator {
     int operator()(void* userData, MMFilesSkiplistIndexElement const* leftElement,
                    MMFilesSkiplistIndexElement const* rightElement,
-                   MMFilesSkiplistCmpType cmptype) const;
+                   containers::SkiplistCmpType cmptype) const;
 
     explicit ElementElementComparator(MMFilesSkiplistIndex* idx) { _idx = idx; }
 
@@ -253,7 +251,7 @@ class MMFilesSkiplistIndex : public MMFilesPathBasedIndex {
   friend struct KeyElementComparator;
   friend struct ElementElementComparator;
 
-  typedef MMFilesSkiplist<VPackSlice, MMFilesSkiplistIndexElement> TRI_Skiplist;
+  using TRI_Skiplist = containers::Skiplist<VPackSlice, MMFilesSkiplistIndexElement>;
 
  public:
   MMFilesSkiplistIndex() = delete;
@@ -320,7 +318,7 @@ class MMFilesSkiplistIndex : public MMFilesPathBasedIndex {
   /// @brief Checks if the interval is valid. It is declared invalid if
   ///        one border is nullptr or the right is lower than left.
   // Shorthand for the skiplist node
-  typedef MMFilesSkiplistNode<VPackSlice, MMFilesSkiplistIndexElement> Node;
+  using Node = containers::SkiplistNode<VPackSlice, MMFilesSkiplistIndexElement>;
 
   bool intervalValid(void*, Node* left, Node* right) const;
 

@@ -90,20 +90,6 @@ uint64_t RocksDBMetaCollection::numberDocuments(transaction::Methods* trx) const
   return trxCollection->numberDocuments();
 }
 
-void RocksDBMetaCollection::invokeOnAllElements(transaction::Methods* trx,
-                                                std::function<bool(LocalDocumentId const&)> callback) {
-  std::unique_ptr<IndexIterator> cursor(this->getAllIterator(trx));
-  bool cnt = true;
-  auto cb = [&](LocalDocumentId token) {
-    if (cnt) {
-      cnt = callback(token);
-    }
-  };
-  
-  while (cursor->next(cb, 1000) && cnt) {
-  }
-}
-
 /// @brief write locks a collection, with a timeout
 int RocksDBMetaCollection::lockWrite(double timeout) {
   uint64_t waitTime = 0;  // indicates that time is uninitialized
@@ -200,7 +186,6 @@ int RocksDBMetaCollection::lockRead(double timeout) {
 
 /// @brief read unlocks a collection
 void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
-
 
 void RocksDBMetaCollection::trackWaitForSync(arangodb::transaction::Methods* trx,
                                              OperationOptions& options) {

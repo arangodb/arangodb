@@ -28,8 +28,8 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#include "Basics/HashSet.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Containers/HashSet.h"
 #endif
 
 namespace arangodb {
@@ -85,7 +85,7 @@ class WalkerWorker {
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  arangodb::HashSet<T*> _done;
+  ::arangodb::containers::HashSet<T*> _done;
 #endif
 };
 }  // namespace aql

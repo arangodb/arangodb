@@ -31,6 +31,7 @@
 #include "Aql/SingleBlockFetcher.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Aql/RegisterPlan.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/Slice.h>

@@ -55,6 +55,11 @@
 #ifndef ARANGOD_AQL_EXECUTION_NODE_H
 #define ARANGOD_AQL_EXECUTION_NODE_H 1
 
+#include <memory>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
@@ -63,12 +68,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/HashSet.h"
-
-#include <memory>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
+#include "Containers/HashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -154,6 +154,7 @@ class ExecutionNode {
     DISTRIBUTE_CONSUMER = 28,
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
+    MATERIALIZE = 31,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -334,31 +335,31 @@ class ExecutionNode {
    */
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  virtual void getVariablesUsedHere(arangodb::HashSet<Variable const*>&) const;
+  virtual void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>&) const;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const;
 
   /// @brief getVariableIdsUsedHere
-  arangodb::HashSet<VariableId> getVariableIdsUsedHere() const;
+  ::arangodb::containers::HashSet<VariableId> getVariableIdsUsedHere() const;
 
   /// @brief tests whether the node sets one of the passed variables
-  bool setsVariable(arangodb::HashSet<Variable const*> const& which) const;
+  bool setsVariable(::arangodb::containers::HashSet<Variable const*> const& which) const;
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(arangodb::HashSet<Variable const*> const& v);
+  void setVarsUsedLater(::arangodb::containers::HashSet<Variable const*> const& v);
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  arangodb::HashSet<Variable const*> const& getVarsUsedLater() const;
+  ::arangodb::containers::HashSet<Variable const*> const& getVarsUsedLater() const;
 
   /// @brief setVarsValid
-  void setVarsValid(arangodb::HashSet<Variable const*>& v);
+  void setVarsValid(::arangodb::containers::HashSet<Variable const*>& v);
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  arangodb::HashSet<Variable const*> const& getVarsValid() const;
+  ::arangodb::containers::HashSet<Variable const*> const& getVarsValid() const;
 
   /// @brief setVarUsageValid
   void setVarUsageValid();
@@ -452,9 +453,9 @@ class ExecutionNode {
   /// when an item comes into the current node. Both are only valid if
   /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
   /// this.
-  arangodb::HashSet<Variable const*> _varsUsedLater;
+  ::arangodb::containers::HashSet<Variable const*> _varsUsedLater;
 
-  arangodb::HashSet<Variable const*> _varsValid;
+  ::arangodb::containers::HashSet<Variable const*> _varsValid;
 
   /// @brief depth of the current frame, will be filled in by planRegisters
   int _depth;
@@ -556,7 +557,7 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
-  
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
@@ -597,7 +598,7 @@ class EnumerateListNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -705,7 +706,7 @@ class CalculationNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -765,7 +766,7 @@ class SubqueryNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -817,7 +818,7 @@ class FilterNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
 
   Variable const* inVariable() const;
 
@@ -879,7 +880,7 @@ class ReturnNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
 
   Variable const* inVariable() const;
 
@@ -920,6 +921,56 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+};
+
+class MaterializeNode  : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+
+ public:
+  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+                   aql::Variable const& inDocId, aql::Variable const& outVariable);
+
+  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+
+  /// @brief getVariablesSetHere
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
+  /// @brief return out variable
+  arangodb::aql::Variable const& outVariable() const noexcept {
+    return *_outVariable;
+  }
+
+ private:
+  /// @brief input variable  non-materialized collection ids
+  aql::Variable const* _inNonMaterializedColPtr;
+
+  /// @brief input variable non-materialized document ids
+  aql::Variable const* _inNonMaterializedDocId;
+
+  /// @brief the variable produced by materialization
+  Variable const* _outVariable;
 };
 
 }  // namespace aql

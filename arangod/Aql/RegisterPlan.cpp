@@ -314,7 +314,20 @@ void RegisterPlan::after(ExecutionNode* en) {
       subQueryNodes.emplace_back(en);
       break;
     }
-
+    case ExecutionNode::MATERIALIZE: {
+      depth++;
+      nrRegsHere.emplace_back(1);
+      // create a copy of the last value here
+      // this is required because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId = nrRegs.back() + 1;
+      nrRegs.emplace_back(registerId);
+      auto ep = ExecutionNode::castTo<MaterializeNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
+      totalNrRegs++;
+      break;
+    }
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -327,8 +340,9 @@ void RegisterPlan::after(ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    arangodb::HashSet<Variable const*> varsUsedLater = en->getVarsUsedLater();
-    arangodb::HashSet<Variable const*> varsUsedHere;
+    ::arangodb::containers::HashSet<Variable const*> varsUsedLater =
+        en->getVarsUsedLater();
+    ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
 
     // We need to delete those variables that have been used here but are not

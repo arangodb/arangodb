@@ -61,8 +61,8 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
 
   query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
   // try to find `EnumerateViewNode`s and process corresponding filters and sorts
   query.plan()->findNodesOfType(nodes, arangodb::aql::ExecutionNode::NORESULTS, true);

@@ -59,6 +59,37 @@ class StringUtilsTest : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(StringUtilsTest, test_SplitEmptyness) {
+  EXPECT_EQ(StringUtils::split("", '\0'), (std::vector<std::string>{}));
+  EXPECT_EQ(StringUtils::split({"a\0b\0c", 5}, '\0'), (std::vector<std::string>{"a", "b", "c"}));
+
+  EXPECT_EQ(StringUtils::split("", '/'), (std::vector<std::string>{}));
+  EXPECT_EQ(StringUtils::split("/", '/'), (std::vector<std::string>{"", ""}));
+  EXPECT_EQ(StringUtils::split("/1", '/'), (std::vector<std::string>{"", "1"}));
+  EXPECT_EQ(StringUtils::split("1/", '/'), (std::vector<std::string>{"1", ""}));
+  EXPECT_EQ(StringUtils::split("//", '/'), (std::vector<std::string>{"", "", ""}));
+  EXPECT_EQ(StringUtils::split("knurps", '/'), (std::vector<std::string>{"knurps"}));
+  
+  
+  EXPECT_EQ(StringUtils::split("", "/"), (std::vector<std::string>{}));
+  EXPECT_EQ(StringUtils::split("/", "/"), (std::vector<std::string>{"", ""}));
+  EXPECT_EQ(StringUtils::split("/1", "/"), (std::vector<std::string>{"", "1"}));
+  EXPECT_EQ(StringUtils::split("1/", "/"), (std::vector<std::string>{"1", ""}));
+  EXPECT_EQ(StringUtils::split("//", "/"), (std::vector<std::string>{"", "", ""}));
+  EXPECT_EQ(StringUtils::split("knurps", "/"), (std::vector<std::string>{"knurps"}));
+  
+  EXPECT_EQ(StringUtils::split("", "abc"), (std::vector<std::string>{}));
+  EXPECT_EQ(StringUtils::split("/", "abc"), (std::vector<std::string>{"/"}));
+  EXPECT_EQ(StringUtils::split("/1", "abc"), (std::vector<std::string>{"/1"}));
+  EXPECT_EQ(StringUtils::split("1/", "abc"), (std::vector<std::string>{"1/"}));
+  EXPECT_EQ(StringUtils::split("//", "abc"), (std::vector<std::string>{"//"}));
+  
+  EXPECT_EQ(StringUtils::split("abcdefg", "abc"), (std::vector<std::string>{"", "", "", "defg"}));
+  EXPECT_EQ(StringUtils::split("foo-split-bar-split-baz", "-sp"), (std::vector<std::string>{"foo", "", "", "lit", "bar", "", "", "lit", "baz"}));
+
+  EXPECT_EQ(StringUtils::split("this-line.is,split", ".,-"), (std::vector<std::string>{"this", "line", "is", "split"}));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_Split1
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,12 +97,9 @@ class StringUtilsTest : public ::testing::Test {
 TEST_F(StringUtilsTest, test_Split1) {
   vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n');
 
-  EXPECT_EQ(lines.size(),  (size_t) 2);
-
-  if (lines.size() == 2) {
-    EXPECT_EQ(lines[0],  "Hallo");
-    EXPECT_EQ(lines[1],  "World/Me");
-  }
+  EXPECT_EQ(lines.size(), 2U);
+  EXPECT_EQ(lines[0],  "Hallo");
+  EXPECT_EQ(lines[1],  "World\\/Me");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,14 +109,12 @@ TEST_F(StringUtilsTest, test_Split1) {
 TEST_F(StringUtilsTest, test_Split2) {
   vector<string> lines = StringUtils::split("\nHallo\nWorld\n", '\n');
 
-  EXPECT_EQ(lines.size(),  (size_t) 4);
+  EXPECT_EQ(lines.size(), 4U);
 
-  if (lines.size() == 4) {
-    EXPECT_EQ(lines[0],  "");
-    EXPECT_EQ(lines[1],  "Hallo");
-    EXPECT_EQ(lines[2],  "World");
-    EXPECT_EQ(lines[3],  "");
-  }
+  EXPECT_EQ(lines[0],  "");
+  EXPECT_EQ(lines[1],  "Hallo");
+  EXPECT_EQ(lines[2],  "World");
+  EXPECT_EQ(lines[3],  "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,14 +122,12 @@ TEST_F(StringUtilsTest, test_Split2) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(StringUtilsTest, test_Split3) {
-  vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n', '\0');
+  vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n');
 
-  EXPECT_EQ(lines.size(),  (size_t) 2);
-
-  if (lines.size() == 2) {
-    EXPECT_EQ(lines[0],  "Hallo");
-    EXPECT_EQ(lines[1],  "World\\/Me");
-  }
+  EXPECT_EQ(lines.size(), 2U);
+  
+  EXPECT_EQ(lines[0],  "Hallo");
+  EXPECT_EQ(lines[1],  "World\\/Me");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

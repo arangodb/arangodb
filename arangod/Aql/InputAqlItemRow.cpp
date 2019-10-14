@@ -251,9 +251,6 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   result.add("raw", raw.slice());
 }
 
-InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
-    : _block(nullptr), _baseIndex(0) {}
-
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
@@ -262,6 +259,8 @@ InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t base
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
@@ -282,16 +281,33 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   return a;
 }
 
-std::size_t InputAqlItemRow::getNrRegisters() const noexcept { return block().getNrRegs(); }
+RegisterCount InputAqlItemRow::getNrRegisters() const noexcept { return block().getNrRegs(); }
 
 bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
-  TRI_ASSERT(isInitialized());
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
 bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
-  TRI_ASSERT(isInitialized());
   return !(*this == other);
+}
+
+bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
+  if (!isInitialized() || !other.isInitialized()) {
+    return isInitialized() == other.isInitialized();
+  }
+  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
+  if (getNrRegisters() != other.getNrRegisters()) {
+    return false;
+  }
+  // NOLINTNEXTLINE(modernize-use-transparent-functors)
+  auto const eq = std::equal_to<AqlValue>{};
+  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+    if (!eq(getValue(i), other.getValue(i))) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool InputAqlItemRow::isInitialized() const noexcept {

@@ -45,11 +45,11 @@ function RequestSuite () {
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + base + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:') + base + append;
   };
   
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_not-there' + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:') + '/_not-there' + append;
   };
 
   return {

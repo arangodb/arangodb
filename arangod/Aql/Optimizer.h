@@ -26,7 +26,7 @@
 
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Common.h"
-#include "Basics/RollingVector.h"
+#include "Containers/RollingVector.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
@@ -47,7 +47,7 @@ class Optimizer {
   struct PlanList {
     using Entry = std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
-    RollingVector<Entry> list;
+    ::arangodb::containers::RollingVector<Entry> list;
 
     PlanList() { list.reserve(8); }
 
@@ -138,7 +138,9 @@ class Optimizer {
   void addPlanAndRerun(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  RollingVector<PlanList::Entry>& getPlans() { return _plans.list; }
+  ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
+    return _plans.list;
+  }
 
   /// @brief stealBest, ownership of the plan is handed over to the caller,
   /// all other plans are deleted

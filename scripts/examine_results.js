@@ -6,6 +6,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const internal = require('internal');
 const rp = require('@arangodb/result-processing');
+const yaml = require('js-yaml');
 
 const optionsDefaults = require('@arangodb/testing').optionsDefaults;
 
@@ -32,6 +33,12 @@ function main (argv) {
     argv = argv.slice(1);    // and remove first arg (c++:pop_front/bash:shift)
   }
 
+  if (analyzers.length === 0) {
+    print(RED + "No analyzer specified. Please specify one or more of: \n" +
+          yaml.safeDump(Object.keys(rp.analyze)) + "\n" + RESET);
+    process.exit(1);
+  }
+  
   if (argv.length >= 1) {
     try {
       options = internal.parseArgv(argv, 0);
