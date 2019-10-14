@@ -21,39 +21,37 @@
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
 /// @author Max Neunhoeffer
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ASSOC_MULTI_H
-#define ARANGODB_BASICS_ASSOC_MULTI_H 1
+#ifndef ARANGODB_CONTAINERS_ASSOC_MULTI_H
+#define ARANGODB_CONTAINERS_ASSOC_MULTI_H 1
 
 #include <cstdint>
+#include <thread>
 
 // Activate for additional debugging:
 // #define ARANGODB_CHECK_MULTI_POINTER_HASH 1
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
+#include <iostream>
+#endif
 
-#include "Basics/AssocHelpers.h"
-#include "Basics/AssocMultiHelpers.h"
-#include "Basics/Common.h"
-#include "Basics/IndexBucket.h"
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/debugging.h"
 #include "Basics/prime-numbers.h"
+#include "Containers/details/AssocHelpers.h"
+#include "Containers/details/AssocMultiHelpers.h"
+#include "Containers/details/IndexBucket.h"
 #include "Logger/Logger.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-#include <thread>
-
-#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
-#include <iostream>
-#endif
-
 namespace arangodb {
-namespace basics {
+namespace containers {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of pointers, tolerating repeated keys.
@@ -100,17 +98,16 @@ namespace basics {
 template <class Key, class Element, class IndexType, bool useHashCache, class AssocMultiHelper>
 class AssocMulti {
  private:
-  typedef void UserData;
+  using UserData = void;
 
  public:
   static IndexType const INVALID_INDEX = ((IndexType)0) - 1;
 
-  typedef std::function<bool(Element&)> CallbackElementFuncType;
+  using CallbackElementFuncType = std::function<bool(Element&)>;
 
  private:
-  typedef Entry<Element, IndexType, useHashCache> EntryType;
-
-  typedef arangodb::basics::IndexBucket<EntryType, IndexType> Bucket;
+  using EntryType = Entry<Element, IndexType, useHashCache>;
+  using Bucket = IndexBucket<EntryType, IndexType>;
 
   AssocMultiHelper _helper;
   std::vector<Bucket> _buckets;
@@ -272,7 +269,7 @@ class AssocMulti {
   void batchInsert(std::function<void*()> const& contextCreator,
                    std::function<void(void*)> const& contextDestroyer,
                    std::shared_ptr<std::vector<Element> const> data,
-                   std::shared_ptr<LocalTaskQueue> queue) {
+                   std::shared_ptr<basics::LocalTaskQueue> queue) {
     if (data->empty()) {
       // nothing to do
       return;
@@ -1309,7 +1306,7 @@ class AssocMulti {
   }
 };
 
-}  // namespace basics
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

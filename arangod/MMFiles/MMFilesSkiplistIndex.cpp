@@ -485,10 +485,9 @@ void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
 
 MMFilesSkiplistIterator::MMFilesSkiplistIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    arangodb::MMFilesSkiplistIndex const* index,
-    TRI_Skiplist const* skiplist, size_t numPaths,
-    std::function<int(void*, MMFilesSkiplistIndexElement const*,
-                      MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> const& CmpElmElm,
+    arangodb::MMFilesSkiplistIndex const* index, TRI_Skiplist const* skiplist, size_t numPaths,
+    std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
+                      containers::SkiplistCmpType)> const& CmpElmElm,
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
     : IndexIterator(collection, trx),
       _skiplistIndex(skiplist),
@@ -519,7 +518,7 @@ bool MMFilesSkiplistIterator::intervalValid(void* userData, Node* left, Node* ri
     return true;
   }
   if (_CmpElmElm(userData, left->document(), right->document(),
-                 arangodb::SKIPLIST_CMP_TOTORDER) > 0) {
+                 arangodb::containers::SkiplistCmpType::TOTORDER) > 0) {
     return false;
   }
   return true;
@@ -899,7 +898,7 @@ bool MMFilesSkiplistIndex::intervalValid(void* userData, Node* left, Node* right
     return true;
   }
   if (CmpElmElm(userData, left->document(), right->document(),
-                arangodb::SKIPLIST_CMP_TOTORDER) > 0) {
+                arangodb::containers::SkiplistCmpType::TOTORDER) > 0) {
     return false;
   }
   return true;
@@ -931,7 +930,8 @@ int MMFilesSkiplistIndex::KeyElementComparator::operator()(
 /// @brief compares two elements in a skip list, this is the generic callback
 int MMFilesSkiplistIndex::ElementElementComparator::operator()(
     void* userData, MMFilesSkiplistIndexElement const* leftElement,
-    MMFilesSkiplistIndexElement const* rightElement, MMFilesSkiplistCmpType cmptype) const {
+    MMFilesSkiplistIndexElement const* rightElement,
+    containers::SkiplistCmpType cmptype) const {
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -961,7 +961,7 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
   // otherwise.
   // ...........................................................................
 
-  if (arangodb::SKIPLIST_CMP_PREORDER == cmptype) {
+  if (arangodb::containers::SkiplistCmpType::PREORDER == cmptype) {
     return 0;
   }
 

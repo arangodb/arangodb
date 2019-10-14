@@ -153,7 +153,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -199,7 +199,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -302,7 +302,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -346,7 +346,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -414,7 +414,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -539,7 +539,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -580,7 +580,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -621,7 +621,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -662,7 +662,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -705,7 +705,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
@@ -747,7 +747,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_FALSE(node.volatility().first);   // filter volatility
     EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();

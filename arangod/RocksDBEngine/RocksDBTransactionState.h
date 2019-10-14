@@ -24,17 +24,17 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
 #define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
 
+#include <rocksdb/options.h>
+#include <rocksdb/status.h>
+
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-
-#include <rocksdb/options.h>
-#include <rocksdb/status.h>
 
 struct TRI_vocbase_t;
 

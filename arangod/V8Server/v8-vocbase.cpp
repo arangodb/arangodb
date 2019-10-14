@@ -168,17 +168,17 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   auto& vocbase = GetContextVocBase(isolate);
 
   // check if we have some transaction object
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTIONS()");
   }
-    
+
   VPackBuilder builder;
   builder.openArray();
-    
+
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   std::string user;
@@ -186,9 +186,9 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = ExecContext::current().user();
   }
   mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
- 
+
   builder.close();
-  
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -1649,10 +1649,7 @@ static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  arangodb::Result res = vocbase.toVelocyPack(builder);
-  if(res.fail()){
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  vocbase.toVelocyPack(builder);
 
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
@@ -2097,29 +2094,29 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
-  
+      .FromMaybe(false);  // ignore result
+
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
-  
+      .FromMaybe(false);  // ignore result
+
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
-  
+      .FromMaybe(false);  // ignore result
+
   // max number of shards
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
+      .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break

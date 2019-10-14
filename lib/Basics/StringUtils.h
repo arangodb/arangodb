@@ -27,6 +27,7 @@
 
 #include <stddef.h>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <string>
 #include <vector>

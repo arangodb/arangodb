@@ -1753,7 +1753,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     };
 
     if (nrUsed > 0) {
-      arangodb::basics::BucketPosition position;
+      arangodb::containers::BucketPosition position;
       uint64_t total = 0;
 
       while (true) {
