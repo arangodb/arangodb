@@ -146,7 +146,9 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   std::string currentHeader;
   builder.openObject();  // 4 == meta
   for (auto& item : _headers) {
-    if (item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
+
+    if (_contentType != ContentType::CUSTOM &&
+        item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
                            StaticStrings::ContentTypeHeader) == 0) {
       continue;
     }
@@ -154,7 +156,8 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(item.second));
   }
-  if (_contentType != ContentType::VPACK) { // fuerte uses VPack as default
+  if (_contentType != ContentType::VPACK &&
+      _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
     std::string currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));

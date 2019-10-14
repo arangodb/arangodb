@@ -21,6 +21,12 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -31,7 +37,6 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
-#include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -44,6 +49,7 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -69,12 +75,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::transaction;
@@ -317,8 +317,8 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
   }
 
   typedef std::pair<arangodb::aql::AstNode*, transaction::Methods::IndexHandle> ConditionData;
-  SmallVector<ConditionData*>::allocator_type::arena_type a;
-  SmallVector<ConditionData*> conditionData{a};
+  ::arangodb::containers::SmallVector<ConditionData*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
 
   auto cleanup = [&conditionData]() -> void {
     for (auto& it : conditionData) {

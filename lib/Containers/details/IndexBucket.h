@@ -22,13 +22,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_INDEX_BUCKET_H
-#define ARANGODB_BASICS_INDEX_BUCKET_H 1
+#ifndef ARANGODB_CONTAINERS_INDEX_BUCKET_H
+#define ARANGODB_CONTAINERS_INDEX_BUCKET_H 1
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
+#include "Basics/operating-system.h"
 #include "Logger/Logger.h"
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -36,7 +36,7 @@
 #endif
 
 namespace arangodb {
-namespace basics {
+namespace containers {
 
 template <class EntryType, class IndexType>
 struct IndexBucket {
@@ -46,11 +46,7 @@ struct IndexBucket {
                             // a key that was previously in the table
   EntryType* _table;        // the table itself
 
-  IndexBucket()
-      : _nrAlloc(0),
-        _nrUsed(0),
-        _nrCollisions(0),
-        _table(nullptr) {}
+  IndexBucket() : _nrAlloc(0), _nrUsed(0), _nrCollisions(0), _table(nullptr) {}
   IndexBucket(IndexBucket const&) = delete;
   IndexBucket& operator=(IndexBucket const&) = delete;
 
@@ -114,15 +110,13 @@ struct IndexBucket {
     _nrCollisions = 0;
   }
 
-  void deallocate() {
-    deallocateMemory();
-  }
+  void deallocate() { deallocateMemory(); }
 
  private:
   EntryType* allocateMemory(size_t numberElements) {
     // must be > 0 because we will use a modulus operation on the
     // number of elements
-    TRI_ASSERT(numberElements > 0); 
+    TRI_ASSERT(numberElements > 0);
     return new EntryType[numberElements]();
   }
 
@@ -141,7 +135,7 @@ struct IndexBucket {
   }
 };
 
-}  // namespace basics
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

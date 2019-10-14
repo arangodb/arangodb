@@ -24,8 +24,8 @@
 #ifndef ARANGOD_MMFILES_PRIMARY_INDEX_H
 #define ARANGOD_MMFILES_PRIMARY_INDEX_H 1
 
-#include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
+#include "Containers/AssocUnique.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -39,7 +39,10 @@
 
 namespace arangodb {
 
-class MMFilesPrimaryIndex;
+class MMFilesPrimaryIndexEqIterator;
+class MMFilesPrimaryIndexInIterator;
+class MMFilesAllIndexIterator;
+class MMFilesAnyIndexIterator;
 struct MMFilesSimpleIndexElement;
 namespace transaction {
 class Methods;
@@ -93,100 +96,13 @@ struct MMFilesPrimaryIndexHelper {
   }
 };
 
-typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper> MMFilesPrimaryIndexImpl;
-
-class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
- public:
-  MMFilesPrimaryIndexEqIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                MMFilesPrimaryIndex const* index,
-                                std::unique_ptr<VPackBuilder> keys);
-
-  ~MMFilesPrimaryIndexEqIterator();
-
-  char const* typeName() const override { return "primary-index-eq-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesPrimaryIndex const* _index;
-  std::unique_ptr<VPackBuilder> _key;
-  bool _done;
-};
-
-class MMFilesPrimaryIndexInIterator final : public IndexIterator {
- public:
-  MMFilesPrimaryIndexInIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                MMFilesPrimaryIndex const* index,
-                                std::unique_ptr<VPackBuilder> keys);
-
-  ~MMFilesPrimaryIndexInIterator();
-
-  char const* typeName() const override { return "primary-index-in-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesPrimaryIndex const* _index;
-  std::unique_ptr<VPackBuilder> _keys;
-  arangodb::velocypack::ArrayIterator _iterator;
-};
-
-class MMFilesAllIndexIterator final : public IndexIterator {
- public:
-  MMFilesAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                          MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl);
-
-  ~MMFilesAllIndexIterator() = default;
-
-  char const* typeName() const override { return "all-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  void reset() override;
-
- private:
-  MMFilesPrimaryIndexImpl const* _index;
-  arangodb::basics::BucketPosition _position;
-  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
-  uint64_t _total;
-};
-
-class MMFilesAnyIndexIterator final : public IndexIterator {
- public:
-  MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                          MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl);
-
-  ~MMFilesAnyIndexIterator() = default;
-
-  char const* typeName() const override { return "any-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesPrimaryIndexImpl const* _index;
-  arangodb::basics::BucketPosition _initial;
-  arangodb::basics::BucketPosition _position;
-  uint64_t _step;
-  uint64_t _total;
-};
-
 class MMFilesPrimaryIndex final : public MMFilesIndex {
   friend class MMFilesPrimaryIndexIterator;
 
  public:
+  using ImplType =
+      ::arangodb::containers::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper>;
+
   MMFilesPrimaryIndex() = delete;
 
   explicit MMFilesPrimaryIndex(arangodb::LogicalCollection& collection);
@@ -232,7 +148,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   ///        Convention: position === 0 indicates a new start.
   ///        DEPRECATED
   MMFilesSimpleIndexElement lookupSequential(transaction::Methods*,
-                                             arangodb::basics::BucketPosition& position,
+                                             arangodb::containers::BucketPosition& position,
                                              uint64_t& total);
 
   /// @brief request an iterator over all elements in the index in
@@ -250,7 +166,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   ///        Convention: position === UINT64_MAX indicates a new start.
   ///        DEPRECATED
   MMFilesSimpleIndexElement lookupSequentialReverse(transaction::Methods*,
-                                                    arangodb::basics::BucketPosition& position);
+                                                    arangodb::containers::BucketPosition& position);
 
   Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&, OperationMode mode);
@@ -300,8 +216,97 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
  private:
   /// @brief the actual index
-  std::unique_ptr<MMFilesPrimaryIndexImpl> _primaryIndex;
+  std::unique_ptr<ImplType> _primaryIndex;
 };
+
+class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
+ public:
+  MMFilesPrimaryIndexEqIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
+
+  ~MMFilesPrimaryIndexEqIterator();
+
+  char const* typeName() const override { return "primary-index-eq-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex const* _index;
+  std::unique_ptr<VPackBuilder> _key;
+  bool _done;
+};
+
+class MMFilesPrimaryIndexInIterator final : public IndexIterator {
+ public:
+  MMFilesPrimaryIndexInIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
+
+  ~MMFilesPrimaryIndexInIterator();
+
+  char const* typeName() const override { return "primary-index-in-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex const* _index;
+  std::unique_ptr<VPackBuilder> _keys;
+  arangodb::velocypack::ArrayIterator _iterator;
+};
+
+class MMFilesAllIndexIterator final : public IndexIterator {
+ public:
+  MMFilesAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          MMFilesPrimaryIndex const* index,
+                          MMFilesPrimaryIndex::ImplType const* indexImpl);
+
+  ~MMFilesAllIndexIterator() = default;
+
+  char const* typeName() const override { return "all-index-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+
+  void skip(uint64_t count, uint64_t& skipped) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex::ImplType const* _index;
+  arangodb::containers::BucketPosition _position;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
+  uint64_t _total;
+};
+
+class MMFilesAnyIndexIterator final : public IndexIterator {
+ public:
+  MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          MMFilesPrimaryIndex const* index,
+                          MMFilesPrimaryIndex::ImplType const* indexImpl);
+
+  ~MMFilesAnyIndexIterator() = default;
+
+  char const* typeName() const override { return "any-index-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex::ImplType const* _index;
+  arangodb::containers::BucketPosition _initial;
+  arangodb::containers::BucketPosition _position;
+  uint64_t _step;
+  uint64_t _total;
+};
+
 }  // namespace arangodb
 
 #endif
