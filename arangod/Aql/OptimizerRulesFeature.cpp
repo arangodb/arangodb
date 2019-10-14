@@ -317,7 +317,6 @@ void OptimizerRulesFeature::addRules() {
   // must be the first cluster optimizer rule
   registerRule("cluster-one-shard", clusterOneShardRule, OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
