@@ -281,14 +281,13 @@ void Aqlerror(YYLTYPE* locp,
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-static void CheckIntoVariables(Parser* parser, AstNode const* expression,
-                               int line, int column,
-                               arangodb::HashSet<Variable const*> const& variablesIntroduced) {
+static void CheckIntoVariables(Parser* parser, AstNode const* expression, int line, int column,
+                               ::arangodb::containers::HashSet<Variable const*> const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
 
-  arangodb::HashSet<Variable const*> varsInAssignment;
+  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -303,9 +302,9 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
 /// @brief register variables in the scope
 static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                                     int line, int column,
-                                    arangodb::HashSet<Variable const*>& variablesIntroduced,
+                                    ::arangodb::containers::HashSet<Variable const*>& variablesIntroduced,
                                     AstNode const* vars) {
-  arangodb::HashSet<Variable const*> varsInAssignment;
+  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
 
   size_t const n = vars->numMembers();
 
@@ -2795,7 +2794,7 @@ yyreduce:
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        arangodb::HashSet<Variable const*> variables;
+        ::arangodb::containers::HashSet<Variable const*> variables;
         RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, (yyvsp[-2].node));
       }
 
@@ -2809,7 +2808,7 @@ yyreduce:
 #line 829 "Aql/grammar.y" /* yacc.c:1652  */
     {
       /* AGGREGATE var = expr OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -2838,7 +2837,7 @@ yyreduce:
 #line 853 "Aql/grammar.y" /* yacc.c:1652  */
     {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -2855,7 +2854,7 @@ yyreduce:
       }
 
       // note all group variables
-      arangodb::HashSet<Variable const*> groupVars;
+      ::arangodb::containers::HashSet<Variable const*> groupVars;
       size_t n = (yyvsp[-3].node)->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = (yyvsp[-3].node)->getMember(i);
@@ -2873,7 +2872,7 @@ yyreduce:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          arangodb::HashSet<Variable const*> variablesUsed;
+          ::arangodb::containers::HashSet<Variable const*> variablesUsed;
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -2899,7 +2898,7 @@ yyreduce:
 #line 909 "Aql/grammar.y" /* yacc.c:1652  */
     {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -2923,7 +2922,7 @@ yyreduce:
 #line 928 "Aql/grammar.y" /* yacc.c:1652  */
     {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {

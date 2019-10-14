@@ -4,8 +4,8 @@
 //   license: you are granted a perpetual, irrevocable license to copy, modify,
 //   publish, and distribute this file as you see fit.
 
-#ifndef ARANGODB_HASH_SET_H
-#define ARANGODB_HASH_SET_H 1
+#ifndef ARANGODB_CONTAINERS_HASH_SET_IMPL_H
+#define ARANGODB_CONTAINERS_HASH_SET_IMPL_H 1
 
 #include <algorithm>
 #include <cstring>
@@ -17,7 +17,7 @@
 namespace emilib {
 
 /// like std::equal_to but no need to `#include <functional>`
-template<typename T>
+template <typename T>
 struct HashSetEqualTo {
   constexpr bool operator()(const T& lhs, const T& rhs) const {
     return lhs == rhs;
@@ -31,23 +31,24 @@ class HashSet {
   using MyType = HashSet<KeyT, HashT, EqT>;
 
  public:
-  using size_type       = size_t;
-  using value_type      = KeyT;
-  using reference       = KeyT&;
+  using size_type = size_t;
+  using value_type = KeyT;
+  using reference = KeyT&;
   using const_reference = const KeyT&;
 
   class iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
-    using difference_type   = size_t;
-    using distance_type     = size_t;
-    using value_type        = KeyT;
-    using pointer           = value_type*;
-    using reference         = value_type&;
+    using difference_type = size_t;
+    using distance_type = size_t;
+    using value_type = KeyT;
+    using pointer = value_type*;
+    using reference = value_type&;
 
-    iterator() { }
+    iterator() {}
 
-    iterator(MyType* hash_set, size_t bucket) : _set(hash_set), _bucket(bucket) {}
+    iterator(MyType* hash_set, size_t bucket)
+        : _set(hash_set), _bucket(bucket) {}
 
     iterator& operator++() {
       this->goto_next_element();
@@ -60,13 +61,9 @@ class HashSet {
       return iterator(_set, old_index);
     }
 
-    reference operator*() const {
-      return _set->_keys[_bucket];
-    }
+    reference operator*() const { return _set->_keys[_bucket]; }
 
-    pointer operator->() const {
-      return _set->_keys + _bucket;
-    }
+    pointer operator->() const { return _set->_keys + _bucket; }
 
     bool operator==(const iterator& rhs) const {
       return this->_bucket == rhs._bucket;
@@ -85,24 +82,26 @@ class HashSet {
 
    public:
     MyType* _set;
-    size_t  _bucket;
+    size_t _bucket;
   };
 
   class const_iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
-    using difference_type   = size_t;
-    using distance_type     = size_t;
-    using value_type        = const KeyT;
-    using pointer           = value_type*;
-    using reference         = value_type&;
+    using difference_type = size_t;
+    using distance_type = size_t;
+    using value_type = const KeyT;
+    using pointer = value_type*;
+    using reference = value_type&;
 
-    const_iterator() { }
+    const_iterator() {}
 
     // cppcheck-suppress noExplicitConstructor
-    /* implicit */ const_iterator(iterator proto) : _set(proto._set), _bucket(proto._bucket) {}
+    /* implicit */ const_iterator(iterator proto)
+        : _set(proto._set), _bucket(proto._bucket) {}
 
-    const_iterator(const MyType* hash_set, size_t bucket) : _set(hash_set), _bucket(bucket) {}
+    const_iterator(const MyType* hash_set, size_t bucket)
+        : _set(hash_set), _bucket(bucket) {}
 
     const_iterator& operator++() {
       this->goto_next_element();
@@ -115,13 +114,9 @@ class HashSet {
       return const_iterator(_set, old_index);
     }
 
-    reference operator*() const {
-      return _set->_keys[_bucket];
-    }
+    reference operator*() const { return _set->_keys[_bucket]; }
 
-    pointer operator->() const {
-      return _set->_keys + _bucket;
-    }
+    pointer operator->() const { return _set->_keys + _bucket; }
 
     bool operator==(const const_iterator& rhs) const {
       return this->_bucket == rhs._bucket;
@@ -140,7 +135,7 @@ class HashSet {
 
    public:
     const MyType* _set;
-    size_t        _bucket;
+    size_t _bucket;
   };
 
   HashSet() = default;
@@ -150,9 +145,7 @@ class HashSet {
     insert(other.cbegin(), other.cend());
   }
 
-  HashSet(HashSet&& other) noexcept {
-    doMove(std::move(other));
-  }
+  HashSet(HashSet&& other) noexcept { doMove(std::move(other)); }
 
   explicit HashSet(std::initializer_list<KeyT> const& values) : HashSet() {
     for (auto const& v : values) {
@@ -171,7 +164,7 @@ class HashSet {
 
   HashSet& operator=(HashSet&& other) noexcept {
     if (this != &other) {
-      for (size_t bucket=0; bucket<_num_buckets; ++bucket) {
+      for (size_t bucket = 0; bucket < _num_buckets; ++bucket) {
         if (_states[bucket] == State::FILLED) {
           _keys[bucket].~KeyT();
         }
@@ -185,7 +178,7 @@ class HashSet {
   }
 
   ~HashSet() {
-    for (size_t bucket=0; bucket<_num_buckets; ++bucket) {
+    for (size_t bucket = 0; bucket < _num_buckets; ++bucket) {
       if (_states[bucket] == State::FILLED) {
         _keys[bucket].~KeyT();
       }
@@ -196,22 +189,22 @@ class HashSet {
   }
 
   void swap(HashSet& other) {
-    std::swap(_hasher,           other._hasher);
-    std::swap(_eq,               other._eq);
-    std::swap(_buffer,           other._buffer);
-    std::swap(_states,           other._states);
-    std::swap(_keys,             other._keys);
-    std::swap(_num_buckets,      other._num_buckets);
-    std::swap(_num_filled,       other._num_filled);
+    std::swap(_hasher, other._hasher);
+    std::swap(_eq, other._eq);
+    std::swap(_buffer, other._buffer);
+    std::swap(_states, other._states);
+    std::swap(_keys, other._keys);
+    std::swap(_num_buckets, other._num_buckets);
+    std::swap(_num_filled, other._num_filled);
     std::swap(_max_probe_length, other._max_probe_length);
-    std::swap(_mask,             other._mask);
+    std::swap(_mask, other._mask);
   }
 
   // -------------------------------------------------------------
 
   iterator begin() {
     size_t bucket = 0;
-    while (bucket<_num_buckets && _states[bucket] != State::FILLED) {
+    while (bucket < _num_buckets && _states[bucket] != State::FILLED) {
       ++bucket;
     }
     return iterator(this, bucket);
@@ -219,40 +212,26 @@ class HashSet {
 
   const_iterator cbegin() const {
     size_t bucket = 0;
-    while (bucket<_num_buckets && _states[bucket] != State::FILLED) {
+    while (bucket < _num_buckets && _states[bucket] != State::FILLED) {
       ++bucket;
     }
     return const_iterator(this, bucket);
   }
 
-  const_iterator begin() const {
-    return cbegin();
-  }
+  const_iterator begin() const { return cbegin(); }
 
-  iterator end() {
-    return iterator(this, _num_buckets);
-  }
+  iterator end() { return iterator(this, _num_buckets); }
 
-  const_iterator cend() const {
-    return const_iterator(this, _num_buckets);
-  }
+  const_iterator cend() const { return const_iterator(this, _num_buckets); }
 
-  const_iterator end() const {
-    return cend();
-  }
+  const_iterator end() const { return cend(); }
 
-  size_t size() const {
-    return _num_filled;
-  }
+  size_t size() const { return _num_filled; }
 
-  bool empty() const {
-    return _num_filled == 0;
-  }
+  bool empty() const { return _num_filled == 0; }
 
   // Returns the number of buckets.
-  size_t bucket_count() const {
-    return _num_buckets;
-  }
+  size_t bucket_count() const { return _num_buckets; }
 
   /// Returns average number of elements per bucket.
   float load_factor() const {
@@ -297,12 +276,12 @@ class HashSet {
     auto bucket = find_or_allocate(key);
 
     if (_states[bucket] == State::FILLED) {
-      return { iterator(this, bucket), false };
+      return {iterator(this, bucket), false};
     } else {
-      new(_keys + bucket) KeyT(key);
+      new (_keys + bucket) KeyT(key);
       _states[bucket] = State::FILLED;
       _num_filled++;
-      return { iterator(this, bucket), true };
+      return {iterator(this, bucket), true};
     }
   }
 
@@ -316,16 +295,16 @@ class HashSet {
     auto bucket = find_or_allocate(key);
 
     if (_states[bucket] == State::FILLED) {
-      return { iterator(this, bucket), false };
+      return {iterator(this, bucket), false};
     } else {
-      new(_keys + bucket) KeyT(std::move(key));
+      new (_keys + bucket) KeyT(std::move(key));
       _states[bucket] = State::FILLED;
       _num_filled++;
-      return { iterator(this, bucket), true };
+      return {iterator(this, bucket), true};
     }
   }
 
-  template<class... Args>
+  template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
     return insert(KeyT(std::forward<Args>(args)...));
   }
@@ -364,7 +343,7 @@ class HashSet {
 
   /// Remove all elements, keeping full capacity.
   void clear() {
-    for (size_t bucket=0; bucket<_num_buckets; ++bucket) {
+    for (size_t bucket = 0; bucket < _num_buckets; ++bucket) {
       if (_states[bucket] == State::FILLED) {
         _states[bucket] = State::INACTIVE;
         _keys[bucket].~KeyT();
@@ -376,12 +355,14 @@ class HashSet {
 
   /// Make room for this many elements
   void reserve(size_t num_elems) {
-    size_t required_buckets = num_elems + num_elems/2 + 1;
+    size_t required_buckets = num_elems + num_elems / 2 + 1;
     if (required_buckets <= _num_buckets) {
       return;
     }
     size_t num_buckets = 8;
-    while (num_buckets < required_buckets) { num_buckets *= 2; }
+    while (num_buckets < required_buckets) {
+      num_buckets *= 2;
+    }
 
     size_t states_size = ((num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
     size_t keys_size = num_buckets * sizeof(KeyT);
@@ -393,32 +374,32 @@ class HashSet {
       new_buffer = new char[states_size + keys_size];
     }
     auto new_states = reinterpret_cast<State*>(new_buffer);
-    auto new_keys  = reinterpret_cast<KeyT*>(new_buffer + states_size);
+    auto new_keys = reinterpret_cast<KeyT*>(new_buffer + states_size);
 
     // auto old_num_filled  = _num_filled;
     auto old_num_buckets = _num_buckets;
-    auto old_buffer      = _buffer;
-    auto old_states      = _states;
-    auto old_keys        = _keys;
+    auto old_buffer = _buffer;
+    auto old_states = _states;
+    auto old_keys = _keys;
 
-    _num_filled  = 0;
+    _num_filled = 0;
     _num_buckets = num_buckets;
-    _mask        = _num_buckets - 1;
-    _buffer      = new_buffer;
-    _states      = new_states;
-    _keys        = new_keys;
+    _mask = _num_buckets - 1;
+    _buffer = new_buffer;
+    _states = new_states;
+    _keys = new_keys;
 
     std::fill_n(_states, num_buckets, State::INACTIVE);
 
     _max_probe_length = -1;
 
-    for (size_t src_bucket=0; src_bucket<old_num_buckets; src_bucket++) {
+    for (size_t src_bucket = 0; src_bucket < old_num_buckets; src_bucket++) {
       if (old_states[src_bucket] == State::FILLED) {
         auto& src = old_keys[src_bucket];
 
         auto dst_bucket = find_empty_bucket(src);
         _states[dst_bucket] = State::FILLED;
-        new(_keys + dst_bucket) KeyT(std::move(src));
+        new (_keys + dst_bucket) KeyT(std::move(src));
         _num_filled += 1;
 
         src.~KeyT();
@@ -447,12 +428,12 @@ class HashSet {
       _states = reinterpret_cast<State*>(_buffer);
       size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
       memcpy(&_local_buffer[0], &other._local_buffer[0], states_size);
-      _keys  = (KeyT*)(_buffer + states_size);
-    
-      for (size_t src_bucket=0; src_bucket<other._num_buckets; src_bucket++) {
+      _keys = (KeyT*)(_buffer + states_size);
+
+      for (size_t src_bucket = 0; src_bucket < other._num_buckets; src_bucket++) {
         if (other._states[src_bucket] == State::FILLED) {
           auto& src = other._keys[src_bucket];
-          new(_keys + src_bucket) KeyT(std::move(src));
+          new (_keys + src_bucket) KeyT(std::move(src));
         }
       }
     }
@@ -472,35 +453,35 @@ class HashSet {
   }
 
   // Can we fit another element?
-  void check_expand_need() {
-    reserve(_num_filled + 1);
-  }
+  void check_expand_need() { reserve(_num_filled + 1); }
 
   // Find the bucket with this key, or return (size_t)-1
   size_t find_filled_bucket(const KeyT& key) const {
-    if (empty()) { return (size_t)-1; } // Optimization
+    if (empty()) {
+      return (size_t)-1;
+    }  // Optimization
 
     auto hash_value = _hasher(key);
-    for (int offset=0; offset<=_max_probe_length; ++offset) {
+    for (int offset = 0; offset <= _max_probe_length; ++offset) {
       auto bucket = (hash_value + offset) & _mask;
       if (_states[bucket] == State::FILLED) {
         if (_eq(_keys[bucket], key)) {
           return bucket;
         }
       } else if (_states[bucket] == State::INACTIVE) {
-        return (size_t)-1; // End of the chain!
+        return (size_t)-1;  // End of the chain!
       }
     }
     return (size_t)-1;
   }
 
-  // Find the bucket with this key, or return a good empty bucket to place the key in.
-  // In the latter case, the bucket is expected to be filled.
+  // Find the bucket with this key, or return a good empty bucket to place the
+  // key in. In the latter case, the bucket is expected to be filled.
   size_t find_or_allocate(const KeyT& key) {
     auto hash_value = _hasher(key);
     size_t hole = (size_t)-1;
-    int offset=0;
-    for (; offset<=_max_probe_length; ++offset) {
+    int offset = 0;
+    for (; offset <= _max_probe_length; ++offset) {
       auto bucket = (hash_value + offset) & _mask;
 
       if (_states[bucket] == State::FILLED) {
@@ -523,7 +504,7 @@ class HashSet {
     }
 
     // No hole found within _max_probe_length
-    for (; ; ++offset) {
+    for (;; ++offset) {
       auto bucket = (hash_value + offset) & _mask;
 
       if (_states[bucket] != State::FILLED) {
@@ -536,7 +517,7 @@ class HashSet {
   // key is not in this map. Find a place to put it.
   size_t find_empty_bucket(const KeyT& key) {
     auto hash_value = _hasher(key);
-    for (int offset=0; ; ++offset) {
+    for (int offset = 0;; ++offset) {
       auto bucket = (hash_value + offset) & _mask;
       if (_states[bucket] != State::FILLED) {
         if (offset > _max_probe_length) {
@@ -549,34 +530,23 @@ class HashSet {
 
  private:
   enum class State : uint8_t {
-    INACTIVE, // Never been touched
-    ACTIVE,   // Is inside a search-chain, but is empty
-    FILLED    // Is set with key/value
+    INACTIVE,  // Never been touched
+    ACTIVE,    // Is inside a search-chain, but is empty
+    FILLED     // Is set with key/value
   };
 
-  HashT   _hasher;
-  EqT     _eq;
-  char*   _buffer           = nullptr;
-  State*  _states           = nullptr;
-  KeyT*   _keys             = nullptr;
-  size_t  _num_buckets      =  0;
-  size_t  _num_filled       =  0;
-  int     _max_probe_length = -1; // Our longest bucket-brigade is this long. ONLY when we have zero elements is this ever negative (-1).
-  size_t  _mask             = 0;  // _num_buckets minus one
-  char    _local_buffer[80];      // first few bytes are always allocated here
+  HashT _hasher;
+  EqT _eq;
+  char* _buffer = nullptr;
+  State* _states = nullptr;
+  KeyT* _keys = nullptr;
+  size_t _num_buckets = 0;
+  size_t _num_filled = 0;
+  int _max_probe_length = -1;  // Our longest bucket-brigade is this long. ONLY when we have zero elements is this ever negative (-1).
+  size_t _mask = 0;            // _num_buckets minus one
+  char _local_buffer[80];      // first few bytes are always allocated here
 };
 
-} // namespace emilib
-
-// map HashSet into arangodb namespace
-namespace arangodb {
-
-template<typename T> 
-using HashSetEqualTo = emilib::HashSetEqualTo<T>;
-
-template<typename KeyT, typename HashT = std::hash<KeyT>, typename EqT = HashSetEqualTo<KeyT>> 
-using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
-
-}
+}  // namespace emilib
 
 #endif

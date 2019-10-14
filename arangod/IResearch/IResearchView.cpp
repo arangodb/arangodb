@@ -807,7 +807,7 @@ arangodb::Result IResearchView::renameImpl(std::string const& oldName) {
 IResearchView::Snapshot const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
-    arangodb::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
+    ::arangodb::containers::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
     void const* key /*= nullptr*/) const {
   if (!trx.state()) {
     LOG_TOPIC("47098", WARN, arangodb::iresearch::TOPIC)
@@ -817,7 +817,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     return nullptr;
   }
 
-  arangodb::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
+  ::arangodb::containers::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
   auto const* collections = &restrictedCollections;
 
   if (shards) {  // set requested shards
