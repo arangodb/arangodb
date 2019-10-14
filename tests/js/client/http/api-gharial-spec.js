@@ -488,7 +488,7 @@ describe('_api/gharial', () => {
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
-          expect(req.code).to.equal(404);
+          expect(req.code).to.equal(400);
           expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
@@ -509,7 +509,7 @@ describe('_api/gharial', () => {
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
-          expect(req.code).to.equal(404);
+          expect(req.code).to.equal(400);
           expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
@@ -738,7 +738,7 @@ describe('_api/gharial', () => {
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
           let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
-          expect(req.code).to.equal(404);
+          expect(req.code).to.equal(400);
           expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
@@ -759,7 +759,7 @@ describe('_api/gharial', () => {
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
           let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
-          expect(req.code).to.equal(404);
+          expect(req.code).to.equal(400);
           expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
