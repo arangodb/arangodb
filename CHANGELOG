@@ -3,7 +3,9 @@ v3.5.2 (XXXX-XX-XX)
 
 * Fixed available flag for hotbackup.
 
-* Fixed list with id for partially available hotbackups
+* Fixed list with id for partially available hotbackups.
+
+* Fixed agency TTL bug happening under certain rare conditions.
 
 * Improved performance of some agency helper functions.
 

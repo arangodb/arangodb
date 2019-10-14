@@ -110,13 +110,13 @@ struct log_t {
   std::chrono::milliseconds timestamp;  // Timestamp
 
   log_t(index_t idx, term_t t, buffer_t const& e,
-        std::string const& clientId = std::string())
+        std::string const& clientId,
+        uint64_t const& m = 0)
       : index(idx),
         term(t),
         entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
-        timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch())) {
+        timestamp(m) {
   }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
