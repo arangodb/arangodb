@@ -107,7 +107,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--server.force-json",
                      "force not to use velocypack for better debugability",
-                     new BooleanParameter(&_forceJson));
+                     new BooleanParameter(&_forceJson),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30600);
 
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none

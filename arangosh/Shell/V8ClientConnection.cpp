@@ -64,7 +64,8 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
       _mode("unknown mode"),
       _role("UNKNOWN"),
       _loop(1),
-      _vpackOptions(VPackOptions::Defaults) {
+      _vpackOptions(VPackOptions::Defaults),
+      _forceJson(false) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
   _builder.onFailure([this](fuerte::Error error, std::string const& msg) {
@@ -1533,8 +1534,15 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
           << "error converting request body: " << TRI_errno_string(res);
       return v8::Null(isolate);
     }
-    req->addVPack(std::move(buffer));
-    req->header.contentType(fuerte::ContentType::VPack);
+    if (_forceJson) {
+      auto resultJson = builder.slice().toJson();
+      char const* resStr = resultJson.c_str();
+      req->addBinary(reinterpret_cast<uint8_t const*>(resStr), resultJson.length());
+      req->header.contentType(fuerte::ContentType::Json);
+    } else {
+      req->addVPack(std::move(buffer));
+      req->header.contentType(fuerte::ContentType::VPack);
+    }
   } else {
     // body is null or undefined
     if (req->header.contentType() == fuerte::ContentType::Unset) {
