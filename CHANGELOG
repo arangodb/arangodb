@@ -6,6 +6,10 @@ v3.5.2 (XXXX-XX-XX)
   so such queries will now be aborted early on with a parse error 
   instead of running into undefined behavior.
 
+* Improved performance of some agency helper functions.
+
+* Fixed search not working in document view while in code mode.
+
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
