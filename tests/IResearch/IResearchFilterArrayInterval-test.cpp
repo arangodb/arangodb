@@ -686,7 +686,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
          operation.first,
          "d.a RETURN d");
       SCOPED_TRACE(testing::Message("Query:") << queryString);
-      assertFilterExecutionFail(vocbase(), queryString);
+      assertFilterFail(vocbase(), queryString);
     }
   }
 }

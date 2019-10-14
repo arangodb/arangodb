@@ -1906,34 +1906,34 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       &ExpressionContextMock::EMPTY);
 
   // not a value in array
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ANY IN d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ANY IN d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ANY == d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ANY == d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ALL IN d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ALL IN d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] ALL == d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] ALL == d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] NONE IN d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] NONE IN d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(), "FOR d IN collection FILTER ['1',['2'],'3'] NONE == d.a RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN collection FILTER ['1', {\"abc\": \"def\"},'3'] NONE == d.a RETURN d");
 }
