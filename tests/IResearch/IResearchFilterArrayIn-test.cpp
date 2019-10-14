@@ -744,34 +744,34 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     expected.add<irs::all>();
-
+    expected.boost(2.5);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ALL IN d.quick.brown.fox RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER [] ALL IN d['quick'].brown.fox RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ALL == d.quick.brown.fox RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ALL IN d.quick.brown.fox, 2.5) RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER [] ALL == d['quick'].brown.fox RETURN d", expected);
+        "FOR d IN collection FILTER BOOST([] ALL IN d['quick'].brown.fox, 2.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER BOOST([] ALL == d.quick.brown.fox, 2.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST([] ALL == d['quick'].brown.fox, 2.5) RETURN d", expected);
   }
 
   // empty array NONE
   {
     irs::Or expected;
     expected.add<irs::all>();
-
+    expected.boost(2.5);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] NONE IN d.quick.brown.fox RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN collection FILTER [] NONE IN d['quick'].brown.fox RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] NONE == d.quick.brown.fox RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] NONE IN d.quick.brown.fox, 2.5) RETURN d", expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER [] NONE == d['quick'].brown.fox RETURN d", expected);
+        "FOR d IN collection FILTER BOOST([] NONE IN d['quick'].brown.fox, 2.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER BOOST([] NONE == d.quick.brown.fox, 2.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST([] NONE == d['quick'].brown.fox, 2.5) RETURN d", expected);
   }
 
   // dynamic complex attribute name ANY
@@ -3137,41 +3137,42 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     expected.add<irs::empty>();
+    expected.boost(2.5);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER BOOST([] ANY NOT IN d.a, 2.5) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER BOOST([] ANY NOT IN d['a'], 2.5) RETURN d", expected);
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ANY NOT IN d.a RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ANY != d.a, 2.5) RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ANY NOT IN d['a'] RETURN d", expected);
-
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ANY != d.a RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ANY != d['a'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ANY != d['a'], 2.5) RETURN d", expected);
   }
 
   // empty array ALL/NONE
   {
     irs::Or expected;
     expected.add<irs::all>();
+    expected.boost(2.5);
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ALL NOT IN d.a RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ALL NOT IN d.a, 2.5) RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ALL NOT IN d['a'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ALL NOT IN d['a'], 2.5) RETURN d", expected);
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ALL != d.a RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ALL != d.a, 2.5) RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] ALL != d['a'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] ALL != d['a'], 2.5) RETURN d", expected);
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] NONE NOT IN d.a RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] NONE NOT IN d.a, 2.5) RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] NONE NOT IN d['a'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] NONE NOT IN d['a'], 2.5) RETURN d", expected);
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] NONE != d.a RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] NONE != d.a, 2.5) RETURN d", expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN collection FILTER [] NONE != d['a'] RETURN d", expected);
+        vocbase(), "FOR d IN collection FILTER BOOST([] NONE != d['a'], 2.5) RETURN d", expected);
   }
 }

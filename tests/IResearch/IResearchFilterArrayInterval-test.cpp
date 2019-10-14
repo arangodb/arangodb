@@ -689,13 +689,13 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       assertFilterFail(vocbase(), queryString);
     }
   }
-  // empty array ANY
+  // empty array
   {
     for (auto operation : intervalOperations) {
       auto queryString = buildQueryString(
-        "FOR d IN collection FILTER []",
+        "FOR d IN collection FILTER BOOST([]",
         operation.first,
-        "d.a RETURN d");
+        "d.a, 2.5) RETURN d");
       SCOPED_TRACE(testing::Message("Query") << queryString);
       irs::Or expected;
       if (operation.first.find("ANY") != std::string::npos) {
@@ -703,6 +703,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       } else {
         expected.add<irs::all>();
       }
+      expected.boost(2.5);
       assertFilterSuccess(
         vocbase(), queryString, expected);
     }

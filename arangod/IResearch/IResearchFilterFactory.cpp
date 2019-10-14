@@ -495,7 +495,7 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
 }
 
 template <irs::Bound Bound>
-arangodb::Result byRangeValue(irs::boolean_filter* filter, std::string name, const ScopedAqlValue& value,
+arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlValue& value,
                               bool const incl, QueryContext const& ctx, FilterContext const& filterCtx) {
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL: {
@@ -599,7 +599,7 @@ arangodb::Result byRange(irs::boolean_filter* filter,
       return { TRI_ERROR_BAD_PARAMETER, "can not execute expression" };
     }
   }
-  return byRangeValue<Bound>(filter, name, value, incl, ctx, filterCtx);
+  return byRange<Bound>(filter, name, value, incl, ctx, filterCtx);
 }
 
 arangodb::Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -745,26 +745,26 @@ std::tuple<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayCompars
     const arangodb::aql::AstNode* qualifierNode, size_t arraySize) {
   TRI_ASSERT(qualifierNode);
   auto qualifierType = qualifierNode->getIntValue(true);
-  arangodb::aql::AstNodeType expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+  arangodb::aql::AstNodeType expansionNodeType = arangodb::aql::NODE_TYPE_ROOT;
   if (0 == arraySize) {
     expansionNodeType = arangodb::aql::NODE_TYPE_ROOT; // no subfilters expansion needed
     switch (qualifierType) {
-    case arangodb::aql::Quantifier::ANY:
-      if (filter) {
-        filter->add<irs::empty>();
-      }
-      break;
-    case arangodb::aql::Quantifier::ALL:
-    case arangodb::aql::Quantifier::NONE:
-      if (filter) {
-        filter->add<irs::all>();
-      }
-      break;
-    default:
-      TRI_ASSERT(false); // new qualifier added ?
-      return std::make_tuple(
-          arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator"),
-          arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+      case arangodb::aql::Quantifier::ANY:
+        if (filter) {
+          filter->add<irs::empty>();
+        }
+        break;
+      case arangodb::aql::Quantifier::ALL:
+      case arangodb::aql::Quantifier::NONE:
+        if (filter) {
+          filter->add<irs::all>();
+        }
+        break;
+      default:
+        TRI_ASSERT(false); // new qualifier added ?
+        return std::make_tuple(
+            arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator"),
+            arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
     }
   } else {
     // NONE is inverted ALL so do conversion
@@ -957,12 +957,12 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
     if (!buildRes.ok()) {
       return buildRes;
     }
+    if (filter) {
+      filter->boost(filterCtx.boost);
+    }
     if (arangodb::aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
       // nothing to do more
       return {};
-    }
-    if (filter) {
-      filter->boost(filterCtx.boost);
     }
     FilterContext const subFilterCtx{
       filterCtx.analyzer,
@@ -1041,11 +1041,11 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
       if (!buildRes.ok()) {
         return buildRes;
       }
+      filter->boost(filterCtx.boost);
       if (arangodb::aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
         // nothing to do more
         return {};
       }
-      filter->boost(filterCtx.boost);
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
           irs::no_boost()  // reset boost
@@ -1063,8 +1063,8 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
                         arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == arrayExpansionNodeType;
       for (size_t i = 0; i < n; ++i) {
         auto rv = min ?
-          byRangeValue<irs::Bound::MIN>(filter, fieldName, value.at(i), incl, ctx, subFilterCtx) :
-          byRangeValue<irs::Bound::MAX>(filter, fieldName, value.at(i), incl, ctx, subFilterCtx);
+          byRange<irs::Bound::MIN>(filter, fieldName, value.at(i), incl, ctx, subFilterCtx) :
+          byRange<irs::Bound::MAX>(filter, fieldName, value.at(i), incl, ctx, subFilterCtx);
         if (rv.fail()) {
           return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
         }
@@ -1130,12 +1130,12 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
     if (!buildRes.ok()) {
       return buildRes;
     }
+    if (filter) {
+       filter->boost(filterCtx.boost);
+    }
     if (arangodb::aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
       // nothing to do more
       return {};
-    }
-    if (filter) {
-       filter->boost(filterCtx.boost);
     }
     TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == arrayExpansionNodeType); // code below expects only equality operation
     FilterContext const subFilterCtx{
@@ -1216,11 +1216,11 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
       if (!buildRes.ok()) {
         return buildRes;
       }
+      filter->boost(filterCtx.boost);
       if (arangodb::aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
         // nothing to do more
         return {};
       }
-      filter->boost(filterCtx.boost);
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
           irs::no_boost()  // reset boost
