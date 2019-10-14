@@ -179,7 +179,7 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
-  if (!res.ok()) {
+  if (res.fail()) {
     LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
     return res;
   }
