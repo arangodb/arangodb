@@ -51,8 +51,8 @@ void MMFilesOptimizerRules::registerResources(aql::OptimizerRulesFeature& featur
 void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
                                                OptimizerRule const& rule) {
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
 
   bool modified = false;

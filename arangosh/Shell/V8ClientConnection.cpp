@@ -1700,7 +1700,15 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     char const* str = reinterpret_cast<char const*>(sb.data());
 
     if (res->isContentTypeJSON()) {
-      return TRI_FromJsonString(isolate, str, sb.size(), nullptr);
+      char* error = nullptr;
+      v8::Local<v8::Value> ret = TRI_FromJsonString(isolate, str, sb.size(), &error);
+      if (error != nullptr) {
+        std::string err("Error parsing the server JSON reply: ");
+        err += error;
+        free(error);
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+      }
+      return ret;
     }
     // return body as string
     return TRI_V8_PAIR_STRING(isolate, str, sb.size());

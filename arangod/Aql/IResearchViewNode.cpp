@@ -219,7 +219,7 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          }
 
          auto& resolver = query.resolver();
-         arangodb::HashSet<TRI_voc_cid_t> sources;
+         ::arangodb::containers::HashSet<TRI_voc_cid_t> sources;
 
          // get list of CIDs for restricted collections
          for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
@@ -366,7 +366,7 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref,
-                     arangodb::HashSet<aql::Variable const*>& vars) {
+                     ::arangodb::containers::HashSet<aql::Variable const*>& vars) {
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
   vars.erase(&ref);  // remove "our" variable
@@ -445,7 +445,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
-  arangodb::HashSet<aql::Variable const*> vars;
+  ::arangodb::containers::HashSet<aql::Variable const*> vars;
   int mask = 0;
 
   // evaluate filter condition volatility
@@ -492,7 +492,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
   /// @brief constructs snapshot from a given snapshot
   ///        according to specified set of collections
   Snapshot(const IResearchView::Snapshot& rhs,
-           arangodb::HashSet<TRI_voc_cid_t> const& collections);
+           ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections);
 
   /// @returns corresponding sub-reader
   virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
@@ -523,7 +523,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
 };  // Snapshot
 
 Snapshot::Snapshot(const IResearchView::Snapshot& rhs,
-                   arangodb::HashSet<TRI_voc_cid_t> const& collections)
+                   ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections)
     : _docs_count(0), _live_docs_count(0) {
   for (size_t i = 0, size = rhs.size(); i < size; ++i) {
     auto const cid = rhs.cid(i);
@@ -577,7 +577,7 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
 
-  arangodb::HashSet<TRI_voc_cid_t> collections;
+  ::arangodb::containers::HashSet<TRI_voc_cid_t> collections;
   for (auto& shard : node.shards()) {
     auto collection = resolver->getCollection(shard);
 
@@ -1052,7 +1052,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const {
+void IResearchViewNode::getVariablesUsedHere(
+    ::arangodb::containers::HashSet<aql::Variable const*>& vars) const {
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
@@ -1083,7 +1084,7 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
       std::make_shared<std::unordered_set<aql::RegisterId>>();
 
   if (!::filterConditionIsEmpty(_filterCondition)) {
-    arangodb::HashSet<aql::Variable const*> vars;
+    ::arangodb::containers::HashSet<aql::Variable const*> vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
     for (auto const& it : vars) {

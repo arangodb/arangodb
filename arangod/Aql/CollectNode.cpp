@@ -476,7 +476,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }
