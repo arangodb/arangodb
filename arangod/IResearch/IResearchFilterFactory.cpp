@@ -742,11 +742,11 @@ arangodb::Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ct
 
 std::tuple<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsionPreFilter(
     irs::boolean_filter* &filter, arangodb::aql::AstNodeType arrayComparsion,
-    const arangodb::aql::AstNode* qualifierNode, bool emptyArray) {
+    const arangodb::aql::AstNode* qualifierNode, size_t arraySize) {
   TRI_ASSERT(qualifierNode);
   auto qualifierType = qualifierNode->getIntValue(true);
   arangodb::aql::AstNodeType expandNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
-  if (emptyArray) {
+  if (0 == arraySize) {
     switch (qualifierType) {
     case arangodb::aql::Quantifier::ANY:
       filter->add<irs::empty>();
@@ -945,7 +945,7 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
     arangodb::aql::AstNodeType normalizeNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
     if (!n) {
       if (filter) {
-        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
         if (!buildRes.ok()) {
           return buildRes;
         }
@@ -955,7 +955,7 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
       return {};
     }
     if (filter) {
-      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, false);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
       if (!buildRes.ok()) {
         return buildRes;
       }
@@ -1036,14 +1036,14 @@ arangodb::Result fromArrayInterval(irs::boolean_filter*& filter, QueryContext co
       arangodb::Result buildRes;
       arangodb::aql::AstNodeType normalizeNodeType;
       if (!n) {
-        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
         if (!buildRes.ok()) {
           return buildRes;
         }
         // nothing to do more
         return {};
       }
-      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, false);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
       if (!buildRes.ok()) {
           return buildRes;
       }
@@ -1130,7 +1130,7 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
     arangodb::aql::AstNodeType normalizeNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
     if (!n) {
       if (filter) {
-        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
         if (!buildRes.ok()) {
           return buildRes;
         }
@@ -1141,7 +1141,7 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
     }
 
     if (filter) {
-       std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, false);
+       std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
        if (!buildRes.ok()) {
           return buildRes;
        }
@@ -1224,7 +1224,7 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
       arangodb::Result buildRes;
       arangodb::aql::AstNodeType normalizeNodeType;
       if (!n) {
-        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, true);
+        std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
         if (!buildRes.ok()) {
           return buildRes;
         }
@@ -1232,7 +1232,7 @@ arangodb::Result fromArrayIn(irs::boolean_filter* filter, QueryContext const& ct
         // nothing to do more
         return {};
       }
-      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, false);
+      std::tie(buildRes, normalizeNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
       if (!buildRes.ok()) {
           return buildRes;
       }
