@@ -50,8 +50,6 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
                              bool allowJwtSecret, double connectionTimeout, double requestTimeout)
     : HttpEndpointProvider(server, "Client"),
       _databaseName("_system"),
-      _authentication(true),
-      _askJwtSecret(false),
       _endpoint(Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)),
       _username("root"),
       _password(""),
@@ -60,11 +58,14 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
       _sslProtocol(TLS_V12),
-      _allowJwtSecret(allowJwtSecret),
       _retries(DEFAULT_RETRIES),
+      _authentication(true),
+      _askJwtSecret(false),
+      _allowJwtSecret(allowJwtSecret),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false)
+      _haveServerPassword(false),
+      _forceJson(false)
 #if _WIN32
       ,
       _codePage(65001),  // default to UTF8
@@ -103,6 +104,12 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "authentication is required, the user will be prompted "
                      "for a password",
                      new StringParameter(&_password));
+
+  options->addOption("--server.force-json",
+                     "force to not use VelocyPack for easier debugging",
+                     new BooleanParameter(&_forceJson),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30600);
 
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none

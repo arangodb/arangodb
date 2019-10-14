@@ -269,7 +269,7 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
 template <SocketType T>
 bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
-  llhttp_errno_t err;
+  llhttp_errno_t err = HPE_OK;
   if (ec) { // got a connection error
     if (ec == asio_ns::error::misc_errors::eof) {
       err = llhttp_finish(&_parser);

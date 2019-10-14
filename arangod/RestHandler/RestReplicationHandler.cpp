@@ -1150,7 +1150,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
+  toMerge.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v33)));
   if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
     // system collection?
     toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
@@ -2799,7 +2799,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v31)));
   if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
     // system collection?
     patch.add("isSystem", VPackValue(true));
