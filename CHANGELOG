@@ -5,16 +5,20 @@ v3.5.2 (XXXX-XX-XX)
 
 * Fixed list with id for partially available hotbackups
 
+* Improved performance of some agency helper functions.
+
+* Fixed search not working in document view while in code mode.
+
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
-* Fixed issue #10193: Arangoexport does not handle line feeds when exporting as 
+* Fixed issue #10193: Arangoexport does not handle line feeds when exporting as
   csv.
 
 * Removed debug log messages "found comm task ..." that could be logged
   on server shutdown.
 
-* Fixed issue #10183: Arangoimport imports on _system when you try to 
+* Fixed issue #10183: Arangoimport imports on _system when you try to
   create a new database.
 
   This bugfix fixes the output of arangoimport, which could display a
@@ -46,10 +50,10 @@ v3.5.1 (2019-10-07)
   `--javascript.copy-installation`. This potentially fixes the following
   error message at startup:
 
-      Error copying JS installation files to '...': 
+      Error copying JS installation files to '...':
       failed to open source file ...: No such file or directory
 
-* Added startup option `--cluster.max-number-of-shards` for restricting the 
+* Added startup option `--cluster.max-number-of-shards` for restricting the
   maximum number of shards when creating new collections. The default
   value for this setting is `1000`, which is also the previously hard-coded
   built-in limit. A value of `0` for this option means "unrestricted".
@@ -69,8 +73,8 @@ v3.5.1 (2019-10-07)
     No collections can be created which have a replication factor value
     above this setting's value. The default value is 10.
   - `--cluster.default-replication-factor`: this settings controls the default
-    replication factor value that is used when creating new collections and 
-    no value of replication factor has been specified. 
+    replication factor value that is used when creating new collections and
+    no value of replication factor has been specified.
     If no value is set for this option, the value of the option
     `--cluster.min-replication-factor` will be used.
 
@@ -142,7 +146,7 @@ v3.5.1 (2019-10-07)
 
 * Added UI support to create documents in a collection using smartGraphAttribute
   and/or smartJoinAttribute.
-  
+
 * Add count of objects to latency reporting in arangoimport.
 
 * Harden database creation against spurious "duplicate name" errors that
