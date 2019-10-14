@@ -76,6 +76,7 @@ class V8ClientConnection {
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }
+  void setForceJson(bool value) { _forceJson = value; };
   std::string username() const { return _builder.user(); }
   std::string password() const { return _builder.password(); }
   int lastHttpReturnCode() const { return _lastHttpReturnCode; }
@@ -162,6 +163,7 @@ class V8ClientConnection {
   fuerte::ConnectionBuilder _builder;
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
+  bool _forceJson;
 };
 }  // namespace arangodb
 
