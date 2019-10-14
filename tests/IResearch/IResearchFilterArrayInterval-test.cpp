@@ -689,4 +689,22 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       assertFilterFail(vocbase(), queryString);
     }
   }
+  // empty array ANY
+  {
+    for (auto operation : intervalOperations) {
+      auto queryString = buildQueryString(
+        "FOR d IN collection FILTER []",
+        operation.first,
+        "d.a RETURN d");
+      SCOPED_TRACE(testing::Message("Query") << queryString);
+      irs::Or expected;
+      if (operation.first.find("ANY") != std::string::npos) {
+        expected.add<irs::empty>();
+      } else {
+        expected.add<irs::all>();
+      }
+      assertFilterSuccess(
+        vocbase(), queryString, expected);
+    }
+  }
 }
