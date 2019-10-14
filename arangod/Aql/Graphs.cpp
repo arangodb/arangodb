@@ -37,7 +37,7 @@ EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
       _toCondition(nullptr),
       _modCondition(modCondition),
       _containsCondition(false) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_modCondition != nullptr) {
     TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
   }
@@ -58,7 +58,7 @@ void EdgeConditionBuilder::swapSides(AstNode* cond) {
   TRI_ASSERT(cond == _fromCondition || cond == _toCondition);
   TRI_ASSERT(cond->type == NODE_TYPE_OPERATOR_BINARY_EQ);
   if (_containsCondition) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // If used correctly this class guarantuees that the last element
     // of the nary-and is the _from or _to part and is exchangable.
     TRI_ASSERT(_modCondition->numMembers() > 0);

@@ -80,13 +80,10 @@ class MMFilesEngine final : public StorageEngine {
   // flush wal wait for collector
   void stop() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 0.5; }
-
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }
-  
+
   void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -110,7 +107,7 @@ class MMFilesEngine final : public StorageEngine {
                     std::shared_ptr<VPackBuilder>& builderSPtr) override;
   WalAccess const* walAccess() const override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tick_t, transaction::Options const& options) override;
@@ -341,7 +338,7 @@ class MMFilesEngine final : public StorageEngine {
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors);
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature&) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
@@ -416,7 +413,7 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief open an existing database. internal function
   std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
+                                                      VPackSlice args,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
   /// @brief note the maximum local tick
@@ -464,6 +461,9 @@ class MMFilesEngine final : public StorageEngine {
   int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
   int stopCompactor(TRI_vocbase_t* vocbase);
+
+  // stop and delete the compactor and cleanup threads for all databases
+  void stopAllThreads();
 
   /// @brief writes a drop-database marker into the log
   int writeDropMarker(TRI_voc_tick_t id, std::string const& name);

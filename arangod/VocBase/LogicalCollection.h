@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
@@ -58,31 +59,6 @@ namespace transaction {
 class Methods;
 }
 
-class ChecksumResult {
- public:
-  explicit ChecksumResult(Result&& result) : _result(std::move(result)) {}
-  explicit ChecksumResult(velocypack::Builder&& builder)
-      : _result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
-
-  velocypack::Builder builder() { return _builder; }
-
-  velocypack::Slice slice() { return _builder.slice(); }
-
-  // forwarded methods
-  bool ok() const { return _result.ok(); }
-  bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
-
-  // access methods
-  Result const& result() const& { return _result; }
-  Result result() && { return std::move(_result); }
-
- private:
-  Result _result;
-  velocypack::Builder _builder;
-};
-
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
 /// additionally, do not put any volatile state into this object in the
@@ -92,6 +68,9 @@ class ChecksumResult {
 /// state each time! all state of a LogicalCollection in the coordinator case
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
+
+typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
+
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -165,6 +144,8 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const { return _isSmart; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
+  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
@@ -178,7 +159,7 @@ class LogicalCollection : public LogicalDataSource {
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const;
   size_t replicationFactor() const;
-  size_t minReplicationFactor() const;
+  size_t writeConcern() const;
   std::string distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
@@ -195,7 +176,8 @@ class LogicalCollection : public LogicalDataSource {
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           std::string& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "");
+                          arangodb::velocypack::StringRef const& key =
+                          arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -205,9 +187,6 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
-
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback);
 
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -258,7 +237,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures() const;
+  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
@@ -350,8 +329,6 @@ class LogicalCollection : public LogicalDataSource {
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
 
   transaction::CountCache& countCache() { return _countCache; }
-
-  ChecksumResult checksum(bool, bool) const;
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 

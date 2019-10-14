@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -545,7 +546,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
+futures::Future<std::shared_ptr<arangodb::velocypack::Builder>> PhysicalCollection::figures() {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
 
@@ -576,7 +577,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   // add engine-specific figures
   figuresSpecific(builder);
   builder->close();
-  return builder;
+  return futures::makeFuture(builder);
 }
 
 

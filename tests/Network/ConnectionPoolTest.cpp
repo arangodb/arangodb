@@ -34,8 +34,6 @@
 using namespace arangodb;
 using namespace arangodb::network;
 
-#ifndef _WIN32
-
 TEST(NetworkConnectionPoolTest, acquire_endpoint) {
   ConnectionPool::Config config;
   config.numIOThreads = 1;
@@ -49,10 +47,10 @@ TEST(NetworkConnectionPoolTest, acquire_endpoint) {
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
   auto ref = pool.leaseConnection("tcp://example.org:80");
-  ASSERT_TRUE(pool.numOpenConnections() == 1);
+  ASSERT_EQ(pool.numOpenConnections(), 1);
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
   auto res = ref.connection()->sendRequest(std::move(req));
-  ASSERT_TRUE(res->statusCode() == fuerte::StatusOK);
+  ASSERT_EQ(res->statusCode(), fuerte::StatusOK);
   ASSERT_TRUE(res->payloadSize() > 0);
 }
 
@@ -71,13 +69,13 @@ TEST(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   auto ref1 = pool.leaseConnection("tcp://example.org:80");
   auto ref2 = pool.leaseConnection("tcp://example.org:80");
   
-  ASSERT_TRUE(ref1.connection().get() != ref2.connection().get());
-  ASSERT_TRUE(pool.numOpenConnections() == 2);
+  ASSERT_NE(ref1.connection().get(), ref2.connection().get());
+  ASSERT_EQ(pool.numOpenConnections(), 2);
   
   auto ref3 = pool.leaseConnection("tcp://example.com:80");
-  ASSERT_TRUE(ref1.connection().get() != ref3.connection().get());
+  ASSERT_NE(ref1.connection().get(), ref3.connection().get());
   
-  ASSERT_TRUE(pool.numOpenConnections() == 3);
+  ASSERT_EQ(pool.numOpenConnections(), 3);
 }
 
 TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
@@ -94,18 +92,18 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   
   {
     auto ref1 = pool.leaseConnection("tcp://example.org:80");
-    ASSERT_TRUE(pool.numOpenConnections() == 1);
+    ASSERT_EQ(pool.numOpenConnections(), 1);
     
     auto ref2 = pool.leaseConnection("tcp://example.com:80");
-    ASSERT_TRUE(ref1.connection().get() != ref2.connection().get());
-    ASSERT_TRUE(pool.numOpenConnections() == 2);
+    ASSERT_NE(ref1.connection().get(), ref2.connection().get());
+    ASSERT_EQ(pool.numOpenConnections(), 2);
   }
-  ASSERT_TRUE(pool.numOpenConnections() == 2);
+  ASSERT_EQ(pool.numOpenConnections(), 2);
   
   std::this_thread::sleep_for(std::chrono::milliseconds(11));
   pool.pruneConnections();
   
-  ASSERT_TRUE(pool.numOpenConnections() == 2); // keep one endpoint each
+  ASSERT_EQ(pool.numOpenConnections(), 2); // keep one endpoint each
 }
 
 TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
@@ -122,18 +120,18 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   
   {
     auto ref1 = pool.leaseConnection("tcp://example.org:80");
-    ASSERT_TRUE(pool.numOpenConnections() == 1);
+    ASSERT_EQ(pool.numOpenConnections(), 1);
     
     auto ref2 = pool.leaseConnection("tcp://example.com:80");
-    ASSERT_TRUE(ref1.connection().get() != ref2.connection().get());
-    ASSERT_TRUE(pool.numOpenConnections() == 2);
+    ASSERT_NE(ref1.connection().get(), ref2.connection().get());
+    ASSERT_EQ(pool.numOpenConnections(), 2);
   }
-  ASSERT_TRUE(pool.numOpenConnections() == 2);
+  ASSERT_EQ(pool.numOpenConnections(), 2);
   
   std::this_thread::sleep_for(std::chrono::milliseconds(11));
   pool.pruneConnections();
   
-  ASSERT_TRUE(pool.numOpenConnections() == 0);
+  ASSERT_EQ(pool.numOpenConnections(), 0);
 }
 
 
@@ -151,23 +149,21 @@ TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   
   {
     auto ref1 = pool.leaseConnection("tcp://example.org:80");
-    ASSERT_TRUE(pool.numOpenConnections() == 1);
+    ASSERT_EQ(pool.numOpenConnections(), 1);
     
     auto ref2 = pool.leaseConnection("tcp://example.org:80");
-    ASSERT_TRUE(ref1.connection().get() != ref2.connection().get());
-    ASSERT_TRUE(pool.numOpenConnections() == 2);
+    ASSERT_NE(ref1.connection().get(), ref2.connection().get());
+    ASSERT_EQ(pool.numOpenConnections(), 2);
     
     auto ref3 = pool.leaseConnection("tcp://example.org:80");
-    ASSERT_TRUE(ref1.connection().get() != ref3.connection().get());
-    ASSERT_TRUE(pool.numOpenConnections() == 3);
+    ASSERT_NE(ref1.connection().get(), ref3.connection().get());
+    ASSERT_EQ(pool.numOpenConnections(), 3);
   }
-  ASSERT_TRUE(pool.numOpenConnections() == 3);
+  ASSERT_EQ(pool.numOpenConnections(), 3);
   
   // 15ms > 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(15));
   pool.pruneConnections();
   
-  ASSERT_TRUE(pool.numOpenConnections() == 1);
+  ASSERT_EQ(pool.numOpenConnections(), 1);
 }
-
-#endif

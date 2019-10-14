@@ -35,16 +35,18 @@ function optimizerSparseTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
 
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i });
+        docs.push({ _key: "test" + i, value1: i });
       }
+      c.insert(docs);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_TRANSACTION_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -67,8 +67,8 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   int doUnlock(AccessMode::Type, int nestingLevel) override;
 
  private:
-  SmallVector<MMFilesDocumentOperation*, 64>::allocator_type::arena_type _arena;
-  SmallVector<MMFilesDocumentOperation*, 64> _operations;
+  ::arangodb::containers::SmallVector<MMFilesDocumentOperation*, 64>::allocator_type::arena_type _arena;
+  ::arangodb::containers::SmallVector<MMFilesDocumentOperation*, 64> _operations;
   TRI_voc_rid_t _originalRevision;  // collection revision at trx start
   bool _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;       // whether or not the collection has waitForSync

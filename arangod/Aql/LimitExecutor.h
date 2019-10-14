@@ -42,7 +42,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class LimitExecutorInfos : public ExecutorInfos {
@@ -80,9 +80,9 @@ class LimitExecutorInfos : public ExecutorInfos {
 class LimitExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;

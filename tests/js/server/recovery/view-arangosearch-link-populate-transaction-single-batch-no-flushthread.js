@@ -65,7 +65,7 @@ function runSetup () {
 
   db._executeTransaction(tx);
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

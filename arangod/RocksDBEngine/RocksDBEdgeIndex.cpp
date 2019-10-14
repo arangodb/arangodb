@@ -315,12 +315,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     for (_iterator->Seek(_bounds.start());
          _iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0);
          _iterator->Next()) {
-      LocalDocumentId const documentId =
-      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue,
-                                  _iterator->key());
+      LocalDocumentId const docId = RocksDBKey::edgeDocumentId(_iterator->key());
       
       // adding documentId and _from or _to value
-      _builder.add(VPackValue(documentId.id()));
+      _builder.add(VPackValue(docId.id()));
       VPackStringRef vertexId = RocksDBValue::vertexId(_iterator->value());
       _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
     }
@@ -418,7 +416,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
   TRI_ASSERT(_objectId != 0);
 }
 
-RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
+RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
 
 std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeIndex::coveredFields() const {
   TRI_ASSERT(_coveredFields.size() == 2);  // _from/_to or _to/_from
@@ -697,7 +695,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (collection().vocbase().server().isStopping()) {
       return;
     }
     n++;
@@ -769,8 +767,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
       }
     }
     if (needsInsert) {
-      LocalDocumentId const docId =
-      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
       if (!rocksColl->readDocument(trx, docId, mdr)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);

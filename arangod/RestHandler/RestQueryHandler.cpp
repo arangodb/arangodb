@@ -40,8 +40,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestQueryHandler::RestQueryHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
@@ -349,22 +350,26 @@ bool RestQueryHandler::parseQuery() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestQueryHandler::forwardingTarget() {
+std::string RestQueryHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return 0;
+    return "";
   }
 
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
       TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return 0;
+      return "";
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
-    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+    if (sourceServer == ServerState::instance()->getShortId()) {
+      return "";
+    }
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    return ci.getCoordinatorByShortID(sourceServer);
   }
 
-  return 0;
+  return "";
 }

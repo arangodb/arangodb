@@ -26,9 +26,11 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
@@ -43,9 +45,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCursorHandler::RestCursorHandler(GeneralRequest* request, GeneralResponse* response,
+RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response,
                                      arangodb::aql::QueryRegistry* queryRegistry)
-    : RestVocbaseBaseHandler(request, response),
+    : RestVocbaseBaseHandler(server, request, response),
       _query(nullptr),
       _queryResult(),
       _queryRegistry(queryRegistry),
@@ -107,17 +110,21 @@ RestStatus RestCursorHandler::continueExecute() {
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
-  auto const type = _request->requestType();
 
   // request not done yet
   if (_state == HandlerState::PAUSED) {
     return;
   }
-
+  
   // only trace create cursor requests
-  if (type != rest::RequestType::POST) {
+  if (_request->requestType() != rest::RequestType::POST) {
     return;
   }
+  
+  // destroy the query context.
+  // this is needed because the context is managing resources (e.g. leases
+  // for a managed transaction) that we want to free as early as possible
+  _queryResult.context.reset();
 
   if (!_isValidForFinalize || _auditLogged) {
     // set by RestCursorHandler before
@@ -215,7 +222,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       Cursor* cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
                                                   _options, batchSize, ttl,
                                                   /*contextOwnedByExt*/ false,
-                                                  createAQLTransactionContext());
+                                                  createTransactionContext());
 
       return generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
@@ -230,7 +237,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   auto query = std::make_unique<aql::Query>(
       false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
       bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createAQLTransactionContext());
+  query->setTransactionContext(createTransactionContext());
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   ss->setContinueHandler([self = shared_from_this(), ss] { self->continueHandlerExecution(); });
@@ -344,6 +351,11 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
+    // directly after returning from here, we will free the query's context and free the
+    // resources it uses (e.g. leases for a managed transaction). this way the server
+    // can send back the query result to the client and the client can make follow-up
+    // requests on the same transaction (e.g. trx.commit()) without the server code for
+    // freeing the resources and the client code racing for who's first
     return RestStatus::DONE;
   } else {
     // result is bigger than batchSize, and a cursor will be created
@@ -358,21 +370,25 @@ RestStatus RestCursorHandler::handleQueryResult() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestCursorHandler::forwardingTarget() {
+std::string RestCursorHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,7 +637,6 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   }
 
   return generateCursorResult(rest::ResponseCode::OK, cursor);
-  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

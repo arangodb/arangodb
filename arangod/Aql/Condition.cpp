@@ -22,18 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Condition.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -112,7 +119,6 @@ struct PermutationState {
   size_t current;
   size_t const n;
 };
-
 
 //------------------------------------------------------------------------
 // Rules for single-valued variables
@@ -248,14 +254,13 @@ ConditionPartCompareResult const ResultsTable[3][7][7] = {
 
 ConditionPartCompareResult const ResultsTableMultiValued[3][7][7] = {
     {// X < Y
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
       DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
+      DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
+      DISJOINT, DISJOINT, DISJOINT},
      {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
       SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
      {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
@@ -264,30 +269,28 @@ ConditionPartCompareResult const ResultsTableMultiValued[3][7][7] = {
     {// X == Y
      {OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, DISJOINT, OTHER_CONTAINED_IN_SELF,
       OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT,
+     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
       DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
      {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
       OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
      {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
       OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
     {// X > Y
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT,
-      DISJOINT, DISJOINT, DISJOINT, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT},
      {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
       SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
      {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
       SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT},
+     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
+      OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
 
 }  // namespace
@@ -321,7 +324,7 @@ ConditionPart::ConditionPart(Variable const* variable,
   isExpanded = (attributeName.find("[*]") != std::string::npos);
 }
 
-ConditionPart::~ConditionPart() {}
+ConditionPart::~ConditionPart() = default;
 
 /// @brief true if the condition is completely covered by the other condition
 bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) const {
@@ -437,6 +440,78 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other, bool isReversed) con
   return false;
 }
 
+int ConditionPart::whichCompareOperation() const {
+  switch (operatorType) {
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+      return 0;
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+      return 1;
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+      return 2;
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+      return 3;
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+      return 4;
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+      return 5;
+    default:
+      return 6;  // not a compare operator.
+  }
+}
+AstNode const* ConditionPart::lowerBound() const {
+  if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT || operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
+      operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    return valueNode;
+  }
+
+  if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
+      valueNode->isArray() && valueNode->numMembers() > 0) {
+    // return first item from IN array.
+    // this requires IN arrays to be sorted, which they should be when
+    // we get here
+    return valueNode->getMember(0);
+  }
+
+  return nullptr;
+}
+bool ConditionPart::isLowerInclusive() const {
+  if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE || operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+      operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
+    return true;
+  }
+
+  return false;
+}
+AstNode const* ConditionPart::upperBound() const {
+  if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT || operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
+      operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    return valueNode;
+  }
+
+  if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
+      valueNode->isArray() && valueNode->numMembers() > 0) {
+    // return last item from IN array.
+    // this requires IN arrays to be sorted, which they should be when
+    // we get here
+    return valueNode->getMember(valueNode->numMembers() - 1);
+  }
+
+  return nullptr;
+}
+bool ConditionPart::isUpperInclusive() const {
+  if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE || operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+      operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
+    return true;
+  }
+  return false;
+}
+
 /// @brief clears the attribute access data
 static inline void clearAttributeAccess(
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>& parts) {
@@ -481,7 +556,7 @@ void Condition::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbos
 }
 
 /// @brief create a condition from VPack
-Condition* Condition::fromVPack(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice) {
+std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice) {
   auto condition = std::make_unique<Condition>(plan->getAst());
 
   if (slice.isObject() && slice.length() != 0) {
@@ -493,11 +568,11 @@ Condition* Condition::fromVPack(ExecutionPlan* plan, arangodb::velocypack::Slice
   condition->_isNormalized = true;
   condition->_isSorted = false;
 
-  return condition.release();
+  return condition;
 }
 
 /// @brief clone the condition
-Condition* Condition::clone() const {
+std::unique_ptr<Condition> Condition::clone() const {
   auto copy = std::make_unique<Condition>(_ast);
 
   if (_root != nullptr) {
@@ -506,7 +581,7 @@ Condition* Condition::clone() const {
 
   copy->_isNormalized = _isNormalized;
 
-  return copy.release();
+  return copy;
 }
 
 /// @brief add a sub-condition to the condition
@@ -575,7 +650,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
   if (_root == nullptr) {
     return result;
   }
-  
+
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   size_t n = _root->numMembers();
@@ -616,9 +691,9 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 }
 
 /// @brief get the attributes for a sub-condition that are not-null
-arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
+::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
     Variable const* reference) const {
-  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> result;
+  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> result;
 
   if (_root == nullptr) {
     return result;
@@ -640,8 +715,7 @@ arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNo
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMember(i);
 
-    if (member->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-        member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+    if (member->type == NODE_TYPE_OPERATOR_BINARY_NE || member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
       clearAttributeAccess(parts);
 
@@ -649,24 +723,19 @@ arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNo
       AstNode const* rhs = member->getMember(1);
       AstNode const* check = nullptr;
 
-      if (lhs->isConstant() && 
-          lhs->isNullValue() && 
-          rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+      if (lhs->isConstant() && lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
           member->type != NODE_TYPE_OPERATOR_BINARY_GT) {
         // null != doc.value
         // null < doc.value
         check = rhs;
-      } else if (rhs->isConstant() && 
-                 rhs->isNullValue() && 
-                 lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+      } else if (rhs->isConstant() && rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
                  node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
         // doc.value != null
         // doc.value > null
         check = lhs;
       }
-      
-      if (check != nullptr &&
-          check->isAttributeAccessForVariable(parts, false) && 
+
+      if (check != nullptr && check->isAttributeAccessForVariable(parts, false) &&
           parts.first == reference) {
         result.emplace(std::move(parts.second));
       }
@@ -721,7 +790,7 @@ void Condition::normalize() {
 
 void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                           AstNode const* andNode, AstNode const* otherAndNode,
-                                          arangodb::HashSet<size_t>& toRemove,
+                                          ::arangodb::containers::HashSet<size_t>& toRemove,
                                           Index const* index, /* may be nullptr */
                                           bool isFromTraverser) {
   bool const isSparse = (index != nullptr && index->sparse());
@@ -823,7 +892,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan, Variable con
   auto conditionAndNode = condition->getMemberUnchecked(0);
   TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  arangodb::HashSet<size_t> toRemove;
+  ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove, index, false);
 
   if (toRemove.empty()) {
@@ -872,7 +941,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
 
-  arangodb::HashSet<size_t> toRemove;
+  ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, nullptr, true);
 
   if (toRemove.empty()) {
@@ -900,7 +969,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(arangodb::HashSet<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -916,7 +985,7 @@ bool Condition::removeInvalidVariables(arangodb::HashSet<Variable const*> const&
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  arangodb::HashSet<Variable const*> varsUsed;
+  ::arangodb::containers::HashSet<Variable const*> varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);
@@ -979,9 +1048,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   size_t n = _root->numMembers();
   size_t r = 0;
 
-  const auto* resultsTable = multivalued
-    ? ResultsTableMultiValued
-    : ResultsTable;
+  const auto* resultsTable = multivalued ? ResultsTableMultiValued : ResultsTable;
 
   while (r < n) {  // foreach OR-Node
     bool retry = false;
@@ -1142,8 +1209,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
           // IN-merging
           if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
-              leftNode->getMemberUnchecked(1)->isConstant() &&
-              !multivalued) {
+              leftNode->getMemberUnchecked(1)->isConstant() && !multivalued) {
             TRI_ASSERT(leftNode->numMembers() == 2);
 
             if (rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -1198,9 +1264,9 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
           // end of IN-merging
 
           // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-          ConditionPartCompareResult res = resultsTable
-              [CompareAstNodes(current.valueNode, other.valueNode, true) + 1]
-              [current.whichCompareOperation()][other.whichCompareOperation()];
+          ConditionPartCompareResult res =
+              resultsTable[CompareAstNodes(current.valueNode, other.valueNode, true) + 1]
+                          [current.whichCompareOperation()][other.whichCompareOperation()];
 
           switch (res) {
             case CompareResult::IMPOSSIBLE: {
@@ -1791,3 +1857,15 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
 
   return node;
 }
+
+AstNode* Condition::root() const { return _root; }
+
+bool Condition::isEmpty() const {
+  if (_root == nullptr) {
+    return true;
+  }
+
+  return (_root->numMembers() == 0);
+}
+
+bool Condition::isSorted() const { return _isSorted; }

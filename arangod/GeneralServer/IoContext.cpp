@@ -28,8 +28,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-IoContext::IoThread::IoThread(IoContext& iocontext)
-    : Thread("Io"), _iocontext(iocontext) {}
+IoContext::IoThread::IoThread(application_features::ApplicationServer& server, IoContext& iocontext)
+    : Thread(server, "Io"), _iocontext(iocontext) {}
+
+IoContext::IoThread::IoThread(IoThread const& other)
+    : Thread(other._server, "Io"), _iocontext(other._iocontext) {}
 
 IoContext::IoThread::~IoThread() { shutdown(); }
 
@@ -38,9 +41,19 @@ void IoContext::IoThread::run() {
   _iocontext.io_context.run();
 }
 
-IoContext::IoContext()
+IoContext::IoContext(application_features::ApplicationServer& server)
     : io_context(1),  // only a single thread per context
-      _thread(*this),
+      _server(server),
+      _thread(server, *this),
+      _asioWork(io_context),
+      _clients(0) {
+  _thread.start();
+}
+
+IoContext::IoContext(IoContext const& other)
+    : io_context(1),
+      _server(other._server),
+      _thread(other._server, *this),
       _asioWork(io_context),
       _clients(0) {
   _thread.start();
@@ -54,4 +67,3 @@ void IoContext::stop() {
     cpu_relax();
   }
 }
-

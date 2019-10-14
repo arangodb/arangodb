@@ -11,7 +11,6 @@
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
-%x NOT
 
 %top{
 #include <stdint.h>
@@ -120,7 +119,7 @@ class Parser;
 }
 
 (?i:NOT) {
-  BEGIN(NOT);
+  return T_NOT;
 }
 
 (?i:AND) {
@@ -369,6 +368,11 @@ class Parser;
   /* newline character inside backtick */
 }
 
+<BACKTICK><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
+}
+
 <BACKTICK>. {
   /* any character (except newline) inside backtick */
 }
@@ -395,6 +399,11 @@ class Parser;
 
 <FORWARDTICK>\n {
   /* newline character inside forwardtick */
+}
+
+<FORWARDTICK><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 
 <FORWARDTICK>. {
@@ -427,6 +436,11 @@ class Parser;
   /* newline character inside quote */
 }
 
+<DOUBLE_QUOTE><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
+}
+
 <DOUBLE_QUOTE>. {
   /* any character (except newline) inside quote */
 }
@@ -451,6 +465,11 @@ class Parser;
 
 <SINGLE_QUOTE>\n {
   /* newline character inside quote */
+}
+
+<SINGLE_QUOTE><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 
 <SINGLE_QUOTE>. {
@@ -578,41 +597,15 @@ class Parser;
   // eat the lone star
 }
 
+<COMMENT_MULTI><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated multi-line comment", yylloc->first_line, yylloc->first_column);
+}
+
 <COMMENT_MULTI>\n {
   /* line numbers are counted elsewhere already */
   yycolumn = 0;
 }
-
- /* ---------------------------------------------------------------------------
-  * special transformation for NOT IN to T_NIN
-  * --------------------------------------------------------------------------- */
-
-<NOT>(?i:IN) {
-  /* T_NOT + T_IN => T_NIN */
-  BEGIN(INITIAL);
-  return T_NIN;
-}
-
-<NOT>[\r\t\n ] {
-  /* ignore whitespace */
-}
-
-<NOT>. {
-  /* found something different to T_IN */
-  /* now push the character back into the input stream and return a T_NOT token */
-  BEGIN(INITIAL);
-  yyless(0);
-  /* must decrement offset by one character as we're pushing the char back onto the stack */
-  yyextra->decreaseOffset(1);
-  return T_NOT;
-}
-
-<NOT><<EOF>> {
-  /* make sure that we still return a T_NOT when we reach the end of the input */
-  BEGIN(INITIAL);
-  return T_NOT;
-}
-
 
 . {
   /* anything else is returned as it is */

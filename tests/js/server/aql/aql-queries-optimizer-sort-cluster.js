@@ -34,6 +34,7 @@ var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var getQueryResults = helper.getQueryResults;
+var db = require("internal").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -42,7 +43,8 @@ var getQueryResults = helper.getQueryResults;
 function ahuacatlQueryOptimizerSortTestSuite () {
   var collection = null;
   var cn = "UnitTestsAhuacatlOptimizerSort";
-  
+  var idx = null;
+
   var explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });
   };
@@ -53,21 +55,34 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        collection.save({ "value" : i, "value2" : i });
+        docs.push({ "value" : i, "value2" : i });
       }
+      collection.insert(docs);
+    },
+
+    setUp: function() {
+      var idx = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-	internal.db._drop(cn);
+    tearDownAll : function () {
+      internal.db._drop(cn);
+    },
+
+    tearDown: function() {
+      if (idx != null) {
+        db._dropIndex(idx);
+        idx = null;
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +148,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplist1 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " SORT c.value RETURN c";
 
@@ -163,7 +178,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplist2 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 15 SORT c.value RETURN c";
 
@@ -194,7 +209,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSkiplist3 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 15 SORT c.value DESC RETURN c";
 
@@ -225,7 +240,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSorts1 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value SORT c.value RETURN c";
 
@@ -258,7 +273,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSorts2 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value SORT c.value DESC RETURN c";
 
@@ -291,7 +306,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSorts3 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value DESC SORT c.value RETURN c";
 
@@ -324,7 +339,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields1 : function () {
-      collection.ensureSkiplist("value", "value2");
+      idx = collection.ensureSkiplist("value", "value2");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -374,7 +389,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields2 : function () {
-      collection.ensureSkiplist("value", "value2");
+      idx = collection.ensureSkiplist("value", "value2");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value, c.value2 RETURN c";
 
@@ -426,7 +441,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields3 : function () {
-      collection.ensureSkiplist("value", "value2");
+      idx = collection.ensureSkiplist("value", "value2");
 
       var query = "FOR c IN " + cn + " FILTER c.value2 >= 0 SORT c.value RETURN c";
 
@@ -458,7 +473,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields4 : function () {
-      collection.ensureSkiplist("value", "value2");
+      idx = collection.ensureSkiplist("value", "value2");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 && c.value2 >= 0 SORT c.value RETURN c";
 
@@ -490,7 +505,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields5 : function () {
-      collection.ensureSkiplist("value2", "value");
+      idx = collection.ensureSkiplist("value2", "value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -523,7 +538,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonFieldSort1 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value + 1 RETURN c";
 
@@ -556,7 +571,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonFieldSort2 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT 1 + c.value RETURN c";
 
@@ -589,7 +604,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonFieldSort3 : function () {
-      collection.ensureSkiplist("value");
+      idx = collection.ensureSkiplist("value");
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value * 2 RETURN c";
 
@@ -637,13 +652,15 @@ function sortTestsuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, { numberOfShards : 9 });
 
+      let docs = [];
       for (var i = 0; i < testStrings.length; i++) {
-        collection.save({ "value" : i, "testString" : testStrings[i] });
+        docs.push({ "value" : i, "testString" : testStrings[i] });
       }
+      collection.insert(docs);
 
       testStringsSorted=AQL_EXECUTE("FOR t IN @bla SORT t RETURN t", {"bla": testStrings}).json;
 
@@ -653,7 +670,7 @@ function sortTestsuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

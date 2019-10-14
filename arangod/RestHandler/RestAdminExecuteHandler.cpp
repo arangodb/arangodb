@@ -46,8 +46,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminExecuteHandler::RestAdminExecuteHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestAdminExecuteHandler::RestAdminExecuteHandler(application_features::ApplicationServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminExecuteHandler::execute() {
   if (!V8DealerFeature::DEALER) {

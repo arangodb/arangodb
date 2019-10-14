@@ -60,7 +60,6 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -654,7 +653,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   //  _revisionsCache;
 }
 
-MMFilesCollection::~MMFilesCollection() {}
+MMFilesCollection::~MMFilesCollection() = default;
 
 TRI_voc_rid_t MMFilesCollection::revision(arangodb::transaction::Methods*) const {
   return _lastRevision;
@@ -687,9 +686,7 @@ int MMFilesCollection::close() {
       // save new "count" value
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool const doSync =
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->forceSyncProperties();
+          _logicalCollection.vocbase().server().getFeature<DatabaseFeature>().forceSyncProperties();
 
       engine->changeCollection(_logicalCollection.vocbase(), _logicalCollection, doSync);
     }
@@ -1704,8 +1701,8 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
       _logicalCollection.vocbase().name() + "/" + _logicalCollection.name() +
       " }, indexes: " + std::to_string(n - 1));
 
-  auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
+  auto poster = [](std::function<void()> fn) -> bool {
+    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
   auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
@@ -1756,7 +1753,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     };
 
     if (nrUsed > 0) {
-      arangodb::basics::BucketPosition position;
+      arangodb::containers::BucketPosition position;
       uint64_t total = 0;
 
       while (true) {
@@ -3206,9 +3203,8 @@ void MMFilesCollection::setCurrentVersion() {
   _logicalCollection.setVersion(static_cast<LogicalCollection::CollectionVersions>(
       LogicalCollection::currentVersion()));
 
-  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-                          "Database")
-                          ->forceSyncProperties();
+  bool const doSync =
+      _logicalCollection.vocbase().server().getFeature<DatabaseFeature>().forceSyncProperties();
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   engine->changeCollection(_logicalCollection.vocbase(), _logicalCollection, doSync);
@@ -4063,7 +4059,7 @@ void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key)
       }
     }
     std::this_thread::yield();
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_logicalCollection.vocbase().server().isStopping());
 
   // we can only get here on shutdown
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);

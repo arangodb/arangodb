@@ -26,15 +26,18 @@
 #include "IndexExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
@@ -42,13 +45,15 @@
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 
-#include <lib/Logger/LogMacros.h>
-
 #include <memory>
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool IndexExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough IndexExecutor::Properties::allowsBlockPassthrough;
+constexpr bool IndexExecutor::Properties::inputSizeRestrictsOutputSize;
 
 namespace {
 /// resolve constant attribute accesses
@@ -64,11 +69,13 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
     }
   }
 }
+
 static inline DocumentProducingFunctionContext createContext(InputAqlItemRow const& inputRow,
                                                              IndexExecutorInfos& infos) {
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      infos.getProjections(), infos.getTrxPtr(),
+      infos.getQuery(), infos.getFilter(),
+      infos.getProjections(), 
       infos.getCoveringIndexAttributePositions(), false, infos.getUseRawDocumentPointers(),
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
 }
@@ -81,7 +88,8 @@ IndexExecutorInfos::IndexExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
@@ -99,9 +107,9 @@ IndexExecutorInfos::IndexExecutorInfos(
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
+      _filter(filter),
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _trxPtr(trxPtr),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
@@ -163,6 +171,94 @@ IndexExecutorInfos::IndexExecutorInfos(
   }
 }
 
+ExecutionEngine* IndexExecutorInfos::getEngine() const { return _engine; }
+
+Collection const* IndexExecutorInfos::getCollection() const {
+  return _collection;
+}
+
+Variable const* IndexExecutorInfos::getOutVariable() const {
+  return _outVariable;
+}
+
+std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexcept {
+  return _projections;
+}
+
+Query* IndexExecutorInfos::getQuery() const noexcept {
+  return _engine->getQuery();
+}
+
+transaction::Methods* IndexExecutorInfos::getTrxPtr() const noexcept {
+  return _engine->getQuery()->trx();
+}
+
+Expression* IndexExecutorInfos::getFilter() const noexcept {
+  return _filter;
+}
+
+std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePositions() const noexcept {
+  return _coveringIndexAttributePositions;
+}
+
+bool IndexExecutorInfos::getProduceResult() const noexcept {
+  return _produceResult;
+}
+
+bool IndexExecutorInfos::getUseRawDocumentPointers() const noexcept {
+  return _useRawDocumentPointers;
+}
+
+std::vector<transaction::Methods::IndexHandle> const& IndexExecutorInfos::getIndexes() const
+    noexcept {
+  return _indexes;
+}
+
+AstNode const* IndexExecutorInfos::getCondition() const noexcept {
+  return _condition;
+}
+
+bool IndexExecutorInfos::getV8Expression() const noexcept {
+  return _hasV8Expression;
+}
+
+RegisterId IndexExecutorInfos::getOutputRegisterId() const noexcept {
+  return _outputRegisterId;
+}
+
+std::vector<std::unique_ptr<NonConstExpression>> const& IndexExecutorInfos::getNonConstExpressions() const
+    noexcept {
+  return _nonConstExpression;
+}
+
+bool IndexExecutorInfos::hasMultipleExpansions() const noexcept {
+  return _hasMultipleExpansions;
+}
+
+IndexIteratorOptions IndexExecutorInfos::getOptions() const { return _options; }
+
+bool IndexExecutorInfos::isAscending() const noexcept {
+  return _options.ascending;
+}
+
+Ast* IndexExecutorInfos::getAst() const noexcept { return _ast; }
+
+std::vector<Variable const*> const& IndexExecutorInfos::getExpInVars() const noexcept {
+  return _expInVars;
+}
+
+std::vector<RegisterId> const& IndexExecutorInfos::getExpInRegs() const noexcept {
+  return _expInRegs;
+}
+
+void IndexExecutorInfos::setHasMultipleExpansions(bool flag) {
+  _hasMultipleExpansions = flag;
+}
+
+bool IndexExecutorInfos::hasNonConstParts() const {
+  return !_nonConstExpression.empty();
+}
+
 IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
                                           AstNode const* condition,
                                           transaction::Methods::IndexHandle const& index,
@@ -179,19 +275,16 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
                       : Type::Document),
-      _callback() {
-  if (checkUniqueness) {
-    if (_type == Type::NoResult) {
-      _callback.noProduce = getNullCallback<true>(context);
-    } else {
-      _callback.produce = buildCallback<true>(context);
-    }
+      _noProduce(nullptr),
+      _produce(nullptr) {
+  auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
+  auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
+  if (_type == Type::NoResult) {
+    _noProduce = getNullCallback_(context);
+    _produce = nullptr;
   } else {
-    if (_type == Type::NoResult) {
-      _callback.noProduce = getNullCallback<false>(context);
-    } else {
-      _callback.produce = buildCallback<false>(context);
-    }
+    _produce = buildCallback_(context);
+    _noProduce = nullptr;
   }
 }
 
@@ -201,19 +294,11 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _index(other._index),
       _cursor(std::move(other._cursor)),
       _type(other._type),
-      _callback() {
-  if (other._type == Type::NoResult) {
-    _callback.noProduce = other._callback.noProduce;
-  } else {
-    _callback.produce = other._callback.produce;
-  }
-}
+      _noProduce(std::move(other._noProduce)),
+      _produce(std::move(other._produce)) {}
 
 bool IndexExecutor::CursorReader::hasMore() const {
-  if (_cursor != nullptr && _cursor->hasMore()) {
-    return true;
-  }
-  return false;
+  return _cursor != nullptr && _cursor->hasMore();
 }
 
 bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
@@ -232,14 +317,14 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   }
   switch (_type) {
     case Type::NoResult:
-      TRI_ASSERT(_callback.noProduce != nullptr);
-      return _cursor->next(_callback.noProduce, output.numRowsLeft());
+      TRI_ASSERT(_noProduce != nullptr);
+      return _cursor->next(_noProduce, output.numRowsLeft());
     case Type::Covering:
-      TRI_ASSERT(_callback.produce != nullptr);
-      return _cursor->nextCovering(_callback.produce, output.numRowsLeft());
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextCovering(_produce, output.numRowsLeft());
     case Type::Document:
-      TRI_ASSERT(_callback.produce != nullptr);
-      return _cursor->nextDocument(_callback.produce, output.numRowsLeft());
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextDocument(_produce, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached
@@ -311,6 +396,10 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   TRI_ASSERT(skipped == toSkip || !hasMore());
 
   return static_cast<size_t>(skipped);
+}
+
+bool IndexExecutor::CursorReader::isCovering() const {
+  return _type == Type::Covering;
 }
 
 void IndexExecutor::initIndexes(InputAqlItemRow& input) {
@@ -546,13 +635,13 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, skipped);  // tupple, cannot use initializer list due to build failure
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
       }
 
       if (!_input) {
@@ -561,7 +650,7 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, skipped);  // tupple, cannot use initializer list due to build failure
       }
 
       initIndexes(_input);
@@ -591,8 +680,19 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   _skipped = 0;
 
   if (_state == ExecutionState::DONE && !_input) {
-    return std::make_tuple(ExecutionState::DONE, stats, skipped); // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(ExecutionState::DONE, stats,
+                           skipped);  // tupple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
+  return std::make_tuple(ExecutionState::HASMORE, stats,
+                         skipped);  // tupple, cannot use initializer list due to build failure
+}
+
+IndexExecutor::CursorReader& IndexExecutor::getCursor() {
+  TRI_ASSERT(_currentIndex < _cursors.size());
+  return _cursors[_currentIndex];
+}
+
+bool IndexExecutor::needsUniquenessCheck() const noexcept {
+  return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
 }

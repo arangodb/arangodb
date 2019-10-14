@@ -40,15 +40,20 @@
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 class QueryList;
 }
 namespace velocypack {
 class Builder;
+class Slice;
 class StringRef;
 }  // namespace velocypack
 class CollectionKeysRepository;
@@ -133,7 +138,8 @@ struct TRI_vocbase_t {
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo const&);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -153,8 +159,10 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  TRI_voc_tick_t const _id;  // internal database id
-  std::string _name;         // database name
+  arangodb::application_features::ApplicationServer& _server;
+
+  arangodb::CreateDatabaseInfo _info;
+
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   State _state;
@@ -199,13 +207,21 @@ struct TRI_vocbase_t {
   /// @brief determine whether a data-source name is a system data-source name
   static bool IsSystemName(std::string const& name) noexcept;
 
-  TRI_voc_tick_t id() const { return _id; }
-  std::string const& name() const { return _name; }
+  arangodb::application_features::ApplicationServer& server() const {
+    return _server;
+  }
+
+  TRI_voc_tick_t id() const { return _info.getId(); }
+  std::string const& name() const { return _info.getName(); }
   std::string path() const;
+  std::uint32_t replicationFactor() const;
+  std::uint32_t writeConcern() const;
+  std::string const& sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
   void setState(State state) { _state = state; }
 
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
@@ -249,7 +265,7 @@ struct TRI_vocbase_t {
   bool markAsDropped();
 
   /// @brief returns whether the database is the system database
-  bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
+  bool isSystem() const { return _info.getName() == TRI_VOC_SYSTEM_DATABASE; }
 
   /// @brief stop operations in this vocbase. must be called prior to
   /// shutdown to clean things up
@@ -396,9 +412,6 @@ struct TRI_vocbase_t {
 
 /// @brief extract the _rev attribute from a slice
 TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
-
-/// @brief extract the _rev attribute from a slice as a slice
-arangodb::velocypack::Slice TRI_ExtractRevisionIdAsSlice(arangodb::velocypack::Slice const slice);
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open

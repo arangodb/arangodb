@@ -53,6 +53,8 @@ std::string const cleanedPrefix = "/Target/CleanedServers";
 std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
+std::string const planDBPrefix = "/Plan/Databases/";
+std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
@@ -77,7 +79,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
       _creator(creator),
       _jb(nullptr) {}
 
-Job::~Job() {}
+Job::~Job() = default;
 
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";

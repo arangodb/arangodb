@@ -23,9 +23,12 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/AqlHelper.cpp
-  Aql/AqlItemRowTest.cpp
   Aql/AllRowsFetcherTest.cpp
+  Aql/AqlHelper.cpp
+  Aql/AqlItemBlockTest.cpp
+  Aql/AqlItemRowPrinter.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/AqlShadowRowTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
@@ -36,11 +39,13 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp
@@ -50,14 +55,15 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
   Aql/SortedCollectExecutorTest.cpp
+  Aql/SpliceSubqueryOptimizerRuleTest.cpp
+  Aql/SubqueryEndExecutorTest.cpp
+  Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
-  Basics/associative-multi-pointer-test.cpp
-  Basics/associative-multi-pointer-nohashcache-test.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp
@@ -66,7 +72,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/hashes-test.cpp
   Basics/icu-helper.cpp
   Basics/json-test.cpp
-  Basics/skiplist-test.cpp
   Basics/priorityqueue-test.cpp
   Basics/string-buffer-test.cpp
   Basics/string-utf8-normalize-test.cpp
@@ -78,7 +83,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/AttributeNameParserTest.cpp
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
-  Basics/HashSetTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
@@ -100,11 +104,15 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
+  Cluster/AgencyPathsTest.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
-  Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
+  Containers/associative-multi-pointer-test.cpp
+  Containers/associative-multi-pointer-nohashcache-test.cpp
+  Containers/HashSetTest.cpp
+  Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -139,8 +147,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchLinkHelper-test.cpp
   IResearch/IResearchLinkMeta-test.cpp
   IResearch/IResearchOrder-test.cpp
-  IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryAggregate-test.cpp
+  IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryBooleanTerm-test.cpp
   IResearch/IResearchQueryComplexBoolean-test.cpp
   IResearch/IResearchQueryExists-test.cpp
@@ -175,8 +183,12 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
+  Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
+  Network/ConnectionPoolTest.cpp
+  Network/MethodsTest.cpp
+  Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
@@ -231,12 +243,21 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
+  arango_agency
+  arango_cluster_engine
+  arango_mmfiles
+  arango_rocksdb
+  arango_v8server
   arangoserver
-  rocksdb
   fuerte
-  gtest
+  rocksdb
   snappy
+  gtest
 )
+
+if (USE_ENTERPRISE)
+  target_link_libraries(arangodbtests arango_rclone)
+endif()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}

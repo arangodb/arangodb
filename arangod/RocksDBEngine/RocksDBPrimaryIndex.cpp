@@ -207,9 +207,10 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     if (aap.value->isArray()) {
       _index->fillInLookupValues(_trx, *(_keys.get()), aap.value, opts.ascending,
                                  !_allowCoveringIndexOptimization);
+      _iterator = VPackArrayIterator(_keys->slice());
       return true;
     }
-
+      
     return false;
   }
 
@@ -458,7 +459,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection
   TRI_ASSERT(_objectId != 0);
 }
 
-RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
+RocksDBPrimaryIndex::~RocksDBPrimaryIndex() = default;
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();

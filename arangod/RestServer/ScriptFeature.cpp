@@ -23,6 +23,7 @@
 #include "ScriptFeature.h"
 
 #include "Basics/application-exit.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -45,7 +46,7 @@ namespace arangodb {
 ScriptFeature::ScriptFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Script"), _result(result) {
   setOptional(true);
-  startsAfter("AgencyPhase");
+  startsAfter<AgencyFeaturePhase>();
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -56,22 +57,21 @@ void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ScriptFeature::start() {
-  auto server = ApplicationServer::getFeature<ServerFeature>("Server");
-  auto operationMode = server->operationMode();
+  auto& serverFeature = server().getFeature<ServerFeature>();
+  auto operationMode = serverFeature.operationMode();
 
   if (operationMode != OperationMode::MODE_SCRIPT) {
     return;
   }
 
   LOG_TOPIC("7b0e6", TRACE, Logger::STARTUP) << "server about to run scripts";
-  *_result = runScript(server->scripts());
+  *_result = runScript(serverFeature.scripts());
 }
 
 int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   bool ok = false;
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-  auto database = sysDbFeature->use();
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
 
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
   V8ContextGuard guard(database.get(), securityContext);
@@ -96,7 +96,6 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       }
 
       v8::TryCatch tryCatch(isolate);
-      ;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 

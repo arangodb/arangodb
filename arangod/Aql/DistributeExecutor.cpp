@@ -22,7 +22,11 @@
 
 #include "DistributeExecutor.h"
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/RegisterPlan.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -40,6 +44,7 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),
+      _logCol(_collection->getCollection()),
       _index(0),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
@@ -264,7 +269,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
 
   bool usedAlternativeRegId = false;
 
-  if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
+  if (input.isNull() && _alternativeRegId != RegisterPlan::MaxRegisterId) {
     // value is set, but null
     // check if there is a second input register available (UPSERT makes use of
     // two input registers,
@@ -343,20 +348,26 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
   }
 
   std::string shardId;
-  auto collInfo = _collection->getCollection();
-
-  int res = collInfo->getResponsibleShard(value, true, shardId);
+  int res = _logCol->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   TRI_ASSERT(!shardId.empty());
-
+  if (_type == ScatterNode::ScatterType::SERVER) {
+    // Special case for server based distribution.
+    shardId = _collection->getServerForShard(shardId);
+    TRI_ASSERT(!shardId.empty());
+  }
   return getClientId(shardId);
 }
 
 /// @brief create a new document key
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
-  return _collection->getCollection()->createKey(input);
+  return _logCol->createKey(input);
+}
+
+ExecutorInfos const& ExecutionBlockImpl<DistributeExecutor>::infos() const {
+  return _infos;
 }

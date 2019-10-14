@@ -246,7 +246,7 @@ TEST_F(CFilesTest, tst_existsfile) {
 
 TEST_F(CFilesTest, tst_filesize_empty) {
   StringBuffer* filename = writeFile("");
-  EXPECT_TRUE(0 == (int) TRI_SizeFile(filename->c_str()));
+  EXPECT_TRUE(0U == TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -260,7 +260,7 @@ TEST_F(CFilesTest, tst_filesize_exists) {
   const char* buffer = "the quick brown fox";
   
   StringBuffer* filename = writeFile(buffer);
-  EXPECT_TRUE((int) strlen(buffer) == (int) TRI_SizeFile(filename->c_str()));
+  EXPECT_TRUE(static_cast<int>(strlen(buffer)) == TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -271,8 +271,8 @@ TEST_F(CFilesTest, tst_filesize_exists) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CFilesTest, tst_filesize_non) {
-  EXPECT_TRUE((int) -1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
-  EXPECT_TRUE((int) -1 == (int) TRI_SizeFile("dihnui8ngiu54"));
+  EXPECT_TRUE(-1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
+  EXPECT_TRUE(-1 == (int) TRI_SizeFile("dihnui8ngiu54"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +454,7 @@ TEST_F(CFilesTest, tst_processFile) {
   good = TRI_ProcessFile(filename->c_str(), reader);
 
   EXPECT_TRUE(good);
-  EXPECT_EQ((int) strlen(buffer), (int) bcf._byteCount);
+  EXPECT_EQ(strlen(buffer), bcf._byteCount);
 
   TRI_SHA256Functor sha;
   auto shaReader = std::ref(sha);

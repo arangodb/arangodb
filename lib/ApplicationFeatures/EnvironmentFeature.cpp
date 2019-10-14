@@ -28,6 +28,7 @@
 
 #include "EnvironmentFeature.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
@@ -49,8 +50,9 @@ namespace arangodb {
 EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Environment") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
-  startsAfter("MaxMapCount");
+  startsAfter<application_features::GreetingsFeaturePhase>();
+
+  startsAfter<MaxMapCountFeature>();
 }
 
 void EnvironmentFeature::prepare() {
@@ -311,7 +313,7 @@ void EnvironmentFeature::prepare() {
       std::string content;
       auto rv = basics::FileUtils::slurp("/proc/self/numa_maps", content);
       if (rv.ok()) {
-        auto values = basics::StringUtils::split(content, '\n', '\0');
+        auto values = basics::StringUtils::split(content, '\n');
 
         if (!values.empty()) {
           auto first = values[0];

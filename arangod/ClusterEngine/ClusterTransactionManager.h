@@ -33,7 +33,7 @@ namespace arangodb {
 class ClusterTransactionManager final : public TransactionManager {
  public:
   ClusterTransactionManager() : TransactionManager(), _nrRunning(0) {}
-  ~ClusterTransactionManager() {}
+  ~ClusterTransactionManager() = default;
 
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {

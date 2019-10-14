@@ -23,6 +23,7 @@
 
 #include "StringUtils.h"
 
+#include <algorithm>
 #include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
@@ -443,86 +444,45 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, char delim, char quote) {
+std::vector<std::string> split(std::string const& source, char delim) {
   std::vector<std::string> result;
 
-  if (source.empty()) {
-    return result;
-  }
+  char const* q = source.data();
+  char const* e = q + source.size();
 
-  auto buffer = std::make_unique<char[]>(source.size() + 1);
-  char* p = buffer.get();
+  if (q != e) {
+    char const* last = q;
 
-  char const* q = source.c_str();
-  char const* e = source.c_str() + source.size();
-
-  if (quote == '\0') {
     for (; q < e; ++q) {
       if (*q == delim) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
+        result.emplace_back(last, q - last);
+        last = q + 1;
       }
     }
-  } else {
-    for (; q < e; ++q) {
-      if (*q == quote) {
-        if (q + 1 < e) {
-          *p++ = *++q;
-        }
-      } else if (*q == delim) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
-      }
-    }
+    result.emplace_back(last, q - last);
   }
 
-  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim, char quote) {
+std::vector<std::string> split(std::string const& source, std::string const& delim) {
   std::vector<std::string> result;
 
-  if (source.empty()) {
-    return result;
-  }
+  char const* q = source.data();
+  char const* e = source.data() + source.size();
 
-  auto buffer = std::make_unique<char[]>(source.size() + 1);
-  char* p = buffer.get();
+  if (q != e) {
+    char const* last = q;
 
-  char const* q = source.c_str();
-  char const* e = source.c_str() + source.size();
-
-  if (quote == '\0') {
     for (; q < e; ++q) {
       if (delim.find(*q) != std::string::npos) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
+        result.emplace_back(last, q - last);
+        last = q + 1;
       }
     }
-  } else {
-    for (; q < e; ++q) {
-      if (*q == quote) {
-        if (q + 1 < e) {
-          *p++ = *++q;
-        }
-      } else if (delim.find(*q) != std::string::npos) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
-      }
-    }
+    result.emplace_back(last, q - last);
   }
 
-  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
@@ -686,9 +646,8 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
 }
 
 void tolowerInPlace(std::string* str) {
-  size_t len = str->length();
 
-  if (len == 0) {
+  if (str->empty()) {
     return;
   }
 
@@ -698,16 +657,15 @@ void tolowerInPlace(std::string* str) {
 }
 
 std::string tolower(std::string&& str) {
-  size_t const len = str.size();
 
-  for (size_t i = 0; i < len; ++i) {
-    str[i] = static_cast<char>(::tolower(str[i]));
-  }
+  std::transform(
+    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
 
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
+
   size_t len = str.length();
 
   if (len == 0) {
@@ -937,11 +895,7 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
-std::string encodeURIComponent(std::string const& str) {
-  return encodeURIComponent(str.c_str(), str.size());
-}
-
-std::string encodeURIComponent(char const* src, size_t const len) {
+std::string encodeURIComponent(char const* src, size_t len) {
   char const* end = src + len;
 
   // cppcheck-suppress unsignedPositive
@@ -971,11 +925,11 @@ std::string encodeURIComponent(char const* src, size_t const len) {
   return result;
 }
 
-std::string soundex(std::string const& str) {
-  return soundex(str.c_str(), str.size());
+std::string encodeURIComponent(std::string const& str) {
+  return encodeURIComponent(str.data(), str.size());
 }
 
-std::string soundex(char const* src, size_t const len) {
+std::string soundex(char const* src, size_t len) {
   char const* end = src + len;
 
   while (src < end) {
@@ -1014,6 +968,10 @@ std::string soundex(char const* src, size_t const len) {
   }
 
   return result;
+}
+
+std::string soundex(std::string const& str) {
+  return soundex(str.data(), str.size());
 }
 
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
@@ -1452,7 +1410,7 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int64_t int64(std::string const& value) {
   try {
     return std::stoll(value, nullptr, 10);
@@ -1538,7 +1496,7 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
-#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;
@@ -1710,20 +1668,16 @@ float floatDecimal(char const* value, size_t size) {
 // BASE64
 // .............................................................................
 
-std::string encodeBase64(std::string const& in) {
+std::string encodeBase64(char const* in, size_t len) {
+  std::string ret;
+  ret.reserve((len * 4 / 3) + 2);
+
   unsigned char charArray3[3];
   unsigned char charArray4[4];
-
-  std::string ret;
-  ret.reserve((in.size() * 4 / 3) + 2);
+  unsigned char const* bytesToEncode = reinterpret_cast<unsigned char const*>(in);
 
   int i = 0;
-
-  unsigned char const* bytesToEncode =
-      reinterpret_cast<unsigned char const*>(in.c_str());
-  size_t in_len = in.size();
-
-  while (in_len--) {
+  while (len--) {
     charArray3[i++] = *(bytesToEncode++);
 
     if (i == 3) {
@@ -1762,16 +1716,19 @@ std::string encodeBase64(std::string const& in) {
   return ret;
 }
 
+std::string encodeBase64(std::string const& str) {
+  return encodeBase64(str.data(), str.size());
+}
+
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
-
-  std::string ret;
 
   int i = 0;
   int inp = 0;
 
   int in_len = (int)source.size();
+  std::string ret;
   ret.reserve((source.size() / 4 * 3) + 1);
 
   while (in_len-- && (source[inp] != '=') && isBase64(source[inp])) {

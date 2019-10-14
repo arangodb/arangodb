@@ -48,7 +48,7 @@ function getDBServers() {
   return servers;
 }
 
-const servers = getDBServers();
+var servers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -611,6 +611,8 @@ function MovingShardsSuite ({useData}) {
         if (dbservers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           checkCollectionContents();
+
+          servers = dbservers;
           return;
         }
         console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
@@ -931,4 +933,3 @@ jsunity.run(function MovingShardsSuite_data() {
 });
 
 return jsunity.done();
-
