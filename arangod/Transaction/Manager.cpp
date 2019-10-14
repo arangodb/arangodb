@@ -36,6 +36,7 @@
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -832,7 +833,7 @@ bool Manager::garbageCollect(bool abortAll) {
 }
 
 /// @brief abort all transactions matching
-bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
+bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)> cb) {
   ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
   ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
@@ -846,7 +847,7 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
-        if (tryGuard.isLocked() && cb(*mtrx.state)) {
+        if (tryGuard.isLocked() && cb(*mtrx.state, mtrx.user)) {
           toAbort.emplace_back(it->first);
         }
       }
@@ -952,6 +953,82 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       builder.close();
     }
   });
+}
+
+Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
+  Result res;
+
+  // abort local transactions
+  abortManagedTrx([](TransactionState const& state, std::string const& user) {
+    return ::authorized(user) && !state.isReadOnlyTransaction();
+  });
+
+  if (fanout) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+
+    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+    auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+
+    VPackBuffer<uint8_t> body;
+
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      network::Headers headers;
+      if (auth != nullptr && auth->isActive()) {
+        if (!username.empty()) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder payload{&builder};
+            payload->add("preferred_username", VPackValue(username));
+          }
+          VPackSlice slice = builder.slice();
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        } else {
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
+        }
+      }
+
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+                                    "/_db/_system/_api/transaction/write?local=true",
+                                    body, std::move(headers), options);
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& resp = it.get();
+        if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
+          auto slices = resp.response->slices();
+          if (!slices.empty()) {
+            VPackSlice slice = slices[0];
+            res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
+          }
+        }
+      }
+    }
+  }
+
+  return res;
 }
 
 }  // namespace transaction

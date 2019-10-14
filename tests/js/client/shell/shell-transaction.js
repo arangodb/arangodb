@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -649,7 +649,51 @@ function transactionInvocationSuite () {
           try { trx.abort(); } catch (err) {}
         });
       }
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort write transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortWriteTransactions: function () {
+      db._create(cn, {numberOfShards: 2});
+      let trx1, trx2, trx3;
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        trx1 = db._createTransaction(obj);
+        trx2 = db._createTransaction(obj);
+        trx3 = db._createTransaction(obj);
+        
+        let trx = db._transactions();
+        assertInList(trx, trx1);
+        assertInList(trx, trx2);
+        assertInList(trx, trx3);
+       
+        let result = arango.DELETE("/_api/transaction/write");
+        assertEqual(result.code, 200);
+
+        trx = db._transactions();
+        assertNotInList(trx, trx1);
+        assertNotInList(trx, trx2);
+        assertNotInList(trx, trx3);
+      } finally {
+        if (trx1 && trx1._id) {
+          try { trx1.abort(); } catch (err) {}
+        }
+        if (trx2 && trx2._id) {
+          try { trx2.abort(); } catch (err) {}
+        }
+        if (trx3 && trx3._id) {
+          try { trx3.abort(); } catch (err) {}
+        }
+      }
+    },
 
   };
 }
@@ -4047,7 +4091,6 @@ function transactionAQLStreamSuite () {
   };
 }
 
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -4108,9 +4151,12 @@ function transactionTTLStreamSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
+  /*
 jsunity.run(transactionRevisionsSuite);
 jsunity.run(transactionRollbackSuite);
+*/
 jsunity.run(transactionInvocationSuite);
+/*
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
 jsunity.run(transactionBarriersSuite);
@@ -4119,5 +4165,6 @@ jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
+*/
 
 return jsunity.done();

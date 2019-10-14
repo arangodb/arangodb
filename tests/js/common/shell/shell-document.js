@@ -2383,36 +2383,6 @@ function DatabaseDocumentSuiteReturnStuff () {
 
     },
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test new features from 3.0
-////////////////////////////////////////////////////////////////////////////////
-
-/* Not Functional in arangosh connected to coordinator.
-    testNewFeatures : function () {
-      if (! require("@arangodb/cluster").isCluster()) {
-        var x = collection.insert({Hallo: 12}, { silent: true });
-        assertEqual(true, x);
-        x = collection.insert([{Hallo: 13}], { silent: true });
-        assertEqual(true, x);
-        x = collection.insert({Hallo:14});
-        var y = collection.replace(x._key, {Hallo:15}, { silent: true });
-        assertEqual(true, y);
-        y = db._replace(x._id, {Hallo: 16}, {silent: true});
-        assertEqual(true, y);
-        y = collection.update(x._key, {Hallo:17}, { silent: true });
-        assertEqual(true, y);
-        y = db._update(x._id, {Hallo:18}, { silent: true });
-        assertEqual(true, y);
-        y = collection.remove(x._key, { silent: true });
-        assertEqual(true, y);
-        x = collection.insert({Hallo:19});
-        y = db._remove(x._id, {silent: true});
-        assertEqual(true, y);
-      }
-    }
-*/
-
   };
 }
 
