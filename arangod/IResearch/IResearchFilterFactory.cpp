@@ -794,7 +794,7 @@ std::tuple<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayCompars
         default:
           TRI_ASSERT(false); // new array comparsion operator?
           return std::make_tuple(
-              arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array comparison operator"),
+              arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array NONE comparison operator"),
               arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
       }
     }
@@ -845,7 +845,7 @@ std::tuple<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayCompars
           default:
             TRI_ASSERT(false); // new array comparsion operator?
             return std::make_tuple(
-                arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL comparison operator"),
+                arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL/NONE comparison operator"),
                 arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
         }
         break;
@@ -892,7 +892,7 @@ std::tuple<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayCompars
           default:
             TRI_ASSERT(false); // new array comparsion operator?
             return std::make_tuple(
-                arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL comparison operator"),
+                arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ANY comparison operator"),
                 arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
         }
         break;
@@ -1293,9 +1293,9 @@ arangodb::Result fromInArray(irs::boolean_filter* filter, QueryContext const& ct
 
   if (filter) {
     filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-                 ? static_cast<irs::boolean_filter*>(
-                       &filter->add<irs::Not>().filter<irs::Or>())
-                 : static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+                 ? &static_cast<irs::boolean_filter&>(
+                       filter->add<irs::Not>().filter<irs::Or>())
+                 : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
     filter->boost(filterCtx.boost);
   }
 
@@ -1434,9 +1434,9 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       }
 
       filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-                   ? static_cast<irs::boolean_filter*>(
-                         &filter->add<irs::Not>().filter<irs::Or>())
-                   : static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+                   ? &static_cast<irs::boolean_filter&>(
+                         filter->add<irs::Not>().filter<irs::Or>())
+                   : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
       filter->boost(filterCtx.boost);
 
       FilterContext const subFilterCtx{
