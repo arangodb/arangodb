@@ -21,21 +21,20 @@
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
 /// @author Max Neunhoeffer
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ASSOC_MULTI_HELPERS_H
-#define ARANGODB_BASICS_ASSOC_MULTI_HELPERS_H 1
+#ifndef ARANGODB_CONTAINERS_ASSOC_MULTI_HELPERS_H
+#define ARANGODB_CONTAINERS_ASSOC_MULTI_HELPERS_H 1
 
-#include "Basics/Common.h"
-#include "Basics/IndexBucket.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
+#include "Containers/details/IndexBucket.h"
 
 namespace arangodb {
-namespace basics {
+namespace containers {
 
 template <class Element, class IndexType, bool useHashCache>
 struct Entry {
@@ -76,11 +75,11 @@ struct Entry<Element, IndexType, false> {
 };
 
 template <class Element, class IndexType, bool useHashCache>
-class MultiInserterTask final : public LocalTask {
+class MultiInserterTask final : public basics::LocalTask {
  private:
-  typedef Entry<Element, IndexType, useHashCache> EntryType;
-  typedef arangodb::basics::IndexBucket<EntryType, IndexType> Bucket;
-  typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
+  using EntryType = Entry<Element, IndexType, useHashCache>;
+  using Bucket = IndexBucket<EntryType, IndexType>;
+  using DocumentsPerBucket = std::vector<std::pair<Element, uint64_t>>;
 
   std::function<void(void*)> _contextDestroyer;
   std::vector<Bucket>* _buckets;
@@ -93,12 +92,12 @@ class MultiInserterTask final : public LocalTask {
 
  public:
   MultiInserterTask(
-      std::shared_ptr<LocalTaskQueue> queue,
+      std::shared_ptr<basics::LocalTaskQueue> queue,
       std::function<void(void*)> contextDestroyer, std::vector<Bucket>* buckets,
       std::function<Element(void*, Element const&, uint64_t, Bucket&, bool const, bool const)> doInsert,
       size_t i, void* userData,
       std::shared_ptr<std::vector<std::vector<DocumentsPerBucket>>> allBuckets)
-      : LocalTask(queue),
+      : basics::LocalTask(queue),
         _contextDestroyer(contextDestroyer),
         _buckets(buckets),
         _doInsert(doInsert),
@@ -141,7 +140,7 @@ class MultiInserterTask final : public LocalTask {
 };
 
 template <class Element, class IndexType, bool useHashCache>
-class MultiPartitionerTask final : public LocalTask {
+class MultiPartitionerTask final : public basics::LocalTask {
  private:
   typedef MultiInserterTask<Element, IndexType, useHashCache> Inserter;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
@@ -163,7 +162,7 @@ class MultiPartitionerTask final : public LocalTask {
   uint64_t _bucketsMask;
 
  public:
-  MultiPartitionerTask(std::shared_ptr<LocalTaskQueue> queue,
+  MultiPartitionerTask(std::shared_ptr<basics::LocalTaskQueue> queue,
                        std::function<uint64_t(Element const&, bool)> hashElement,
                        std::function<void(void*)> const& contextDestroyer,
                        std::shared_ptr<std::vector<Element> const> data,
@@ -172,7 +171,7 @@ class MultiPartitionerTask final : public LocalTask {
                        std::shared_ptr<std::vector<arangodb::Mutex>> bucketMapLocker,
                        std::shared_ptr<std::vector<std::vector<DocumentsPerBucket>>> allBuckets,
                        std::shared_ptr<std::vector<std::shared_ptr<Inserter>>> inserters)
-      : LocalTask(queue),
+      : basics::LocalTask(queue),
         _hashElement(hashElement),
         _contextDestroyer(contextDestroyer),
         _data(data),
@@ -219,7 +218,7 @@ class MultiPartitionerTask final : public LocalTask {
   }
 };
 
-}  // namespace basics
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

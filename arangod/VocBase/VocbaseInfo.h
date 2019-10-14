@@ -69,7 +69,6 @@ struct DBUser {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo(application_features::ApplicationServer&);
-  // CreateDatabaseInfo(CreateDatabaseInfo &&) = delete; // TODO - then replace shared with unique ptr
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -153,10 +152,10 @@ struct VocbaseOptions {
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
+void addVocbaseReplicationOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern);
-void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
+void addVocbaseReplicationOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb
 #endif

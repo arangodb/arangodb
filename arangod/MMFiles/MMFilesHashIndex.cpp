@@ -21,16 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "MMFilesHashIndex.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/LocalTaskQueue.h"
-#include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
@@ -38,9 +42,6 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -61,8 +62,8 @@ MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
 
   _mappingFieldCondition.reserve(_coveredFields);
 
-  SmallVector<size_t>::allocator_type::arena_type a;
-  SmallVector<size_t> storageOrder{a};
+  ::arangodb::containers::SmallVector<size_t>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<size_t> storageOrder{a};
 
   for (size_t i = 0; i < _coveredFields; ++i) {
     auto comp = node->getMemberUnchecked(i);
@@ -299,15 +300,13 @@ void MMFilesHashIndexIterator::reset() {
 }
 
 /// @brief create the unique array
-MMFilesHashIndex::UniqueArray::UniqueArray(size_t numPaths,
-                                           std::unique_ptr<TRI_HashArray_t> hashArray)
+MMFilesHashIndex::UniqueArray::UniqueArray(size_t numPaths, std::unique_ptr<ImplTypeUnique> hashArray)
     : _hashArray(std::move(hashArray)), _numPaths(numPaths) {
   TRI_ASSERT(_hashArray != nullptr);
 }
 
 /// @brief create the multi array
-MMFilesHashIndex::MultiArray::MultiArray(size_t numPaths,
-                                         std::unique_ptr<TRI_HashArrayMulti_t> hashArray)
+MMFilesHashIndex::MultiArray::MultiArray(size_t numPaths, std::unique_ptr<ImplTypeMulti> hashArray)
     : _hashArray(std::move(hashArray)), _numPaths(numPaths) {
   TRI_ASSERT(_hashArray != nullptr);
 }
@@ -328,13 +327,13 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid, LogicalCollection& collect
   }
 
   if (_unique) {
-    auto array = std::make_unique<TRI_HashArray_t>(
+    auto array = std::make_unique<ImplTypeUnique>(
         MMFilesUniqueHashIndexHelper(_paths.size(), _useExpansion),
         indexBuckets, [this]() -> std::string { return this->context(); });
 
     _uniqueArray = new MMFilesHashIndex::UniqueArray(numPaths(), std::move(array));
   } else {
-    auto array = std::make_unique<TRI_HashArrayMulti_t>(
+    auto array = std::make_unique<ImplTypeMulti>(
         MMFilesMultiHashIndexHelper(_paths.size(), _useExpansion), indexBuckets,
         64, [this]() -> std::string { return this->context(); });
 

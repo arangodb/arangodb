@@ -492,8 +492,8 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
   EXPECT_TRUE(query.plan());
   auto& plan = *query.plan();
 
-  arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan.findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
   EXPECT_EQ(nodes.size(), 1);

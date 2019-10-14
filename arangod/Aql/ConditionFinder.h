@@ -58,7 +58,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
  private:
   ExecutionPlan* _plan;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
-  arangodb::HashSet<VariableId> _filters;
+  ::arangodb::containers::HashSet<VariableId> _filters;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   // note: this class will never free the contents of this map
   std::unordered_map<size_t, ExecutionNode*>* _changes;
