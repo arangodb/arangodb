@@ -336,7 +336,8 @@ public:
 
  protected:
   /// @brief Add time to live entry
-  virtual bool addTimeToLive(long millis);
+  virtual bool addTimeToLive(
+    std::chrono::time_point<std::chrono::system_clock> const& tp);
 
   /// @brief Remove time to live entry
   virtual bool removeTimeToLive();
