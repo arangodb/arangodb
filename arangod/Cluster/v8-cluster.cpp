@@ -1632,7 +1632,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path;
   std::string body;
   auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
-  CoordTransactionID coordTransactionID;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
   double timeout;
   double initTimeout = -1.0;
   bool singleRequest = false;  // of no relevance here

@@ -410,12 +410,10 @@ bool Index::validateName(char const* key) {
 namespace {
 bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
-  char c = *p;
 
   // find divider
-
   while (1) {
-    c = *p;
+    char c = *p;
 
     if (c == '\0') {
       return false;

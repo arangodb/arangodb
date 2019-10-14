@@ -2327,13 +2327,13 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   // auto-magic version detection to disambiguate collections from 3.0 and from
   // 3.1
   if (slice.hasKey("version") && slice.get("version").isNumber() &&
-      slice.get("version").getNumber<int>() == LogicalCollection::VERSION_30 &&
+      slice.get("version").getNumber<int>() == static_cast<int>(LogicalCollection::Version::v30) &&
       slice.hasKey("allowUserKeys") && slice.hasKey("replicationFactor") &&
       slice.hasKey("numberOfShards")) {
     // these attributes were added to parameter.json in 3.1. so this is a 3.1
     // collection already
     // fix version number
-    patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+    patch.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v31)));
   }
 
   patch.close();
