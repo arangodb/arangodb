@@ -106,7 +106,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_password));
 
   options->addOption("--server.force-json",
-                     "force not to use velocypack for better debugability",
+                     "force to not use VelocyPack for easier debugging",
                      new BooleanParameter(&_forceJson),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30600);
