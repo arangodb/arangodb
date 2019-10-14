@@ -121,7 +121,7 @@ class KShortestPathsNode : public GraphNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override {
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

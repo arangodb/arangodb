@@ -21,10 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Ast.h"
-#include "Aql/AstNode.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Arithmetic.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
@@ -33,21 +38,16 @@
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/SmallVector.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -2109,7 +2109,7 @@ void Ast::validateAndOptimize() {
 
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
-                                 arangodb::HashSet<Variable const*>& result) {
+                                 ::arangodb::containers::HashSet<Variable const*>& result) {
   auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
   };
@@ -3576,8 +3576,8 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
 
-  SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
-  SmallVector<arangodb::velocypack::StringRef> attributeNames{a};
+  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef> attributeNames{a};
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringRef());

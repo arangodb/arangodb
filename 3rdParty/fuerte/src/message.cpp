@@ -38,12 +38,17 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 
 void MessageHeader::addMeta(std::string key, std::string value) {
   if (boost::iequals(key, fu_accept_key)) {
-    this->_acceptType = to_ContentType(value);
+    _acceptType = to_ContentType(value);
+    if (_acceptType != ContentType::Custom) {
+      return;
+    }
   } else if (boost::iequals(key, fu_content_type_key)) {
-    this->_contentType = to_ContentType(value);
-  } else {
-    this->_meta.emplace(std::move(key), std::move(value));
+    _contentType = to_ContentType(value);
+    if (_contentType != ContentType::Custom) {
+      return;
+    }
   }
+  this->_meta.emplace(std::move(key), std::move(value));
 }
 
 void MessageHeader::addMeta(StringMap const& map) {

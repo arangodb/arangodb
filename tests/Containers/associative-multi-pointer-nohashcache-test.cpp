@@ -29,11 +29,11 @@
 
 #include "gtest/gtest.h"
 
-#include "Basics/AssocMulti.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Containers/AssocMulti.h"
 
 using namespace std;
 
@@ -91,8 +91,8 @@ struct AssocMultiTestHelper {
   }
 };
 
-#define INIT_MULTI                                                                     \
-  arangodb::basics::AssocMulti<void, void*, uint32_t, false, AssocMultiTestHelper> a1( \
+#define INIT_MULTI                                                                         \
+  arangodb::containers::AssocMulti<void, void*, uint32_t, false, AssocMultiTestHelper> a1( \
       (AssocMultiTestHelper()));
 
 // -----------------------------------------------------------------------------
