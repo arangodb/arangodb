@@ -1240,6 +1240,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return Shards::make_shared(shared_from_this());
       }
 
+      class Maintenance : public StaticComponent<Maintenance, Supervision> {
+       public:
+        constexpr char const* component() const noexcept { return "Maintenance"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Maintenance const> maintenance() const {
+        return Maintenance::make_shared(shared_from_this());
+      }
+
       class DbServers : public StaticComponent<DbServers, Supervision> {
        public:
         constexpr char const* component() const noexcept { return "DBServers"; }

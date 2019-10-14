@@ -124,6 +124,7 @@ RestAdminClusterHandler::~RestAdminClusterHandler() {}
 
 std::string const RestAdminClusterHandler::Health = "health";
 std::string const RestAdminClusterHandler::NumberOfServers = "numberOfServers";
+std::string const RestAdminClusterHandler::Maintenance = "maintenance";
 
 RestStatus RestAdminClusterHandler::execute() {
 
@@ -142,6 +143,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleHealth();
     } else if (command == NumberOfServers) {
       return handleNumberOfServers();
+    } else if (command == Maintenance) {
+      return handleMaintenance();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -150,6 +153,150 @@ RestStatus RestAdminClusterHandler::execute() {
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                 "expecting URL /_api/replication/<command>");
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleGetMaintenance() {
+
+  auto self(shared_from_this());
+  auto maintenancePath = arangodb::cluster::paths::root()->arango()->supervision()->state()->mode();
+
+  return waitForFuture(AsyncAgencyComm().getValues(maintenancePath).thenValue(
+    [self, this](AgencyReadResult &&result) {
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        VPackBuffer<uint8_t> body;
+        {
+          VPackBuilder bodyBuilder(body);
+          VPackObjectBuilder ob(&bodyBuilder);
+          bodyBuilder.add("error", VPackValue(false));
+          bodyBuilder.add("result", result.value());
+        }
+
+        resetResponse(rest::ResponseCode::OK);
+        response()->setPayload(std::move(body), true);
+      } else {
+        generateError(result.asResult());
+      }
+    }).thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+}
+
+RestAdminClusterHandler::futureVoid RestAdminClusterHandler::waitForSupervisionState(bool state, clock::time_point startTime) {
+
+  auto self(shared_from_this());
+
+  if (startTime == clock::time_point()) {
+    startTime = clock::now();
+  }
+
+  return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
+    [this, self] (auto) {
+      return AsyncAgencyComm()
+        .getValues(arangodb::cluster::paths::root()->arango()->supervision()->state()->mode());
+    })
+    .thenValue([this, self, state, startTime] (AgencyReadResult &&result) {
+      auto waitFor = state ? "Maintenance" : "Normal";
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        if (false == result.value().isEqualString(waitFor)) {
+          if (clock::now() - startTime < 120.0s) {
+            // wait again
+            return waitForSupervisionState(state);
+          }
+
+          generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_GATEWAY_TIMEOUT,
+            std::string{"timed out while waiting for supervision to go into maintenance mode"});
+        } else {
+
+          auto msg = state
+            ? "Cluster supervision deactivated. It will be reactivated automatically in 60 minutes unless this call is repeated until then."
+            : "Cluster supervision reactivated.";
+          VPackBuffer<uint8_t> body;
+          {
+            VPackBuilder bodyBuilder(body);
+            VPackObjectBuilder ob(&bodyBuilder);
+            bodyBuilder.add("error", VPackValue(false));
+            bodyBuilder.add("warning", VPackValue(msg));
+          }
+
+          resetResponse(rest::ResponseCode::OK);
+          response()->setPayload(std::move(body), true);
+        }
+      } else {
+        generateError(result.asResult());
+      }
+
+      return futures::makeFuture();
+    });
+}
+
+RestStatus RestAdminClusterHandler::handlePutMaintenance(bool state) {
+
+  auto maintenancePath = arangodb::cluster::paths::root()->arango()->supervision()->maintenance();
+
+  auto sendTransaction = [&] {
+    if (state) {
+      return AsyncAgencyComm().setValue(60s, maintenancePath, VPackValue(true), 3600);
+    } else {
+      return AsyncAgencyComm().deleteKey(60s, maintenancePath);
+    }
+  };
+
+  auto self(shared_from_this());
+
+  return waitForFuture(sendTransaction().thenValue(
+    [this, self, state](AsyncAgencyCommResult &&result) {
+      if (result.ok() && result.statusCode() == 200) {
+        return waitForSupervisionState(state);
+      } else {
+        generateError(result.asResult());
+      }
+      return futures::makeFuture();
+    }).thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+}
+
+RestStatus RestAdminClusterHandler::handleMaintenance() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator() && !ServerState::instance()->isSingleServer()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on single server and coordinators");
+    return RestStatus::DONE;
+  }
+
+  switch (_request->requestType()) {
+    case rest::RequestType::GET:
+      return handleGetMaintenance();
+    case rest::RequestType::PUT:
+      break;
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  if (body.isString()) {
+    if (body.isEqualString("on")) {
+      return handlePutMaintenance(true);
+    } else if(body.isEqualString("off")) {
+      return handlePutMaintenance(false);
+    }
+  }
+
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "string expected with value `on` or `off`");
   return RestStatus::DONE;
 }
 
@@ -289,7 +436,8 @@ RestStatus RestAdminClusterHandler::handleHealth() {
   }
 
   if (_request->requestType() != rest::RequestType::GET) {
-
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
   }
 
   if (!ServerState::instance()->isCoordinator() && !ServerState::instance()->isSingleServer()) {

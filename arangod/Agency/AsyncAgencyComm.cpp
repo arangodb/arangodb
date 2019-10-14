@@ -354,6 +354,35 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(network::Timeout 
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout, trx);
 }
 
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWriteTransaction(network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const {
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout, std::move(body));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(network::Timeout timeout, std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const {
+  return deleteKey(timeout, path->str());
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(network::Timeout timeout, std::string const& path) const {
+  VPackBuffer<uint8_t> transaction;
+  {
+    VPackBuilder trxBuilder(transaction);
+    VPackArrayBuilder env(&trxBuilder);
+    {
+      VPackArrayBuilder trx(&trxBuilder);
+      {
+        VPackObjectBuilder ops(&trxBuilder);
+        {
+          VPackObjectBuilder op(&trxBuilder, path);
+          trxBuilder.add("op", VPackValue("delete"));
+        }
+      }
+    }
+  }
+
+  return sendWriteTransaction(timeout, std::move(transaction));
+}
+
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;
 
 }

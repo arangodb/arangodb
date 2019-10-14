@@ -112,6 +112,45 @@ public:
   FutureResult getValues(std::string const& path) const;
   FutureReadResult getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
 
+
+  template<typename T>
+  FutureResult setValue(
+    network::Timeout timeout,
+    std::shared_ptr<const arangodb::cluster::paths::Path> const& path,
+    T value, uint64_t ttl = 0) {
+    return setValue(timeout, path->str(), std::forward<T>(value), ttl);
+  }
+
+  template<typename T>
+  FutureResult setValue(network::Timeout timeout, std::string const& path, T value, uint64_t ttl = 0) {
+    VPackBuffer<uint8_t> transaction;
+    {
+      VPackBuilder trxBuilder(transaction);
+      VPackArrayBuilder env(&trxBuilder);
+      {
+        VPackArrayBuilder trx(&trxBuilder);
+        {
+          VPackObjectBuilder ops(&trxBuilder);
+          {
+            VPackObjectBuilder op(&trxBuilder, path);
+            trxBuilder.add("op", VPackValue("set"));
+            trxBuilder.add("new", value);
+            if (ttl > 0) {
+              trxBuilder.add("ttl", VPackValue(ttl));
+            }
+          }
+        }
+      }
+    }
+
+    return sendWriteTransaction(timeout, std::move(transaction));
+  }
+
+  FutureResult deleteKey(network::Timeout timeout, std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
+  FutureResult deleteKey(network::Timeout timeout, std::string const& path) const;
+
+  FutureResult sendWriteTransaction(network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+
   FutureResult sendTransaction(network::Timeout timeout, AgencyReadTransaction const&) const;
   FutureResult sendTransaction(network::Timeout timeout, AgencyWriteTransaction const&) const;
 

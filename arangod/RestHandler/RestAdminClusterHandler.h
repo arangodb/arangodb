@@ -40,13 +40,30 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  private:
   static std::string const Health;
   static std::string const NumberOfServers;
-
+  static std::string const Maintenance;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
+  RestStatus handleMaintenance();
+
+  RestStatus handlePutMaintenance(bool state);
+  RestStatus handleGetMaintenance();
 
   RestStatus handleGetNumberOfServers();
   RestStatus handlePutNumberOfServers();
+
+
+private:
+  RestStatus handleSingleServerJob(std::string const& job, std::string const& server);
+
+
+  typedef std::chrono::steady_clock clock;
+  typedef futures::Future<futures::Unit> futureVoid;
+
+  futureVoid waitForSupervisionState(bool state, clock::time_point startTime = clock::time_point());
+
+
+
 };
 }  // namespace arangodb
 
