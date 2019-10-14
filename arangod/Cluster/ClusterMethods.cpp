@@ -3261,8 +3261,6 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
 
     if (!resSlice.hasKey("list") || !resSlice.get("list").isObject()) {
       continue;
-      //return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
-      //                        "result is missing backup list");
     }
 
     if (!payload.isNone() && plan.slice().isNone()) {
@@ -3616,6 +3614,11 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
         << " on all db servers: " << result.errorMessage();
     return result;
   }
+  if (list.size() == 0) {
+    return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
+      "result is missing backup list");
+  }
+
   if (plan.slice().isNone()) {
     LOG_TOPIC("54b9a", ERR, Logger::BACKUP)
         << "failed to find agency dump for " << backupId
