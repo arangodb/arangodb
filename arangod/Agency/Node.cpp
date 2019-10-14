@@ -415,8 +415,7 @@ Store* Node::getStore() {
 ValueType Node::valueType() const { return slice().type(); }
 
 // file time to live entry for this node to now + millis
-bool Node::addTimeToLive(long millis) {
-  auto tkey = std::chrono::system_clock::now() + std::chrono::milliseconds(millis);
+bool Node::addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tkey) {
   store().timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
   _ttl = tkey;
   return true;
@@ -451,6 +450,8 @@ namespace consensus {
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
 
+  using namespace std::chrono;
+
   if (!slice.hasKey("new")) {
     LOG_TOPIC("ad662", WARN, Logger::AGENCY)
         << "Operator set without new value: " << slice.toJson();
@@ -474,11 +475,22 @@ bool Node::handle<SET>(VPackSlice const& slice) {
   if (slice.hasKey("ttl")) {
     VPackSlice ttl_v = slice.get("ttl");
     if (ttl_v.isNumber()) {
+
+      // ttl in millisconds
       long ttl =
           1000l * ((ttl_v.isDouble())
-                       ? static_cast<long>(slice.get("ttl").getNumber<double>())
-                       : static_cast<long>(slice.get("ttl").getNumber<int>()));
-      addTimeToLive(ttl);
+                   ? static_cast<long>(slice.get("ttl").getNumber<double>())
+                   : static_cast<long>(slice.get("ttl").getNumber<int>()));
+
+      // calclate expiry time
+      auto const expires = slice.hasKey("epoch_millis") ?
+        time_point<system_clock>(
+          milliseconds(slice.get("epoch_millis").getNumber<uint64_t>() + ttl)) :
+        system_clock::now() + milliseconds(ttl);
+
+      // set ttl limit
+      addTimeToLive(expires);
+
     } else {
       LOG_TOPIC("66da2", WARN, Logger::AGENCY)
           << "Non-number value assigned to ttl: " << ttl_v.toJson();
