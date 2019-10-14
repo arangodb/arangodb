@@ -1,7 +1,7 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
-* agency ttl bug fix
+* Fixed agency TTL bug happening under certain rare conditions.
 
 * Improved performance of some agency helper functions.
 
