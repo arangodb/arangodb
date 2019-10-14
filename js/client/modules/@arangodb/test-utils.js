@@ -835,6 +835,10 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
   args['javascript.unit-test-filter'] = options.testCase;
 
+  if (options.forceJson) {
+    args['server.force-json'] = true;
+  }
+
   if (!options.verbose) {
     args['log.level'] = 'warning';
   }
