@@ -595,9 +595,15 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 }
 
 /// @brief create a new database
-Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result){
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo && info, TRI_vocbase_t*& result){
 
   std::string name = info.getName();
+  auto dbId = info.getId();
+  VPackBuilder markerBuilder;
+  {
+    VPackObjectBuilder guard(&markerBuilder);
+    info.toVelocyPack(markerBuilder); // can we imporve this
+  }
   result = nullptr;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
@@ -606,8 +612,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
   }
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
-  // a new builder is created to prevent blind copying of options
-  VPackBuilder builder;
 
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -632,14 +636,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
 
-    // TODO -- use info directly
-    {
-      VPackObjectBuilder guard(&builder);
-      info.toVelocyPack(builder);
-    }
-
-    TRI_ASSERT(builder.slice().isObject());
-    vocbase = engine->createDatabase(info.getId(), builder.slice(), status);
+    vocbase = engine->createDatabase(std::move(info), status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 
@@ -715,7 +712,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
   int res = TRI_ERROR_NO_ERROR;
 
   if (!engine->inRecovery()) {
-    res = engine->writeCreateDatabaseMarker(info.getId(), builder.slice());
+    res = engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
@@ -1269,7 +1266,13 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      auto* database = engine->openDatabase(it, _upgrade).release();
+      arangodb::CreateDatabaseInfo info(server());
+      info.allowSystemDB(true);
+      auto res = info.load(it, VPackSlice::emptyArraySlice());
+      if(res.fail()){
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      auto* database = engine->openDatabase(std::move(info), _upgrade).release();
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
         try {
