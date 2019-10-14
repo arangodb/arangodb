@@ -39,9 +39,14 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
  private:
   static std::string const Health;
+  static std::string const NumberOfServers;
 
 
   RestStatus handleHealth();
+  RestStatus handleNumberOfServers();
+
+  RestStatus handleGetNumberOfServers();
+  RestStatus handlePutNumberOfServers();
 };
 }  // namespace arangodb
 

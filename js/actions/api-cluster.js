@@ -474,7 +474,7 @@ actions.defineHttp({
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_statistics_GET
 // //////////////////////////////////////////////////////////////////////////////
-
+/*
 actions.defineHttp({
   url: '_admin/cluster/health',
   allowUseDatabase: true,
@@ -612,6 +612,7 @@ actions.defineHttp({
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
   }
 });
+*/
 
 function reducePlanServers (reducer, data) {
   var databases = ArangoAgency.get('Plan/Collections');

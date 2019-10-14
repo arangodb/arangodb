@@ -59,6 +59,13 @@ struct Response {
     return velocypack::Slice(); // none slice
   }
 
+  fuerte::StatusCode statusCode() const {
+    if (error == fuerte::Error::NoError && response) {
+      return response->statusCode();
+    }
+    return fuerte::StatusUndefined;
+  }
+
  public:
   std::string destinationShard() const; /// @brief shardId or empty
   std::string serverId() const;         /// @brief server ID

@@ -43,6 +43,10 @@ struct AsyncAgencyCommResult {
     return arangodb::fuerte::Error::NoError == this->error;
   }
 
+  bool fail() const {
+    return false == ok();
+  }
+
   VPackSlice slice() {
     return response->slice();
   }
@@ -109,6 +113,7 @@ public:
   FutureReadResult getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
 
   FutureResult sendTransaction(network::Timeout timeout, AgencyReadTransaction const&) const;
+  FutureResult sendTransaction(network::Timeout timeout, AgencyWriteTransaction const&) const;
 
 public:
   FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;

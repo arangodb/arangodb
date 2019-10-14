@@ -326,6 +326,7 @@ void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint, std::st
 }
 
 const char * AGENCY_URL_READ = "/_api/agency/read";
+const char * AGENCY_URL_WRITE = "/_api/agency/write";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) const {
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s, AgencyReadTransaction(path));
@@ -347,6 +348,10 @@ AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(std::shared_ptr<con
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(network::Timeout timeout, AgencyReadTransaction const& trx) const {
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout, trx);
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(network::Timeout timeout, AgencyWriteTransaction const& trx) const {
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout, trx);
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE = nullptr;
