@@ -5,6 +5,10 @@ v3.5.2 (XXXX-XX-XX)
   from occurring when this is not the case. Due to a data race, the message could
   previously also occur if the queue was empty.
 
+* Improved performance of some agency helper functions.
+
+* Fixed search not working in document view while in code mode.
+
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
