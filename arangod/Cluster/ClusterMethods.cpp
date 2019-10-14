@@ -3629,7 +3629,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   TRI_ASSERT(list.size() == 1);
   BackupMeta& meta = list.begin()->second;
   if (!meta._isAvailable) {
-    LOG_TOPIC("ed4dd", ERR, Logger::BACKUP)
+    LOG_TOPIC("ed4df", ERR, Logger::BACKUP)
         << "backup not available" << backupId;
     return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "backup not available for restore");
