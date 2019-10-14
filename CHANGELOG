@@ -1,6 +1,10 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed available flag for hotbackup.
+
+* Fixed list with id for partially available hotbackups
+
 * Fixed issue #10090: fix repeatable seek to the same document in
   SEARCH operations for ArangoSearch views.
 
