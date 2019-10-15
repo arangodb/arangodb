@@ -29,19 +29,20 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Cluster/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Cluster/AgencyPaths.h"
 #include "Cluster/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -129,6 +130,8 @@ std::string const RestAdminClusterHandler::NodeVersion = "nodeVersion";
 std::string const RestAdminClusterHandler::NodeEngine = "nodeEngine";
 std::string const RestAdminClusterHandler::NodeStatistics = "nodeStatistics";
 std::string const RestAdminClusterHandler::Statistics = "statistics";
+std::string const RestAdminClusterHandler::ShardDistribution = "shardDistribution";
+std::string const RestAdminClusterHandler::CollectionShardDistribution = "collectionShardDistribution";
 
 RestStatus RestAdminClusterHandler::execute() {
 
@@ -157,6 +160,10 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleNodeStatistics();
     } else if (command == Statistics) {
       return handleStatistics();
+    } else if (command == ShardDistribution) {
+      return handleShardDistribution();
+    } else if (command == CollectionShardDistribution) {
+      return handleCollectionShardDistribution();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -183,7 +190,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
   std::string const& serverId = request()->value(serverFromParameter);
   if (serverId.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "missing parameter `ServerID`");
+                  std::string("missing parameter `") + serverFromParameter + "`");
     return RestStatus::DONE;
   }
 
@@ -235,6 +242,80 @@ RestStatus RestAdminClusterHandler::handleNodeEngine() {
 
 RestStatus RestAdminClusterHandler::handleStatistics() {
   return handleProxyGetRequest("/_admin/statistics", "DBserver");
+}
+
+
+RestStatus RestAdminClusterHandler::handleShardDistribution() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  auto reporter = cluster::ShardDistributionReporter::instance(server());
+  VPackBuffer<uint8_t> resultBody;
+  {
+    VPackBuilder result(resultBody);
+    reporter->getDistributionForDatabase(_vocbase.name(), result);
+  }
+  resetResponse(rest::ResponseCode::OK);
+  response()->setPayload(std::move(resultBody), true);
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::string const& collection) {
+
+  if (collection.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "expected nonempty `collection` parameter");
+    return RestStatus::DONE;
+  }
+
+  auto reporter = cluster::ShardDistributionReporter::instance(server());
+  VPackBuffer<uint8_t> resultBody;
+  {
+    VPackBuilder result(resultBody);
+    reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, result);
+  }
+  resetResponse(rest::ResponseCode::OK);
+  response()->setPayload(std::move(resultBody), true);
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  switch (request()->requestType()) {
+    case rest::RequestType::GET:
+      return handleGetCollectionShardDistribution(request()->value("collection"));
+    case rest::RequestType::PUT:
+      break;
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  if (body.isObject()) {
+    VPackSlice collection = body.get("collection");
+    if (collection.isString()) {
+      return handleGetCollectionShardDistribution(collection.copyString());
+    }
+  }
+
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with key `collection`");
+  return RestStatus::DONE;
 }
 
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {

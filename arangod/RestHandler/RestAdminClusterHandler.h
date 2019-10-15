@@ -45,6 +45,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const NodeStatistics;
   static std::string const NodeEngine;
   static std::string const Statistics;
+  static std::string const ShardDistribution;
+  static std::string const CollectionShardDistribution;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -61,6 +63,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleNodeEngine();
   RestStatus handleStatistics();
 
+  RestStatus handleShardDistribution();
+  RestStatus handleCollectionShardDistribution();
+
 
 private:
   RestStatus handleSingleServerJob(std::string const& job, std::string const& server);
@@ -72,7 +77,7 @@ private:
   futureVoid waitForSupervisionState(bool state, clock::time_point startTime = clock::time_point());
 
   RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
-
+  RestStatus handleGetCollectionShardDistribution(std::string const& collection);
 
 };
 }  // namespace arangodb
