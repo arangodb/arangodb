@@ -106,7 +106,7 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice body) {
+int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -114,7 +114,7 @@ int errorCodeFromBody(arangodb::velocypack::Slice body) {
       return num.getNumericValue<int>();
     }
   }
-  return TRI_ERROR_ILLEGAL_NUMBER;
+  return defaultErrorCode;
 }
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,
@@ -220,6 +220,52 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
 }
 }  // namespace
 
+fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType verb) {
+  switch (verb) {
+    case rest::RequestType::DELETE_REQ:
+      return fuerte::RestVerb::Delete;
+    case rest::RequestType::GET:
+      return fuerte::RestVerb::Get;
+    case rest::RequestType::POST:
+      return fuerte::RestVerb::Post;
+    case rest::RequestType::PUT:
+      return fuerte::RestVerb::Put;
+    case rest::RequestType::HEAD:
+      return fuerte::RestVerb::Head;
+    case rest::RequestType::PATCH:
+      return fuerte::RestVerb::Patch;
+    case rest::RequestType::OPTIONS:
+      return fuerte::RestVerb::Options;
+    case rest::RequestType::ILLEGAL:
+      return fuerte::RestVerb::Illegal;
+  }
+
+  return fuerte::RestVerb::Illegal;
+}
+
+rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
+  switch (verb) {
+    case fuerte::RestVerb::Illegal:
+      return rest::RequestType::ILLEGAL;
+    case fuerte::RestVerb::Delete:
+      return rest::RequestType::DELETE_REQ;
+    case fuerte::RestVerb::Get:
+      return rest::RequestType::GET;
+    case fuerte::RestVerb::Post:
+      return rest::RequestType::POST;
+    case fuerte::RestVerb::Put:
+      return rest::RequestType::PUT;
+    case fuerte::RestVerb::Head:
+      return rest::RequestType::HEAD;
+    case fuerte::RestVerb::Patch:
+      return rest::RequestType::PATCH;
+    case fuerte::RestVerb::Options:
+      return rest::RequestType::OPTIONS;
+  }
+
+  return rest::RequestType::ILLEGAL;
+}
+
 int fuerteToArangoErrorCode(network::Response const& res) {
   LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError)
       << "cluster error: '" << fuerte::to_string(res.error)
@@ -232,5 +278,14 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
       << "cluster error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
 }
+
+std::string fuerteToArangoErrorMessage(network::Response const& res) {
+  return TRI_errno_string(fuerteToArangoErrorCode(res));
+}
+
+std::string fuerteToArangoErrorMessage(fuerte::Error err) {
+  return TRI_errno_string(fuerteToArangoErrorCode(err));
+}
+
 }  // namespace network
 }  // namespace arangodb

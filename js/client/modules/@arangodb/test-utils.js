@@ -826,11 +826,18 @@ function writeTestResult(path, data) {
 
 function runInArangosh (options, instanceInfo, file, addArgs) {
   let args = pu.makeArgs.arangosh(options);
-  args['server.endpoint'] = instanceInfo.endpoint;
+  let endpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
+      instanceInfo.vstEndpoint : 
+      instanceInfo.endpoint ;
+  args['server.endpoint'] = endpoint;
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
   args['javascript.unit-test-filter'] = options.testCase;
+
+  if (options.forceJson) {
+    args['server.force-json'] = true;
+  }
 
   if (!options.verbose) {
     args['log.level'] = 'warning';
@@ -851,9 +858,13 @@ runInArangosh.info = 'runInExternalArangosh';
 
 function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   let endpoint = arango.getEndpoint();
-  if (endpoint !== instanceInfo.endpoint) {
-    print(`runInLocalArangosh: Reconnecting to ${instanceInfo.endpoint} from ${endpoint}`);
-    arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+  if (( options.vst && endpoint !== instanceInfo.vstEndpoint) ||
+      (!options.vst && endpoint !== instanceInfo.endpoint)) {
+    let newEndpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
+        instanceInfo.vstEndpoint : 
+        instanceInfo.endpoint;
+    print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
+    arango.reconnect(newEndpoint, '_system', 'root', '');
   }
   
   let testCode;

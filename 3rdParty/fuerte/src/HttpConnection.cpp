@@ -245,21 +245,16 @@ void HttpConnection<ST>::startWriting() {
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
     if (!_active.exchange(true)) {  // we are the only ones here now
-      auto cb = [self = Connection::shared_from_this()] {
-        auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-
-        // we might get in a race with shutdownConnection
-        Connection::State state = thisPtr->_state.load();
-        if (state != Connection::State::Connected) {
-          thisPtr->_active.store(false);
-          if (state == Connection::State::Disconnected) {
-            thisPtr->startConnection();
-          }
-          return;
+      // we might get in a race with shutdownConnection
+      Connection::State state = this->_state.load();
+      if (state != Connection::State::Connected) {
+        this->_active.store(false);
+        if (state == Connection::State::Disconnected) {
+          this->startConnection();
         }
-        thisPtr->asyncWriteNextRequest();
-      };
-      asio_ns::post(*this->_io_context, std::move(cb));
+        return;
+      }
+      this->asyncWriteNextRequest();
     }
   }
 }
@@ -310,12 +305,16 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
     header.append("Connection: Close\r\n");
   }
 
-  header.append("Content-Type: ")
-      .append(to_string(req.contentType()))
-      .append("\r\n")
-      .append("Accept: ")
-      .append(to_string(req.acceptType()))
-      .append("\r\n");
+  if (req.contentType() != ContentType::Custom) {
+    header.append("Content-Type: ")
+          .append(to_string(req.contentType()))
+          .append("\r\n");
+  }
+  if (req.acceptType() != ContentType::Custom) {
+    header.append("Accept: ")
+          .append(to_string(req.acceptType()))
+          .append("\r\n");
+  }
 
   bool haveAuth = false;
   for (auto const& pair : req.header.meta()) {

@@ -5289,7 +5289,7 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate, std::string const&
   v8::EscapableHandleScope scope(isolate);
 
 #ifdef _WIN32
-  std::vector<std::string> paths = StringUtils::split(modules, ";", '\0');
+  std::vector<std::string> paths = StringUtils::split(modules, ';');
 #else
   std::vector<std::string> paths = StringUtils::split(modules, ";:");
 #endif

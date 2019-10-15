@@ -246,6 +246,7 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
         LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
         LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
         LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of DBServers: " << meta.get()._nrDBServers;
+        LOG_TOPIC("12533", INFO, arangodb::Logger::BACKUP) << "      number of available pieces: " << meta.get()._nrPiecesPresent;
         if (!meta.get()._serverId.empty()) {
           LOG_TOPIC("11112", INFO, arangodb::Logger::BACKUP) << "      serverId: " << meta.get()._serverId;
         }
@@ -253,6 +254,11 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
           LOG_TOPIC("56241", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: true";
         } else {
           LOG_TOPIC("56242", INFO, arangodb::Logger::BACKUP) << "      potentiallyInconsistent: false";
+        }
+        if (meta.get()._isAvailable) {
+          LOG_TOPIC("56244", INFO, arangodb::Logger::BACKUP) << "      available: true";
+        } else {
+          LOG_TOPIC("56246", INFO, arangodb::Logger::BACKUP) << "      available: false";
         }
       }
     }

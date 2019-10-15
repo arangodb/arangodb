@@ -68,11 +68,15 @@ foxxRouter.use(installer)
 `)
 .queryParam('upgrade', joi.boolean().default(false), dd`
   Flag to upgrade the service installed at the mount point.
-  Triggers setup.
 `)
 .queryParam('replace', joi.boolean().default(false), dd`
   Flag to replace the service installed at the mount point.
-  Triggers teardown and setup.
+`)
+.queryParam('setup', joi.boolean().default(true), dd`
+  Flag to run setup after install.
+`)
+.queryParam('teardown', joi.boolean().default(false), dd`
+  Flag to run teardown before replace/upgrade.
 `);
 
 installer.use(function (req, res, next) {
@@ -83,6 +87,8 @@ installer.use(function (req, res, next) {
   const options = {};
   const appInfo = req.body;
   options.legacy = req.queryParams.legacy;
+  options.setup = req.queryParams.setup;
+  options.teardown = req.queryParams.teardown;
   let service;
   try {
     if (upgrade) {

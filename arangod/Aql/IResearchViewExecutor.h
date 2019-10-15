@@ -65,10 +65,15 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
-      ExecutionPlan const& plan, Variable const& outVariable, aql::AstNode const& filterCondition,
-      std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth);
+      ExecutionPlan const& plan,
+      Variable const& outVariable,
+      aql::AstNode const& filterCondition,
+      std::pair<bool, bool> volatility,
+      VarInfoMap const& varInfoMap,
+      int depth);
 
   RegisterId getOutputRegister() const noexcept;
+  RegisterId getFirstScoreRegister() const noexcept;
   RegisterId getNumScoreRegisters() const noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   Query& getQuery() const noexcept;
@@ -88,7 +93,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
-  RegisterId const _outputRegister;
+  RegisterId const _firstOutputRegister;
   RegisterId const _numScoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
@@ -158,6 +163,14 @@ class IResearchViewExecutorBase {
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
+
+    inline aql::RegisterId getNmColPtrOutReg() const noexcept {
+      return docOutReg;
+    }
+
+    inline aql::RegisterId getNmDocIdOutReg() const noexcept {
+      return docOutReg + 1;
+    }
   };  // ReadContext
 
   template <typename ValueType>
@@ -260,6 +273,10 @@ class IResearchViewExecutorBase {
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
                 LocalDocumentId const& documentId, LogicalCollection const& collection);
 
+  bool writeLocalDocumentId(ReadContext& ctx,
+                LocalDocumentId const& documentId,
+                LogicalCollection const& collection);
+
   void reset();
 
  private:
@@ -283,11 +300,10 @@ class IResearchViewExecutorBase {
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
-template <bool ordered>
-class IResearchViewExecutor
-    : public IResearchViewExecutorBase<IResearchViewExecutor<ordered>> {
+template <bool ordered, bool materialized>
+class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materialized>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered>>;
+  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materialized>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -329,17 +345,17 @@ class IResearchViewExecutor
   irs::bytes_ref _scrVal;
 };  // IResearchViewExecutor
 
-template <bool ordered>
-struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered>> {
+template<bool ordered, bool materialized>
+struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materialized>> {
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
+  static constexpr bool Materialized = materialized;
 };
 
-template <bool ordered>
-class IResearchViewMergeExecutor
-    : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered>> {
+template <bool ordered, bool materialized>
+class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materialized>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered>>;
+  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materialized>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -405,10 +421,11 @@ class IResearchViewMergeExecutor
   irs::external_heap_iterator<MinHeapContext> _heap_it;
 };  // IResearchViewMergeExecutor
 
-template <bool ordered>
-struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered>> {
+template<bool ordered, bool materialized>
+struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materialized>> {
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr const bool Ordered = ordered;
+  static constexpr const bool Materialized = materialized;
 };
 
 }  // namespace aql

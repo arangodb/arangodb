@@ -474,6 +474,17 @@ void ClusterInfo::loadPlan() {
   ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                               // reread from the agency!
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto tStart = TRI_microtime();
+  auto longPlanWaitLogger = scopeGuard([&tStart]() {
+    auto tExit = TRI_microtime();
+    if (tExit - tStart > 0.5) {
+      LOG_TOPIC("66666", WARN, Logger::CLUSTER) <<
+        "Loading the new plan took: " << (tExit - tStart);
+    }
+  });
+#endif
+
   MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
 
   // For ArangoSearch views we need to get access to immediately created views

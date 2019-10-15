@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan-Christoph Uhde
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseInfo.h"
@@ -30,7 +30,7 @@
 #include "Utils/Events.h"
 
 namespace arangodb {
-  
+
 CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
@@ -134,11 +134,10 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
 
   if (ServerState::instance()->isCoordinator()) {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
-    builder.add(StaticStrings::Sharding, VPackValue(_sharding));
+    addVocbaseReplicationOptionsToOpenObject(builder, _sharding, _replicationFactor, _writeConcern);
   }
 
   if (withUsers) {
@@ -229,7 +228,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
                                           bool extractId, bool extractName) {
   if (options.isNone() || options.isNull()) {
     return Result();
-  } 
+  }
   if (!options.isObject()) {
     events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
@@ -239,7 +238,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _writeConcern = vocopts.writeConcern;
   _sharding = vocopts.sharding;
-  
+
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
     if (!nameSlice.isString()) {
@@ -357,7 +356,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
             << "Cannot access ClusterFeature to determine minReplicationFactor";
       }
     } else if (isNumber) {
-      vocbaseOptions.writeConcern = 
+      vocbaseOptions.writeConcern =
           writeConcernSlice.getNumber<decltype(vocbaseOptions.writeConcern)>();
     }
   }
@@ -365,7 +364,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   return vocbaseOptions;
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
+void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern) {
   TRI_ASSERT(builder.isOpenObject());
@@ -378,8 +377,8 @@ void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sha
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
+void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
+  addVocbaseReplicationOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
                                 opt.writeConcern);
 }
 }  // namespace arangodb

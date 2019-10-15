@@ -285,6 +285,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
+  Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorTraits.cpp
   Aql/ModificationNodes.cpp
@@ -319,6 +320,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/ShadowAqlItemRow.cpp
   Aql/ShardLocking.cpp
   Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
@@ -688,6 +690,7 @@ set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
 
 set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
   Cluster/ClusterMethods.cpp
+  Cluster/ClusterTtlMethods.cpp
 )
 
 if (USE_MAINTAINER_MODE)

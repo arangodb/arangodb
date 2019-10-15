@@ -64,7 +64,7 @@ struct OptimizerRule {
   static std::underlying_type<Flags>::type makeFlags() {
     return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
   }
-  
+
   /// @brief check a flag for the rule
   bool hasFlag(Flags flag) const {
     return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
@@ -73,15 +73,15 @@ struct OptimizerRule {
   bool canBeDisabled() const {
     return hasFlag(Flags::CanBeDisabled);
   }
-  
+
   bool isClusterOnly() const {
     return hasFlag(Flags::ClusterOnly);
   }
-  
+
   bool isHidden() const {
     return hasFlag(Flags::Hidden);
   }
-  
+
   bool canCreateAdditionalPlans() const {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
@@ -244,7 +244,7 @@ struct OptimizerRule {
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
-    
+
 #ifdef USE_ENTERPRISE
     smartJoinsRule,
 #endif
@@ -296,6 +296,11 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateCollection,
 
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    lateDocumentMaterializationRule,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
@@ -316,14 +321,14 @@ struct OptimizerRule {
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;
-  
+
   OptimizerRule(OptimizerRule const& other) = delete;
   OptimizerRule& operator=(OptimizerRule const& other) = delete;
-  
+
   friend bool operator<(OptimizerRule const& lhs, int level) {
     return lhs.level < level;
   }
-  
+
   friend bool operator<(int lhs, OptimizerRule const& rhs) {
     return lhs < rhs.level;
   }

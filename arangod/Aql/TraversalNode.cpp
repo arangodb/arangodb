@@ -34,6 +34,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
@@ -693,7 +694,7 @@ void TraversalNode::prepareOptions() {
 
 /// @brief remember the condition to execute for early traversal abortion.
 void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
-  arangodb::HashSet<Variable const*> varsUsedByCondition;
+  ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 

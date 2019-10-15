@@ -26,6 +26,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AllRowsFetcherTest.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockTest.cpp
+  Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/CalculationExecutorTest.cpp
@@ -44,6 +45,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp
@@ -63,8 +65,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
-  Basics/associative-multi-pointer-nohashcache-test.cpp
-  Basics/associative-multi-pointer-test.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp
@@ -73,7 +73,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/hashes-test.cpp
   Basics/icu-helper.cpp
   Basics/json-test.cpp
-  Basics/skiplist-test.cpp
   Basics/priorityqueue-test.cpp
   Basics/string-buffer-test.cpp
   Basics/string-utf8-normalize-test.cpp
@@ -85,7 +84,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/AttributeNameParserTest.cpp
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
-  Basics/HashSetTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
@@ -112,6 +110,10 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
+  Containers/associative-multi-pointer-test.cpp
+  Containers/associative-multi-pointer-nohashcache-test.cpp
+  Containers/HashSetTest.cpp
+  Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp

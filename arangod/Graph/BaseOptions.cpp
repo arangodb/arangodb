@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseOptions.h"
+
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
@@ -29,7 +30,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -282,7 +283,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
 
-  arangodb::HashSet<size_t> toRemove;
+  ::arangodb::containers::HashSet<size_t> toRemove;
   aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition,
                                             toRemove, nullptr, false);
   size_t n = condition->numMembers();

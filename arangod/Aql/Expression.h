@@ -24,14 +24,14 @@
 #ifndef ARANGOD_AQL_EXPRESSION_H
 #define ARANGOD_AQL_EXPRESSION_H 1
 
-#include "Aql/types.h"
-#include "Basics/HashSet.h"
+#include <cstdint>
+#include <unordered_map>
 
 #include <v8.h>
 #include <velocypack/Slice.h>
 
-#include <cstdint>
-#include <unordered_map>
+#include "Aql/types.h"
+#include "Containers/HashSet.h"
 
 namespace arangodb {
 namespace transaction {
@@ -104,7 +104,7 @@ class Expression {
   std::unique_ptr<Expression> clone(ExecutionPlan* plan, Ast* ast);
 
   /// @brief return all variables used in the expression
-  void variables(arangodb::HashSet<Variable const*>&) const;
+  void variables(::arangodb::containers::HashSet<Variable const*>&) const;
 
   /// @brief return a VelocyPack representation of the expression
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;

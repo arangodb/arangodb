@@ -21,34 +21,32 @@
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
 /// @author Michael Hackstein
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
-#define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
+#ifndef ARANGODB_CONTAINERS_ASSOC_UNIQUE_H
+#define ARANGODB_CONTAINERS_ASSOC_UNIQUE_H 1
 
 #include <cstdint>
-
-#include "Basics/AssocUniqueHelpers.h"
-#include "Basics/Common.h"
+#include <thread>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-#include <thread>
 
-#include "Basics/AssocHelpers.h"
-#include "Basics/IndexBucket.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/debugging.h"
 #include "Basics/gcd.h"
 #include "Basics/prime-numbers.h"
+#include "Containers/details/AssocHelpers.h"
+#include "Containers/details/AssocUniqueHelpers.h"
+#include "Containers/details/IndexBucket.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 
 namespace arangodb {
-namespace basics {
+namespace containers {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array
@@ -57,13 +55,11 @@ namespace basics {
 template <class Key, class Element, class AssocUniqueHelper>
 class AssocUnique {
  private:
-  typedef void UserData;
-  typedef arangodb::basics::BucketPosition BucketPosition;
+  using UserData = void;
 
  public:
-  typedef std::function<bool(Element&)> CallbackElementFuncType;
-
-  typedef arangodb::basics::IndexBucket<Element, uint64_t> Bucket;
+  using CallbackElementFuncType = std::function<bool(Element&)>;
+  using Bucket = IndexBucket<Element, uint64_t>;
 
  private:
   AssocUniqueHelper _helper;
@@ -932,7 +928,7 @@ class AssocUnique {
     return findElementSequentialBucketsRandom(userData, position, step, initialPosition);
   }
 };
-}  // namespace basics
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE_VOCBASEINFO_H
@@ -69,7 +69,6 @@ struct DBUser {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo(application_features::ApplicationServer&);
-  // CreateDatabaseInfo(CreateDatabaseInfo &&) = delete; // TODO - then replace shared with unique ptr
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -85,7 +84,7 @@ class CreateDatabaseInfo {
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
-  
+
   application_features::ApplicationServer& server() const;
 
   uint64_t getId() const {
@@ -102,7 +101,7 @@ class CreateDatabaseInfo {
     _validId = true;
   }
 
-  std::string getName() const {
+  std::string const& getName() const {
     TRI_ASSERT(_valid);
     return _name;
   }
@@ -116,7 +115,7 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _writeConcern;
   }
-  std::string sharding() const {
+  std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
@@ -131,7 +130,7 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
-  
+
   std::uint64_t _id = 0;
   std::string _name = "";
   std::vector<DBUser> _users;
@@ -153,10 +152,10 @@ struct VocbaseOptions {
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
+void addVocbaseReplicationOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern);
-void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
+void addVocbaseReplicationOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb
 #endif
