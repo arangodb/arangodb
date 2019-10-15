@@ -446,6 +446,8 @@ endif ()
 
 if (WINDOWS)
   SET(USE_JEMALLOC OFF)
+elseif (APPLE)
+  SET(USE_JEMALLOC OFF)
 else ()
   option(
     USE_JEMALLOC
