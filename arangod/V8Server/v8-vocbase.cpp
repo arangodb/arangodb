@@ -1241,7 +1241,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
       // with that transaction. if we now lock again, we may deadlock!
       auto status = collection->status();
       auto cid = collection->id();
-      auto internalVersion = collection->internalVersion();
+      auto internalVersion = collection->v8CacheVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&

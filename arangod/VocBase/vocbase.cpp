@@ -431,8 +431,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 
   try {
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
-    // set collection version to 3.1, as the collection is just created
-    collection->setVersion(LogicalCollection::VERSION_33);
+    // set collection version to latest version, as the collection is just created
+    collection->setVersion(LogicalCollection::currentVersion());
 
     // Let's try to persist it.
     collection->persistPhysicalCollection();

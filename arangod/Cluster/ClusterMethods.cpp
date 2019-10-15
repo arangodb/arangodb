@@ -85,6 +85,8 @@ using namespace arangodb::basics;
 using namespace arangodb::futures;
 using namespace arangodb::rest;
 
+using Helper = arangodb::basics::VelocyPackHelper;
+
 // Timeout for read operations:
 static double const CL_DEFAULT_TIMEOUT = 120.0;
 
@@ -864,7 +866,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       n = arangodb::velocypack::Slice::nullSlice();
     }
 
-    if (!arangodb::basics::VelocyPackHelper::equal(n, o, false)) {
+    if (!Helper::equal(n, o, false)) {
       return true;
     }
   }
@@ -898,7 +900,7 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   VPackSlice o = oldValue.get(s);
   TRI_ASSERT(o.isString());
 
-  return !arangodb::basics::VelocyPackHelper::equal(n, o, false);
+  return !Helper::equal(n, o, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1125,7 +1127,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
         // add to the total
         VPackArrayBuilder array(&builder);
         array->add(VPackValue(shardId));
-        array->add(VPackValue(arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+        array->add(VPackValue(Helper::getNumericValue<uint64_t>(
             answer, "count", 0)));
       } else {
         // didn't get the expected response
@@ -1220,7 +1222,7 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
         auto split_point =
             std::find(shard_index_id.begin(), shard_index_id.end(), '/');
         std::string index(split_point + 1, shard_index_id.end());
-        double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
+        double estimate = Helper::getNumericValue(pair.value, 0.0);
         indexEstimates[index].push_back(estimate);
       }
     }
@@ -1578,7 +1580,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         results, [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
-          if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+          if (Helper::readBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }
         });
@@ -1839,10 +1841,8 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                            "filtered", 0);
-    read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                        "readIndex", 0);
+    filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -1929,7 +1929,7 @@ int fetchEdgesFromEngines(
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    read += basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
+    read += Helper::getNumericValue<size_t>(resSlice,
                                                               "readIndex", 0);
 
     bool allCached = true;
@@ -2020,7 +2020,7 @@ void fetchVerticesFromEngines(
     if (r.response->statusCode() != fuerte::StatusOK) {
       int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
       // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
+      THROW_ARANGO_EXCEPTION_MESSAGE(code, Helper::getStringValue(
                                                resSlice, StaticStrings::ErrorMessage,
                                                TRI_errno_string(code)));
     }
@@ -3298,12 +3298,12 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     }
 
     if (resSlice.hasKey(BackupMeta::SIZEINBYTES)) {
-      totalSize += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
+      totalSize += Helper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
     } else {
       sizeValid = false;
     }
     if (resSlice.hasKey(BackupMeta::NRFILES)) {
-      totalFiles += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
+      totalFiles += Helper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
     } else {
       sizeValid = false;
     }
@@ -3582,8 +3582,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     try {
-      if (!basics::VelocyPackHelper::equal(agency->slice()[0].get(versionPath),
-                                           agencyCheck->slice()[0].get(versionPath), false)) {
+      if (!Helper::equal(agency->slice()[0].get(versionPath),
+                         agencyCheck->slice()[0].get(versionPath), false)) {
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
                      "backup: backup's consistency is not guaranteed");
