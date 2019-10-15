@@ -1277,7 +1277,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       arangodb::CreateDatabaseInfo info(server());
       info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
-      if(res.fail()){
+      if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
       auto database = engine->openDatabase(std::move(info), _upgrade);

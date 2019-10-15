@@ -153,7 +153,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///        if mode == Find && list found doesn't match then return nullptr
   /// @param key the specified key will be as snapshot indentifier
   ///        in a transaction
-  /// 	     (nullptr == view address will be used)
+  ///        (nullptr == view address will be used)
   /// @return pointer to an index reader containing the datastore record
   ///         snapshot associated with 'state'
   ///         (nullptr == no view snapshot associated with the specified state)

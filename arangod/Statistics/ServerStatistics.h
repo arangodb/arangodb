@@ -25,12 +25,11 @@
 #define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
 
 #include <atomic>
-#include <memory>
-
+#include <cstdint>
 
 struct TransactionStatistics {
   TransactionStatistics() : _transactionsStarted(0), _transactionsAborted(0)
-                          , _transactionsCommitted(0), _intermediateCommits(0) {};
+                          , _transactionsCommitted(0), _intermediateCommits(0) {}
 
   std::atomic<std::uint64_t> _transactionsStarted;
   std::atomic<std::uint64_t> _transactionsAborted;
