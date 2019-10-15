@@ -137,7 +137,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
 
   if (ServerState::instance()->isCoordinator()) {
-    addVocbaseReplicationOptionsToOpenObject(builder, _sharding, _replicationFactor, _writeConcern);
+    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
   }
 
   if (withUsers) {
@@ -364,7 +364,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   return vocbaseOptions;
 }
 
-void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
+void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern) {
   TRI_ASSERT(builder.isOpenObject());
@@ -377,8 +377,8 @@ void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, std::string
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
 }
 
-void addVocbaseReplicationOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addVocbaseReplicationOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
+void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
+  addClusterOptions(builder, opt.sharding, opt.replicationFactor,
                                 opt.writeConcern);
 }
 }  // namespace arangodb

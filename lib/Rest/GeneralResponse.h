@@ -141,6 +141,8 @@ class GeneralResponse {
  public:
   virtual uint64_t messageId() const { return 1; }
 
+  virtual void setMessageId(uint64_t msgId) { }
+
   virtual void reset(ResponseCode) = 0;
 
   // Payload needs to be of type: VPackSlice const&
