@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.14)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -445,6 +445,8 @@ endif ()
 # ------------------------------------------------------------------------------
 
 if (WINDOWS)
+  SET(USE_JEMALLOC OFF)
+elseif (APPLE)
   SET(USE_JEMALLOC OFF)
 else ()
   option(

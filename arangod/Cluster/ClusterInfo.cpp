@@ -637,7 +637,7 @@ void ClusterInfo::loadPlan() {
                 << "validating data for local database '" << name
                 << "' failed: " << res.errorMessage();
           } else {
-            res = databaseFeature.createDatabase(info, vocbase);
+            res = databaseFeature.createDatabase(std::move(info), vocbase);
 
             if (res.fail()) {
               LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)

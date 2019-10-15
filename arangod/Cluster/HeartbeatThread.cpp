@@ -1151,16 +1151,17 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       // known plan IDs
       ids.push_back(info.getId());
 
-      TRI_vocbase_t* vocbase = databaseFeature.useDatabase(info.getName());
+      auto dbName = info.getName();
+      TRI_vocbase_t* vocbase = databaseFeature.useDatabase(dbName);
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        Result res = databaseFeature.createDatabase(info, vocbase);
+        Result res = databaseFeature.createDatabase(std::move(info), vocbase);
 
         if (res.fail()) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
-              << "creating local database '" << info.getName()
+              << "creating local database '" << dbName
               << "' failed: " << res.errorMessage();
         } else {
           HasRunOnce.store(true, std::memory_order_release);
