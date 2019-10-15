@@ -34,7 +34,7 @@ class VstResponse : public GeneralResponse {
  public:
   VstResponse(ResponseCode code, uint64_t mid);
 
-  virtual bool isResponseEmpty() const override {
+ bool isResponseEmpty() const override {
     return _payload.empty();
   }
   // required by base
