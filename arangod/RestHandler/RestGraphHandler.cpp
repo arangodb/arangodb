@@ -940,7 +940,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-      return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
+    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
