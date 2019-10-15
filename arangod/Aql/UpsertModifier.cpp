@@ -45,8 +45,11 @@ UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _updateResultsIterator(VPackSlice::emptyArraySlice()),
       _insertResultsIterator(VPackSlice::emptyArraySlice()),
+
       // Batch size has to be 1 so that the upsert modifier sees its own
-      // writes
+      // writes.
+      // This behaviour could be improved, if we can prove that an UPSERT
+      // does not need to see its own writes
       _batchSize(1) {}
 
 UpsertModifier::~UpsertModifier() = default;
@@ -69,14 +72,15 @@ void UpsertModifier::close() {
   TRI_ASSERT(_insertAccumulator.isClosed());
   TRI_ASSERT(_updateAccumulator.isClosed());
 }
+
+// TODO: In principle the following two functions should be the same as in the Update/Replace modifier
+// and the insert modifier, respectively; There is probably a sensible way of factoring them out
 Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
                                   InputAqlItemRow const& row) {
   std::string key, rev;
   Result result;
 
-  if (!_infos._consultAqlWriteFilter ||
-      !_infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(),
-                                                               StaticStrings::Empty)) {
+  if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
     TRI_ASSERT(_infos._trx->resolver() != nullptr);
     CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
 
@@ -91,6 +95,7 @@ Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateD
 
         VPackCollection::merge(_updateAccumulator, toUpdate,
                                keyDocBuilder.slice(), false, false);
+
         _operations.push_back({ModOperationType::APPLY_UPDATE, row});
       } else {
         _operations.push_back({ModOperationType::IGNORE_SKIP, row});
@@ -113,17 +118,14 @@ Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateD
 Result UpsertModifier::insertCase(AqlValue const& insertDoc, InputAqlItemRow const& row) {
   auto const& toInsert = insertDoc.slice();
   if (insertDoc.isObject()) {
-    if (!_infos._consultAqlWriteFilter ||
-        !_infos._aqlCollection->getCollection()->skipForAqlWrite(toInsert, StaticStrings::Empty)) {
+    if (writeRequired(_infos, toInsert, StaticStrings::Empty)) {
       _insertAccumulator.add(toInsert);
       _operations.push_back({ModOperationType::APPLY_INSERT, row});
     } else {
-      // not relevant for ourselves... just pass it on to the next block
       _operations.push_back({ModOperationType::IGNORE_RETURN, row});
     }
   } else {
     _operations.push_back({ModOperationType::IGNORE_SKIP, row});
-    // handle stats?
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
                   std::string("expecting 'Object', got: ") +
                       insertDoc.slice().typeName() + " while handling: UPSERT");
@@ -166,11 +168,11 @@ Result UpsertModifier::transact() {
   auto toUpdate = _updateAccumulator.slice();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
+      _updateResults = _infos._trx->replace(_infos._aqlCollection->name(),
+                                            toUpdate, _infos._options);
+    } else {
       _updateResults = _infos._trx->update(_infos._aqlCollection->name(),
                                            toUpdate, _infos._options);
-    } else {
-      _updateResults = _infos._trx->replace(_infos._aqlCollection->name(),
-                                            toInsert, _infos._options);
     }
     if (_updateResults.fail()) {
       THROW_ARANGO_EXCEPTION(_updateResults.result);
@@ -251,7 +253,9 @@ UpsertModifier::OutputTuple UpsertModifier::getOutput() {
       } else {
         TRI_ASSERT(false);
         // TODO: Warning about control reaches end of non-void function
-        // return OutputTuple{};
+        return OutputTuple{ModOperationType::IGNORE_SKIP,
+                           InputAqlItemRow{CreateInvalidInputRowHint()},
+                           VPackSlice::noneSlice()};
       }
     }
     case ModifierIteratorMode::OperationsOnly: {
@@ -259,6 +263,11 @@ UpsertModifier::OutputTuple UpsertModifier::getOutput() {
                          _operationsIterator->second, VPackSlice::noneSlice()};
     }
   }
+  // Shut up compiler
+  TRI_ASSERT(false);
+  return OutputTuple{ModOperationType::IGNORE_SKIP,
+                     InputAqlItemRow{CreateInvalidInputRowHint()},
+                     VPackSlice::noneSlice()};
 }
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }
