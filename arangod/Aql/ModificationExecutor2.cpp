@@ -195,11 +195,8 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
   if (_modifier.size() == 0 || _infos._options.silent) {
     _modifier.setupIterator(ModifierIteratorMode::OperationsOnly);
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
-    LOG_DEVEL << "LUP LUP";
     while (!_modifier.isFinishedIterator()) {
-      LOG_DEVEL << " getting output";
       std::tie(std::ignore, row, std::ignore) = _modifier.getOutput();
-      LOG_DEVEL << " got output";
 
       output.copyRow(row);
 
@@ -281,11 +278,9 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
   ExecutionState state;
   ModificationExecutor2::Stats stats;
 
-  LOG_DEVEL << " m o d o produca rowz";
   _modifier.reset();
 
   size_t maxOutputs = std::min(output.numRowsLeft(), ExecutionBlock::DefaultBatchSize());
-  LOG_DEVEL << "max outputs: " << maxOutputs;
 
   std::tie(state, stats) = doCollect(maxOutputs);
   if (state == ExecutionState::WAITING) {
@@ -294,20 +289,15 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
 
   // Close the accumulator
-  LOG_DEVEL << "ladida";
   _modifier.close();
-  LOG_DEVEL << "DURRDIDURR";
   auto transactResult = _modifier.transact();
-  LOG_DEVEL << "transaction went through?";
 
   // If the transaction resulted in any errors,
   // this function will throw an arango exception.
   if (!transactResult.ok()) {
-    LOG_DEVEL << "Transaction errored, now we need to throw";
     _modifier.throwTransactErrors();
   }
 
-  LOG_DEVEL << "output about to start";
   doOutput(output, stats);
 
   return {state, std::move(stats)};

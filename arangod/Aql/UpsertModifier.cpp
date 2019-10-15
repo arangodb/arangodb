@@ -186,11 +186,9 @@ size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }
 void UpsertModifier::throwTransactErrors() { TRI_ASSERT(false); }
 
 Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
-  LOG_DEVEL << "setting up upsert iterator in mode " << mode;
   _iteratorMode = mode;
   _operationsIterator = _operations.begin();
   if (mode == ModifierIteratorMode::Full) {
-    LOG_DEVEL << "insert sliz";
     if (_insertResults.slice().isNone()) {
       _insertResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
     } else if (_insertResults.slice().isArray()) {
@@ -199,7 +197,6 @@ Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
       TRI_ASSERT(false);
     }
 
-    LOG_DEVEL << "update sliz";
     if (_updateResults.slice().isNone()) {
       _updateResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
     } else if (_updateResults.slice().isArray()) {
@@ -213,7 +210,6 @@ Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
 }
 
 bool UpsertModifier::isFinishedIterator() {
-  LOG_DEVEL << "is finished?";
   // TODO: Spray in some assserts
   return _operationsIterator == _operations.end();
 }
@@ -223,13 +219,10 @@ void UpsertModifier::advanceIterator() {
   TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
              _operationsIterator->first == ModOperationType::APPLY_INSERT);
 
-  LOG_DEVEL << "advance";
   if (_iteratorMode == ModifierIteratorMode::Full) {
     if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-      LOG_DEVEL << "advance update";
       _updateResultsIterator++;
     } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-      LOG_DEVEL << "advance insert";
       _insertResultsIterator++;
     }
   }
@@ -243,24 +236,22 @@ void UpsertModifier::advanceIterator() {
 UpsertModifier::OutputTuple UpsertModifier::getOutput() {
   TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
              _operationsIterator->first == ModOperationType::APPLY_INSERT);
-  LOG_DEVEL << "getting output";
 
   switch (_iteratorMode) {
     case ModifierIteratorMode::Full: {
       if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-        LOG_DEVEL << "apply update";
         return OutputTuple{ModOperationType::APPLY_RETURN,
                            _operationsIterator->second, *_updateResultsIterator};
       } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-        LOG_DEVEL << "aapply insert";
         return OutputTuple{ModOperationType::APPLY_RETURN,
                            _operationsIterator->second, *_insertResultsIterator};
       } else {
         TRI_ASSERT(false);
+        // TODO: Warning about control reaches end of non-void function
+        // return OutputTuple{};
       }
     }
     case ModifierIteratorMode::OperationsOnly: {
-      LOG_DEVEL << "IT IT IT";
       return OutputTuple{_operationsIterator->first,
                          _operationsIterator->second, VPackSlice::noneSlice()};
     }
