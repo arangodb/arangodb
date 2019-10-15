@@ -945,7 +945,6 @@ class ByRangeSubFilterFactory {
     std::tie(min, incl) = calcMinInclude(node.cmp);
     return min ? byRange<irs::Bound::MIN>(filter, node, incl, ctx, filterCtx)
                : byRange<irs::Bound::MAX>(filter, node, incl, ctx, filterCtx);
-
   }
 
   static arangodb::Result byValueSubFilter(irs::boolean_filter* filter, std::string fieldName, const ScopedAqlValue& value,
@@ -981,7 +980,7 @@ arangodb::Result fromArrayComparsion(irs::boolean_filter*& filter, QueryContext 
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE == node.type ||
-             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ == node.type || 
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
@@ -1135,7 +1134,6 @@ arangodb::Result fromArrayComparsion(irs::boolean_filter*& filter, QueryContext 
 
   // wrong value node type
   return {TRI_ERROR_BAD_PARAMETER, "wrong value node type for Array comparison operator"};
-
 }
 
 arangodb::Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
