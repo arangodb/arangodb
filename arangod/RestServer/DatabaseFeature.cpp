@@ -602,7 +602,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   VPackBuilder markerBuilder;
   {
     VPackObjectBuilder guard(&markerBuilder);
-    info.toVelocyPack(markerBuilder); // can we imporve this
+    info.toVelocyPack(markerBuilder); // can we improve this
   }
   result = nullptr;
 
