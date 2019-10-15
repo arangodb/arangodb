@@ -84,7 +84,7 @@ Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateD
     TRI_ASSERT(_infos._trx->resolver() != nullptr);
     CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
 
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev, true);
+    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev, Revision::Exclude);
 
     if (result.ok()) {
       if (updateDoc.isObject()) {

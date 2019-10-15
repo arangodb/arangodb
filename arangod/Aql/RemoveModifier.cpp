@@ -58,7 +58,8 @@ ModOperationType RemoveModifierCompletion::accumulate(VPackBuilder& accu,
     TRI_ASSERT(_infos._trx->resolver() != nullptr);
     CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs);
+                               _infos._options.ignoreRevs ? Revision::Exclude
+                                                          : Revision::Include);
 
     if (result.ok()) {
       VPackBuilder keyDocBuilder;

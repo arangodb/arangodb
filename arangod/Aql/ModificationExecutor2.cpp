@@ -58,8 +58,8 @@ using namespace arangodb::basics;
 // * if value is anything else, we return an error.
 Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
                                                       AqlValue const& value,
-                                                      std::string& key, std::string& rev,
-                                                      bool ignoreRevision) {
+                                                      std::string& key,
+                                                      std::string& rev, Revision what) {
   TRI_ASSERT(key.empty());
   TRI_ASSERT(rev.empty());
   if (value.isObject()) {
@@ -70,7 +70,7 @@ Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver con
     if (sub.isString()) {
       key.assign(sub.slice().copyString());
 
-      if (!ignoreRevision) {
+      if (what == Revision::Include) {
         bool mustDestroyToo;
         AqlValue subTwo =
             value.get(resolver, StaticStrings::RevString, mustDestroyToo, false);
@@ -103,11 +103,10 @@ Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver con
 // "{ _key: key, _rev: null }" otherwise.
 Result ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
                                                      std::string const& key,
-                                                     std::string const& rev,
-                                                     bool ignoreRevision) {
+                                                     std::string const& rev, Revision what) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
-  if (ignoreRevision && !rev.empty()) {
+  if (what == Revision::Exclude && !rev.empty()) {
     builder.add(StaticStrings::RevString, VPackValue(rev));
   } else {
     builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));

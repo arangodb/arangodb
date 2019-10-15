@@ -33,11 +33,14 @@ struct ModificationExecutorInfos;
 
 // TODO: Find a better home for these
 namespace ModificationExecutorHelpers {
+
+enum class Revision { Include, Exclude };
+
 Result getKeyAndRevision(CollectionNameResolver const& resolver,
                          AqlValue const& value, std::string& key,
-                         std::string& rev, bool ignoreRevision = false);
+                         std::string& rev, Revision what = Revision::Include);
 Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
-                        std::string const& rev, bool ignoreRevision = false);
+                        std::string const& rev, Revision what = Revision::Include);
 bool writeRequired(ModificationExecutorInfos& infos, VPackSlice const& doc,
                    std::string const& key);
 };  // namespace ModificationExecutorHelpers

@@ -68,10 +68,12 @@ ModOperationType UpdateReplaceModifierCompletion::accumulate(VPackBuilder& accu,
   if (hasKeyVariable) {
     AqlValue const& keyDoc = row.getValue(keyReg);
     result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _infos._options.ignoreRevs);
+                               _infos._options.ignoreRevs ? Revision::Exclude
+                                                          : Revision::Include);
   } else {
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs);
+                               _infos._options.ignoreRevs ? Revision::Exclude
+                                                          : Revision::Include);
   }
 
   if (result.ok()) {
