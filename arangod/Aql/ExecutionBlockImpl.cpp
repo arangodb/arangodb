@@ -177,7 +177,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   TRI_ASSERT(atMost > 0);
 
   // TODO activate if optimizerRules for subqueries is ON
-  if (false) {
+  if (isInSplicedSubquery()) {
     // The loop has to be entered at least once!
     TRI_ASSERT(!_outputItemRow->isFull());
     while (!_outputItemRow->isFull() && _state != InternalState::DONE) {

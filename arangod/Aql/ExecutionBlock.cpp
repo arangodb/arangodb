@@ -73,6 +73,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _trx(engine->getQuery()->trx()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
+      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
@@ -283,4 +284,8 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
              _dependencies.end());
   _dependencies.emplace_back(ep);
   _dependencyPos = _dependencies.end();
+}
+
+bool ExecutionBlock::isInSplicedSubquery() const noexcept {
+  return _isInSplicedSubquery;
 }

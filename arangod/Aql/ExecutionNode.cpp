@@ -871,11 +871,12 @@ RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
   return reg;
 }
 
-bool ExecutionNode::isInSplicedSubquery() const {
+
+bool ExecutionNode::isInSplicedSubquery() const noexcept {
   return _isInSplicedSubquery;
 }
 
-void ExecutionNode::setIsInSplicedSubquery(bool const value) {
+void ExecutionNode::setIsInSplicedSubquery(bool const value) noexcept {
   _isInSplicedSubquery = value;
 }
 

@@ -122,6 +122,8 @@ class ExecutionBlock {
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
 
+  bool isInSplicedSubquery() const noexcept;
+
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
@@ -135,6 +137,8 @@ class ExecutionBlock {
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
+
+  bool _isInSplicedSubquery;
 
   /// @brief our corresponding ExecutionNode node
   ExecutionNode const* _exeNode;  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.

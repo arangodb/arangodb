@@ -399,9 +399,9 @@ class ExecutionNode {
   /// @brief get the surrounding loop
   ExecutionNode const* getLoop() const;
 
-  bool isInSplicedSubquery() const;
+  bool isInSplicedSubquery() const noexcept;
 
-  void setIsInSplicedSubquery(bool);
+  void setIsInSplicedSubquery(bool) noexcept;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
