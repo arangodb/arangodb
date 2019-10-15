@@ -33,6 +33,7 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
+const isCoordinator = require('@arangodb/cluster').isCoordinator();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -384,7 +385,17 @@ function ahuacatlSubqueryTestSuite () {
         `;
         // First NoIndex variant
         {
-          const actual = getQueryResults(query);
+          const cursor = db._query(query);
+          const actual = cursor.toArray();
+          const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
+          assertEqual(scannedFull, 4002000);
+          assertEqual(scannedIndex, 0);
+          assertEqual(filtered, 3960000);
+          if (isCoordinator) {
+            assertEqual(httpRequests, 8007);
+          } else {
+            assertEqual(httpRequests, 0);
+          }
           const foundKeys = new Map();
           for (const {key, value} of actual) {
             assertTrue(expected.has(key));
@@ -400,7 +411,18 @@ function ahuacatlSubqueryTestSuite () {
         // Second with Index
         {
           col.ensureHashIndex("mod100");
-          const actual = getQueryResults(query);
+
+          const cursor = db._query(query);
+          const actual = cursor.toArray();
+          const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
+          assertEqual(scannedFull, 2000);
+          assertEqual(scannedIndex, 40000);
+          assertEqual(filtered, 0);
+          if (isCoordinator) {
+            assertEqual(httpRequests, 8007);
+          } else {
+            assertEqual(httpRequests, 0);
+          }
           const foundKeys = new Map();
           for (const {key, value} of actual) {
             assertTrue(expected.has(key));
