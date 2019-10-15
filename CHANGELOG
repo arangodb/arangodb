@@ -1,6 +1,10 @@
 devel
 -----
 
+* The General Graph document API is now persistent with the document API in its errormessages.
+  When attempting to create / modify edges pointing to non existing vertex collections
+  HTTP 400 is returned instead of 404.
+
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
 * Fixed search not working in document view while in code mode
