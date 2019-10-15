@@ -4,10 +4,11 @@ set -u
 # Make any failure in piped commands be reflected in the exit code.
 set -o pipefail
 
+diff_target="${1:-HEAD}"
 TRAVIS=${TRAVIS:-false}
 
 readonly bash_source_dir="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
-readonly first_arg="$1"
+readonly project_dir="$(readlink -f $(dirname $(readlink -f ${BASH_SOURCE[0]}))/..)"
 
 ## locate executable
 readonly clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"9.0.0"}"
@@ -43,8 +44,6 @@ if ! [[ $version_string =~ $re ]]; then
     exit 1
 fi
 
-
-diff_target="${first_arg:-'HEAD'}"
 if $TRAVIS; then
     diff_target="${TRAVIS_BRANCH}"
     if ! $TRAVIS_PULL_REQUEST; then
@@ -55,17 +54,20 @@ fi
 
 diff="$(git diff -U0 --no-color "${diff_target}" )"
 
+    #-regex "'${project_dir}"'/(lib|tests|arangod).*'"'"
 command=(
     "${bash_source_dir}/lib/clang-format-diff.py"
     --verbose
     -binary "${clang_format}"
     -style=file
+    -regex '(lib|tests|arangod)/.*'
     -p1
 )
 
+echo "${command[@]}"
 if type colordiff 2>/dev/null; then
     #need pipefail option
-    "${commandp[@]}" <<<"$diff" | colordiff -u3
+    "${command[@]}" <<<"$diff" | colordiff -u3
 else
-    "${commandp[@]}" <<<"$diff"
+    "${command[@]}" <<<"$diff"
 fi

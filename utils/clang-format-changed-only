@@ -35,27 +35,40 @@ if ! [[ $version_string =~ $re ]]; then
     exit 1
 fi
 
-
-## find relevant files
-files="$(
-    find arangod arangosh lib enterprise \
-        -name Zip -prune -o \
-        -type f "(" -name "*.cpp" -o -name "*.h" ")" \
-        "!" "(" -name "tokens.*" -o -name "v8-json.*" -o -name "voc-errors.*" -o -name "grammar.*" -o -name "xxhash.*" -o -name "exitcodes.*" ")"
-)"
-
-git_files=$(git diff --name-only)
-files_final=()
-for gf in ${git_files[@]}; do
-    echo "---------------------"
-    for f in ${files[@]}; do
-        echo "$gf -- $f"
-        if [[ $gf == "$f" ]]; then
-            files_final+=( "$f" )
-            continue
-        fi
-    done
-done
-
 # do final formatting
 ${clang_format} -i -verbose -style=file ${files_final[@]}
+command=(
+    "${bash_source_dir}/lib/clang-format-diff.py"
+    --verbose
+    -i
+    -binary "${clang_format}"
+    -style=file
+    -regex '(lib|tests|arangod)/.*'
+    -p1
+)
+
+echo "${command[@]}"
+"${command[@]}"
+
+## keep this for now
+# ## find relevant files
+# files="$(
+#     find arangod arangosh lib enterprise \
+#         -name Zip -prune -o \
+#         -type f "(" -name "*.cpp" -o -name "*.h" ")" \
+#         "!" "(" -name "tokens.*" -o -name "v8-json.*" -o -name "voc-errors.*" -o -name "grammar.*" -o -name "xxhash.*" -o -name "exitcodes.*" ")"
+# )"
+#
+# git_files=$(git diff --name-only)
+# files_final=()
+# for gf in ${git_files[@]}; do
+#     echo "---------------------"
+#     for f in ${files[@]}; do
+#         echo "$gf -- $f"
+#         if [[ $gf == "$f" ]]; then
+#             files_final+=( "$f" )
+#             continue
+#         fi
+#     done
+# done
+
