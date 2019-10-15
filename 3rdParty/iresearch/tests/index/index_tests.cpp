@@ -11423,9 +11423,10 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
       SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
       auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
 
-      // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+      // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
       MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
       MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
 
       // FIXME TODO add once segment_context will not block flush_all()
       //ASSERT_TRUE(stop);
@@ -11548,9 +11549,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
@@ -11589,9 +11591,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -11636,9 +11639,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -11713,9 +11717,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -11770,9 +11775,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -11830,9 +11836,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     // ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -21561,9 +21568,10 @@ TEST_P(index_test_case, segment_options) {
 
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
     MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
