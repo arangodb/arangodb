@@ -58,6 +58,8 @@ class UpsertModifier {
   OutputTuple getOutput();
   void advanceIterator();
 
+  size_t getBatchSize() const;
+
  private:
   Result updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
                     InputAqlItemRow const& row);
@@ -77,6 +79,7 @@ class UpsertModifier {
   VPackArrayIterator _insertResultsIterator;
 
   ModifierIteratorMode _iteratorMode;
+  size_t const _batchSize;
 };
 
 }  // namespace aql

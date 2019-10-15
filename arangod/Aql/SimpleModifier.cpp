@@ -45,7 +45,8 @@ template <class ModifierCompletion, typename Enable>
 SimpleModifier<ModifierCompletion, Enable>::SimpleModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _completion(infos),
-      _resultsIterator(VPackSlice::emptyArraySlice()) {}
+      _resultsIterator(VPackSlice::emptyArraySlice()),
+      _batchSize(ExecutionBlock::DefaultBatchSize()) {}
 
 template <typename ModifierCompletion, typename Enable>
 SimpleModifier<ModifierCompletion, Enable>::~SimpleModifier() = default;
@@ -138,6 +139,11 @@ void SimpleModifier<ModifierCompletion, Enable>::addDocument(VPackSlice const& d
 template <typename ModifierCompletion, typename Enable>
 ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const {
   return _infos;
+}
+
+template <typename ModifierCompletion, typename Enable>
+size_t SimpleModifier<ModifierCompletion, Enable>::getBatchSize() const {
+  return _batchSize;
 }
 
 // TODO: This is a bit ugly, explain at least what's going on

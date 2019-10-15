@@ -280,7 +280,7 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
 
   _modifier.reset();
 
-  size_t maxOutputs = std::min(output.numRowsLeft(), ExecutionBlock::DefaultBatchSize());
+  size_t maxOutputs = std::min(output.numRowsLeft(), _modifier.getBatchSize());
 
   std::tie(state, stats) = doCollect(maxOutputs);
   if (state == ExecutionState::WAITING) {

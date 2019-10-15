@@ -44,7 +44,10 @@ using namespace arangodb::aql::ModificationExecutorHelpers;
 UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _updateResultsIterator(VPackSlice::emptyArraySlice()),
-      _insertResultsIterator(VPackSlice::emptyArraySlice()) {}
+      _insertResultsIterator(VPackSlice::emptyArraySlice()),
+      // Batch size has to be 1 so that the upsert modifier sees its own
+      // writes
+      _batchSize(1) {}
 
 UpsertModifier::~UpsertModifier() = default;
 
@@ -257,3 +260,5 @@ UpsertModifier::OutputTuple UpsertModifier::getOutput() {
     }
   }
 }
+
+size_t UpsertModifier::getBatchSize() const { return _batchSize; }

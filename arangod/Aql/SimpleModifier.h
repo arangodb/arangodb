@@ -107,6 +107,7 @@ class SimpleModifier {
   void addDocument(VPackSlice const& doc);
 
   ModificationExecutorInfos& getInfos() const;
+  size_t getBatchSize() const;
 
  private:
   ModificationExecutorInfos& _infos;
@@ -120,6 +121,8 @@ class SimpleModifier {
   std::vector<ModOp>::const_iterator _operationsIterator;
   VPackArrayIterator _resultsIterator;
   ModifierIteratorMode _iteratorMode;
+
+  size_t const _batchSize;
 };
 
 using InsertModifier = SimpleModifier<InsertModifierCompletion>;
