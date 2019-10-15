@@ -23,6 +23,8 @@
 
 #include "Manager.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
@@ -38,6 +40,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -965,14 +968,24 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 
 Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
   Result res;
+ 
+  DatabaseFeature& databaseFeature = _feature.server().getFeature<DatabaseFeature>();
+  databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
+    auto queryList = vocbase->queryList();
+    TRI_ASSERT(queryList != nullptr);
+    // we are only interested in killed write queries
+    queryList->kill([](aql::Query* query) {
+      return !query->trx()->state()->isReadOnlyTransaction();
+    }, false); 
+  });
 
   // abort local transactions
   abortManagedTrx([](TransactionState const& state, std::string const& user) {
     return ::authorized(user) && !state.isReadOnlyTransaction();
   });
 
-  if (fanout) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (fanout && 
+      ServerState::instance()->isCoordinator()) {
     auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
     NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();

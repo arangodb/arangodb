@@ -593,10 +593,18 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 
   return Result();
 }
+  
+void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    callback(p.second);
+  }
+}
 
 /// @brief create a new database
-Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result){
-
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result) {
   std::string name = info.getName();
   result = nullptr;
 

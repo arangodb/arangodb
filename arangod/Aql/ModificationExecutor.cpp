@@ -94,7 +94,7 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
     TRI_IF_FAILURE("ModificationBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
+  
     TRI_ASSERT(_modifier._block != nullptr);
 
     // prepares modifier for single row output

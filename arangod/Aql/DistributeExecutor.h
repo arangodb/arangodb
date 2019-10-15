@@ -36,6 +36,8 @@ class DistributeNode;
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
 class DistributeExecutor {};
 
+class Query;
+
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
@@ -97,11 +99,13 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
   std::string createKey(arangodb::velocypack::Slice) const;
 
   ExecutorInfos const& infos() const;
+  
+  Query& getQuery() const noexcept;
 
  private:
   ExecutorInfos _infos;
 
-  Query const& _query;
+  Query& _query;
 
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.
