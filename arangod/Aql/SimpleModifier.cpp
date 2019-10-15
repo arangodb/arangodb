@@ -78,9 +78,10 @@ Result SimpleModifier<ModifierCompletion, Enable>::transact() {
   TRI_ASSERT(_accumulator.isClosed());
   TRI_ASSERT(_accumulator.slice().isArray());
   _results = _completion.transact(_accumulator.slice());
-  // This asert does not work here because _results.slice() can be "none",
-  // because reasons.
-  // TRI_ASSERT(_results.slice().length() == _accumulator.slice().length());
+  if (_results.fail()) {
+    throwOperationResultException(_infos, _results);
+  }
+  // TODO: Either return something meaningful or make function void
   return Result{};
 }
 
@@ -94,18 +95,6 @@ size_t SimpleModifier<ModifierCompletion, Enable>::size() const {
   // TODO: spray around some asserts
   TRI_ASSERT(_accumulator.slice().isArray());
   return _accumulator.slice().length();
-}
-
-template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::throwTransactErrors() {
-  std::string message;
-
-  // auto const& errorCounter = _results.countErrorCodes;
-  // TODO: This mirrors the old code, but WTF?
-  // auto code = errorCounter.begin()->first;
-
-  // TODO: this needs to be fixed
-  TRI_ASSERT(false);
 }
 
 template <typename ModifierCompletion, typename Enable>

@@ -105,9 +105,8 @@ Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateD
                           std::string(" while handling: UPSERT")};
       }
     } else {
-      return Result{TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                    std::string("expecting 'Object', got: ") + updateDoc.slice().typeName() +
-                        std::string(" while handling: UPSERT")};
+      _operations.push_back({ModOperationType::IGNORE_SKIP, row});
+      return result;
     }
   } else {
     _operations.push_back({ModOperationType::IGNORE_RETURN, row});
@@ -138,6 +137,8 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const insertReg = _infos._input2RegisterId;
   RegisterId const updateReg = _infos._input3RegisterId;
 
+  Result result;
+
   // The document to be UPSERTed
   AqlValue const& inDoc = row.getValue(inDocReg);
 
@@ -147,10 +148,13 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   // be an error?
   if (inDoc.isObject()) {
     auto const& updateDoc = row.getValue(updateReg);
-    updateCase(inDoc, updateDoc, row);
+    result = updateCase(inDoc, updateDoc, row);
   } else {
     auto const& insertDoc = row.getValue(insertReg);
-    insertCase(insertDoc, row);
+    result = insertCase(insertDoc, row);
+  }
+  if (!result.ok() && !_infos._ignoreErrors) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
   }
   return Result{};
 }
@@ -161,7 +165,7 @@ Result UpsertModifier::transact() {
     _insertResults =
         _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
     if (_insertResults.fail()) {
-      THROW_ARANGO_EXCEPTION(_insertResults.result);
+      throwOperationResultException(_infos, _insertResults);
     }
   }
 
@@ -175,7 +179,7 @@ Result UpsertModifier::transact() {
                                            toUpdate, _infos._options);
     }
     if (_updateResults.fail()) {
-      THROW_ARANGO_EXCEPTION(_updateResults.result);
+      throwOperationResultException(_infos, _insertResults);
     }
   }
 
@@ -187,8 +191,6 @@ size_t UpsertModifier::size() const {
 }
 
 size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }
-
-void UpsertModifier::throwTransactErrors() { TRI_ASSERT(false); }
 
 Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
   _iteratorMode = mode;

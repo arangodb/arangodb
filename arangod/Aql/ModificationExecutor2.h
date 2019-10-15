@@ -43,6 +43,8 @@ Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
                         std::string const& rev, Revision what = Revision::Include);
 bool writeRequired(ModificationExecutorInfos& infos, VPackSlice const& doc,
                    std::string const& key);
+void throwOperationResultException(ModificationExecutorInfos& infos,
+                                   OperationResult const& result);
 };  // namespace ModificationExecutorHelpers
 
 //

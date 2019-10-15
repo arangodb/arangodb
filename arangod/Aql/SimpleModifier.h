@@ -94,8 +94,6 @@ class SimpleModifier {
   // TODO: Rename
   size_t size() const;
 
-  void throwTransactErrors();
-
   // TODO: Make this a real iterator
   Result setupIterator(ModifierIteratorMode const mode);
   bool isFinishedIterator();

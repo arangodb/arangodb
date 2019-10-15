@@ -96,14 +96,16 @@ ModOperationType UpdateReplaceModifierCompletion::accumulate(VPackBuilder& accu,
     }
   } else {
     // error happened extracting key, record in operations map
-    // TODO: Throw errors ?
-    // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+    // TODO: This is still a tad ugly. Also, what happens if there's no
+    //       error message?
+    if (!_infos._ignoreErrors) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+    }
     return ModOperationType::IGNORE_SKIP;
   }
 }
 
 OperationResult UpdateReplaceModifierCompletion::transact(VPackSlice const& data) {
-  // TODO: Update vs Replace an enum class? Templated?
   if (_infos._isReplace) {
     return _infos._trx->replace(_infos._aqlCollection->name(), data, _infos._options);
   } else {

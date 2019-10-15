@@ -69,10 +69,11 @@ ModOperationType RemoveModifierCompletion::accumulate(VPackBuilder& accu,
       accu.add(keyDocBuilder.slice());
       return ModOperationType::APPLY_RETURN;
     } else {
-      // error happened extracting key, record in operations map
-      // Or throw error ?
-      // TODO: What is supposed to happen here?
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      // TODO: This is still a tad ugly. Also, what happens if there's no
+      //       error message?
+      if (!_infos._ignoreErrors) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      }
       return ModOperationType::IGNORE_SKIP;
     }
   } else {

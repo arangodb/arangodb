@@ -122,6 +122,40 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos
           !infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
 }
 
+// TODO: This has to be nicer.
+void ModificationExecutorHelpers::throwOperationResultException(
+    ModificationExecutorInfos& infos, OperationResult const& result) {
+  std::string message;
+  auto const& errorCounter = result.countErrorCodes;
+
+  TRI_ASSERT(result.slice().isArray());
+
+  // Find the first relevant error for which we want to throw.
+  // If _ignoreDocumentNotFound is true, then this is any error other than
+  // TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, otherwise it is just any error.
+  //
+  // Find the first error with a message and throw that
+  // This mirrors previous behaviour and might not be entirely ideal.
+  for (auto const p : errorCounter) {
+    auto const errorCode = p.first;
+    if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // Find the first error and throw with message.
+      for (auto doc : VPackArrayIterator(result.slice())) {
+        if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
+            doc.get(StaticStrings::ErrorNum).getInt() == errorCode) {
+          VPackSlice s = doc.get(StaticStrings::ErrorMessage);
+          if (s.isString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, s.copyString());
+          }
+        }
+      }
+      // if we did not find a message, we still throw something, because we know
+      // that a relevant error has happened
+      THROW_ARANGO_EXCEPTION(errorCode);
+    }
+  }
+}
+
 namespace arangodb {
 namespace aql {
 
@@ -289,13 +323,13 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
 
   // Close the accumulator
   _modifier.close();
-  auto transactResult = _modifier.transact();
+  //  auto transactResult =
+  _modifier.transact();
 
   // If the transaction resulted in any errors,
-  // this function will throw an arango exception.
-  if (!transactResult.ok()) {
-    _modifier.throwTransactErrors();
-  }
+  // they should have been thrown during transact
+  // if (!transactResult.ok()) {
+  // }
 
   doOutput(output, stats);
 
