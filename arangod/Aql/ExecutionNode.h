@@ -251,6 +251,7 @@ class ExecutionNode {
 
   /// @brief get the singleton node of the node
   ExecutionNode const* getSingleton() const;
+  ExecutionNode* getSingleton();
 
   /// @brief get the node and its dependencies as a vector
   void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf);
@@ -398,6 +399,10 @@ class ExecutionNode {
   /// @brief get the surrounding loop
   ExecutionNode const* getLoop() const;
 
+  bool isInSplicedSubquery() const;
+
+  void setIsInSplicedSubquery(bool);
+
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
@@ -473,6 +478,8 @@ class ExecutionNode {
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
   std::unordered_set<RegisterId> _regsToClear;
+
+  bool _isInSplicedSubquery;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

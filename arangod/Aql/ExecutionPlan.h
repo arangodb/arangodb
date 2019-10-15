@@ -212,6 +212,9 @@ class ExecutionPlan {
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
 
+  template<typename Node, typename... Args>
+  Node* createNode(Args&&...);
+
   /// @brief add a subquery to the plan, will call registerNode internally
   SubqueryNode* registerSubquery(SubqueryNode*);
 
@@ -388,7 +391,16 @@ class ExecutionPlan {
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
+
 }  // namespace aql
 }  // namespace arangodb
+
+template <typename Node, typename... Args>
+Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
+  //auto node = std::make_unique<Node>(std::forward<Args>(args)...);
+  auto node = new Node(std::forward<Args>(args)...);
+  registerNode(node);
+  return node;
+}
 
 #endif

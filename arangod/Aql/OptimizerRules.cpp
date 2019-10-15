@@ -7365,21 +7365,35 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   bool modified = false;
 
   containers::SmallVector<SubqueryNode*>::allocator_type::arena_type a;
-  containers::SmallVector<SubqueryNode*> nodes{a};
-  findSubqueriesSuitableForSplicing(*plan, nodes);
+  containers::SmallVector<SubqueryNode*> subqueryNodes{a};
+  findSubqueriesSuitableForSplicing(*plan, subqueryNodes);
 
-  for (auto const& sq : nodes) {
+  auto forAllDeps = [](ExecutionNode* node, auto cb) {
+    for (; node != nullptr; node = node->getFirstDependency()) {
+      cb(node);
+    }
+  };
+
+  for (auto const& sq : subqueryNodes) {
     modified = true;
 
+    // Create new start and end nodes
+    auto start = plan->createNode<SubqueryStartNode>(plan.get(), plan->nextId());
+    auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(), sq->outVariable());
+
+    // Note that we rely on `subqueryNodes` being in pre-order. Otherwise, we
+    // would set the wrong nodes.
+    forAllDeps(sq->getSubquery(), [](auto node) { node->setIsInSplicedSubquery(true); });
+    // start and end inherit this propery from the subquery node
+    start->setIsInSplicedSubquery(sq->isInSplicedSubquery());
+    end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
+
     // insert a SubqueryStartNode before the SubqueryNode
-    SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
-    plan->registerNode(start);
     plan->insertBefore(sq, start);
 
     // All parents of the Singleton of the subquery become parents of the SubqueryStartNode
     // The singleton will be deleted after.
-    // TODO: Meh const_cast
-    ExecutionNode* singleton = const_cast<ExecutionNode*>(sq->getSubquery()->getSingleton());
+    ExecutionNode* singleton = sq->getSubquery()->getSingleton();
     std::vector<ExecutionNode*> deps = singleton->getParents();
     for (auto* x : deps) {
       TRI_ASSERT(x != nullptr);
@@ -7387,9 +7401,6 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     }
 
     // insert a SubqueryEndNode after the SubqueryNode sq
-    SubqueryEndNode* end =
-        new SubqueryEndNode(plan.get(), plan->nextId(), sq->outVariable());
-    plan->registerNode(end);
     plan->insertAfter(sq, end);
 
     end->replaceDependency(sq, sq->getSubquery());
