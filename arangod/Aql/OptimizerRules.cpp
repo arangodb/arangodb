@@ -1747,25 +1747,22 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
           // collection/index/view, it probably makes sense to not move it,
           // because the result set may be huge
           if (::accessesCollectionVariable(plan.get(), nn, vars)) {
-            done = true;
             break;
           }
         }
 
-        if (!done) {
-          lastNode = current;
-        }
+        lastNode = current;
+        
       } else if (currentType == EN::INDEX || currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
                  currentType == EN::ENUMERATE_LIST || currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH || currentType == EN::K_SHORTEST_PATHS ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
-        done = true;
         break;
       }
 
-      if (done || !current->hasParent()) {
+      if (!current->hasParent()) {
         break;
       }
 
@@ -7144,7 +7141,6 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
         plan->registerNode(calcNode);
-        expr.release();
         plan->insertAfter(f, calcNode);
         // change the result value of the existing Return node
         TRI_ASSERT(root->getType() == EN::RETURN);
