@@ -595,7 +595,7 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 }
 
 /// @brief create a new database
-Result DatabaseFeature::createDatabase(CreateDatabaseInfo && info, TRI_vocbase_t*& result){
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*& result){
 
   std::string name = info.getName();
   auto dbId = info.getId();
@@ -1272,7 +1272,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       if(res.fail()){
         THROW_ARANGO_EXCEPTION(res);
       }
-      auto* database = engine->openDatabase(std::move(info), _upgrade).release();
+      auto database = engine->openDatabase(std::move(info), _upgrade);
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
         try {
@@ -1285,7 +1285,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
         }
       }
 
-      newLists->_databases.insert(std::make_pair(database->name(), database));
+      newLists->_databases.insert(std::make_pair(database->name(), database.get()));
+      database.release();
     }
   } catch (std::exception const& ex) {
     delete newLists;

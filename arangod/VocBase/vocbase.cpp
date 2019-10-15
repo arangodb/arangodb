@@ -1703,32 +1703,6 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   return TRI_ERROR_NO_ERROR;
 }
 
-/// todo add tick od
-/// @brief create a vocbase object
-//TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
-//                           arangodb::CreateDatabaseInfo const& info)
-//  : _server(info.server()),
-//    _info(info),
-//    _type(type),
-//    _refCount(0),
-//    _state(TRI_vocbase_t::State::NORMAL),
-//    _isOwnAppsDirectory(true),
-//    _deadlockDetector(false),
-//    _userStructures(nullptr) {
-//
-//  QueryRegistryFeature& feature = info.server().getFeature<QueryRegistryFeature>();
-//  _queries.reset(new arangodb::aql::QueryList(feature, this));
-//  _cursorRepository.reset(new arangodb::CursorRepository(*this));
-//  _collectionKeys.reset(new arangodb::CollectionKeysRepository());
-//  _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
-//
-//  // init collections
-//  _collections.reserve(32);
-//  _deadCollections.reserve(32);
-//
-//  TRI_CreateUserStructuresVocBase(this);
-//}
-
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
                            arangodb::CreateDatabaseInfo&& info)
   : _server(info.server()),

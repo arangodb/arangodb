@@ -2010,7 +2010,6 @@ std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
     arangodb::CreateDatabaseInfo&& info, bool wasCleanShutdown, bool isUpgrade) {
-  //info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
 
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 
