@@ -4,12 +4,14 @@ set -u
 # Make any failure in piped commands be reflected in the exit code.
 set -o pipefail
 
-readonly bash_source_dir="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
+TRAVIS=${TRAVIS:-false}
 
+readonly bash_source_dir="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
+readonly first_arg="$1"
 
 ## locate executable
+readonly clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"9.0.0"}"
 clang_format="${ARANGODB_CLANG_FORMAT:-""}"
-clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"9.0.0"}"
 
 # fallback if nothing is found
 if [[ -z $clang_format ]]; then
@@ -42,7 +44,7 @@ if ! [[ $version_string =~ $re ]]; then
 fi
 
 
-diff_target="HEAD"
+diff_target="${first_arg:-'HEAD'}"
 if $TRAVIS; then
     diff_target="${TRAVIS_BRANCH}"
     if ! $TRAVIS_PULL_REQUEST; then
@@ -53,10 +55,17 @@ fi
 
 diff="$(git diff -U0 --no-color "${diff_target}" )"
 
+command=(
+    "${bash_source_dir}/lib/clang-format-diff.py"
+    --verbose
+    -binary "${clang_format}"
+    -style=file
+    -p1
+)
+
 if type colordiff 2>/dev/null; then
     #need pipefail option
-    "${bash_source_dir}/lib/clang-format-diff.py" --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff" | colordiff -u3
+    "${commandp[@]}" <<<"$diff" | colordiff -u3
 else
-    "${bash_source_dir}/lib/clang-format-diff.py" --verbose -binary "${clang_format}" -style=file -p1 <<<"$diff"
+    "${commandp[@]}" <<<"$diff"
 fi
-
