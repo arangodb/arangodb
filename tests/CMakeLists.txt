@@ -112,6 +112,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/associative-multi-pointer-test.cpp
   Containers/associative-multi-pointer-nohashcache-test.cpp
   Containers/HashSetTest.cpp
+  Containers/MerkleTreeTest.cpp
   Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
