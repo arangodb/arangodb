@@ -130,6 +130,12 @@ class SingleBlockFetcher {
   ExecutionState upstreamState() const { return _upstreamState; }
   SharedAqlItemBlockPtr currentBlock() const { return _currentBlock; }
 
+  // on purpose not implemented, this Fetcher is about to be removed
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = 1) const {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   bool _prefetched;
 
  private:
