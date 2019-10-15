@@ -152,10 +152,10 @@ struct VocbaseOptions {
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
-void addVocbaseReplicationOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
+void addClusterOptions(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern);
-void addVocbaseReplicationOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
+void addClusterOptions(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb
 #endif
