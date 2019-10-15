@@ -486,10 +486,13 @@ template<
 #if defined _MSC_VER
   static_assert(_MSC_VER < 1920 || _MSC_VER >= 1923, "_MSC_VER < 1920 || _MSC_VER >= 1923");
 #endif
+#if (defined(_MSC_VER) && _MSC_VER    < 1920 ) || \
+    (defined(__linux)  && __cplusplus < 201703L )
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
 typename attribute_map<T, Ref, Args...>::template ref<U>::type
 const attribute_map<T, Ref, Args...>::ref<U>::NIL;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
