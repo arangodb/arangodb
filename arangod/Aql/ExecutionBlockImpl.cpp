@@ -810,7 +810,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<AllRows
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, RemoveModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, ReplaceModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, ReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpdateReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpsertModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;

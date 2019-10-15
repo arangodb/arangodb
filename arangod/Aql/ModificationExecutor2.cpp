@@ -33,8 +33,8 @@
 
 #include "Aql/InsertModifier.h"
 #include "Aql/RemoveModifier.h"
-#include "Aql/ReplaceModifier.h"
-#include "Aql/UpdateModifier.h"
+#include "Aql/SimpleModifier.h"
+#include "Aql/UpdateReplaceModifier.h"
 #include "Aql/UpsertModifier.h"
 
 #include "Logger/LogMacros.h"
@@ -319,8 +319,8 @@ template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetc
 template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, InsertModifier>;
 template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, RemoveModifier>;
 template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, RemoveModifier>;
-template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, ReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, ReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpdateReplaceModifier>;
 template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpsertModifier>;
 template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpsertModifier>;
 

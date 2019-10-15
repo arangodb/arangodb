@@ -20,25 +20,24 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UPDATE_MODIFIER_H
-#define ARANGOD_AQL_UPDATE_MODIFIER_H
+#ifndef ARANGOD_AQL_REPLACE_MODIFIER_H
+#define ARANGOD_AQL_REPLACE_MODIFIER_H
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
-#include "Aql/SimpleModifier.h"
 
 namespace arangodb {
 namespace aql {
 
 struct ModificationExecutorInfos;
 
-class UpdateModifierCompletion {
+class UpdateReplaceModifierCompletion {
  public:
-  UpdateModifierCompletion(ModificationExecutorInfos& infos);
-  ~UpdateModifierCompletion();
+  UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos);
+  ~UpdateReplaceModifierCompletion();
 
-  ModOperationType accumulate(InputAqlItemRow& row);
-  OperationResult transact();
+  ModOperationType accumulate(VPackBuilder& accu, InputAqlItemRow& row);
+  OperationResult transact(VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;

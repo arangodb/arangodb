@@ -29,9 +29,10 @@
 
 #include "Aql/InsertModifier.h"
 #include "Aql/RemoveModifier.h"
-#include "Aql/ReplaceModifier.h"
+#include "Aql/UpdateReplaceModifier.h"
 
 #include <type_traits>
+
 namespace arangodb {
 namespace aql {
 
@@ -66,13 +67,14 @@ template <>
 struct is_modifier_completion_trait<RemoveModifierCompletion> : std::true_type {};
 
 template <>
-struct is_modifier_completion_trait<ReplaceModifierCompletion> : std::true_type {};
+struct is_modifier_completion_trait<UpdateReplaceModifierCompletion> : std::true_type {
+};
 
 template <typename ModifierCompletion, typename Enable = typename std::enable_if_t<is_modifier_completion_trait<ModifierCompletion>::value>>
 class SimpleModifier {
   friend class InsertModifierCompletion;
   friend class RemoveModifierCompletion;
-  friend class ReplaceModifierCompletion;
+  friend class UpdateReplaceModifierCompletion;
 
  public:
   using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
@@ -89,7 +91,7 @@ class SimpleModifier {
 
   size_t nrOfOperations() const;
 
-  // Rename
+  // TODO: Rename
   size_t size() const;
 
   void throwTransactErrors();
@@ -122,8 +124,9 @@ class SimpleModifier {
 
 using InsertModifier = SimpleModifier<InsertModifierCompletion>;
 using RemoveModifier = SimpleModifier<RemoveModifierCompletion>;
-using ReplaceModifier = SimpleModifier<ReplaceModifierCompletion>;
+using UpdateReplaceModifier = SimpleModifier<UpdateReplaceModifierCompletion>;
 
 }  // namespace aql
 }  // namespace arangodb
+
 #endif

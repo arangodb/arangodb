@@ -37,6 +37,9 @@
 
 using namespace arangodb::aql;
 
+namespace arangodb {
+namespace aql {
+
 ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       CollectionAccessingNode(plan, base),
@@ -263,10 +266,10 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// REMOVE
 ///
 /// TODO: better home for this?
-using AllRowsReplaceExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, ReplaceModifier>>;
-using SingleRowReplaceExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, ReplaceModifier>>;
+using AllRowsUpdateReplaceExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpdateReplaceModifier>>;
+using SingleRowUpdateReplaceExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 
 UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
@@ -328,9 +331,11 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       IsReplace(false) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsReplaceExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
+                                                                std::move(infos));
   } else {
-    return std::make_unique<SingleRowReplaceExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
+                                                                  std::move(infos));
   }
 }
 
@@ -400,9 +405,11 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
-    return std::make_unique<AllRowsReplaceExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
+                                                                std::move(infos));
   } else {
-    return std::make_unique<SingleRowReplaceExecutionBlock>(&engine, this, std::move(infos));
+    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
+                                                                  std::move(infos));
   }
 }
 
@@ -530,3 +537,5 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+}  // namespace aql
+}  // namespace arangodb

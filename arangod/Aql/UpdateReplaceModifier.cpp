@@ -20,7 +20,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplaceModifier.h"
+#include "UpdateReplaceModifier.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
@@ -39,13 +39,13 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-ReplaceModifierCompletion::ReplaceModifierCompletion(ModificationExecutorInfos& infos)
+UpdateReplaceModifierCompletion::UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos)
     : _infos(infos) {}
 
-ReplaceModifierCompletion::~ReplaceModifierCompletion() = default;
+UpdateReplaceModifierCompletion::~UpdateReplaceModifierCompletion() = default;
 
-ModOperationType ReplaceModifierCompletion::accumulate(VPackBuilder& accu,
-                                                       InputAqlItemRow& row) {
+ModOperationType UpdateReplaceModifierCompletion::accumulate(VPackBuilder& accu,
+                                                             InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
@@ -100,7 +100,7 @@ ModOperationType ReplaceModifierCompletion::accumulate(VPackBuilder& accu,
   }
 }
 
-OperationResult ReplaceModifierCompletion::transact(VPackSlice const& data) {
+OperationResult UpdateReplaceModifierCompletion::transact(VPackSlice const& data) {
   // TODO: Update vs Replace an enum class? Templated?
   if (_infos._isReplace) {
     return _infos._trx->replace(_infos._aqlCollection->name(), data, _infos._options);

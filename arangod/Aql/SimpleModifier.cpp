@@ -164,4 +164,4 @@ ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<RemoveModifierCompletion>;
-template class ::arangodb::aql::SimpleModifier<ReplaceModifierCompletion>;
+template class ::arangodb::aql::SimpleModifier<UpdateReplaceModifierCompletion>;

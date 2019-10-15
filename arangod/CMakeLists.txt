@@ -316,7 +316,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RemoveModifier.cpp
-  Aql/ReplaceModifier.cpp
   Aql/RegexCache.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
@@ -348,7 +347,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
-  Aql/UpdateModifier.cpp
+  Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
