@@ -35,6 +35,8 @@ if ! [[ $version_string =~ $re ]]; then
     exit 1
 fi
 
+
+diff="$(git diff -U0 --no-color)"
 # do final formatting
 ${clang_format} -i -verbose -style=file ${files_final[@]}
 command=(
@@ -48,7 +50,7 @@ command=(
 )
 
 echo "${command[@]}"
-"${command[@]}"
+"${command[@]}" <<<"$diff"
 
 ## keep this for now
 # ## find relevant files
