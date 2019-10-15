@@ -86,7 +86,7 @@ class HttpResponse : public GeneralResponse {
 
  bool isResponseEmpty() const override {
     return _body->empty();
-  }
+ }
 
   /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
