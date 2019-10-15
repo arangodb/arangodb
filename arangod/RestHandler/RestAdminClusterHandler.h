@@ -41,6 +41,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const Health;
   static std::string const NumberOfServers;
   static std::string const Maintenance;
+  static std::string const NodeVersion;
+  static std::string const NodeStatistics;
+  static std::string const NodeEngine;
+  static std::string const Statistics;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -52,6 +56,11 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleGetNumberOfServers();
   RestStatus handlePutNumberOfServers();
 
+  RestStatus handleNodeVersion();
+  RestStatus handleNodeStatistics();
+  RestStatus handleNodeEngine();
+  RestStatus handleStatistics();
+
 
 private:
   RestStatus handleSingleServerJob(std::string const& job, std::string const& server);
@@ -62,6 +71,7 @@ private:
 
   futureVoid waitForSupervisionState(bool state, clock::time_point startTime = clock::time_point());
 
+  RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
 
 
 };

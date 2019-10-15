@@ -125,6 +125,10 @@ RestAdminClusterHandler::~RestAdminClusterHandler() {}
 std::string const RestAdminClusterHandler::Health = "health";
 std::string const RestAdminClusterHandler::NumberOfServers = "numberOfServers";
 std::string const RestAdminClusterHandler::Maintenance = "maintenance";
+std::string const RestAdminClusterHandler::NodeVersion = "nodeVersion";
+std::string const RestAdminClusterHandler::NodeEngine = "nodeEngine";
+std::string const RestAdminClusterHandler::NodeStatistics = "nodeStatistics";
+std::string const RestAdminClusterHandler::Statistics = "statistics";
 
 RestStatus RestAdminClusterHandler::execute() {
 
@@ -133,7 +137,7 @@ RestStatus RestAdminClusterHandler::execute() {
     return RestStatus::DONE;
   }
 
-  auto const& suffixes = _request->suffixes();
+  auto const& suffixes = request()->suffixes();
   size_t const len = suffixes.size();
 
   if (len == 1) {
@@ -145,15 +149,92 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleNumberOfServers();
     } else if (command == Maintenance) {
       return handleMaintenance();
+    } else if (command == NodeVersion) {
+      return handleNodeVersion();
+    } else if (command == NodeEngine) {
+      return handleNodeEngine();
+    } else if (command == NodeStatistics) {
+      return handleNodeStatistics();
+    } else if (command == Statistics) {
+      return handleStatistics();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
+      return RestStatus::DONE;
     }
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                 "expecting URL /_api/replication/<command>");
   return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter) {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  std::string const& serverId = request()->value(serverFromParameter);
+  if (serverId.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "missing parameter `ServerID`");
+    return RestStatus::DONE;
+  }
+
+  auto* pool = server().getFeature<NetworkFeature>().pool();
+
+  auto frequest = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get, url, VPackBuffer<uint8_t>(), 10s);
+  auto self(shared_from_this());
+  return waitForFuture(std::move(frequest).thenValue([this, self](network::Response &&result) {
+    if (result.ok()) {
+      if (result.statusCode() == 200) {
+        resetResponse(rest::ResponseCode::OK);
+        auto payload = result.response->stealPayload();
+        response()->setPayload(std::move(*payload), true);
+      } else {
+
+      }
+    } else {
+      switch (result.error) {
+        case fuerte::Error::Canceled:
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "unknown server");
+          break;
+        case fuerte::Error::CouldNotConnect:
+        case fuerte::Error::Timeout:
+          generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_GATEWAY_TIMEOUT, "server did not answer");
+          break;
+        default:
+          LOG_DEVEL << "got error: " << int(result.error) << " statuscode: "<< result.statusCode();
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+      }
+    }
+  }).thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+}
+
+RestStatus RestAdminClusterHandler::handleNodeVersion() {
+  return handleProxyGetRequest("/_api/version", "ServerID");
+}
+
+RestStatus RestAdminClusterHandler::handleNodeStatistics() {
+  return handleProxyGetRequest("/_admin/statistics", "ServerID");
+}
+
+RestStatus RestAdminClusterHandler::handleNodeEngine() {
+  return handleProxyGetRequest("/_api/engine", "ServerID");
+}
+
+RestStatus RestAdminClusterHandler::handleStatistics() {
+  return handleProxyGetRequest("/_admin/statistics", "DBserver");
 }
 
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
@@ -272,7 +353,7 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
     return RestStatus::DONE;
   }
 
-  switch (_request->requestType()) {
+  switch (request()->requestType()) {
     case rest::RequestType::GET:
       return handleGetMaintenance();
     case rest::RequestType::PUT:
@@ -435,7 +516,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
     return RestStatus::DONE;
   }
 
-  if (_request->requestType() != rest::RequestType::GET) {
+  if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
