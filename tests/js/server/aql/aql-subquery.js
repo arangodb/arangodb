@@ -356,6 +356,66 @@ function ahuacatlSubqueryTestSuite () {
         db._drop(colName);
       }
       
+    },
+
+    testCollectionAccessSubquery: function () {
+      const colName = "UnitTestSubqueryCollection";
+      try {
+        const col = db._create(colName, {numberOfShards: 9});
+        const docs = [];
+        const expected = new Map();
+        for (let i = 0; i < 2000; ++i) {
+          docs.push({value: i, mod100: i % 100});
+          const oldValue = expected.get(i % 100) || [];
+          oldValue.push(i)
+          expected.set(i % 100, oldValue);
+        }
+        col.save(docs);
+
+        // Now we do a left out join on the same collection
+        const query = `
+          FOR left IN ${colName}
+            LET rightJoin = (
+              FOR right IN ${colName}
+                FILTER left.mod100 == right.mod100
+                RETURN right.value
+            )
+            RETURN {key: left.mod100, value: rightJoin}
+        `;
+        // First NoIndex variant
+        {
+          const actual = getQueryResults(query);
+          const foundKeys = new Map();
+          for (const {key, value} of actual) {
+            assertTrue(expected.has(key));
+            // Use sort here as no ordering is guaranteed by query.
+            assertEqual(expected.get(key).sort(), value.sort());
+            foundKeys.set(key, (foundKeys.get(key) || 0) + 1);
+          }
+          assertEqual(foundKeys.size, expected.size);
+          for (const value of foundKeys.values()) {
+            assertEqual(value, 20);
+          }
+        }
+        // Second with Index
+        {
+          col.ensureHashIndex("mod100");
+          const actual = getQueryResults(query);
+          const foundKeys = new Map();
+          for (const {key, value} of actual) {
+            assertTrue(expected.has(key));
+            // Use sort here as no ordering is guaranteed by query.
+            assertEqual(expected.get(key).sort(), value.sort());
+            foundKeys.set(key, (foundKeys.get(key) || 0) + 1);
+          }
+          assertEqual(foundKeys.size, expected.size);
+          for (const value of foundKeys.values()) {
+            assertEqual(value, 20);
+          }
+        }        
+      } finally {
+        db._drop(colName);
+      }
     }
   }; 
 }
