@@ -32,7 +32,6 @@ before_script:
   # - cmake ..
   # - cd ..
 script:
-  - export ARANGODB_CLANG_FORMAT_VERSION=9.0.0
   - ./utils/clang-format-check
 
 after_suceess:

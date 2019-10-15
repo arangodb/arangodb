@@ -11,7 +11,7 @@ readonly bash_source_dir="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
 readonly project_dir="$(readlink -f $(dirname $(readlink -f ${BASH_SOURCE[0]}))/..)"
 
 ## locate executable
-readonly clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"9.0.0"}"
+readonly clang_format_version="${ARANGODB_CLANG_FORMAT_VERSION:-"9.0.1"}"
 clang_format="${ARANGODB_CLANG_FORMAT:-""}"
 
 # fallback if nothing is found
@@ -40,7 +40,7 @@ echo "checking version of $clang_format"
 version_string=$(${clang_format} --version)
 re=".*version ${clang_format_version}.*"
 if ! [[ $version_string =~ $re ]]; then
-    echo "your version: '$version_string' does not match version 6.0.1"
+    echo "your version: '$version_string' does not match version regular expression '$re'"
     exit 1
 fi
 
