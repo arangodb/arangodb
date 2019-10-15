@@ -763,7 +763,6 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
 
   return Result();
 }
-#include "Logger/LogMacros.h"
 Result RestGraphHandler::removeEdgeDefinition(graph::Graph& graph,
                                               const std::string& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE, edgeDefinitionName);
