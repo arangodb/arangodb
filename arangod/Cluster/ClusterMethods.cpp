@@ -1850,7 +1850,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
-      auto resE = cache.insert({idRef, e});
+      auto resE = cache.emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -1924,8 +1924,7 @@ int fetchEdgesFromEngines(
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    read += Helper::getNumericValue<size_t>(resSlice,
-                                                              "readIndex", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -1938,7 +1937,7 @@ int fetchEdgesFromEngines(
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
-      auto resE = cache.insert({idRef, e});
+      auto resE = cache.emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -2021,7 +2020,7 @@ void fetchVerticesFromEngines(
     }
     
     bool cached = false;
-    for (auto const& pair : VPackObjectIterator(resSlice)) {
+    for (auto const& pair : VPackObjectIterator(resSlice, true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,

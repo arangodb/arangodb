@@ -484,12 +484,10 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   header.restVerb =
       static_cast<RestVerb>(headerSlice.at(3).getInt());  // rest verb
   header.path = headerSlice.at(4).copyString();           // request (path)
-  for (auto const& it :
-       VPackObjectIterator(headerSlice.at(5))) {  // query params
+  for (auto it : VPackObjectIterator(headerSlice.at(5))) {  // query params
     header.parameters.emplace(it.key.copyString(), it.value.copyString());
   }
-  for (auto const& it :
-       VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
+  for (auto it : VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
     header.addMeta(it.key.copyString(), it.value.copyString());
   }
   return header;
