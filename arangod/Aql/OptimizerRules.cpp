@@ -7261,6 +7261,102 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
+  switch (node->getType()) {
+    case ExecutionNode::CALCULATION:
+    case ExecutionNode::SUBQUERY:
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::SORT:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::NORESULTS:
+    case ExecutionNode::UPSERT:
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::RETURN:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::REMOTESINGLE:
+      // These nodes do not initiate a skip themselves, and thus are fine.
+      return false;
+    case ExecutionNode::LIMIT: {
+      LimitNode const* limitNode = ExecutionNode::castTo<LimitNode const*>(node);
+      // Limit initiates skip if either an offset is specified or fullcount is enabled.
+      return limitNode->fullCount() || limitNode->offset() > 0;
+    }
+    case ExecutionNode::COLLECT: {
+      CollectNode const* collectNode = ExecutionNode::castTo<CollectNode const*>(node);
+      // Collect nodes skip iff using the COUNT method.
+      return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
+    }
+    default:;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL_AQL,
+      "Unhandled node type in splice-subqueries optimizer rule. Please report "
+      "this error. Try turning off the splice-subqueries rule to get your query working.");
+}
+
+void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::SmallVector<SubqueryNode*>& result) {
+  using ResultVector = decltype(result);
+  using BoolVec = std::vector<bool, short_alloc<bool, 64, sizeof(size_t)>>;
+  using BoolAlloc = BoolVec::allocator_type;
+  using BoolArena = BoolAlloc::arena_type;
+  using BoolStack = std::stack<bool, BoolVec>;
+
+  class Finder final : public WalkerWorker<ExecutionNode> {
+   public:
+    Finder(ResultVector& result)
+        : _result{result},
+        _isSuitableArena{},
+        _isSuitable{BoolVec{_isSuitableArena}} {
+      _isSuitable.emplace(true);
+    }
+
+    bool before(ExecutionNode* node) final {
+      if (nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(node)) {
+        _isSuitable.top() = false;
+      }
+      constexpr bool abort = false;
+      return abort;
+    }
+
+    bool enterSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
+      if (_isSuitable.top()) {
+        _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
+      }
+      _isSuitable.emplace(true);
+
+      constexpr bool enterSubqueries = true;
+      return enterSubqueries;
+    }
+
+    void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
+      TRI_ASSERT(!_isSuitable.empty());
+      _isSuitable.pop();
+    }
+   private:
+    ResultVector& _result;
+    BoolArena _isSuitableArena;
+    // _isSuitable.top() says whether subquery nodes *in* the current (sub)query
+    // are suitable for optimization.
+    BoolStack _isSuitable;
+  };
+
+  Finder finder(result);
+  plan.root()->walk(finder);
+}
+
 // Splices in subqueries by replacing subquery nodes by
 // a SubqueryStartNode and a SubqueryEndNode with the subquery's nodes
 // in between.
@@ -7268,13 +7364,12 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
                                          OptimizerRule const& rule) {
   bool modified = false;
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
+  containers::SmallVector<SubqueryNode*>::allocator_type::arena_type a;
+  containers::SmallVector<SubqueryNode*> nodes{a};
+  findSubqueriesSuitableForSplicing(*plan, nodes);
 
-  for (auto const& n : nodes) {
+  for (auto const& sq : nodes) {
     modified = true;
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(n);
 
     // insert a SubqueryStartNode before the SubqueryNode
     SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
