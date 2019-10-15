@@ -40,7 +40,7 @@ function optimizerRuleTestSuite () {
   var ruleName = "undistribute-remove-after-enum-coll";
   // various choices to control the optimizer: 
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  var rulesAll         = { optimizer: { rules: [ "+all" ] } };
+  var rulesAll         = { optimizer: { rules: [ "+all", "-cluster-one-shard" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+distribute-filtercalc-to-cluster", "+" + ruleName ] } };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
