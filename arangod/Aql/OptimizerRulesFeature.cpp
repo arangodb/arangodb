@@ -397,8 +397,7 @@ void OptimizerRulesFeature::addRules() {
   // SubqueryEndNode and would likely be more complicated to write.
   //
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // apply late materialization for view queries
   registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,

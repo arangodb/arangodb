@@ -226,7 +226,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_no_subquery_plan) {
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_single_input) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_single_input) {
   auto query = R"aql(FOR d IN 1..1
                       LET first =
                         (RETURN 1)
@@ -237,7 +237,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_single_inpu
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_plan) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_plan) {
   auto query = R"aql(FOR d IN 1..2
                       LET first =
                         (FOR e IN 1..2 FILTER d == e RETURN e)
@@ -248,7 +248,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_plan) {
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_in_subquery_plan) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_in_subquery_plan) {
   auto query = R"aql(FOR d IN 1..2
                         LET first = (FOR e IN 1..2
                                         LET second = (FOR f IN 1..2 RETURN f)
@@ -263,7 +263,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_in_subquery
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_after_subquery_plan) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_after_subquery_plan) {
   auto query = R"aql(FOR d IN 1..2
                         LET first = (FOR e IN 1..2 FILTER d == e RETURN e)
                         LET second = (FOR e IN 1..2 FILTER d != e RETURN e)
@@ -274,7 +274,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_after_subqu
   verifyQueryResult(query, expected->slice());
 }
 
-TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_sort) {
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_sort) {
   auto query = R"aql(
     FOR i IN 1..2
       LET sorted = (
