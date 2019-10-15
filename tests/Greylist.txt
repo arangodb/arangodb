@@ -154,3 +154,4 @@ Mount: /unittest/paths
 #
 # IResearchLinkTest.test_flush_marker - unreliable on windows under high load
 
+- `tests/js/server/aql/aql-graph-traverser.js` - performance regression introduced with 8be084dc7101877fda90adaaca6cdc526b5ac481 makes test timeout in cluster.
