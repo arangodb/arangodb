@@ -31,9 +31,9 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -53,8 +53,11 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -2019,7 +2022,7 @@ void fetchVerticesFromEngines(
                                                resSlice, StaticStrings::ErrorMessage,
                                                TRI_errno_string(code)));
     }
-    
+
     bool cached = false;
     for (auto const& pair : VPackObjectIterator(resSlice)) {
       arangodb::velocypack::StringRef key(pair.key);
@@ -2283,7 +2286,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
-  
+
   VPackBufferUInt8 buffer;
   buffer.append(VPackSlice::noneSlice().begin(), 1); // necessary for some reason
   for (std::string const& server : DBservers) {
@@ -2294,7 +2297,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
@@ -3416,6 +3419,24 @@ arangodb::Result removeLocalBackups(std::string const& backupId,
 std::vector<std::string> const versionPath =
     std::vector<std::string>{"arango", "Plan", "Version"};
 
+arangodb::Result hotbackupAsyncLockDBServersTransactions(std::string const& backupId,
+  std::vector<ServerID> const& dbserver, double const& lockWait,
+  std::unordered_map<std::string, std::string> &dbserverLockIds)
+{
+  for (ServerID const& server : dbserver) {
+    dbserverLockIds[server] = "";
+  }
+
+  return Result{};
+}
+
+arangodb::Result hotbackupWaitForLockDBServersTransactions(
+  std::unordered_map<std::string, std::string> &dbserverLockIds)
+{
+  dbserverLockIds.clear();
+  return Result{};
+}
+
 arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const payload,
                                       VPackBuilder& report) {
   // ToDo: mode
@@ -3443,11 +3464,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
          (payload.hasKey("label") && !payload.get("label").isString()) ||
          (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
          (payload.hasKey("allowInconsistent") &&
-          !payload.get("allowInconsistent").isBoolean()))) {
+          !payload.get("allowInconsistent").isBoolean()) ||
+         (payload.hasKey("force") &&
+          !payload.get("force").isBoolean()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool force = !payload.isNone() && payload.get("allowInconsistent").isTrue();
+    bool allowInconsistent = !payload.isNone() && payload.get("allowInconsistent").isTrue();
+    bool force = !payload.isNone() && payload.get("force").isTrue();
 
     std::string const backupId = (payload.isObject() && payload.hasKey("label"))
                                      ? payload.get("label").copyString()
@@ -3530,11 +3554,38 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       std::this_thread::sleep_for(milliseconds(300));
     }
 
+    if (!result.ok() && force) {
+      // dbserver -> jobId
+      std::unordered_map<std::string, std::string> lockJobIds;
+      // send the locks
+      result = hotbackupAsyncLockDBServersTransactions(backupId, dbServers, lockWait, lockJobIds);
+      if (result.fail()) {
+        return result;
+      }
+
+      transaction::Manager* mgr = transaction::ManagerFeature::manager();
+
+      while (lockJobIds.size() > 0) {
+        // kill all transactions
+        LOG_DEVEL << "aborting trx";
+        result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
+        if (result.fail()) {
+          return result;
+        }
+
+        // wait for locks, servers that got the lock are removed from lockJobIds
+        result = hotbackupWaitForLockDBServersTransactions(lockJobIds);
+        if (result.fail()) {
+          return result;
+        }
+      }
+    }
+
     bool gotLocks = result.ok();
 
     // In the case we left the above loop with a negative result,
     // and we are in the case of a force backup we want to continue here
-    if (!gotLocks && !force) {
+    if (!gotLocks && !allowInconsistent) {
       unlockDBServerTransactions(backupId, dbServers);
       ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(
