@@ -33,97 +33,110 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 class CollectionNameResolver;
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-template <typename ModifierCompletion>
-SimpleModifier<ModifierCompletion>::SimpleModifier(ModificationExecutorInfos& infos)
+template <class ModifierCompletion, typename Enable>
+SimpleModifier<ModifierCompletion, Enable>::SimpleModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
-      _completion(*this),
+      _completion(infos),
       _resultsIterator(VPackSlice::emptyArraySlice()) {}
 
-template <typename ModifierCompletion>
-SimpleModifier<ModifierCompletion>::~SimpleModifier() = default;
+template <typename ModifierCompletion, typename Enable>
+SimpleModifier<ModifierCompletion, Enable>::~SimpleModifier() = default;
 
-template <typename ModifierCompletion>
-void SimpleModifier<ModifierCompletion>::reset() {
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::reset() {
   _accumulator.clear();
   _operations.clear();
   _results = OperationResult{};
   _accumulator.openArray();
 }
 
-template <typename ModifierCompletion>
-Result SimpleModifier<ModifierCompletion>::accumulate(InputAqlItemRow& row) {
-  auto result = _completion.accumulate(row);
-  TRI_ASSERT(!_accumulator.isClosed());
-  _operations.push_back(result.first, row);
-  return Result{};
-}
-
-template <typename ModifierCompletion>
-Result SimpleModifier<ModifierCompletion>::transact() {
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::close() {
+  _accumulator.close();
   TRI_ASSERT(_accumulator.isClosed());
-  _results = std::move(_completion.transact());
-  TRI_ASSERT(_results.slice().length() == _accumulator.slice().length());
+}
+
+template <typename ModifierCompletion, typename Enable>
+Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row) {
+  auto result = _completion.accumulate(_accumulator, row);
+  TRI_ASSERT(!_accumulator.isClosed());
+  _operations.push_back({result, row});
   return Result{};
 }
 
-template <typename ModifierCompletion>
-size_t SimpleModifier<ModifierCompletion>::size() const {
+template <typename ModifierCompletion, typename Enable>
+Result SimpleModifier<ModifierCompletion, Enable>::transact() {
+  TRI_ASSERT(_accumulator.isClosed());
+  TRI_ASSERT(_accumulator.slice().isArray());
+  _results = _completion.transact(_accumulator.slice());
+  // This asert does not work here because _results.slice() can be "none",
+  // because reasons.
+  // TRI_ASSERT(_results.slice().length() == _accumulator.slice().length());
+  return Result{};
+}
+
+template <typename ModifierCompletion, typename Enable>
+size_t SimpleModifier<ModifierCompletion, Enable>::nrOfOperations() const {
+  return _operations.size();
+}
+
+template <typename ModifierCompletion, typename Enable>
+size_t SimpleModifier<ModifierCompletion, Enable>::size() const {
   // TODO: spray around some asserts
+  TRI_ASSERT(_accumulator.slice().isArray());
   return _accumulator.slice().length();
 }
 
-template <typename ModifierCompletion>
-void SimpleModifier<ModifierCompletion>::throwTransactErrors() {
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::throwTransactErrors() {
   std::string message;
 
-  auto const& errorCounter = _results.countErrorCodes;
+  // auto const& errorCounter = _results.countErrorCodes;
   // TODO: This mirrors the old code, but WTF?
-  auto code = errorCounter.begin()->first;
+  // auto code = errorCounter.begin()->first;
 
   // TODO: this needs to be fixed
   TRI_ASSERT(false);
 }
 
-template <typename ModifierCompletion>
-Result SimpleModifier<ModifierCompletion>::setupIterator() {
+template <typename ModifierCompletion, typename Enable>
+Result SimpleModifier<ModifierCompletion, Enable>::setupIterator(ModifierIteratorMode const mode) {
+  _iteratorMode = mode;
   _operationsIterator = _operations.begin();
-  _resultsIterator = VPackArrayIterator{_results.slice()};
-
+  if (mode == ModifierIteratorMode::Full) {
+    TRI_ASSERT(_results.slice().isArray());
+    _resultsIterator = VPackArrayIterator{_results.slice()};
+  }
   return Result{};
 }
 
-template <typename ModifierCompletion>
-bool SimpleModifier<ModifierCompletion>::isFinishedIterator() {
+template <typename ModifierCompletion, typename Enable>
+bool SimpleModifier<ModifierCompletion, Enable>::isFinishedIterator() {
   // TODO: Spray in some assserts
   return _operationsIterator == _operations.end();
 }
 
-template <typename ModifierCompletion>
-void SimpleModifier<ModifierCompletion>::advanceIterator() {
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::advanceIterator() {
   _operationsIterator++;
   _resultsIterator++;
 }
 
-template <typename ModifierCompletion>
-bool SimpleModifier<ModifierCompletion>::writeRequired(VPackSlice const& doc,
-                                                       std::string const& key) const {
-  return (!_infos._consultAqlWriteFilter ||
-          !_infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
-}
-
-template <typename ModifierCompletion>
-void SimpleModifier<ModifierCompletion>::addDocument(VPackSlice const& doc) {
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::addDocument(VPackSlice const& doc) {
   _accumulator.add(doc);
 }
 
-template <typename ModifierCompletion>
-ModificationExecutorInfos& SimpleModifier<ModifierCompletion>::getInfos() {
+template <typename ModifierCompletion, typename Enable>
+ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const {
   return _infos;
 }
 
@@ -132,8 +145,23 @@ ModificationExecutorInfos& SimpleModifier<ModifierCompletion>::getInfos() {
 //       anything silly?
 // The ModifierOuptut is a triple consisting of the ModOperationType, the InputRow,
 // and the result returned by the transaction method called in transact.
-template <typename ModifierCompletion>
-ModifierOutput SimpleModifier<ModifierCompletion>::getOutput() {
-  return ModifierOutput{_operationsIterator->first, _operationsIterator->second,
-                        *_resultsIterator};
+template <typename ModifierCompletion, typename Enable>
+ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
+  switch (_iteratorMode) {
+    case ModifierIteratorMode::Full: {
+      return ModifierOutput{_operationsIterator->first,
+                            _operationsIterator->second, *_resultsIterator};
+    }
+    case ModifierIteratorMode::OperationsOnly: {
+      return ModifierOutput{_operationsIterator->first,
+                            _operationsIterator->second, VPackSlice::noneSlice()};
+    }
+    default: {
+      TRI_ASSERT(false);
+    }
+  }
 }
+
+template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
+template class ::arangodb::aql::SimpleModifier<RemoveModifierCompletion>;
+template class ::arangodb::aql::SimpleModifier<ReplaceModifierCompletion>;

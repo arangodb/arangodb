@@ -27,6 +27,11 @@
 #include "Aql/ModificationExecutor2.h"
 #include "Aql/ModificationExecutorTraits.h"
 
+#include "Aql/InsertModifier.h"
+#include "Aql/RemoveModifier.h"
+#include "Aql/ReplaceModifier.h"
+
+#include <type_traits>
 namespace arangodb {
 namespace aql {
 
@@ -47,12 +52,27 @@ struct ModificationExecutorInfos;
 // transaction (insert, remove, update, replace), and the only difference
 // between Update and Replace is which transaction method is called.
 //
-template <typename ModifierCompletion>
+
+// Only classes that have is_modifier_completion_trait can be used as
+// template parameter for SimpleModifier. This is mainly a safety measure
+// to not run into ridiculous template errors
+template <typename ModifierCompletion, typename _ = void>
+struct is_modifier_completion_trait : std::false_type {};
+
+template <>
+struct is_modifier_completion_trait<InsertModifierCompletion> : std::true_type {};
+
+template <>
+struct is_modifier_completion_trait<RemoveModifierCompletion> : std::true_type {};
+
+template <>
+struct is_modifier_completion_trait<ReplaceModifierCompletion> : std::true_type {};
+
+template <typename ModifierCompletion, typename Enable = typename std::enable_if_t<is_modifier_completion_trait<ModifierCompletion>::value>>
 class SimpleModifier {
   friend class InsertModifierCompletion;
   friend class RemoveModifierCompletion;
   friend class ReplaceModifierCompletion;
-  friend class UpdateModifierCompletion;
 
  public:
   using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
@@ -67,31 +87,28 @@ class SimpleModifier {
   Result accumulate(InputAqlItemRow& row);
   Result transact();
 
+  size_t nrOfOperations() const;
+
+  // Rename
   size_t size() const;
 
   void throwTransactErrors();
 
   // TODO: Make this a real iterator
-  Result setupIterator();
+  Result setupIterator(ModifierIteratorMode const mode);
   bool isFinishedIterator();
   ModifierOutput getOutput();
   void advanceIterator();
-
-  // For SmartGraphs in the Enterprise Edition this is used to skip write
-  // operations because they would otherwise be executed twice.
-  //
-  // In the community edition this will always return true
-  bool writeRequired(VPackSlice const& doc, std::string const& key) const;
 
   // We need to have a function that adds a document because returning a
   // (reference to a) slice has scoping problems
   void addDocument(VPackSlice const& doc);
 
-  ModificationExecutorInfos& getInfos();
+  ModificationExecutorInfos& getInfos() const;
 
  private:
   ModificationExecutorInfos& _infos;
-  ModifierCompletion const& _completion;
+  ModifierCompletion _completion;
 
   std::vector<ModOp> _operations;
   VPackBuilder _accumulator;
@@ -100,7 +117,12 @@ class SimpleModifier {
 
   std::vector<ModOp>::const_iterator _operationsIterator;
   VPackArrayIterator _resultsIterator;
+  ModifierIteratorMode _iteratorMode;
 };
+
+using InsertModifier = SimpleModifier<InsertModifierCompletion>;
+using RemoveModifier = SimpleModifier<RemoveModifierCompletion>;
+using ReplaceModifier = SimpleModifier<ReplaceModifierCompletion>;
 
 }  // namespace aql
 }  // namespace arangodb

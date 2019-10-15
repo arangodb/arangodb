@@ -39,35 +39,38 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-RemoveModifierCompletion::RemoveModifierCompletion(SimpleModifier<RemoveModifierCompletion>& modifier)
-    : _modifier(modifier) {}
+RemoveModifierCompletion::RemoveModifierCompletion(ModificationExecutorInfos& infos)
+    : _infos(infos) {}
 
 RemoveModifierCompletion::~RemoveModifierCompletion() = default;
 
-ModOperationType RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
+ModOperationType RemoveModifierCompletion::accumulate(VPackBuilder& accu,
+                                                      InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
-  RegisterId const inDocReg = _modifier.getInfos()._input1RegisterId;
+  RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  if (_modifier.writeRequired(inDoc.slice(), StaticStrings::Empty)) {
-    TRI_ASSERT(_modifier.getInfos()._trx->resolver() != nullptr);
-    CollectionNameResolver const& collectionNameResolver{*_modifier._infos._trx->resolver()};
+  if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
+    TRI_ASSERT(_infos._trx->resolver() != nullptr);
+    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _modifier._infos._options.ignoreRevs);
+                               _infos._options.ignoreRevs);
 
     if (result.ok()) {
       VPackBuilder keyDocBuilder;
       buildKeyDocument(keyDocBuilder, key, rev);
-      // This deletes _rev if rev is empty or ignoreRevs is set in
-      // options.
-      _modifier.addDocument(keyDocBuilder.slice());
+      // This deletes _rev if rev is empty or
+      //  ignoreRevs is set in options.
+      accu.add(keyDocBuilder.slice());
       return ModOperationType::APPLY_RETURN;
     } else {
       // error happened extracting key, record in operations map
+      // Or throw error ?
+      // TODO: What is supposed to happen here?
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
       return ModOperationType::IGNORE_SKIP;
     }
@@ -76,8 +79,6 @@ ModOperationType RemoveModifierCompletion::accumulate(InputAqlItemRow& row) {
   }
 }
 
-OperationResult RemoveModifierCompletion::transact() {
-  auto toRemove = _modifier._accumulator.slice();
-  return _modifier.getInfos()._trx->remove(_modifier.getInfos()._aqlCollection->name(),
-                                           toRemove, _modifier.getInfos()._options);
+OperationResult RemoveModifierCompletion::transact(VPackSlice const& data) {
+  return _infos._trx->remove(_infos._aqlCollection->name(), data, _infos._options);
 }

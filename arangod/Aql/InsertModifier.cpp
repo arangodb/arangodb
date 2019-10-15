@@ -39,30 +39,26 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-InsertModifierCompletion::InsertModifierCompletion(SimpleModifier<InsertModifierCompletion>& modifier)
-    : _modifier(modifier) {}
+InsertModifierCompletion::InsertModifierCompletion(ModificationExecutorInfos& infos)
+    : _infos(infos) {}
 
 InsertModifierCompletion::~InsertModifierCompletion() = default;
 
-ModOperationType InsertModifierCompletion::accumulate(InputAqlItemRow& row) {
-  RegisterId const inDocReg = _modifier.getInfos()._input1RegisterId;
+ModOperationType InsertModifierCompletion::accumulate(VPackBuilder& accu,
+                                                      InputAqlItemRow& row) {
+  RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be INSERTed
   AqlValue const& inDoc = row.getValue(inDocReg);
 
-  if (_modifier.writeRequired(inDoc.slice(), StaticStrings::Empty)) {
-    _modifier.addDocument(inDoc.slice());
+  if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
+    accu.add(inDoc.slice());
     return ModOperationType::APPLY_RETURN;
   } else {
     return ModOperationType::IGNORE_RETURN;
   }
 }
 
-OperationResult InsertModifierCompletion::transact() {
-  auto toInsert = _modifier._accumulator.slice();
-
-  return _modifier.getInfos()._trx->insert(_modifier._infos._aqlCollection->name(),
-                                           toInsert, _modifier._infos._options);
+OperationResult InsertModifierCompletion::transact(VPackSlice const& data) {
+  return _infos._trx->insert(_infos._aqlCollection->name(), data, _infos._options);
 }
-
-template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

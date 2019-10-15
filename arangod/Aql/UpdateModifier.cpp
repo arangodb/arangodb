@@ -39,70 +39,71 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-UpdateModifierCompletion::UpdateModifierCompletion(SimpleModifier<UpdateModifierCompletion>& modifier)
-    : _modifier(modifier) {}
+UpdateModifierCompletion::UpdateModifierCompletion(ModificationExecutorInfos& infos)
+    : _infos(infos) {}
 
 UpdateModifierCompletion::~UpdateModifierCompletion() = default;
 
 ModOperationType UpdateModifierCompletion::accumulate(InputAqlItemRow& row) {
-  std::string key, rev;
-  Result result;
+  // std::string key, rev;
+  // Result result;
 
-  RegisterId const inDocReg = _modifier._infos._input1RegisterId;
-  RegisterId const keyReg = _modifier._infos._input2RegisterId;
-  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
+  // RegisterId const inDocReg = _modifier->getInfos()._input1RegisterId;
+  // RegisterId const keyReg = _modifier->getInfos()._input2RegisterId;
+  // bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
-  // The document to be UPDATEd
-  AqlValue const& inDoc = row.getValue(inDocReg);
+  // // The document to be UPDATEd
+  // AqlValue const& inDoc = row.getValue(inDocReg);
 
-  // A separate register for the key/rev is available
-  // so we use that
-  //
-  // WARNING
-  //
-  // We must never take _rev from the document if there is a key
-  // expression.
-  TRI_ASSERT(_modifier._infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_modifier._infos._trx->resolver()};
-  if (hasKeyVariable) {
-    AqlValue const& keyDoc = row.getValue(keyReg);
-    result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _modifier._infos._options.ignoreRevs);
-  } else {
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _modifier._infos._options.ignoreRevs);
-  }
+  // // A separate register for the key/rev is available
+  // // so we use that
+  // //
+  // // WARNING
+  // //
+  // // We must never take _rev from the document if there is a key
+  // // expression.
+  // TRI_ASSERT(_modifier->getInfos()._trx->resolver() != nullptr);
+  // CollectionNameResolver const& collectionNameResolver{
+  //     *_modifier->getInfos()._trx->resolver()};
+  // if (hasKeyVariable) {
+  //   AqlValue const& keyDoc = row.getValue(keyReg);
+  //   result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
+  //                              _modifier->getInfos()._options.ignoreRevs);
+  // } else {
+  //   result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
+  //                              _modifier->getInfos()._options.ignoreRevs);
+  // }
 
-  if (result.ok()) {
-    if (!_modifier._infos._consultAqlWriteFilter ||
-        !_modifier._infos._aqlCollection->getCollection()->skipForAqlWrite(inDoc.slice(), key)) {
-      if (hasKeyVariable) {
-        VPackBuilder keyDocBuilder;
+  // if (result.ok()) {
+  //   if (!_modifier->getInfos()._consultAqlWriteFilter ||
+  //       !_modifier->getInfos()._aqlCollection->getCollection()->skipForAqlWrite(
+  //           inDoc.slice(), key)) {
+  //     if (hasKeyVariable) {
+  //       VPackBuilder keyDocBuilder;
 
-        buildKeyDocument(keyDocBuilder, key, rev);
-        // This deletes _rev if rev is empty or ignoreRevs is set in
-        // options.
-        auto merger =
-            VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
-        _modifier.addDocument(merger.slice());
-      } else {
-        _modifier.addDocument(inDoc.slice());
-      }
-      return ModOperationType::APPLY_RETURN;
-    } else {
-      return ModOperationType::IGNORE_RETURN;
-    }
-  } else {
-    // error happened extracting key, record in operations map
-    // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
-    return ModOperationType::IGNORE_SKIP;
-  }
+  //       buildKeyDocument(keyDocBuilder, key, rev);
+  //       // This deletes _rev if rev is empty or ignoreRevs is set in
+  //       // options.
+  //       auto merger =
+  //           VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
+  //       _modifier->addDocument(merger.slice());
+  //     } else {
+  //       _modifier->addDocument(inDoc.slice());
+  //     }
+  //     return ModOperationType::APPLY_RETURN;
+  //   } else {
+  //     return ModOperationType::IGNORE_RETURN;
+  //   }
+  // } else {
+  //   // error happened extracting key, record in operations map
+  //   // handleStats(stats, info, errorCode, _info._ignoreErrors, &errorMessage);
+  //   return ModOperationType::IGNORE_SKIP;
+  // }
 }
 
 OperationResult UpdateModifierCompletion::transact() {
-  auto toUpdate = _modifier._accumulator.slice();
-  return _modifier._infos._trx->update(_modifier._infos._aqlCollection->name(),
-                                       toUpdate, _modifier._infos._options);
+  // auto toUpdate = _modifier->_accumulator.slice();
+  // return _modifier->getInfos()._trx->update(
+  //     _modifier->getInfos()._aqlCollection->name(), toUpdate,
+  //     _modifier->getInfos()._options);
 }
-
-template class ::arangodb::aql::SimpleModifier<UpdateModifierCompletion>;

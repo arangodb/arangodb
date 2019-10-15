@@ -33,6 +33,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 class CollectionNameResolver;
 
 using namespace arangodb;
@@ -48,12 +50,22 @@ UpsertModifier::~UpsertModifier() = default;
 
 void UpsertModifier::reset() {
   _insertAccumulator.clear();
-  _updateAccumulator.clear();
-  _operations.clear();
+  _insertAccumulator.openArray();
   _insertResults = OperationResult{};
+
+  _updateAccumulator.clear();
+  _updateAccumulator.openArray();
   _updateResults = OperationResult{};
+
+  _operations.clear();
 }
 
+void UpsertModifier::close() {
+  _insertAccumulator.close();
+  _updateAccumulator.close();
+  TRI_ASSERT(_insertAccumulator.isClosed());
+  TRI_ASSERT(_updateAccumulator.isClosed());
+}
 Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
                                   InputAqlItemRow const& row) {
   std::string key, rev;
@@ -166,32 +178,60 @@ Result UpsertModifier::transact() {
 }
 
 size_t UpsertModifier::size() const {
-  // TODO: spray around some asserts
   return _insertAccumulator.slice().length() + _updateAccumulator.slice().length();
 }
 
+size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }
+
 void UpsertModifier::throwTransactErrors() { TRI_ASSERT(false); }
 
-Result UpsertModifier::setupIterator() {
+Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
+  LOG_DEVEL << "setting up upsert iterator in mode " << mode;
+  _iteratorMode = mode;
   _operationsIterator = _operations.begin();
-  _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
-  _updateResultsIterator = VPackArrayIterator(_updateResults.slice());
+  if (mode == ModifierIteratorMode::Full) {
+    LOG_DEVEL << "insert sliz";
+    if (_insertResults.slice().isNone()) {
+      _insertResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+    } else if (_insertResults.slice().isArray()) {
+      _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
+    } else {
+      TRI_ASSERT(false);
+    }
+
+    LOG_DEVEL << "update sliz";
+    if (_updateResults.slice().isNone()) {
+      _updateResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+    } else if (_updateResults.slice().isArray()) {
+      _updateResultsIterator = VPackArrayIterator(_updateResults.slice());
+    } else {
+      TRI_ASSERT(false);
+    }
+  }
 
   return Result{};
 }
 
 bool UpsertModifier::isFinishedIterator() {
+  LOG_DEVEL << "is finished?";
   // TODO: Spray in some assserts
   return _operationsIterator == _operations.end();
 }
 
 void UpsertModifier::advanceIterator() {
+  // TODO: wat?
   TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
              _operationsIterator->first == ModOperationType::APPLY_INSERT);
-  if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-    _updateResultsIterator++;
-  } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-    _insertResultsIterator++;
+
+  LOG_DEVEL << "advance";
+  if (_iteratorMode == ModifierIteratorMode::Full) {
+    if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
+      LOG_DEVEL << "advance update";
+      _updateResultsIterator++;
+    } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
+      LOG_DEVEL << "advance insert";
+      _insertResultsIterator++;
+    }
   }
   _operationsIterator++;
 }
@@ -203,14 +243,26 @@ void UpsertModifier::advanceIterator() {
 UpsertModifier::OutputTuple UpsertModifier::getOutput() {
   TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
              _operationsIterator->first == ModOperationType::APPLY_INSERT);
+  LOG_DEVEL << "getting output";
 
-  if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-    return OutputTuple{ModOperationType::APPLY_RETURN,
-                       _operationsIterator->second, *_updateResultsIterator};
-  } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-    return OutputTuple{ModOperationType::APPLY_RETURN,
-                       _operationsIterator->second, *_insertResultsIterator};
-  } else {
-    TRI_ASSERT(false);
+  switch (_iteratorMode) {
+    case ModifierIteratorMode::Full: {
+      if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
+        LOG_DEVEL << "apply update";
+        return OutputTuple{ModOperationType::APPLY_RETURN,
+                           _operationsIterator->second, *_updateResultsIterator};
+      } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
+        LOG_DEVEL << "aapply insert";
+        return OutputTuple{ModOperationType::APPLY_RETURN,
+                           _operationsIterator->second, *_insertResultsIterator};
+      } else {
+        TRI_ASSERT(false);
+      }
+    }
+    case ModifierIteratorMode::OperationsOnly: {
+      LOG_DEVEL << "IT IT IT";
+      return OutputTuple{_operationsIterator->first,
+                         _operationsIterator->second, VPackSlice::noneSlice()};
+    }
   }
 }

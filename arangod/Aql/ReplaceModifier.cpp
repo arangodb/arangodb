@@ -39,20 +39,21 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-ReplaceModifierCompletion::ReplaceModifierCompletion(SimpleModifier<ReplaceModifierCompletion>& modifier)
-    : _modifier(modifier) {}
+ReplaceModifierCompletion::ReplaceModifierCompletion(ModificationExecutorInfos& infos)
+    : _infos(infos) {}
 
 ReplaceModifierCompletion::~ReplaceModifierCompletion() = default;
 
-ModOperationType ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
+ModOperationType ReplaceModifierCompletion::accumulate(VPackBuilder& accu,
+                                                       InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
-  RegisterId const inDocReg = _modifier._infos._input1RegisterId;
-  RegisterId const keyReg = _modifier._infos._input2RegisterId;
+  RegisterId const inDocReg = _infos._input1RegisterId;
+  RegisterId const keyReg = _infos._input2RegisterId;
   bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
 
-  // The document to be REPLACEd
+  // The document to be REPLACE/UPDATEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   // A separate register for the key/rev is available
@@ -62,19 +63,19 @@ ModOperationType ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
   //
   // We must never take _rev from the document if there is a key
   // expression.
-  TRI_ASSERT(_modifier._infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_modifier._infos._trx->resolver()};
+  TRI_ASSERT(_infos._trx->resolver() != nullptr);
+  CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
   if (hasKeyVariable) {
     AqlValue const& keyDoc = row.getValue(keyReg);
     result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _modifier._infos._options.ignoreRevs);
+                               _infos._options.ignoreRevs);
   } else {
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _modifier._infos._options.ignoreRevs);
+                               _infos._options.ignoreRevs);
   }
 
   if (result.ok()) {
-    if (_modifier.writeRequired(inDoc.slice(), key)) {
+    if (writeRequired(_infos, inDoc.slice(), key)) {
       if (hasKeyVariable) {
         VPackBuilder keyDocBuilder;
 
@@ -83,9 +84,9 @@ ModOperationType ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
         // options.
         auto merger =
             VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
-        _modifier.addDocument(merger.slice());
+        accu.add(merger.slice());
       } else {
-        _modifier.addDocument(inDoc.slice());
+        accu.add(inDoc.slice());
       }
       return ModOperationType::APPLY_RETURN;
     } else {
@@ -99,10 +100,11 @@ ModOperationType ReplaceModifierCompletion::accumulate(InputAqlItemRow& row) {
   }
 }
 
-OperationResult ReplaceModifierCompletion::transact() {
-  auto toReplace = _modifier._accumulator.slice();
-  return _modifier._infos._trx->replace(_modifier._infos._aqlCollection->name(),
-                                        toReplace, _modifier._infos._options);
+OperationResult ReplaceModifierCompletion::transact(VPackSlice const& data) {
+  // TODO: Update vs Replace an enum class? Templated?
+  if (_infos._isReplace) {
+    return _infos._trx->replace(_infos._aqlCollection->name(), data, _infos._options);
+  } else {
+    return _infos._trx->update(_infos._aqlCollection->name(), data, _infos._options);
+  }
 }
-
-template class ::arangodb::aql::SimpleModifier<ReplaceModifierCompletion>;

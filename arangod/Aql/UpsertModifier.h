@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_UPSERT_MODIFIER_H
 
 #include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutor2.h"
 #include "Aql/ModificationExecutorTraits.h"
 
 namespace arangodb {
@@ -47,11 +48,12 @@ class UpsertModifier {
   Result transact();
 
   size_t size() const;
+  size_t nrOfOperations() const;
 
   void throwTransactErrors();
 
   // TODO: Make this a real iterator
-  Result setupIterator();
+  Result setupIterator(ModifierIteratorMode mode);
   bool isFinishedIterator();
   OutputTuple getOutput();
   void advanceIterator();
@@ -73,6 +75,8 @@ class UpsertModifier {
 
   VPackArrayIterator _updateResultsIterator;
   VPackArrayIterator _insertResultsIterator;
+
+  ModifierIteratorMode _iteratorMode;
 };
 
 }  // namespace aql

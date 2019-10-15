@@ -25,7 +25,6 @@
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
-#include "Aql/SimpleModifier.h"
 
 namespace arangodb {
 namespace aql {
@@ -34,17 +33,15 @@ struct ModificationExecutorInfos;
 
 class RemoveModifierCompletion {
  public:
-  RemoveModifierCompletion(SimpleModifier<RemoveModifierCompletion>& modifier);
+  RemoveModifierCompletion(ModificationExecutorInfos& infos);
   ~RemoveModifierCompletion();
 
-  ModOperationType accumulate(InputAqlItemRow& row);
-  OperationResult transact();
+  ModOperationType accumulate(VPackBuilder& accu, InputAqlItemRow& row);
+  OperationResult transact(VPackSlice const& data);
 
  private:
-  SimpleModifier<RemoveModifierCompletion>& _modifier;
+  ModificationExecutorInfos& _infos;
 };
-
-using RemoveModifier = SimpleModifier<RemoveModifierCompletion>;
 
 }  // namespace aql
 }  // namespace arangodb

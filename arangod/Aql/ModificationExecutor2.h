@@ -31,12 +31,15 @@ namespace aql {
 
 struct ModificationExecutorInfos;
 
+// TODO: Find a better home for these
 namespace ModificationExecutorHelpers {
 Result getKeyAndRevision(CollectionNameResolver const& resolver,
                          AqlValue const& value, std::string& key,
                          std::string& rev, bool ignoreRevision = false);
 Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
                         std::string const& rev, bool ignoreRevision = false);
+bool writeRequired(ModificationExecutorInfos& infos, VPackSlice const& doc,
+                   std::string const& key);
 };  // namespace ModificationExecutorHelpers
 
 //
@@ -70,14 +73,18 @@ Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
 //
 using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
 
+enum class ModifierIteratorMode { OperationsOnly, Full };
+std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode);
+
 template <typename FetcherType, typename ModifierType>
 class ModificationExecutor2 {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr bool allowsBlockPassthrough = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
+  using Fetcher = FetcherType;
   using Infos = ModificationExecutorInfos;
   using Stats = ModificationStats;
 

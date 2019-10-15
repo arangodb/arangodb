@@ -37,6 +37,8 @@
 #include "Aql/UpdateModifier.h"
 #include "Aql/UpsertModifier.h"
 
+#include "Logger/LogMacros.h"
+
 #include <algorithm>
 #include "velocypack/velocypack-aliases.h"
 
@@ -114,8 +116,30 @@ Result ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
   return Result{};
 }
 
+bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos,
+                                                VPackSlice const& doc,
+                                                std::string const& key) {
+  return (!infos._consultAqlWriteFilter ||
+          !infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
+}
+
+namespace arangodb {
+namespace aql {
+
+std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode) {
+  switch (mode) {
+    case ModifierIteratorMode::Full:
+      ostream << "Full";
+      break;
+    case ModifierIteratorMode::OperationsOnly:
+      ostream << "OperationsOnly";
+      break;
+  }
+  return ostream;
+}
+
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(FetcherType& fetcher,
+ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(Fetcher& fetcher,
                                                                         Infos& infos)
     : _infos(infos), _fetcher(fetcher), _modifier(infos) {
   // important for mmfiles
@@ -135,6 +159,7 @@ ModificationExecutor2<FetcherType, ModifierType>::~ModificationExecutor2() = def
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
+// TODO: Perhaps we can remove stats here?
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor2<FetcherType, ModifierType>::Stats>
 ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutputs) {
@@ -144,7 +169,9 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
 
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
-  while (_modifier.size() < maxOutputs && state != ExecutionState::DONE) {
+  // TODO: If we SKIP_IGNORE, then we'd be able to output more;
+  //       this would require some counting to happen in the modifier
+  while (_modifier.nrOfOperations() < maxOutputs && state != ExecutionState::DONE) {
     std::tie(state, row) = _fetcher.fetchRow();
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, ModificationStats{}};
@@ -154,7 +181,7 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
 
     _modifier.accumulate(row);
   }
-  _modifier.close();
+  TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
   return {state, ModificationStats{}};
 }
 
@@ -166,12 +193,18 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
   // we can just copy rows; this is an optimisation for silent
   // queries
   if (_modifier.size() == 0 || _infos._options.silent) {
-    _modifier.setupIterator();
+    _modifier.setupIterator(ModifierIteratorMode::OperationsOnly);
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    LOG_DEVEL << "LUP LUP";
     while (!_modifier.isFinishedIterator()) {
-      InputAqlItemRow row{CreateInvalidInputRowHint{}};
+      LOG_DEVEL << " getting output";
       std::tie(std::ignore, row, std::ignore) = _modifier.getOutput();
+      LOG_DEVEL << " got output";
+
       output.copyRow(row);
+
       _modifier.advanceIterator();
+      output.advanceRow();
     }
   } else {
     ModOperationType modOp;
@@ -179,7 +212,7 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
     VPackSlice elm;
 
     // TODO: Make this a proper iterator
-    _modifier.setupIterator();
+    _modifier.setupIterator(ModifierIteratorMode::Full);
     while (!_modifier.isFinishedIterator()) {
       std::tie(modOp, row, elm) = _modifier.getOutput();
 
@@ -248,28 +281,36 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
   ExecutionState state;
   ModificationExecutor2::Stats stats;
 
+  LOG_DEVEL << " m o d o produca rowz";
   _modifier.reset();
 
   size_t maxOutputs = std::min(output.numRowsLeft(), ExecutionBlock::DefaultBatchSize());
+  LOG_DEVEL << "max outputs: " << maxOutputs;
+
   std::tie(state, stats) = doCollect(maxOutputs);
   if (state == ExecutionState::WAITING) {
     return {ExecutionState::WAITING, std::move(stats)};
   }
+  TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
 
+  // Close the accumulator
+  LOG_DEVEL << "ladida";
+  _modifier.close();
+  LOG_DEVEL << "DURRDIDURR";
   auto transactResult = _modifier.transact();
+  LOG_DEVEL << "transaction went through?";
 
   // If the transaction resulted in any errors,
   // this function will throw an arango exception.
   if (!transactResult.ok()) {
+    LOG_DEVEL << "Transaction errored, now we need to throw";
     _modifier.throwTransactErrors();
   }
 
+  LOG_DEVEL << "output about to start";
   doOutput(output, stats);
 
-  // TODO:
-  // We want to say "has more" if upstream still has rows.
-  // sooo... just return the upstream state?
-  return {ExecutionState::DONE, std::move(stats)};
+  return {state, std::move(stats)};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
@@ -280,7 +321,8 @@ template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetc
 template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, RemoveModifier>;
 template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, ReplaceModifier>;
 template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, ReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpdateModifier>;
-template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpdateModifier>;
 template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpsertModifier>;
 template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpsertModifier>;
+
+}  // namespace aql
+}  // namespace arangodb

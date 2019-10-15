@@ -34,17 +34,15 @@ struct ModificationExecutorInfos;
 
 class UpdateModifierCompletion {
  public:
-  UpdateModifierCompletion(SimpleModifier<UpdateModifierCompletion>& infos);
+  UpdateModifierCompletion(ModificationExecutorInfos& infos);
   ~UpdateModifierCompletion();
 
   ModOperationType accumulate(InputAqlItemRow& row);
   OperationResult transact();
 
  private:
-  SimpleModifier<UpdateModifierCompletion>& _modifier;
+  ModificationExecutorInfos& _infos;
 };
-
-using UpdateModifier = SimpleModifier<UpdateModifierCompletion>;
 
 }  // namespace aql
 }  // namespace arangodb
