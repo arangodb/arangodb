@@ -100,12 +100,12 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
 
   ExecutorInfos const& infos() const;
   
-  Query& getQuery() const noexcept;
+  Query const& getQuery() const noexcept;
 
  private:
   ExecutorInfos _infos;
 
-  Query& _query;
+  Query const& _query;
 
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.

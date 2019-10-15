@@ -378,7 +378,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
   return getClientId(shardId);
 }
 
-Query& ExecutionBlockImpl<DistributeExecutor>::getQuery() const noexcept { return _query; }
+Query const& ExecutionBlockImpl<DistributeExecutor>::getQuery() const noexcept { return _query; }
 
 /// @brief create a new document key
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
