@@ -119,7 +119,7 @@ TEST_F(NetworkMethodsTest, simple_request) {
   pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"error\":false}");
   auto resBuffer = b->steal();
-  pool->_conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
@@ -168,7 +168,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"error\":false}");
   auto resBuffer = b->steal();
-  pool->_conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
   auto status = f.wait_for(std::chrono::milliseconds(350));
   ASSERT_EQ(futures::FutureStatus::Ready, status);
@@ -189,7 +189,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"errorNum\":1203}");
   auto resBuffer = b->steal();
-  pool->_conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
@@ -207,7 +207,8 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   header.contentType(fuerte::ContentType::VPack);
   pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
   b = VPackParser::fromJson("{\"error\":false}");
-  pool->_conn->_response->setPayload(*(b->steal().get()), 0);
+  resBuffer = b->steal();
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
   auto status = f.wait_for(std::chrono::milliseconds(350));
   ASSERT_EQ(futures::FutureStatus::Ready, status);

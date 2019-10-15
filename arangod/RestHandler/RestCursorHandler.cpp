@@ -430,7 +430,7 @@ bool RestCursorHandler::cancelQuery() {
     // cursor is canceled. now remove the continue handler we may have
     // registered in the query
     std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
-    ss->setContinueCallback();
+    ss->invalidate();
 
     return true;
   }

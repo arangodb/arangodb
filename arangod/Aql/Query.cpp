@@ -762,7 +762,6 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
  */
 QueryResult Query::executeSync(QueryRegistry* registry) {
   std::shared_ptr<SharedQueryState> ss = sharedState();
-  ss->setContinueCallback();
 
   QueryResult queryResult;
   while (true) {
@@ -784,7 +783,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
   TRI_ASSERT(registry != nullptr);
 
   std::shared_ptr<SharedQueryState> ss = sharedState();
-  ss->setContinueCallback();
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -1392,11 +1390,11 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
   try {
     std::shared_ptr<SharedQueryState> ss = sharedState();
-    ss->setContinueCallback();
 
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
       ss->waitForAsyncResponse();
+      ss->invalidate();
       state = cleanupPlanAndEngine(errorCode, statsBuilder);
     }
   } catch (...) {

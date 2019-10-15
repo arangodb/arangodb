@@ -25,32 +25,26 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 void SharedQueryState::invalidate() {
   std::lock_guard<std::mutex> guard(_mutex);
   _valid = false;
-  _wasNotified = true;
+  _numNotifications += 1;
+  _continueCallback = nullptr;
   // guard.unlock();
-  _condition.notify_one();
+  _cv.notify_one();
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncResponse() {
   std::unique_lock<std::mutex> guard(_mutex);
-  if (!_wasNotified) {
-    _condition.wait(guard);
-  }
-  _wasNotified = false;
-}
-
-/// @brief setter for the continue callback:
-///        We can either have a handler or a callback
-void SharedQueryState::setContinueCallback() noexcept {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _continueCallback = nullptr;
-  _hasHandler = false;
+  _cv.wait(guard, [&] { return _numNotifications > 0; });
+  TRI_ASSERT(_numNotifications > 0);
+  _numNotifications--;
 }
 
 /// @brief setter for the continue handler:
@@ -58,36 +52,47 @@ void SharedQueryState::setContinueCallback() noexcept {
 void SharedQueryState::setContinueHandler(std::function<void()> const& handler) {
   std::lock_guard<std::mutex> guard(_mutex);
   _continueCallback = handler;
-  _hasHandler = true;
 }
 
-/// execute the _continueCallback. must hold _mutex
-bool SharedQueryState::executeContinueCallback() const {
-  TRI_ASSERT(_hasHandler);
+/// execute the _continueCallback. must hold _mutex,
+bool SharedQueryState::executeContinueCallback() {
+  if (!_valid) {
+    return false;
+  }
+  
+  TRI_ASSERT(_continueCallback);
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
     return false;
   }
+  
   // do NOT use scheduler->post(), can have high latency that
   //  then backs up libcurl callbacks to other objects
-  return scheduler->queue(RequestLane::CLIENT_AQL, _continueCallback);
+  return scheduler->queue(RequestLane::CLIENT_AQL,
+                          [self = shared_from_this(),
+                           cb = _continueCallback] () mutable {
+    cb();
+    std::lock_guard<std::mutex> guard(self->_mutex);
+    if (--(self->_numNotifications) > 0) {
+      self->executeContinueCallback();
+    }
+  });
 }
 
-bool SharedQueryState::execute() {
+void SharedQueryState::execute() {
   std::lock_guard<std::mutex> guard(_mutex);
   if (!_valid) {
-    return false;
+    return;
   }
-
-  if (_hasHandler) {
-    if (ADB_UNLIKELY(!executeContinueCallback())) {
-      return false;  // likely shutting down
+  
+  unsigned n = _numNotifications++;
+  if (_continueCallback) {
+    if (n > 0) {
+      return;
     }
+    executeContinueCallback();
   } else {
-    _wasNotified = true;
-    // simon: bad experience on macOS guard.unlock();
-    _condition.notify_one();
+    _cv.notify_one();
   }
-  return true;
 }

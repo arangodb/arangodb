@@ -609,8 +609,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   auto closeGuard = scopeGuard([this] { _queryRegistry->close(&_vocbase, _qId); });
 
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler(
-      [self = shared_from_this(), ss]() { self->continueHandlerExecution(); });
+  ss->setContinueHandler([self = shared_from_this()]() { self->continueHandlerExecution(); });
 
   bool found;
   std::string const& shardId = _request->header("shard-id", found);

@@ -67,6 +67,7 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
       _lastTicket(0),
+      _requestInFlight(false),
       _hasTriggeredShutdown(false) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
@@ -158,6 +159,10 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSome(s
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
+  if (_requestInFlight.load(std::memory_order_acquire)) {
+    return {ExecutionState::WAITING, 0};
+  }
+  
   if (_lastError.fail()) {
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
@@ -168,6 +173,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
+    TRI_ASSERT(_requestInFlight == false);
 
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
@@ -289,7 +295,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (!_hasTriggeredShutdown) {
     std::lock_guard<std::mutex> guard(_communicationMutex);
-    std::ignore = generateNewTicket();
+    std::ignore = generateRequestTicket();
     _hasTriggeredShutdown = true;
   }
   if (_lastError.fail()) {
@@ -416,6 +422,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
                                                             std::string const& urlPart,
                                                             VPackBuffer<uint8_t> body) {
+  
   NetworkFeature const& nf =
       _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -435,6 +442,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
+  _requestInFlight.store(true, std::memory_order_release);
 
   auto req = fuerte::createRequest(type, url, {}, std::move(body));
   // Later, we probably want to set these sensibly:
@@ -444,10 +452,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   }
 
   network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
-
   std::lock_guard<std::mutex> guard(_communicationMutex);
-  auto ticket = generateNewTicket();
+  auto ticket = generateRequestTicket();
   std::shared_ptr<fuerte::Connection> conn = ref.connection();
+  auto ss = _query.sharedState();
   conn->sendRequest(std::move(req),
                     [=, ref(std::move(ref))](fuerte::Error err,
                                              std::unique_ptr<fuerte::Request>,
@@ -455,12 +463,13 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                       std::lock_guard<std::mutex> guard(_communicationMutex);
 
                       if (_lastTicket == ticket) {
+                        _requestInFlight = false;
                         if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                           _lastError = handleErrorResponse(spec, err, res.get());
                         } else {
                           _lastResponse = std::move(res);
                         }
-                        _query.sharedState()->execute();
+                        ss->execute();
                       }
                     });
 
@@ -499,7 +508,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
   }
 }
 
-unsigned ExecutionBlockImpl<RemoteExecutor>::generateNewTicket() {
+unsigned ExecutionBlockImpl<RemoteExecutor>::generateRequestTicket() {
   // Assumes that _communicationMutex is locked in the caller
   ++_lastTicket;
   _lastError.reset(TRI_ERROR_NO_ERROR);

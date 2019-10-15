@@ -68,7 +68,6 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
   std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->setContinueCallback();
 
   aql::QueryResultV8 queryResult;
   while (true) {

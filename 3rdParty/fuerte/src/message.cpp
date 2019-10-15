@@ -294,9 +294,4 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payloadOffset = 0;
   return buffer;
 }
-
-void Response::setPayload(VPackBuffer<uint8_t> buffer, size_t payloadOffset) {
-  _payloadOffset = payloadOffset;
-  _payload = std::move(buffer);
-}
 }}}  // namespace arangodb::fuerte::v1

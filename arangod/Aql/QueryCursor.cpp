@@ -208,7 +208,7 @@ QueryStreamCursor::~QueryStreamCursor() {
     }
 
     // now remove the continue handler we may have registered in the query
-    _query->sharedState()->setContinueCallback();
+    _query->sharedState()->invalidate();
     // Query destructor will cleanup plan and abort transaction
     _query.reset();
   }
@@ -276,9 +276,6 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
       << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  // We will get a different RestHandler on every dump, so we need to update the
-  // Callback
-  ss->setContinueCallback();
 
   try {
     aql::ExecutionEngine* engine = _query->engine();
@@ -377,7 +374,6 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-      ss->setContinueCallback();
 
       // cleanup before transaction is committet
       cleanupStateCallback();

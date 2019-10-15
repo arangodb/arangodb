@@ -83,6 +83,9 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// reactivated
   arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
                                     velocypack::Buffer<uint8_t> body);
+  
+  // _communicationMutex *must* be locked for this!
+  unsigned generateRequestTicket();
 
  private:
   ExecutorInfos _infos;
@@ -102,6 +105,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief whether or not this block will forward initialize,
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
+  
+  std::mutex _communicationMutex;
 
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
@@ -110,15 +115,12 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
   
-  std::mutex _communicationMutex;
-  
   unsigned _lastTicket;  /// used to check for canceled requests
+  
+  std::atomic<bool> _requestInFlight;
   
   bool _hasTriggeredShutdown;
 
-  // _communicationMutex *must* be locked for this!
-  unsigned generateNewTicket();
-  
   bool _didSendShutdownRequest = false;
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
