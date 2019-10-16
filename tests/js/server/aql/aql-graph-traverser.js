@@ -2253,6 +2253,20 @@ function complexFilteringSuite() {
 
     tearDownAll: cleanup,
 
+    testPruneWithSubquery: function () {
+      let query = `FOR v,e,p IN 1..100 OUTBOUND @start @ecol PRUNE 2 <= LENGTH(FOR w IN p.vertices FILTER w._id == v._id RETURN 1) RETURN p`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.Tri1
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}
       FOR v, e, p IN 100 OUTBOUND @start @@eCol

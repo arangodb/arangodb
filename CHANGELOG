@@ -1,6 +1,11 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
+  Using subqueries inside PRUNE conditions causes undefined behavior,
+  so such queries will now be aborted early on with a parse error 
+  instead of running into undefined behavior.
+
 * Fixed available flag for hotbackup.
 
 * Fixed list with id for partially available hotbackups.
