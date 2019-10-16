@@ -580,6 +580,10 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
   TRI_ASSERT(registry != nullptr);
 
   try {
+    if (_killed) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+    
     bool useQueryCache = canUseQueryCache();
 
     switch (_executionPhase) {
@@ -904,6 +908,10 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
               THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
             }
           }
+        }
+    
+        if (_killed) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
         }
       }
 
