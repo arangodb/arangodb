@@ -240,3 +240,18 @@ target_include_directories(
 ################################################################################
 
 add_subdirectory(simdcomp)
+
+################################################################################
+### utfcpp library
+################################################################################
+
+add_library(
+  ${IResearch_TARGET_NAME}-utfcpp
+  INTERFACE
+)
+
+target_include_directories(
+  ${IResearch_TARGET_NAME}-utfcpp
+  SYSTEM
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/utfcpp
+)

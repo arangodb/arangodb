@@ -26,46 +26,9 @@
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
 #include "ngram_token_stream.hpp"
+#include "utils/json_utils.hpp"
 
 NS_LOCAL
-
-bool get_uint64(
-    rapidjson::Document const& json,
-    const irs::string_ref& name,
-    uint64_t& value
-) {
-  if (!json.HasMember(name.c_str())) {
-    return false;
-  }
-
-  const auto& attr = json[name.c_str()];
-
-  if (!attr.IsNumber()) {
-    return false;
-  }
-
-  value = attr.GetUint64();
-  return true;
-}
-
-bool get_bool(
-    rapidjson::Document const& json,
-    const irs::string_ref& name,
-    bool& value
-) {
-  if (!json.HasMember(name.c_str())) {
-    return false;
-  }
-
-  const auto& attr = json[name.c_str()];
-
-  if (!attr.IsBool()) {
-    return false;
-  }
-
-  value = attr.GetBool();
-  return true;
-}
 
 const irs::string_ref MIN_PARAM_NAME               = "min";
 const irs::string_ref MAX_PARAM_NAME               = "max";

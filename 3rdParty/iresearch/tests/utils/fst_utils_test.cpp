@@ -54,7 +54,7 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // check automaton
   {
-    using matcher_t = fst::TableMatcher<fst::fsa::Automaton, fst::fsa::kRho>;
+    using matcher_t = fst::TableMatcher<fst::fsa::Automaton>;
     using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton>;
 
     expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);

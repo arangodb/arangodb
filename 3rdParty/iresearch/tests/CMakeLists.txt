@@ -125,10 +125,6 @@ set(IReSearch_tests_headers
   ./index/index_tests.hpp
   ./search/filter_test_case_base.hpp
   ./formats/formats_test_case_base.hpp
-  ./unicode/utf8.h
-  ./unicode/utf8/checked.h
-  ./unicode/utf8/unchecked.h
-  ./unicode/utf8/core.h
   ./tests_config.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
@@ -273,6 +269,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

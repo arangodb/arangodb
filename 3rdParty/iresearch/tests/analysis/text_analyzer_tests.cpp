@@ -781,6 +781,22 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     }
     ASSERT_TRUE(expected_stopwords.empty());
   }
+
+  // min, max, preserveOriginal
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"min\":1,\"max\":1,\"preserveOriginal\":true}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"min\":1,\"max\":1,\"preserveOriginal\":true}", actual);
+  }
+
+  // without min (see above for without min, max, and preserveOriginal)
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"max\":2,\"preserveOriginal\":false}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"max\":2,\"preserveOriginal\":false}", actual);
+  }
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
@@ -805,6 +821,375 @@ TEST_F(TextAnalyzerParserTestSuite, test_deterministic_stopwords_order) {
   ASSERT_TRUE(irs::analysis::analyzers::normalize(normalized2, "text", irs::text_format::json, normalized1));
   ASSERT_EQ(normalized1, normalized2);
 }
+
+TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
+  // text ngrams
+
+  // default behaviour
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":2, \"max\":3, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min == 0
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("q", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+
+      ASSERT_TRUE(pStream->reset(data));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", std::string(reinterpret_cast<const char*>((pValue->value().c_str())), pValue->value().size()));
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":0, \"max\":3, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // preserveOriginal == true
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":2, \"max\":3, \"preserveOriginal\":true}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min == max
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":3, \"max\":3, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min > max and preserveOriginal == false
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":4, \"max\":3, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min > max and preserveOriginal == true
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":4, \"max\":3, \"preserveOriginal\":true}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min == max == 0 and no preserveOriginal
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":0, \"max\":0}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and preserveOriginal == false
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"max\":1, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and preserveOriginal == true
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"max\":1, \"preserveOriginal\":true}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no max
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"min\":1, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and no max and preserveOriginal == false
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and no max and preserveOriginal == true
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"preserveOriginal\":true}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // wide symbols
+  {
+    std::wstring sDataUCS2 = L"\u041F\u043E \u0432\u0435\u0447\u0435\u0440\u0430\u043C \u043A \u041C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443";
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string data;
+    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043F", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043F\u043E", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u0432", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u0432\u0435", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043C", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043C\u0435", utf_to_utf(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[\"\\u043A\"], \"min\":1, \"max\":2, \"preserveOriginal\":false}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+}
+
 
 
 // -----------------------------------------------------------------------------

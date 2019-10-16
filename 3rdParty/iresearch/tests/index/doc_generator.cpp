@@ -26,7 +26,6 @@
 #include "index/field_data.hpp"
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
-#include "unicode/utf8.h"
 #include "utils/file_utils.hpp"
 
 #include <sstream>
@@ -36,6 +35,8 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/istreamwrapper.h>
+
+#include <utf8.h>
 
 namespace utf8 {
 namespace unchecked {

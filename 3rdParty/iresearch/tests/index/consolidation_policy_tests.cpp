@@ -33,7 +33,7 @@ void print_consolidation(
     const irs::index_writer::consolidation_policy_t& policy
 ) {
   struct less_t {
-    bool operator()(const irs::segment_meta* lhs, const irs::segment_meta* rhs) {
+    bool operator()(const irs::segment_meta* lhs, const irs::segment_meta* rhs) const {
       return lhs->size == rhs->size ? lhs->name < rhs->name : lhs->size < rhs->size;
     }
   };
