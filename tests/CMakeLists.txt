@@ -138,6 +138,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
   IResearch/IResearchFeature-test.cpp
+  IResearch/IResearchFilterArrayIn-test.cpp
+  IResearch/IResearchFilterArrayInterval-test.cpp
   IResearch/IResearchFilterBoolean-test.cpp
   IResearch/IResearchFilterCompare-test.cpp
   IResearch/IResearchFilterFunction-test.cpp
