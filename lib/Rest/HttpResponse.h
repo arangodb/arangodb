@@ -84,9 +84,9 @@ class HttpResponse : public GeneralResponse {
                   bool resolve_externals = true) override;
   void addRawPayload(velocypack::StringRef payload) override;
 
- bool isResponseEmpty() const override {
+  bool isResponseEmpty() const override {
     return _body->empty();
- }
+  }
 
   /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
