@@ -134,21 +134,21 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
 
   struct Pack {
     DestinationId destination;
-    ConnectionPool::Ref ref;
+    network::ConnectionPtr connection;
     futures::Promise<network::Response> promise;
     std::unique_ptr<fuerte::Response> tmp;
-    Pack(DestinationId const& dest, ConnectionPool::Ref r)
-    : destination(dest), ref(std::move(r)), promise() {}
+    Pack(DestinationId const& dest, network::ConnectionPtr p)
+    : destination(dest), connection(std::move(p)), promise() {}
   };
   // fits in SSO of std::function
   static_assert(sizeof(std::shared_ptr<Pack>) <= 2*sizeof(void*), "");
-  auto p = std::make_shared<Pack>(destination, pool->leaseConnection(spec.endpoint));
+  auto conn = pool->leaseConnection(spec.endpoint);
+  auto p = std::make_shared<Pack>(destination, conn);
 
-  auto conn = p->ref.connection();
   auto f = p->promise.getFuture();
-  conn->sendRequest(std::move(req), [p = std::move(p)](fuerte::Error err,
-                                                       std::unique_ptr<fuerte::Request> req,
-                                                       std::unique_ptr<fuerte::Response> res) {
+  conn->sendRequest(std::move(req), [p(std::move(p))](fuerte::Error err,
+                                                      std::unique_ptr<fuerte::Request> req,
+                                                      std::unique_ptr<fuerte::Response> res) {
     
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {  // mostly relevant for testing
@@ -238,15 +238,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
     TRI_ASSERT(localOptions.timeout.count() > 0);
 
-    auto ref = _pool->leaseConnection(spec.endpoint);
+    auto conn = _pool->leaseConnection(spec.endpoint);
     auto req = prepareRequest(_type, _path, _payload, _headers, localOptions);
     auto self = RequestsState::shared_from_this();
-    auto cb = [self, ref](fuerte::Error err,
-                          std::unique_ptr<fuerte::Request> req,
-                          std::unique_ptr<fuerte::Response> res) {
+    auto cb = [self, conn](fuerte::Error err,
+                           std::unique_ptr<fuerte::Request> req,
+                           std::unique_ptr<fuerte::Response> res) {
       self->handleResponse(err, std::move(req), std::move(res));
     };
-    ref.connection()->sendRequest(std::move(req), std::move(cb));
+    conn->sendRequest(std::move(req), std::move(cb));
   }
 
  private:

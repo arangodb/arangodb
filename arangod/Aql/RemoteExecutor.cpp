@@ -451,17 +451,15 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     req->header.addMeta("Shard-Id", _ownName);
   }
 
-  network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
+  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
+  
   std::lock_guard<std::mutex> guard(_communicationMutex);
   auto ticket = generateRequestTicket();
-  std::shared_ptr<fuerte::Connection> conn = ref.connection();
-  auto ss = _query.sharedState();
   conn->sendRequest(std::move(req),
-                    [=, ref(std::move(ref))](fuerte::Error err,
-                                             std::unique_ptr<fuerte::Request>,
-                                             std::unique_ptr<fuerte::Response> res) {
+                    [this, conn, spec, ticket](fuerte::Error err,
+                                               std::unique_ptr<fuerte::Request>,
+                                               std::unique_ptr<fuerte::Response> res) {
                       std::lock_guard<std::mutex> guard(_communicationMutex);
-
                       if (_lastTicket == ticket) {
                         _requestInFlight = false;
                         if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
@@ -469,7 +467,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                         } else {
                           _lastResponse = std::move(res);
                         }
-                        ss->execute();
+                        _query.sharedState()->execute();
                       }
                     });
 
