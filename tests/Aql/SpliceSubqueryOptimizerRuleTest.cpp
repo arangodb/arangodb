@@ -22,6 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "QueryHelper.h"
+
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -175,21 +177,6 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     splicedPlan->root()->walk(compare);
   }
 
-  void compareQueryResultToSlice(QueryResult const& result, bool ruleEnabled,
-                                 VPackSlice expected) {
-    ASSERT_TRUE(expected.isArray()) << "Invalid input";
-    ASSERT_TRUE(result.ok())
-        << "Reason: " << result.errorNumber() << " => " << result.errorMessage();
-    auto resultSlice = result.data->slice();
-    ASSERT_TRUE(resultSlice.isArray());
-    ASSERT_EQ(expected.length(), resultSlice.length());
-    for (VPackValueLength i = 0; i < expected.length(); ++i) {
-      EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
-          << "Line " << i << ": " << resultSlice.at(i).toJson()
-          << " (found) != " << expected.at(i).toJson();
-    }
-  }
-
   void verifyQueryResult(std::string const& query, VPackSlice expected) {
     auto const bindParameters = VPackParser::fromJson("{ }");
     SCOPED_TRACE("Query: " + query);
@@ -199,7 +186,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
                                         bindParameters, disableRuleOptions());
       SCOPED_TRACE("rule was disabled");
-      compareQueryResultToSlice(queryResult, false, expected);
+      AssertQueryResultToSlice(queryResult, expected);
     }
 
     // Second test optimized Query (rule-enabled)
@@ -208,7 +195,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
                                         bindParameters, enableRuleOptions());
       SCOPED_TRACE("rule was enabled");
-      compareQueryResultToSlice(queryResult, true, expected);
+      AssertQueryResultToSlice(queryResult, expected);
     }
   }
 
