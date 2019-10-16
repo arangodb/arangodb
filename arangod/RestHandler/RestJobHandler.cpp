@@ -100,8 +100,7 @@ void RestJobHandler::putJob() {
   // return the original response
 
   // plus a new header
-  static std::string const xArango = "x-arango-async-id";
-  _response->setHeaderNC(xArango, value);
+  _response->setHeaderNC(StaticStrings::AsyncId, value);
 }
 
 void RestJobHandler::putJobMethod() {
