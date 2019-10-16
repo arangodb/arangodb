@@ -789,6 +789,15 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
                 : RequestWrappedBlockVariant::DEFAULT;
 
+  // Override for spliced subqueries, this optimization does not work there.
+  if (isInSplicedSubquery() && variant == RequestWrappedBlockVariant::INPUTRESTRICTED) {
+    return RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT>::run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        infos(),
+#endif
+        executor(), *_engine, nrItems, nrRegs);
+  }
+
   return RequestWrappedBlock<variant>::run(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       infos(),

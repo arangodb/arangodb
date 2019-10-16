@@ -117,7 +117,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         } else {
           // relinquish ownership of _buffer, as it now belongs to
           // resultDocVec
-          _buffer.reset();
+          _buffer.release();
         }
         AqlValueGuard guard{resultDocVec, true};
 

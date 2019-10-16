@@ -191,15 +191,17 @@ void OutputAqlItemRow::advanceRow() {
 }
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
+  // numRowsWritten() inspects _block, so save this before resetting it!
+  auto const numRows = numRowsWritten();
   // Release our hold on the block now
   SharedAqlItemBlockPtr block = std::move(_block);
-  if (numRowsWritten() == 0) {
+  if (numRows == 0) {
     // blocks may not be empty
     block = nullptr;
   } else {
     // numRowsWritten() returns the exact number of rows that were fully
     // written and takes into account whether the current row was written.
-    block->shrink(numRowsWritten());
+    block->shrink(numRows);
 
     if (_doNotCopyInputRow) {
       block->clearRegisters(registersToClear());
