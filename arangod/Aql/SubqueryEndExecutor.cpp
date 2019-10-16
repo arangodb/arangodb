@@ -30,6 +30,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -44,7 +46,7 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
     transaction::Methods* trxPtr, RegisterId inReg, RegisterId outReg)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    : ExecutorInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _trxPtr(trxPtr),
       _outReg(outReg),

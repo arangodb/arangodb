@@ -80,8 +80,6 @@ class ConstFetcher {
   // Argument will be ignored!
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
-
   void setDistributeId(std::string const&) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
