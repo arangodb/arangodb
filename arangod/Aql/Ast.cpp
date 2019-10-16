@@ -743,6 +743,23 @@ AstNode* Ast::createNodeReference(Variable const* variable) {
   return node;
 }
 
+/// @brief create an AST subquery reference node
+AstNode* Ast::createNodeSubqueryReference(std::string const& variableName) {
+  AstNode* node = createNode(NODE_TYPE_REFERENCE);
+  node->setFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE);
+
+  auto variable = _scopes.getVariable(variableName);
+
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "variable not found in reference AstNode");
+  }
+
+  node->setData(variable);
+
+  return node;
+}
+
 /// @brief create an AST variable access
 AstNode* Ast::createNodeAccess(Variable const* variable,
                                std::vector<basics::AttributeName> const& field) {

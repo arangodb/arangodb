@@ -1,6 +1,11 @@
 v3.4.9 (XXX-XX-XX)
 -------------------
 
+* Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
+  Using subqueries inside PRUNE conditions causes undefined behavior,
+  so such queries will now be aborted early on with a parse error 
+  instead of running into undefined behavior.
+
 * Fixed search not working in document view while in code mode.
 
 * Fixed issue #10090: fix repeatable seek to the same document in

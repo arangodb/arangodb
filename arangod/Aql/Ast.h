@@ -246,6 +246,9 @@ class Ast {
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const* variable);
 
+  /// @brief create an AST subquery reference node
+  AstNode* createNodeSubqueryReference(std::string const& variableName);
+
   /// @brief create an AST parameter node for a value literal
   AstNode* createNodeParameter(char const* name, size_t length);
 
