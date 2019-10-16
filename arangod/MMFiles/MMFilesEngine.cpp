@@ -2025,7 +2025,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a view that is still active
       LOG_TOPIC("60536", TRACE, Logger::VIEWS) << "processing view: " << it.toJson();
 
@@ -2080,7 +2080,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       LOG_TOPIC("181d1", TRACE, Logger::ENGINES) << "processing collection: " << it.toJson();
 
       // we found a collection that is still active
@@ -2336,7 +2336,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   VPackSlice indexes = slice.get("indexes");
   if (indexes.isArray()) {
     // simply copy over existing index definitions
-    for (auto const& it : VPackArrayIterator(indexes)) {
+    for (VPackSlice it : VPackArrayIterator(indexes)) {
       indexesPatch.add(it);
       VPackSlice id = it.get("id");
       if (id.isString()) {

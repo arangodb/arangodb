@@ -157,7 +157,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   }
   if (_contentType != ContentType::VPACK &&
       _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
-    std::string currentHeader = StaticStrings::ContentTypeHeader;
+    currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
   }
