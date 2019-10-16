@@ -67,7 +67,8 @@ QueryProfile::~QueryProfile() {
 double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
   double const now = TRI_microtime();
 
-  if (state != QueryExecutionState::ValueType::INVALID_STATE) {
+  if (state != QueryExecutionState::ValueType::INVALID_STATE &&
+      state != QueryExecutionState::ValueType::KILLED) {
     // record duration of state
     _timers[static_cast<int>(state)] = now - _lastStamp;
   }

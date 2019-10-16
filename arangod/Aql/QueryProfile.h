@@ -71,7 +71,7 @@ struct QueryProfile {
 // as we reserve a statically sized array for it
 static_assert(static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
               "unexpected min QueryExecutionState enum value");
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 10,
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 11,
               "unexpected max QueryExecutionState enum value");
 
 }  // namespace aql

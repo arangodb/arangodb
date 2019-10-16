@@ -174,7 +174,7 @@ void QueryList::remove(Query* query) {
       _slow.emplace_back(query->id(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
-                         QueryExecutionState::ValueType::FINISHED, isStreaming);
+                         query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
 
       if (++_slowCount > _maxSlowQueries) {
         // free first element
