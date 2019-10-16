@@ -22,8 +22,17 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/IResearchQueryCommon.h"
 #include "../Mocks/Servers.h"
+#include "Basics/StringUtils.h"
+#include "QueryHelper.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -33,29 +42,166 @@ namespace tests {
 
 namespace aql {
 
-class UpdateExecutorTest : public ::testing::Test {
+static const std::string GetAllDocs =
+    R"aql(FOR doc IN UnitTestCollection SORT doc.sortValue RETURN doc.value)aql";
+
+class UpdateExecutorTest : public testing::TestWithParam<size_t> {
+ protected:
   mocks::MockAqlServer server{};
-  // LogicalCollection* collection;
+  TRI_vocbase_t& vocbase{server.getSystemDatabase()};
 
-  UpdateExecutorTest() { /* auto& vocbase = server.getSystemDatabase(); */
+  UpdateExecutorTest() {}
+
+  void SetUp() override {
+    SCOPED_TRACE("Setup");
+    auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
+    auto collection = vocbase.createCollection(info->slice());
+    ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
+    size_t numDocs = GetParam();
+    // Insert Documents
+    std::string insertQuery =
+        R"aql(FOR i IN 1..)aql" + basics::StringUtils::itoa(numDocs) +
+        R"aql( INSERT {value: i, sortValue: i} INTO UnitTestCollection)aql";
+    SCOPED_TRACE(insertQuery);
+    AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
+    VPackBuilder expected;
+    {
+      VPackArrayBuilder a{&expected};
+      for (size_t i = 1; i <= GetParam(); ++i) {
+        expected.add(VPackValue(i));
+      }
+    }
+    AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
   }
+};
 
-  void compareQueryResultToSlice(QueryResult const& result, VPackSlice expected) {
-    ASSERT_TRUE(expected.isArray()) << "Invalid input";
-    ASSERT_TRUE(result.ok())
-        << "Reason: " << result.errorNumber() << " => " << result.errorMessage();
-    auto resultSlice = result.data->slice();
-    ASSERT_TRUE(resultSlice.isArray());
-    ASSERT_EQ(expected.length(), resultSlice.length());
-    for (VPackValueLength i = 0; i < expected.length(); ++i) {
-      EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
-          << "Line " << i << ": " << resultSlice.at(i).toJson()
-          << " (found) != " << expected.at(i).toJson() << " (expected)";
+TEST_P(UpdateExecutorTest, update_all) {
+  std::string query = R"aql(FOR doc IN UnitTestCollection UPDATE doc WITH {value: 'foo'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= GetParam(); ++i) {
+      expected.add(VPackValue("foo"));
     }
   }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
 
-  void compareCollectionContentToSlice(VPackSlice expected) {}
-};
+TEST_P(UpdateExecutorTest, update_only_even) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+      FILTER doc.sortValue % 2 == 0
+      UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+  )aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= GetParam(); ++i) {
+      if (i % 2 == 0) {
+        expected.add(VPackValue("foo"));
+      } else {
+        expected.add(VPackValue(i));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpdateExecutorTest, update_all_but_skip) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    SORT doc.sortValue
+    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    LIMIT 526, null
+    RETURN 1
+  )aql";
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    VPackArrayBuilder b{&expectedUpdateResponse};
+
+    for (size_t i = 1; i <= GetParam(); ++i) {
+      expected.add(VPackValue("foo"));
+      if (i > 526) {
+        expectedUpdateResponse.add(VPackValue(1));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpdateExecutorTest, update_all_return_old) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    RETURN OLD.value
+  )aql";
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    VPackArrayBuilder b{&expectedUpdateResponse};
+
+    for (size_t i = 1; i <= GetParam(); ++i) {
+      expected.add(VPackValue("foo"));
+      expectedUpdateResponse.add(VPackValue(i));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpdateExecutorTest, update_all_return_new) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    RETURN NEW.value
+  )aql";
+
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+
+    for (size_t i = 1; i <= GetParam(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expected.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpdateExecutorTest, update_all_return_old_and_new) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    RETURN {old: OLD.value, new: NEW.value}
+  )aql";
+
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    VPackArrayBuilder b{&expectedUpdateResponse};
+
+    for (size_t i = 1; i <= GetParam(); ++i) {
+      expected.add(VPackValue("foo"));
+      {
+        VPackObjectBuilder c{&expectedUpdateResponse};
+        expectedUpdateResponse.add("old", VPackValue(i));
+        expectedUpdateResponse.add("new", VPackValue("foo"));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+INSTANTIATE_TEST_CASE_P(UpdateExecutorTestRunner, UpdateExecutorTest,
+                        ::testing::Values(1, 999, 1000, 1001, 2001));
 
 }  // namespace aql
 }  // namespace tests

@@ -24,8 +24,8 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/IResearchQueryCommon.h"
-#include "../Mocks/Servers.h"
 #include "Aql/QueryResult.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -50,12 +50,11 @@ void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
   }
 }
 
-void arangodb::tests::aql::AssertQueryHasResult(mocks::MockAqlServer& server,
+void arangodb::tests::aql::AssertQueryHasResult(TRI_vocbase_t& database,
                                                 std::string const& query,
                                                 VPackSlice expected) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   SCOPED_TRACE("Query: " + query);
-  auto queryResult =
-      arangodb::tests::executeQuery(server.getSystemDatabase(), query, bindParameters);
+  auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);
   AssertQueryResultToSlice(queryResult, expected);
 }

@@ -22,6 +22,8 @@
 
 #include <string>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 // forward declarations
 namespace velocypack {
@@ -34,16 +36,12 @@ struct QueryResult;
 
 namespace tests {
 
-namespace mocks {
-class MockAqlServer;
-}
-
 namespace aql {
 
 void AssertQueryResultToSlice(arangodb::aql::QueryResult const& result,
                               arangodb::velocypack::Slice expected);
 
-void AssertQueryHasResult(mocks::MockAqlServer& server, std::string const& queryString,
+void AssertQueryHasResult(TRI_vocbase_t& database, std::string const& queryString,
                           arangodb::velocypack::Slice expected);
 }  // namespace aql
 }  // namespace tests
