@@ -47,9 +47,10 @@ class VstResponse : public GeneralResponse {
 
   VstResponse(ResponseCode code, uint64_t id);
 
- bool isResponseEmpty() const override {
+  bool isResponseEmpty() const override {
     return _vpackPayloads.empty();
   }
+
   // required by base
   uint64_t messageId() const override { return _messageId; }
   virtual arangodb::Endpoint::TransportType transportType() override {
