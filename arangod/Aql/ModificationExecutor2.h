@@ -97,6 +97,11 @@ class ModificationExecutor2 {
   std::pair<ExecutionState, Stats> doCollect(size_t const maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
 
+  // The state that was returned on the last call to produceRows. For us
+  // this is relevant because we might have collected some documents in the
+  // modifier's accumulator, but not written them yet, because we ran into
+  // WAITING
+  ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
   FetcherType& _fetcher;
   ModifierType _modifier;

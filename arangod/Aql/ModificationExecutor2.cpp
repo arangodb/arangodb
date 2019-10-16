@@ -174,9 +174,11 @@ std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode) {
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(Fetcher& fetcher,
                                                                         Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _modifier(infos) {
-  // important for mmfiles
-  // TODO: Why is this important for mmfiles?
+    : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {
+  // In MMFiles we need to make sure that the data is not moved in memory or collected
+  // for this collection as soon as we start writing to it.
+  // This pin makes sure that no memory is moved pointers we get from a collection stay
+  // correct until we release this pin
   _infos._trx->pinData(this->_infos._aqlCollection->id());
 
   // TODO: explain this abomination
@@ -308,33 +310,31 @@ std::pair<ExecutionState, typename ModificationExecutor2<FetcherType, ModifierTy
 ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_infos._trx);
 
-  // TODO: isDBServer case
-  ExecutionState state;
   ModificationExecutor2::Stats stats;
 
-  _modifier.reset();
+  const size_t maxOutputs = std::min(output.numRowsLeft(), _modifier.getBatchSize());
 
-  size_t maxOutputs = std::min(output.numRowsLeft(), _modifier.getBatchSize());
+  // if we returned "WAITING" the last time we still have
+  // documents in the accumulator that we have not submitted
+  // yet
+  if (_lastState != ExecutionState::WAITING) {
+    _modifier.reset();
+  }
 
-  std::tie(state, stats) = doCollect(maxOutputs);
-  if (state == ExecutionState::WAITING) {
+  std::tie(_lastState, stats) = doCollect(maxOutputs);
+
+  if (_lastState == ExecutionState::WAITING) {
     return {ExecutionState::WAITING, std::move(stats)};
   }
-  TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
 
-  // Close the accumulator
+  TRI_ASSERT(_lastState == ExecutionState::DONE || _lastState == ExecutionState::HASMORE);
+
   _modifier.close();
-  //  auto transactResult =
   _modifier.transact();
-
-  // If the transaction resulted in any errors,
-  // they should have been thrown during transact
-  // if (!transactResult.ok()) {
-  // }
 
   doOutput(output, stats);
 
-  return {state, std::move(stats)};
+  return {_lastState, std::move(stats)};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
