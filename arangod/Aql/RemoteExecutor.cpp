@@ -289,7 +289,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (!_hasTriggeredShutdown) {
     std::lock_guard<std::mutex> guard(_communicationMutex);
-    std::ignore = generateNewTicket();
+    std::ignore = generateRequestTicket();
     _hasTriggeredShutdown = true;
   }
   if (_lastError.fail()) {
@@ -416,6 +416,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
                                                             std::string const& urlPart,
                                                             VPackBuffer<uint8_t> body) {
+  
   NetworkFeature const& nf =
       _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -443,17 +444,15 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     req->header.addMeta("Shard-Id", _ownName);
   }
 
-  network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
-
+  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
+  
   std::lock_guard<std::mutex> guard(_communicationMutex);
-  auto ticket = generateNewTicket();
-  std::shared_ptr<fuerte::Connection> conn = ref.connection();
+  auto ticket = generateRequestTicket();
   conn->sendRequest(std::move(req),
-                    [=, ref(std::move(ref))](fuerte::Error err,
-                                             std::unique_ptr<fuerte::Request>,
-                                             std::unique_ptr<fuerte::Response> res) {
+                    [this, conn, spec, ticket](fuerte::Error err,
+                                               std::unique_ptr<fuerte::Request>,
+                                               std::unique_ptr<fuerte::Response> res) {
                       std::lock_guard<std::mutex> guard(_communicationMutex);
-
                       if (_lastTicket == ticket) {
                         if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                           _lastError = handleErrorResponse(spec, err, res.get());
@@ -499,7 +498,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
   }
 }
 
-unsigned ExecutionBlockImpl<RemoteExecutor>::generateNewTicket() {
+unsigned ExecutionBlockImpl<RemoteExecutor>::generateRequestTicket() {
   // Assumes that _communicationMutex is locked in the caller
   ++_lastTicket;
   _lastError.reset(TRI_ERROR_NO_ERROR);

@@ -52,9 +52,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
 
   /// @brief Return the number of requests that have not yet finished.
-  size_t requestsLeft() const override {
-    return _numQueued.load(std::memory_order_acquire);
-  }
+  size_t requestsLeft() const override;
 
  protected:
   void finishConnect() override;
@@ -106,9 +104,8 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   http_parser _parser;
   http_parser_settings _parserSettings;
 
-  /// is loop active
-  std::atomic<uint32_t> _numQueued;
-  std::atomic<bool> _active;
+  std::atomic<uint32_t> _numQueued; /// queued items
+  std::atomic<bool> _active; /// is loop active
 
   // parser state
   std::string _lastHeaderField;

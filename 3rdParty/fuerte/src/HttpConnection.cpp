@@ -233,6 +233,15 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
 }
 
 template <SocketType ST>
+size_t HttpConnection<ST>::requestsLeft() const {
+  size_t q = this->_numQueued.load(std::memory_order_acquire);
+  if (this->_active.load(std::memory_order_relaxed)) {
+    q++;
+  }
+  return q;
+}
+
+template <SocketType ST>
 void HttpConnection<ST>::finishConnect() {
   this->_state.store(Connection::State::Connected);
   startWriting();  // starts writing queue if non-empty
@@ -305,7 +314,8 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
     header.append("Connection: Close\r\n");
   }
 
-  if (req.contentType() != ContentType::Custom) {
+  if (req.header.restVerb != RestVerb::Get &&
+      req.contentType() != ContentType::Custom) {
     header.append("Content-Type: ")
           .append(to_string(req.contentType()))
           .append("\r\n");
