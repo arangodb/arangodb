@@ -24,6 +24,7 @@
 #include "Aql/SubqueryEndExecutor.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 
 #include <velocypack/Builder.h>
@@ -42,15 +43,20 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    transaction::Methods* trxPtr, RegisterId outReg)
+    transaction::Methods* trxPtr, RegisterId inReg, RegisterId outReg)
     : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _trxPtr(trxPtr),
-      _outReg(outReg) {}
+      _outReg(outReg),
+      _inReg(inReg) {}
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
+
+bool SubqueryEndExecutorInfos::usesInputRegister() const {
+  return _inReg != RegisterPlan::MaxRegisterId;
+}
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _accumulator(nullptr), _state(ACCUMULATE) {
@@ -76,12 +82,9 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         }
 
         // We got a data row, put it into the accumulator
-        if (inputRow.isInitialized()) {
-          // Above is a RETURN which writes to register 0
-          // TODO: The RETURN node above is superflous and could be folded
-          //       into the SubqueryEndNode
+        if (inputRow.isInitialized() && _infos.usesInputRegister()) {
           TRI_ASSERT(_accumulator->isOpenArray());
-          AqlValue value = inputRow.getValue(0);
+          AqlValue value = inputRow.getValue(_infos.getInputRegister());
           value.toVelocyPack(_infos.getTrxPtr(), *_accumulator, false);
         }
 
@@ -101,8 +104,8 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
           return {ExecutionState::WAITING, NoStats{}};
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-        TRI_ASSERT(shadowRow.isInitialized() == true);
-        TRI_ASSERT(shadowRow.isRelevant() == true);
+        TRI_ASSERT(shadowRow.isInitialized());
+        TRI_ASSERT(shadowRow.isRelevant());
 
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit

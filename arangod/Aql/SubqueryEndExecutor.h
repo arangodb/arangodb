@@ -48,7 +48,8 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                            std::unordered_set<RegisterId> const& registersToClear,
                            std::unordered_set<RegisterId> registersToKeep,
-                           transaction::Methods* trxPtr, RegisterId outReg);
+                           transaction::Methods* trxPtr, RegisterId inReg,
+                           RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&);
@@ -57,10 +58,13 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
 
   transaction::Methods* getTrxPtr() const noexcept { return _trxPtr; }
   inline RegisterId getOutputRegister() const { return _outReg; }
+  bool usesInputRegister() const;
+  inline RegisterId getInputRegister() const { return _inReg; }
 
  private:
   transaction::Methods* _trxPtr;
   RegisterId const _outReg;
+  RegisterId const _inReg;
 };
 
 class SubqueryEndExecutor {

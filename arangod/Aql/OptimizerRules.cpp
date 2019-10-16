@@ -7379,14 +7379,12 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
     // Create new start and end nodes
     auto start = plan->createNode<SubqueryStartNode>(plan.get(), plan->nextId());
-    auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(), sq->outVariable());
 
     // Note that we rely on `subqueryNodes` being in pre-order. Otherwise, we
     // would set the wrong nodes.
     forAllDeps(sq->getSubquery(), [](auto node) { node->setIsInSplicedSubquery(true); });
     // start and end inherit this propery from the subquery node
     start->setIsInSplicedSubquery(sq->isInSplicedSubquery());
-    end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
 
     // insert a SubqueryStartNode before the SubqueryNode
     plan->insertBefore(sq, start);
@@ -7400,10 +7398,24 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
       x->replaceDependency(singleton, start);
     }
 
+    ExecutionNode* subqueryRoot = sq->getSubquery();
+    Variable const* inVariable = nullptr;
+
+    if (subqueryRoot->getType() == ExecutionNode::RETURN) {
+      // The SubqueryEndExecutor can read the input from the return Node.
+      auto subqueryReturn = ExecutionNode::castTo<ReturnNode*>(subqueryRoot);
+      inVariable = subqueryReturn->inVariable();
+      // Every return can only have a single dependency
+      TRI_ASSERT(subqueryReturn->getDependencies().size() == 1);
+      subqueryRoot = subqueryReturn->getFirstDependency();
+    }
+
+    auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(), inVariable, sq->outVariable());
+    end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
     // insert a SubqueryEndNode after the SubqueryNode sq
     plan->insertAfter(sq, end);
 
-    end->replaceDependency(sq, sq->getSubquery());
+    end->replaceDependency(sq, subqueryRoot);
   }
 
   opt->addPlan(std::move(plan), rule, modified);

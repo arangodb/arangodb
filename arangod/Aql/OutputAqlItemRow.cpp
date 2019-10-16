@@ -28,7 +28,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -55,6 +55,140 @@ OutputAqlItemRow::OutputAqlItemRow(
       _allowSourceRowUninitialized(false) {
   TRI_ASSERT(_block != nullptr);
 }
+/*
+template <class ItemRowType>
+void OutputAqlItemRow::cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
+                                      AqlValue const& value) {
+  bool mustDestroy = true;
+  AqlValue clonedValue = value.clone();
+  AqlValueGuard guard{clonedValue, mustDestroy};
+  moveValueInto(registerId, sourceRow, guard);
+}
+*/
+
+template <class ItemRowType>
+void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
+                                     AqlValueGuard& guard) {
+  TRI_ASSERT(isOutputRegister(registerId));
+  // This is already implicitly asserted by isOutputRegister:
+  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
+  TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
+
+  block().setValue(_baseIndex, registerId, guard.value());
+  guard.steal();
+  _numValuesWritten++;
+  // allValuesWritten() must be called only *after* _numValuesWritten was
+  // increased.
+  if (allValuesWritten()) {
+    copyRow(sourceRow);
+  }
+}
+
+void OutputAqlItemRow::consumeShadowRow(RegisterId registerId,
+                                        ShadowAqlItemRow const& sourceRow,
+                                        AqlValueGuard& guard) {
+  TRI_ASSERT(sourceRow.isRelevant());
+  moveValueInto(registerId, sourceRow, guard);
+  TRI_ASSERT(produced());
+  block().makeDataRow(_baseIndex);
+}
+
+bool OutputAqlItemRow::reuseLastStoredValue(RegisterId registerId,
+                                            InputAqlItemRow const& sourceRow) {
+  TRI_ASSERT(isOutputRegister(registerId));
+  if (_lastBaseIndex == _baseIndex) {
+    return false;
+  }
+  // Do not clone the value, we explicitly want recycle it.
+  AqlValue ref = block().getValue(_lastBaseIndex, registerId);
+  // The initial row is still responsible
+  AqlValueGuard guard{ref, false};
+  moveValueInto(registerId, sourceRow, guard);
+  return true;
+}
+
+template <class ItemRowType>
+void OutputAqlItemRow::copyRow(ItemRowType const& sourceRow, bool ignoreMissing) {
+  // While violating the following asserted states would do no harm, the
+  // implementation as planned should only copy a row after all values have
+  // been set, and copyRow should only be called once.
+  TRI_ASSERT(!_inputRowCopied);
+  // We either have a shadowRow, or we need to ahve all values written
+  TRI_ASSERT((std::is_same<ItemRowType, ShadowAqlItemRow>::value) || allValuesWritten());
+  if (_inputRowCopied) {
+    _lastBaseIndex = _baseIndex;
+    return;
+  }
+
+  // This may only be set if the input block is the same as the output block,
+  // because it is passed through.
+  if (_doNotCopyInputRow) {
+    TRI_ASSERT(sourceRow.isInitialized());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(sourceRow.internalBlockIs(_block));
+#endif
+    _inputRowCopied = true;
+    memorizeRow(sourceRow);
+    return;
+  }
+
+  doCopyRow(sourceRow, ignoreMissing);
+}
+
+void OutputAqlItemRow::copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
+                                                 RegisterId input, RegisterId output) {
+  // This method is only allowed if the block of the input row is the same as
+  // the block of the output row!
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+#endif
+  TRI_ASSERT(isOutputRegister(output));
+  // This is already implicitly asserted by isOutputRegister:
+  TRI_ASSERT(output < getNrRegisters());
+  TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
+  TRI_ASSERT(block().getValueReference(_baseIndex, output).isNone());
+
+  AqlValue const& value = sourceRow.getValue(input);
+
+  block().setValue(_baseIndex, output, value);
+  _numValuesWritten++;
+  // allValuesWritten() must be called only *after* _numValuesWritten was
+  // increased.
+  if (allValuesWritten()) {
+    copyRow(sourceRow);
+  }
+}
+
+size_t OutputAqlItemRow::numRowsWritten() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_setBaseIndexNotUsed);
+#endif
+  // If the current line was fully written, the number of fully written rows
+  // is the index plus one.
+  if (produced()) {
+    return _baseIndex + 1;
+  }
+
+  // If the current line was not fully written, the last one was, so the
+  // number of fully written rows is (_baseIndex - 1) + 1.
+  return _baseIndex;
+
+  // Disregarding unsignedness, we could also write:
+  //   lastWrittenIndex = produced()
+  //     ? _baseIndex
+  //     : _baseIndex - 1;
+  //   return lastWrittenIndex + 1;
+}
+
+void OutputAqlItemRow::advanceRow() {
+  TRI_ASSERT(produced());
+  TRI_ASSERT(allValuesWritten());
+  TRI_ASSERT(_inputRowCopied);
+  _lastBaseIndex = _baseIndex++;
+  _inputRowCopied = false;
+  _numValuesWritten = 0;
+}
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   // Release our hold on the block now
@@ -75,6 +209,20 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   return block;
 }
 
+void OutputAqlItemRow::setBaseIndex(std::size_t index) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _setBaseIndexNotUsed = false;
+#endif
+  _baseIndex = index;
+}
+
+void OutputAqlItemRow::setMaxBaseIndex(std::size_t index) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _setBaseIndexNotUsed = true;
+#endif
+  _baseIndex = index;
+}
+
 void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(!_inputRowCopied);
   // A shadow row can only be created on blocks that DO NOT write additional
@@ -92,4 +240,97 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
 #endif
   block().makeShadowRow(_baseIndex);
   doCopyRow(sourceRow, true);
+}
+
+void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
+  doCopyRow(sourceRow, false);
+  block().setShadowRowDepth(_baseIndex,
+                            AqlValue{AqlValueHintUInt{sourceRow.getDepth() + 1}});
+  // We need to fake produced state
+  _numValuesWritten = numRegistersToWrite();
+  TRI_ASSERT(produced());
+}
+
+void OutputAqlItemRow::decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
+  doCopyRow(sourceRow, false);
+  TRI_ASSERT(!sourceRow.isRelevant());
+  block().setShadowRowDepth(_baseIndex,
+                            AqlValue{AqlValueHintUInt{sourceRow.getDepth() - 1}});
+  // We need to fake produced state
+  _numValuesWritten = numRegistersToWrite();
+  TRI_ASSERT(produced());
+}
+
+template <>
+inline void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
+  _lastSourceRow = sourceRow;
+  _lastBaseIndex = _baseIndex;
+}
+
+template <>
+inline void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
+}
+
+template <>
+inline bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
+  return _baseIndex == 0 || _lastSourceRow != sourceRow;
+}
+
+template <>
+inline bool OutputAqlItemRow::testIfWeMustClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
+  return true;
+}
+
+template <>
+inline void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
+}
+
+template <>
+inline void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
+  block().setShadowRowDepth(_baseIndex, sourceRow.getShadowDepthValue());
+}
+
+template <class ItemRowType>
+inline void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing) {
+  // Note that _lastSourceRow is invalid right after construction. However, when
+  // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(!_doNotCopyInputRow);
+  bool mustClone = testIfWeMustClone(sourceRow);
+
+  if (mustClone) {
+    for (auto itemId : registersToKeep()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (!_allowSourceRowUninitialized) {
+        TRI_ASSERT(sourceRow.isInitialized());
+      }
+#endif
+      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
+        continue;
+      }
+      if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
+        auto const& value = sourceRow.getValue(itemId);
+        if (!value.isEmpty()) {
+          AqlValue clonedValue = value.clone();
+          AqlValueGuard guard(clonedValue, true);
+
+          TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          block().setValue(_baseIndex, itemId, clonedValue);
+          guard.steal();
+        }
+      }
+    }
+    adjustShadowRowDepth(sourceRow);
+  } else {
+    TRI_ASSERT(_baseIndex > 0);
+    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+  }
+
+  _inputRowCopied = true;
+  memorizeRow(sourceRow);
 }
