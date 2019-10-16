@@ -694,6 +694,62 @@ function transactionInvocationSuite () {
         }
       }
     },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort write transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortWriteTransactionAQL: function () {
+      db._create(cn, {numberOfShards: 2});
+      let trx1;
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        trx1 = db._createTransaction(obj);
+        let result = arango.POST_RAW("/_api/cursor", {
+          query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
+        }, { 
+          "x-arango-trx-id" : trx1._id,
+          "x-arango-async" : "store"
+        });
+
+        let jobId = result.headers["x-arango-async-id"];
+
+        let tries = 0;
+        while (++tries < 30) {
+          result = arango.PUT_RAW("/_api/job/" + jobId, {});
+          if (result.code === 204) {
+            break;
+          }
+          require("internal").wait(1);
+        }
+        
+        let trx = db._transactions();
+        assertInList(trx, trx1);
+       
+        result = arango.DELETE("/_api/transaction/write");
+        assertEqual(result.code, 200);
+
+        tries = 0;
+        while (++tries < 30) {
+          result = arango.PUT_RAW("/_api/job/" + jobId, {});
+          if (result.code === 410) {
+            break;
+          }
+          require("internal").wait(1);
+        }
+        assertEqual(410, result.code);
+      } finally {
+        if (trx1 && trx1._id) {
+          try { trx1.abort(); } catch (err) {}
+        }
+      }
+    },
 
   };
 }
@@ -4151,9 +4207,10 @@ function transactionTTLStreamSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(transactionRevisionsSuite);
-jsunity.run(transactionRollbackSuite);
+//jsunity.run(transactionRevisionsSuite);
+//jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
+/*
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
 jsunity.run(transactionBarriersSuite);
@@ -4162,5 +4219,5 @@ jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
-
+*/
 return jsunity.done();
