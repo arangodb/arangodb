@@ -628,7 +628,7 @@ void ClusterInfo::loadPlan() {
         TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
         if (vocbase == nullptr) {
           // database does not yet exist, create it now
-          
+
           // create a local database object...
           arangodb::CreateDatabaseInfo info(_server);
           Result res = info.load(database.value, VPackSlice::emptyArraySlice());
@@ -637,7 +637,7 @@ void ClusterInfo::loadPlan() {
                 << "validating data for local database '" << name
                 << "' failed: " << res.errorMessage();
           } else {
-            res = databaseFeature.createDatabase(info, vocbase);
+            res = databaseFeature.createDatabase(std::move(info), vocbase);
 
             if (res.fail()) {
               LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)

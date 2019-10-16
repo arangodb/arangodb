@@ -193,22 +193,22 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
-void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode){
-    auto const& vCols = graphNode->vertexColls();
-    if (vCols.empty()) {
-      std::map<std::string, Collection*> const* allCollections =
-          _query.collections()->collections();
-      auto& resolver = _query.resolver();
-      for (auto const& it : *allCollections) {
-        // If resolver cannot resolve this collection
-        // it has to be a view.
-        if (!resolver.getCollection(it.first)) {
-          continue;
-        }
-        // All known edge collections will be ignored by this call!
-        graphNode->injectVertexCollection(it.second);
+void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode) {
+  auto const& vCols = graphNode->vertexColls();
+  if (vCols.empty()) {
+    std::map<std::string, Collection*> const* allCollections =
+      _query.collections()->collections();
+    auto& resolver = _query.resolver();
+    for (auto const& it : *allCollections) {
+      // If resolver cannot resolve this collection
+      // it has to be a view.
+      if (!resolver.getCollection(it.first)) {
+        continue;
       }
+      // All known edge collections will be ignored by this call!
+      graphNode->injectVertexCollection(it.second);
     }
+  }
 }
 
 // Insert a new node into the last engine on the stack

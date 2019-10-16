@@ -27,6 +27,7 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -186,13 +187,13 @@ void QueryList::remove(Query* query) {
 }
 
 /// @brief kills a query
-int QueryList::kill(TRI_voc_tick_t id) {
+Result QueryList::kill(TRI_voc_tick_t id) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
 
   if (it == _current.end()) {
-    return TRI_ERROR_QUERY_NOT_FOUND;
+    return Result(TRI_ERROR_QUERY_NOT_FOUND);
   }
 
   Query* query = (*it).second;
@@ -200,17 +201,21 @@ int QueryList::kill(TRI_voc_tick_t id) {
       << "killing AQL query " << id << " '" << query->queryString() << "'";
 
   query->kill();
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief kills all currently running queries
-uint64_t QueryList::killAll(bool silent) {
+uint64_t QueryList::kill(std::function<bool(Query*)> const& filter, bool silent) {
   uint64_t killed = 0;
 
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _current) {
     Query* query = it.second;
+
+    if (!filter(query)) {
+      continue;
+    }
 
     if (silent) {
       LOG_TOPIC("f7722", TRACE, arangodb::Logger::FIXME)

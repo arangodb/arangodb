@@ -122,8 +122,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus handleUseQuery(std::string const&, Query*, arangodb::velocypack::Slice const);
 
   // parseVelocyPackBody, returns a nullptr and produces an error
-  // response if
-  // parse was not successful.
+  // response if parse was not successful.
   std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody();
 
  private:

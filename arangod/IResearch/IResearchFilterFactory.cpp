@@ -1198,7 +1198,7 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
 
   auto rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
-  if( rv.fail() ){
+  if (rv.fail()) {
     return arangodb::Result{rv.errorNumber(), "failed to get filter for analyzer: " + analyzer->name() + " : " + rv.errorMessage()};
   }
   return rv;
@@ -1266,7 +1266,7 @@ arangodb::Result fromFuncBoost(irs::boolean_filter* filter, QueryContext const& 
                                        filterCtx.boost * static_cast<float_t>(boostValue)};
 
   auto rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
-  if(rv.fail()){
+  if (rv.fail()) {
     return arangodb::Result{rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
   }
   return {};
@@ -1903,19 +1903,19 @@ arangodb::Result fromFuncInRange(irs::boolean_filter* filter, QueryContext const
   // 4th argument defines inclusion of lower boundary
   bool lhsInclude = false;
   auto inc1 = getInclusion(args.getMemberUnchecked(3), lhsInclude, "4th");
-  if (inc1.fail()){
+  if (inc1.fail()) {
     return inc1;
   }
 
   // 5th argument defines inclusion of upper boundary
   bool rhsInclude = false;
   auto inc2 = getInclusion(args.getMemberUnchecked(4), rhsInclude, "5th");
-  if (inc2.fail()){
+  if (inc2.fail()) {
     return inc2;
   }
 
   auto rv = ::byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
-  if(rv.fail()){
+  if(rv.fail()) {
     return {rv.errorNumber(), "error in byRange: " + rv.errorMessage()};
   }
   return {};
