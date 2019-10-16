@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, subqueries
@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
@@ -368,7 +369,7 @@ function ahuacatlSubqueryTestSuite () {
         for (let i = 0; i < 2000; ++i) {
           docs.push({value: i, mod100: i % 100});
           const oldValue = expected.get(i % 100) || [];
-          oldValue.push(i)
+          oldValue.push(i);
           expected.set(i % 100, oldValue);
         }
         col.save(docs);
