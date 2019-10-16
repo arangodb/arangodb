@@ -214,7 +214,7 @@ class conjunction : public doc_iterator_base, score_ctx {
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////
-/// @returns conjunction iterator created from the specified sub iterators
+/// @returns conjunction iterator created from the specified sub iterators 
 //////////////////////////////////////////////////////////////////////////////
 template<typename Conjunction, typename... Args>
 doc_iterator::ptr make_conjunction(

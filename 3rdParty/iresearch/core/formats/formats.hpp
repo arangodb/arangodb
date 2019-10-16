@@ -36,23 +36,9 @@
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
-
-NS_BEGIN(fst)
-
-template <class Arc, class Allocator> class VectorState;
-template <class Arc, class State> class VectorFst;
-
-NS_BEGIN(fsa)
-
-class Transition;
-typedef VectorFst<Transition, VectorState<Transition, std::allocator<Transition>>> Automaton;
-
-NS_END // fsa
-NS_END // fst
+#include "utils/automaton_decl.hpp"
 
 NS_ROOT
-
-typedef fst::fsa::Automaton automaton;
 
 struct segment_meta;
 struct field_meta;
@@ -211,7 +197,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   virtual seek_term_iterator::ptr iterator() const = 0;
 
   // returns an intersection of a specified automaton and term reader
-  virtual seek_term_iterator::ptr iterator(const automaton& a) const = 0;
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
 
   // returns field metadata
   virtual const field_meta& meta() const = 0;

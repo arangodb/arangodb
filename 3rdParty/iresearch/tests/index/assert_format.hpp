@@ -245,7 +245,7 @@ class term_reader : public irs::term_reader {
   }
 
   virtual irs::seek_term_iterator::ptr iterator() const override;
-  virtual irs::seek_term_iterator::ptr iterator(const irs::automaton& a) const override;
+  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
   virtual const irs::field_meta& meta() const override { return data_; }
   virtual size_t size() const override { return data_.terms.size(); }
   virtual uint64_t docs_count() const override { return data_.docs.size(); }
@@ -397,14 +397,14 @@ void assert_term(
 void assert_terms_next(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
-  const irs::automaton* acceptor,
+  irs::automaton_table_matcher* acceptor,
   const irs::flags& features);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
   const irs::flags& features,
-  const irs::automaton* acceptor,
+  irs::automaton_table_matcher* acceptor,
   size_t lookahead = 10); // number of steps to iterate after the seek
 
 void assert_index(
@@ -412,7 +412,7 @@ void assert_index(
   const irs::index_reader& actual_index,
   const irs::flags& features,
   size_t skip = 0, // do not validate the first 'skip' segments
-  const irs::automaton* acceptor = nullptr
+  irs::automaton_table_matcher* matcher = nullptr
 );
 
 void assert_index(
@@ -421,7 +421,7 @@ void assert_index(
   const index_t& index,
   const irs::flags& features,
   size_t skip = 0, // no not validate the first 'skip' segments
-  const irs::automaton* acceptor  = nullptr
+  irs::automaton_table_matcher* matcher = nullptr
 );
 
 } // tests

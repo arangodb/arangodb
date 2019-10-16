@@ -21,18 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "granular_range_filter.hpp"
+
 #include <boost/functional/hash.hpp>
 
 #include "boolean_filter.hpp"
 #include "range_filter.hpp"
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
+#include "limited_sample_scorer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
-#include "limited_sample_scorer.hpp"
 
-#include "granular_range_filter.hpp"
 
 NS_LOCAL
 

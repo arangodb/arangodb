@@ -84,6 +84,7 @@ NS_ROOT
 limited_sample_scorer::limited_sample_scorer(size_t scored_terms_limit)
   : scored_terms_limit_(scored_terms_limit) {
   scored_states_.reserve(scored_terms_limit);
+  scored_states_heap_.reserve(scored_terms_limit);
 }
 
 void limited_sample_scorer::score(const index_reader& index,
@@ -151,20 +152,30 @@ void limited_sample_scorer::collect(
     return; // nothing to collect (optimization)
   }
 
-  auto less = [](const scored_term_state& lhs,
-                 const scored_term_state& rhs) noexcept {
-    return ::less(lhs.priority, rhs.priority, lhs.state_offset, rhs.state_offset);
+  auto less = [this](const size_t lhs, const size_t rhs) noexcept {
+    const auto& lhs_state = scored_states_[lhs];
+    const auto& rhs_state = scored_states_[rhs];
+
+    return ::less(lhs_state.priority, rhs_state.priority,
+                  lhs_state.state_offset, rhs_state.state_offset);
   };
 
   if (scored_states_.size() < scored_terms_limit_) {
     // have not reached the scored state limit yet
-    scored_states_.emplace_back(priority, segment, scored_state, scored_state_id, term_itr.value(), term_itr.cookie());
+    scored_states_heap_.push_back(scored_states_.size());
+    scored_states_.emplace_back(priority, segment, scored_state,
+                                scored_state_id, term_itr.value(), term_itr.cookie());
 
-    std::push_heap(scored_states_.begin(), scored_states_.end(), less);
-  } else if (::less(priority, scored_states_.front().priority, scored_states_.front().state_offset, scored_state_id)) { // FIXME
-    std::pop_heap(scored_states_.begin(), scored_states_.end(), less);
+    std::push_heap(scored_states_heap_.begin(), scored_states_heap_.end(), less);
+    return;
+  }
 
-    auto& state = scored_states_.back();
+  auto& min_state = scored_states_[scored_states_heap_.front()];
+
+  if (::less(priority, min_state.priority, min_state.state_offset, scored_state_id)) { // FIXME
+    std::pop_heap(scored_states_heap_.begin(), scored_states_heap_.end(), less);
+
+    auto& state = scored_states_[scored_states_heap_.back()];
     auto state_term_it = state.state->reader->iterator(); // FIXME cache iterator???
 
     assert(state.cookie);
@@ -182,7 +193,7 @@ void limited_sample_scorer::collect(
     state.segment = &segment;
     state.state_offset = scored_state_id;
 
-    std::push_heap(scored_states_.begin(), scored_states_.end(), less);
+    std::push_heap(scored_states_heap_.begin(), scored_states_heap_.end(), less);
   } else {
     // state will not be scored
     // add all doc_ids from the doc_iterator to the unscored_docs

@@ -68,6 +68,7 @@ inline std::istream &ReadType(std::istream &strm, std::string *s) {  // NOLINT
   return strm;
 }
 
+#ifndef _MSC_VER
 // Declares types that can be read from an input stream.
 template <class... T>
 std::istream &ReadType(std::istream &strm, std::vector<T...> *c);
@@ -81,6 +82,7 @@ template <class... T>
 std::istream &ReadType(std::istream &strm, std::unordered_map<T...> *c);
 template <class... T>
 std::istream &ReadType(std::istream &strm, std::unordered_set<T...> *c);
+#endif
 
 // Pair case.
 template <typename S, typename T>
@@ -114,6 +116,7 @@ std::istream &ReadContainerType(std::istream &strm, C *c, ReserveFn reserve) {
 }
 }  // namespace internal
 
+#ifndef _MSC_VER
 template <class... T>
 std::istream &ReadType(std::istream &strm, std::vector<T...> *c) {
   return internal::ReadContainerType(
@@ -147,6 +150,42 @@ std::istream &ReadType(std::istream &strm, std::unordered_map<T...> *c) {
       strm, c, [](decltype(c) v, int n) { v->reserve(n); });
 }
 
+#else
+
+template <typename T, typename A>
+std::istream &ReadType(std::istream &strm, std::vector<T,A> *c) {
+  return internal::ReadContainerType(
+      strm, c, [](decltype(c) v, int n) { v->reserve(n); });
+}
+
+template <typename T, typename A>
+std::istream &ReadType(std::istream &strm, std::list<T,A> *c) {
+  return internal::ReadContainerType(strm, c, [](decltype(c) v, int n) {});
+}
+
+template <typename T, typename L, typename A>
+std::istream &ReadType(std::istream &strm, std::set<T,L,A> *c) {
+  return internal::ReadContainerType(strm, c, [](decltype(c) v, int n) {});
+}
+
+template <typename K, typename V, typename L, typename A>
+std::istream &ReadType(std::istream &strm, std::map<K,V,L,A> *c) {
+  return internal::ReadContainerType(strm, c, [](decltype(c) v, int n) {});
+}
+
+template <typename T, typename H, typename E, typename A>
+std::istream &ReadType(std::istream &strm, std::unordered_set<T,H,E,A> *c) {
+  return internal::ReadContainerType(
+      strm, c, [](decltype(c) v, int n) { v->reserve(n); });
+}
+
+template <typename K, typename V, typename H, typename E, typename A>
+std::istream &ReadType(std::istream &strm, std::unordered_map<K,V,H,E,A> *c) {
+  return internal::ReadContainerType(
+      strm, c, [](decltype(c) v, int n) { v->reserve(n); });
+}
+#endif
+
 // Writes types to an output stream.
 
 // Generic case.
@@ -173,7 +212,7 @@ inline std::ostream &WriteType(std::ostream &strm,  // NOLINT
 }
 
 // Declares types that can be written to an output stream.
-
+#ifndef _MSC_VER
 template <typename... T>
 std::ostream &WriteType(std::ostream &strm, const std::vector<T...> &c);
 template <typename... T>
@@ -186,6 +225,7 @@ template <typename... T>
 std::ostream &WriteType(std::ostream &strm, const std::unordered_map<T...> &c);
 template <typename... T>
 std::ostream &WriteType(std::ostream &strm, const std::unordered_set<T...> &c);
+#endif
 
 // Pair case.
 template <typename S, typename T>
@@ -208,6 +248,7 @@ std::ostream &WriteContainer(std::ostream &strm, const C &c) {
 }
 }  // namespace internal
 
+#ifndef _MSC_VER
 template <typename... T>
 std::ostream &WriteType(std::ostream &strm, const std::vector<T...> &c) {
   return internal::WriteContainer(strm, c);
@@ -237,6 +278,39 @@ template <typename... T>
 std::ostream &WriteType(std::ostream &strm, const std::unordered_set<T...> &c) {
   return internal::WriteContainer(strm, c);
 }
+
+#else
+template <typename T, typename A>
+std::ostream &WriteType(std::ostream &strm, const std::vector<T,A> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename T, typename A>
+std::ostream &WriteType(std::ostream &strm, const std::list<T,A> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename T, typename L, typename A>
+std::ostream &WriteType(std::ostream &strm, const std::set<T,L,A> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename K, typename V, typename L, typename A>
+std::ostream &WriteType(std::ostream &strm, const std::map<K,V,L,A> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename T, typename H, typename E, typename A>
+std::ostream &WriteType(std::ostream &strm, const std::unordered_set<T,H,E,A> &c) {
+  return internal::WriteContainer(strm, c);
+}
+
+template <typename K, typename V, typename H, typename E, typename A>
+std::ostream &WriteType(std::ostream &strm, const std::unordered_map<K,V,H,E,A> &c) {
+  return internal::WriteContainer(strm, c);
+
+}
+#endif
 
 // Utilities for converting between int64 or Weight and string.
 

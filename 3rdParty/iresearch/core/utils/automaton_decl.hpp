@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,37 +15,44 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_DECL_H
-#define IRESEARCH_FST_DECL_H
+#ifndef IRESEARCH_AUTOMATON_DECL_H
+#define IRESEARCH_AUTOMATON_DECL_H
 
-#include <fst/fst-decl.h>
+#include <cstddef>
 
 NS_BEGIN(fst)
 
-template<typename Label> class StringLeftWeight;
+template <class Arc, class Allocator>
+class VectorState;
+
+template <class Arc, class State>
+class VectorFst;
+
+template<typename F, size_t CacheSize, bool MatchInput>
+class TableMatcher;
 
 NS_BEGIN(fsa)
 
-struct Transition;
+class Transition;
+
+using AutomatonState = VectorState<Transition, std::allocator<Transition>>;
+using Automaton = VectorFst<Transition, AutomatonState>;
 
 NS_END // fsa
 NS_END // fst
 
 NS_ROOT
 
-typedef fst::StringLeftWeight<byte_type> byte_weight;
-typedef fst::ArcTpl<byte_weight> byte_arc;
-typedef fst::VectorFst<byte_arc> vector_byte_fst;
+using automaton = fst::fsa::Automaton;
 
-template<typename Key, typename Weight> class fst_builder;
-typedef fst_builder<byte_type, vector_byte_fst> fst_byte_builder;
+using automaton_table_matcher = fst::TableMatcher<automaton, 256, true>;
 
 NS_END
 
-#endif
+#endif // IRESEARCH_AUTOMATON_DECL_H
+

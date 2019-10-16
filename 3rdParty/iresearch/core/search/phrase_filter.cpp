@@ -21,8 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "phrase_filter.hpp"
+
+#include <boost/functional/hash.hpp>
+
+#include "shared.hpp"
 #include "cost.hpp"
 #include "term_query.hpp"
 #include "conjunction.hpp"
@@ -47,8 +50,6 @@
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
 #include "utils/misc.hpp"
-
-#include <boost/functional/hash.hpp>
 
 NS_ROOT
 

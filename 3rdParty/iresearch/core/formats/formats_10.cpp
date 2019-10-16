@@ -859,8 +859,8 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
   auto& freq = docs.attributes().get<frequency>();
 
   auto& pos = freq
-    ? docs.attributes().get<position>()
-    : irs::attribute_view::ref<position>::NIL;
+    ? docs.attributes().get<irs::position>()
+    : irs::attribute_view::ref<irs::position>::NIL;
 
   const offset* offs = nullptr;
   const payload* pay = nullptr;
@@ -1468,7 +1468,6 @@ class position final : public irs::position,
   }
 
  private:
-  template<typename> friend class doc_iterator;
 
   void refill() {
     if (this->pos_in_->file_pointer() == this->tail_start_) {

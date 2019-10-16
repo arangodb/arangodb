@@ -123,6 +123,7 @@ class limited_sample_scorer : util::noncopyable {
   typedef std::vector<scored_term_state> scored_term_states_t;
 
   scored_term_states_t scored_states_;
+  std::vector<size_t> scored_states_heap_; // use external heap as states are big
   size_t scored_terms_limit_;
 }; // limited_sample_scorer
 

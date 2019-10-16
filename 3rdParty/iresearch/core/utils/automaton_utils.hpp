@@ -25,6 +25,7 @@
 
 #include "automaton.hpp"
 #include "formats/formats.hpp"
+#include "search/filter.hpp"
 
 NS_ROOT
 
@@ -78,7 +79,8 @@ inline automaton match_char(automaton::Arc::Label c) {
 template<
   typename Char,
   typename Traits = wildcard_traits<Char>,
-  typename = typename std::enable_if<sizeof(Char) < sizeof(fst::fsa::kMaxLabel)>::type,
+  // brackets over condition are for circumventing MSVC parser bug
+  typename = typename std::enable_if<(sizeof(Char) < sizeof(fst::fsa::kMaxLabel))>::type, 
   typename = typename std::enable_if<Traits::MATCH_ANY_CHAR != Traits::MATCH_ANY_STRING>::type>
 automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
   automaton a;
@@ -97,6 +99,7 @@ automaton from_wildcard(const irs::basic_string_ref<Char>& expr) {
     escaped = false;
     if (match_all_state != fst::kNoStateId) {
       auto state = a.AddState();
+      a.ReserveArcs(state, 2);
       a.EmplaceArc(match_all_state, fst::fsa::kRho, state);
       a.EmplaceArc(state, fst::fsa::kRho, state);
       a.EmplaceArc(state, c, to);
@@ -249,7 +252,15 @@ class automaton_term_iterator final : public seek_term_iterator {
   matcher_t matcher_;
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
-}; // intersect_term_iterator
+}; // automaton_term_iterator
+
+IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
+  const string_ref& field,
+  const automaton& acceptor,
+  size_t scored_terms_limit,
+  const index_reader& index,
+  const order::prepared& order,
+  boost_t boost);
 
 NS_END
 

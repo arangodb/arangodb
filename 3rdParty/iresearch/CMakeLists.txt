@@ -68,6 +68,7 @@ endif()
 ################################################################################
 
 option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
+option(USE_CLANG_TIDY "Include clang-tidy checks" OFF)
 option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
@@ -90,6 +91,26 @@ if (MSVC)
   else ()
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
+  endif()
+endif()
+
+################################################################################
+### setup clang-tidy
+################################################################################
+
+unset(CLANG_TIDY_EXE CACHE)
+
+if (USE_CLANG_TIDY)
+  find_program(
+    CLANG_TIDY_EXE
+    NAMES "clang-tidy"
+    DOC "Path to clang-tidy executable"
+  )
+
+  if(CLANG_TIDY_EXE)
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+  else()
+    message(STATUS "clang-tidy not found.")
   endif()
 endif()
 

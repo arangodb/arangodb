@@ -26,7 +26,6 @@
 
 #include "filter.hpp"
 #include "cost.hpp"
-
 #include "utils/string.hpp"
 
 NS_ROOT

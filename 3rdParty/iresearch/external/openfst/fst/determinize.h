@@ -959,8 +959,8 @@ namespace internal {
 
 // Initialization of transducer determinization implementation, which is defined
 // after DeterminizeFst since it calls it.
-template <class A, GallicType G, class D, class F, class T>
-void DeterminizeFstImpl<A, G, D, F, T>::Init(const Fst<A> &fst, F *filter) {
+template <class Arc, GallicType G, class CommonDivisor, class Filter, class StateTable>
+void DeterminizeFstImpl<Arc, G, CommonDivisor, Filter, StateTable>::Init(const Fst<Arc> &fst, Filter *filter) {
   // Mapper to an acceptor.
   const ToFst to_fst(fst, ToMapper());
   auto *to_filter = filter ? new ToFilter(to_fst, filter) : nullptr;

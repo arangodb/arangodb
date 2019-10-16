@@ -21,17 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "same_position_filter.hpp"
-#include "term_query.hpp"
-#include "conjunction.hpp"
-
-#include "index/field_meta.hpp"
-
-#include "analysis/token_attributes.hpp"
-#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
+
+#include "shared.hpp"
+#include "term_query.hpp"
+#include "conjunction.hpp"
+#include "index/field_meta.hpp"
+#include "analysis/token_attributes.hpp"
+#include "utils/misc.hpp"
 
 NS_LOCAL
 

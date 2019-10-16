@@ -24,7 +24,6 @@
 #ifndef IRESEARCH_SCORERS_H
 #define IRESEARCH_SCORERS_H
 
-#include "shared.hpp"
 #include "sort.hpp"
 #include "utils/text_format.hpp"
 

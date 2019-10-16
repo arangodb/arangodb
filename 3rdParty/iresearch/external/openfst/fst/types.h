@@ -17,6 +17,7 @@
 
 #include <cstdlib>       // for ssize_t.
 #include <cstdint>       // for ?int*_t.
+#include <cstddef>       // For std::ptrdiff_t.
 
 #ifndef FST_LIB_TYPES_H_
 #define FST_LIB_TYPES_H_
@@ -30,5 +31,11 @@ using uint8 = uint8_t;
 using uint16 = uint16_t;
 using uint32 = uint32_t;
 using uint64 = uint64_t;
+
+#ifdef _MSC_VER
+// Not really Windows-specific: they should have used ptrdiff_t in the first
+// place. But on Windows there has never been ssize_t.
+using ssize_t = std::ptrdiff_t;
+#endif  // _MSC_VER
 
 #endif  // FST_LIB_TYPES_H_

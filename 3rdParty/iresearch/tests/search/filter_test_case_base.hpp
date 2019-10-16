@@ -519,7 +519,7 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
     return irs::seek_term_iterator::empty();
   }
 
-  virtual irs::seek_term_iterator::ptr iterator(const irs::automaton&) const {
+  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const {
     return irs::seek_term_iterator::empty();
   }
 

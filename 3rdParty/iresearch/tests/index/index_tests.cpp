@@ -33,6 +33,7 @@
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/automaton_utils.hpp"
+#include "utils/fst_table_matcher.hpp"
 
 NS_BEGIN(tests)
 
@@ -328,14 +329,14 @@ NS_END // tests
 
 class index_test_case : public tests::index_test_base {
  public:
-  void assert_index(size_t skip = 0, const irs::automaton* acceptor = nullptr) const {
-    index_test_base::assert_index(irs::flags(), skip, acceptor);
-    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip, acceptor);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip, acceptor);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip, acceptor);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip, acceptor);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip, acceptor);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip, acceptor);
+  void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
+    index_test_base::assert_index(irs::flags(), skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip, matcher);
   }
 
   void clear_writer() {
@@ -11231,19 +11232,22 @@ TEST_P(index_test_case, europarl_docs_automaton) {
   // prefix
   {
     auto acceptor = irs::from_wildcard<char>("forb%");
-    assert_index(0, &acceptor);
+    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    assert_index(0, &matcher);
   }
 
   // part
   {
     auto acceptor = irs::from_wildcard<char>("%ende%");
-    assert_index(0, &acceptor);
+    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    assert_index(0, &matcher);
   }
 
   // suffix
   {
     auto acceptor = irs::from_wildcard<char>("%ione");
-    assert_index(0, &acceptor);
+    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    assert_index(0, &matcher);
   }
 }
 

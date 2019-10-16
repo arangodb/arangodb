@@ -24,12 +24,12 @@
 #ifndef IRESEARCH_DISJUNCTION_H
 #define IRESEARCH_DISJUNCTION_H
 
+#include <queue>
+
 #include "conjunction.hpp"
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 #include "index/iterators.hpp"
-
-#include <queue>
 
 NS_ROOT
 NS_BEGIN(detail)

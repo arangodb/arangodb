@@ -24,12 +24,14 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include "shared.hpp"
 #include "sort.hpp"
-#include "index/iterators.hpp"
 
 #include <unordered_map>
 #include <functional>
+
+#include "shared.hpp"
+#include "index/iterators.hpp"
+
 
 NS_ROOT
 

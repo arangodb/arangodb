@@ -21,14 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "scorers.hpp"
+
+#include "shared.hpp"
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
   #include "tfidf.hpp"
   #include "bm25.hpp"
 #endif
-
 #include "utils/register.hpp"
-#include "scorers.hpp"
 
 NS_LOCAL
 

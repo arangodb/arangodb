@@ -23,6 +23,7 @@
 
 #include "sort.hpp"
 
+#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "utils/memory_pool.hpp"

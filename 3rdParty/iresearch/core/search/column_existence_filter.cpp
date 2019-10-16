@@ -22,12 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "column_existence_filter.hpp"
+
+#include <boost/functional/hash.hpp>
+
 #include "formats/empty_term_reader.hpp"
 #include "index/field_meta.hpp"
 #include "search/score_doc_iterators.hpp"
 #include "search/disjunction.hpp"
-
-#include <boost/functional/hash.hpp>
 
 NS_LOCAL
 

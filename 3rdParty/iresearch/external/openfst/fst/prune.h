@@ -94,8 +94,8 @@ struct PruneOptions {
 //
 //   Plus(weight, Weight::One()) == Weight::One()
 template <class Arc, class ArcFilter,
-          typename std::enable_if<(Arc::Weight::Properties() & kPath) ==
-                                  kPath>::type * = nullptr>
+          typename std::enable_if<IsPath<typename Arc::Weight>::value>::type * = 
+              nullptr>
 void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts =
                                      PruneOptions<Arc, ArcFilter>()) {
   using StateId = typename Arc::StateId;
@@ -176,8 +176,7 @@ void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts =
 }
 
 template <class Arc, class ArcFilter,
-          typename std::enable_if<(Arc::Weight::Properties() & kPath) !=
-                                  kPath>::type * = nullptr>
+          typename std::enable_if<!IsPath<typename Arc::Weight>::value>::type * = nullptr>
 void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts =
                                      PruneOptions<Arc, ArcFilter>()) {
   FSTERROR() << "Prune: Weight needs to have the path property: "

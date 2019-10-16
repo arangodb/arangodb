@@ -254,7 +254,7 @@ class term_reader : public irs::term_reader,
   );
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual seek_term_iterator::ptr iterator(const automaton& a) const override;
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override;
   virtual const field_meta& meta() const noexcept override { return field_; }
   virtual size_t size() const noexcept override { return terms_count_; }
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }

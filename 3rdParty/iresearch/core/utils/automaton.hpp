@@ -37,6 +37,10 @@
   #pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
+#ifndef FST_NO_DYNAMIC_LINKING
+#define FST_NO_DYNAMIC_LINKING
+#endif
+
 #include <fst/vector-fst.h>
 #include <fst/arcsort.h>
 #include <fst/matcher.h>

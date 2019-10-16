@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "score.hpp"
+#include "shared.hpp"
 
 NS_LOCAL
 

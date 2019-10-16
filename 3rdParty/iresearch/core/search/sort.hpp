@@ -24,13 +24,12 @@
 #ifndef IRESEARCH_SORT_H
 #define IRESEARCH_SORT_H
 
-#include "shared.hpp"
+#include <vector>
+
 #include "utils/attributes.hpp"
 #include "utils/attributes_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
-
-#include <vector>
 
 NS_ROOT
 

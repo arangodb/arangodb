@@ -33,6 +33,20 @@ NS_ROOT
 
 NS_BEGIN(irstd)
 
+template<typename In, typename Out>
+struct adjust_const {
+  typedef Out value_type;
+  typedef Out& reference;
+  typedef Out* pointer;
+};
+
+template<typename In, typename Out>
+struct adjust_const<const In, Out> {
+  typedef const Out value_type;
+  typedef const Out& reference;
+  typedef const Out* pointer;
+};
+
 // constexpr versions of min/max functions (for prior c++14 environments)
 template<typename T> 
 constexpr const T& (max)(const T& a, const T& b) { 

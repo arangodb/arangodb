@@ -24,9 +24,10 @@
 #ifndef IRESEARCH_PHRASE_FILTER_H
 #define IRESEARCH_PHRASE_FILTER_H
 
+#include <map>
+
 #include "filter.hpp"
 #include "utils/string.hpp"
-#include <map>
 
 NS_ROOT
 

@@ -23,7 +23,6 @@
 #include "tests_shared.hpp"
 
 #include "utils/automaton_utils.hpp"
-#include "draw-impl.h"
 
 TEST(automaton_test, match_wildcard) {
   // nil string

@@ -131,6 +131,34 @@ constexpr size_t kNumRandomWeights = 5;
 
 // Weight property boolean constants needed for SFINAE.
 
+// MSVC compiler bug workaround: an expression containing W::Properties() cannot
+
+// be directly used as a value argument to std::enable_if or integral_constant.
+
+// WeightPropertiesThunk<W>::Properties works instead, however.
+#ifdef _MSC_VER
+// MSVC compiler bug workaround: an expression containing W::Properties() cannot
+// be directly used as a value argument to std::enable_if or integral_constant.
+// WeightPropertiesThunk<W>::Properties works instead, however.
+namespace bug {
+template <class W>
+struct WeightPropertiesThunk {
+  WeightPropertiesThunk() = delete;
+  constexpr static const uint64 Properties = W::Properties();
+};
+
+template <class W, uint64 props>
+using TestWeightProperties = std::integral_constant<bool,
+        (WeightPropertiesThunk<W>::Properties & props) == props>;
+}  // namespace bug
+
+template <class W>
+using IsIdempotent = bug::TestWeightProperties<W, kIdempotent>;
+template <class W>
+using IsPath = bug::TestWeightProperties<W, kPath>;
+
+#else
+
 template <class W>
 using IsIdempotent = std::integral_constant<bool,
     (W::Properties() & kIdempotent) != 0>;
@@ -138,6 +166,7 @@ using IsIdempotent = std::integral_constant<bool,
 template <class W>
 using IsPath = std::integral_constant<bool, (W::Properties() & kPath) != 0>;
 
+#endif // _MSC_VER
 // Determines direction of division.
 enum DivideType {
   DIVIDE_LEFT,   // left division

@@ -80,6 +80,7 @@
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 #include "utils/fst_matcher.hpp"
+#include "utils/fst_table_matcher.hpp"
 
 NS_LOCAL
 
@@ -466,6 +467,8 @@ class block_iterator : util::noncopyable {
     assert(ET_BLOCK == cur_type_);
     return cur_block_start_;
   }
+  int16_t next_label() const noexcept { return next_label_; }
+  uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
 
@@ -489,7 +492,7 @@ class block_iterator : util::noncopyable {
   }
 
   // scan to floor block
-  void scan_to_sub_block(const bytes_ref& term);
+  void scan_to_sub_block(byte_type label);
 
   // scan to entry with the following start address
   void scan_to_block(uint64_t ptr);
@@ -523,6 +526,7 @@ class block_iterator : util::noncopyable {
   const byte_type* suffix_begin_{suffix_block_.c_str()}; // beginning of suffix input stream
   const byte_type* stats_begin_{stats_block_.c_str()}; // beginning of suffix stats stream
 #ifdef IRESEARCH_DEBUG
+  const byte_type* header_end_{header_begin_}; // end of valid header input stream
   const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
@@ -663,8 +667,7 @@ class term_iterator final : public term_iterator_base {
  public:
   explicit term_iterator(const term_reader& owner)
     : term_iterator_base(owner),
-      matcher_(&fst(), fst::MATCH_INPUT), // pass pointer to avoid copying FST
-      cur_block_(nullptr) {
+      matcher_(&fst(), fst::MATCH_INPUT) { // pass pointer to avoid copying FST
     assert(owner_);
     attrs_.emplace(state_);
 
@@ -774,7 +777,7 @@ class term_iterator final : public term_iterator_base {
   matcher_t matcher_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
-  block_iterator* cur_block_;
+  block_iterator* cur_block_{};
 }; // term_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -782,11 +785,11 @@ class term_iterator final : public term_iterator_base {
 ///////////////////////////////////////////////////////////////////////////////
 class automaton_term_iterator final : public term_iterator_base {
  public:
-  explicit automaton_term_iterator(const term_reader& owner, const automaton& a)
+  explicit automaton_term_iterator(const term_reader& owner,
+                                   automaton_table_matcher& matcher)
     : term_iterator_base(owner),
-      a_(&a),
-      matcher_(a_, fst::MatchType::MATCH_INPUT, fst::fsa::kRho),
-      cur_block_(nullptr) {
+      acceptor_(&matcher.GetFst()),
+      matcher_(&matcher) {
   }
 
   virtual bool next() override;
@@ -815,52 +818,116 @@ class automaton_term_iterator final : public term_iterator_base {
 
   virtual void read() override {
     assert(cur_block_);
-    term_iterator_base::read(cur_block_->it);
+    term_iterator_base::read(*cur_block_);
   }
 
   virtual doc_iterator::ptr postings(const flags& features) const override {
-    return term_iterator_base::postings(cur_block_ ? &cur_block_->it : nullptr, features);
+    return term_iterator_base::postings(cur_block_ ? cur_block_: nullptr, features);
   }
 
  private:
-  struct block_state {
-    block_state(byte_weight&& out, size_t prefix, automaton::StateId state)
-      : it(std::move(out), prefix), state(state) {
+  class arc_matcher {
+   public:
+    arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
+      : begin_(arcs), end_(arcs + narcs),
+        rho_(rho_arc(begin_, end_)) {
     }
 
-    block_state(uint64_t start, size_t prefix, automaton::StateId state)
-      : it(start, prefix), state(state) {
+    const automaton::Arc* seek(automaton::Arc::Label label) noexcept {
+      // FIXME: binary search???
+      for (;begin_ != end_; ++begin_) {
+        if (label <= begin_->ilabel) {
+          return label == begin_->ilabel ? begin_ : rho_;
+        }
+      }
+
+      return nullptr;
     }
 
-    block_iterator it;
-    automaton::StateId state;
-  };
+    const automaton::Arc* value() const noexcept {
+      return begin_;
+    }
 
-  typedef std::deque<block_state> block_stack_t;
+    bool done() const noexcept {
+      return begin_ == end_;
+    }
 
-  block_state* pop_block() noexcept {
+   private:
+    static const automaton::Arc* rho_arc(const automaton::Arc* begin,
+                                         const automaton::Arc* end) noexcept {
+      if (begin != end) {
+        auto* back = end-1;
+        if (back->ilabel == fst::fsa::kRho) {
+          return back;
+        }
+      }
+
+      return nullptr;
+    }
+
+    const automaton::Arc* begin_;  // current arc
+    const automaton::Arc* end_;    // end of arcs range
+    const automaton::Arc* rho_{};  // rho arc if present
+  }; // begin_matcher
+
+  class block_iterator : public detail::block_iterator {
+   public:
+    block_iterator(byte_weight&& out, size_t prefix,
+                automaton::StateId state,
+                const automaton::Arc* arcs, size_t narcs) noexcept
+      : detail::block_iterator(std::move(out), prefix),
+        arcs_(arcs, narcs),
+        state_(state) {
+    }
+
+    block_iterator(uint64_t start, size_t prefix,
+                automaton::StateId state,
+                const automaton::Arc* arcs, size_t narcs) noexcept
+      : detail::block_iterator(start, prefix),
+        arcs_(arcs, narcs),
+        state_(state) {
+    }
+
+   public:
+    arc_matcher& arcs() noexcept { return arcs_; }
+    automaton::StateId acceptor_state() const noexcept { return state_; }
+
+   private:
+    arc_matcher arcs_;
+    automaton::StateId state_;  // state to which current block belongs
+  }; // block_iterator
+
+  typedef std::deque<block_iterator> block_stack_t;
+
+  block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
     assert(!block_stack_.empty());
     return &block_stack_.back();
   }
 
-  block_state* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
+  block_iterator* push_block(byte_weight&& out, size_t prefix, automaton::StateId state) {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(std::move(out), prefix, state);
+    fst::ArcIteratorData<automaton::Arc> data;
+    acceptor_->InitArcIterator(state, &data);
+
+    block_stack_.emplace_back(std::move(out), prefix, state, data.arcs, data.narcs);
     return &block_stack_.back();
   }
 
-  block_state* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
-    block_stack_.emplace_back(start, prefix, state);
+  block_iterator* push_block(uint64_t start, size_t prefix, automaton::StateId state) {
+    fst::ArcIteratorData<automaton::Arc> data;
+    acceptor_->InitArcIterator(state, &data);
+
+    block_stack_.emplace_back(start, prefix, state, data.arcs, data.narcs);
     return &block_stack_.back();
   }
 
-  const automaton* a_;
-  fst::RhoMatcher<fst::fsa::AutomatonMatcher> matcher_;
+  const automaton* acceptor_;
+  automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
-  block_state* cur_block_;
+  block_iterator* cur_block_{};
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -869,8 +936,8 @@ bool automaton_term_iterator::next() {
     if (term_.empty()) {
       // iterator at the beginning
       const auto& fst = this->fst();
-      cur_block_ = push_block(fst.Final(fst.Start()), 0, a_->Start());
-      cur_block_->it.load(terms_input(), terms_cipher());
+      cur_block_ = push_block(fst.Final(fst.Start()), 0, acceptor_->Start());
+      cur_block_->load(terms_input(), terms_cipher());
     } else {
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
@@ -884,39 +951,67 @@ bool automaton_term_iterator::next() {
     }
   }
 
-  bool match;
+  enum {
+    MATCH, // current entry is valid term
+    SKIP,  // skip current entry
+    POP    // pop current block
+  } match;
+
   automaton::StateId state;
 
   auto read_suffix = [this, &match, &state](const byte_type* suffix, size_t suffix_size) {
-    match = false;
-    state = cur_block_->state;
+    match = SKIP;
+    state = cur_block_->acceptor_state();
 
-    auto begin = suffix;
-    const auto end = begin + suffix_size;
+    const auto* begin = suffix;
+    const auto* end = begin + suffix_size;
 
-    for (matcher_.SetState(state); begin < end; ++begin) {
-      if (!matcher_.Find(*begin)) {
-        // suffix doesn't match
+    if (begin != end) {
+      const auto* arc = cur_block_->arcs().seek(*begin);
+
+      if (!arc) {
+        if (cur_block_->arcs().done()) {
+          match = POP; // pop current block
+        }
+
         return;
       }
 
-      state = matcher_.Value().nextstate;
-      matcher_.SetState(state);
+      assert(*begin == arc->ilabel || fst::fsa::kRho == arc->ilabel);
+      state = arc->nextstate;
+
+#ifdef IRESEARCH_DEBUG
+      matcher_->SetState(cur_block_->acceptor_state());
+      assert(matcher_->Find(*begin));
+      assert(matcher_->Value().nextstate == state);
+#endif
+
+      ++begin; // already match first suffix label
+
+      for (matcher_->SetState(state); begin < end; ++begin) {
+        if (!matcher_->Find(*begin)) {
+          // suffix doesn't match
+          return;
+        }
+
+        state = matcher_->Value().nextstate;
+        matcher_->SetState(state);
+      }
     }
 
     assert(begin == end);
 
-    switch (cur_block_->it.type()) {
+    switch (cur_block_->type()) {
       case ET_TERM: {
-        if (a_->Final(state)) {
-          copy(suffix, cur_block_->it.prefix(), suffix_size);
-          match = true;
+        if (acceptor_->Final(state)) {
+          copy(suffix, cur_block_->prefix(), suffix_size);
+          match = MATCH;
         }
       } break;
       case ET_BLOCK: {
-        copy(suffix, cur_block_->it.prefix(), suffix_size);
-        cur_block_ = push_block(cur_block_->it.block_start(), term_.size(), state);
-        cur_block_->it.load(terms_input(), terms_cipher());
+        copy(suffix, cur_block_->prefix(), suffix_size);
+        cur_block_ = push_block(cur_block_->block_start(), term_.size(), state);
+        cur_block_->load(terms_input(), terms_cipher());
       } break;
       default: {
         assert(false);
@@ -926,33 +1021,69 @@ bool automaton_term_iterator::next() {
 
   for (;;) {
     // pop finished blocks
-    while (cur_block_->it.end()) {
-      if (cur_block_->it.next_sub_block()) {
-        cur_block_->it.load(terms_input(), terms_cipher());
+    while (cur_block_->end()) {
+      if (cur_block_->sub_count()) {
+        if (block_t::INVALID_LABEL != cur_block_->next_label()) {
+          auto& arcs = cur_block_->arcs();
+          const auto* arc = arcs.seek(cur_block_->next_label());
+
+          if (arcs.done()) {
+            if (&block_stack_.front() == cur_block_) {
+              // need to pop root block, we're done
+              term_.reset();
+              cur_block_->reset();
+              return false;
+            }
+
+            cur_block_ = pop_block();
+            continue;
+          }
+
+          if (arc && arc->ilabel == fst::fsa::kRho) {
+            cur_block_->next_sub_block();
+          } else {
+            assert(arcs.value()->ilabel <= integer_traits<byte_type>::const_max);
+            cur_block_->scan_to_sub_block(byte_type(arcs.value()->ilabel));
+          }
+        } else {
+          cur_block_->next_sub_block();
+        }
+        cur_block_->load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) { // root
         term_.reset();
-        cur_block_->it.reset();
+        cur_block_->reset();
         return false;
       } else {
-        const uint64_t start = cur_block_->it.start();
+        const uint64_t start = cur_block_->start();
         cur_block_ = pop_block();
-        state_ = cur_block_->it.state();
-        if (cur_block_->it.dirty() || cur_block_->it.block_start() != start) {
+        state_ = cur_block_->state();
+        if (cur_block_->dirty() || cur_block_->block_start() != start) {
           // here we're currently at non block that was not loaded yet
-          cur_block_->it.scan_to_sub_block(term_); // to sub-block
-          cur_block_->it.load(terms_input(), terms_cipher());
-          cur_block_->it.scan_to_block(start);
+          assert(cur_block_->prefix() < term_.size());
+          cur_block_->scan_to_sub_block(term_[cur_block_->prefix()]); // to sub-block
+          cur_block_->load(terms_input(), terms_cipher());
+          cur_block_->scan_to_block(start);
         }
       }
     }
 
     do {
-      cur_block_->it.next(read_suffix);
+      cur_block_->next(read_suffix);
 
-      if (match) {
+      if (MATCH == match) {
         return true;
+      } else if (POP == match) {
+        if (&block_stack_.front() == cur_block_) {
+          // need to pop root block, we're done
+          term_.reset();
+          cur_block_->reset();
+          return false;
+        }
+
+        cur_block_ = pop_block();
+        break; // continue with popped block
       }
-    } while (!cur_block_->it.end());
+    } while (!cur_block_->end());
   }
 }
 
@@ -964,13 +1095,16 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
   : header_(std::move(header)),
     prefix_(prefix),
     sub_count_(0) {
+#ifdef IRESEARCH_DEBUG
+  header_end_ = header_.c_str() + header_.Size();
+#endif
   cur_meta_ = meta_ = *header_begin_++;
   cur_end_ = cur_start_ = start_ = vread<uint64_t>(header_begin_);
   if (block_meta::floor(meta_)) {
     sub_count_ = vread<uint64_t>(header_begin_);
     next_label_ = *header_begin_++;
   }
-  assert(header_begin_ <= header_.c_str() + header_.Size());
+  assert(header_begin_ <= header_end_);
 }
 
 void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
@@ -1157,30 +1291,30 @@ SeekResult block_iterator::scan_to_term_nonleaf(
   return SeekResult::END;
 }
 
-void block_iterator::scan_to_sub_block(const bytes_ref& term) {
+void block_iterator::scan_to_sub_block(byte_type label) {
   assert(sub_count_ != UNDEFINED);
 
-  if (!sub_count_ || !block_meta::floor(meta_) || term.size() <= prefix_) {
+  if (!sub_count_ || !block_meta::floor(meta_)) {
     // no sub-blocks, nothing to do
     return;
   }
 
-  const int16_t label = term[prefix_];
+  const int16_t target = label; // avoid byte_type vs int16_t comparison
 
-  if (label < next_label_) {
+  if (target < next_label_) {
     // we don't need search
     return;
   }
 
-  // FIXME: better to use binary search here
-  uint64_t start = cur_start_;
+  // FIXME: binary search???
+  uint64_t start_delta = 0;
   for (;;) {
-    start = start_ + vread<uint64_t>(header_begin_);
+    start_delta = vread<uint64_t>(header_begin_);
     cur_meta_ = *header_begin_++;
     if (--sub_count_) {
       next_label_ = *header_begin_++;
 
-      if (label < next_label_) {
+      if (target < next_label_) {
         break;
       }
     } else {
@@ -1189,13 +1323,13 @@ void block_iterator::scan_to_sub_block(const bytes_ref& term) {
     }
   }
 
-  if (start != cur_start_) {
-    cur_start_ = start;
+  if (start_delta) {
+    cur_start_ = start_ + start_delta;
     cur_ent_ = 0;
     dirty_ = true;
   }
 
-  assert(header_begin_ <= header_.c_str() + header_.Size());
+  assert(header_begin_ <= header_end_);
 }
 
 void block_iterator::scan_to_block(uint64_t start) {
@@ -1279,7 +1413,7 @@ void block_iterator::reset() {
   }
   dirty_ = true;
 
-  assert(header_begin_ <= header_.c_str() + header_.Size());
+  assert(header_begin_ <= header_end_);
 }
 
 // -----------------------------------------------------------------------------
@@ -1326,7 +1460,8 @@ bool term_iterator::next() {
       state_ = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->block_start() != start) {
         // here we're currently at non block that was not loaded yet
-        cur_block_->scan_to_sub_block(term_); // to sub-block
+        assert(cur_block_->prefix() < term_.size());
+        cur_block_->scan_to_sub_block(term_[cur_block_->prefix()]); // to sub-block
         cur_block_->load(terms_input(), terms_cipher());
         cur_block_->scan_to_block(start);
       }
@@ -1451,7 +1586,7 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
       cur_block_ = push_block(fst::Times(weight_, weight), prefix);
     } else if (fst_byte_builder::final == arc.nextstate) {
       // ensure final state has no weight assigned
-      // the only case when it's wrong is degerated FST composed of only
+      // the only case when it's wrong is degenerated FST composed of only
       // 'fst_byte_builder::final' state.
       // in that case we'll never get there due to the loop condition above.
       assert(fst.FinalRef(fst_byte_builder::final).Empty());
@@ -1468,8 +1603,12 @@ bool term_iterator::seek_to_block(const bytes_ref& term, size_t& prefix) {
   }
 
   assert(cur_block_);
-  sstate_.resize(cur_block_->prefix());
-  cur_block_->scan_to_sub_block(term);
+  prefix = cur_block_->prefix();
+  sstate_.resize(prefix);
+
+  if (prefix < term.size()) {
+    cur_block_->scan_to_sub_block(term[prefix]);
+  }
 
   return false;
 }
@@ -1593,9 +1732,9 @@ seek_term_iterator::ptr term_reader::iterator() const {
   );
 }
 
-seek_term_iterator::ptr term_reader::iterator(const automaton& a) const {
+seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
   return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::automaton_term_iterator>(*this, a)
+    memory::make_unique<detail::automaton_term_iterator>(*this, matcher)
   );
 }
 
@@ -1694,8 +1833,8 @@ void field_writer::write_block(
 
   pw_->begin_block();
 
-  for (size_t i = begin; i < end; ++i) {
-    auto& e = stack_[i];
+  for (; begin < end; ++begin) {
+    auto& e = stack_[begin];
     assert(starts_with(static_cast<const bytes_ref&>(e.data()), bytes_ref(last_term_, prefix)));
 
     switch (e.type()) {
@@ -1783,11 +1922,18 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
   const size_t begin = end - count;
   size_t block_start = begin; // begin of current block to write
 
+  size_t min_suffix = integer_traits<size_t>::const_max;
+  size_t max_suffix = 0;
+
   int16_t last_label = block_t::INVALID_LABEL; // last lead suffix label
   int16_t next_label = block_t::INVALID_LABEL; // next lead suffix label in current block
   for (size_t i = begin; i < end; ++i) {
     const entry& e = stack_[i];
     const irs::bytes_ref& data = e.data();
+
+    const size_t suffix = data.size() - prefix;
+    min_suffix = std::min(suffix, min_suffix);
+    max_suffix = std::max(suffix, max_suffix);
 
     const int16_t label = data.size() == prefix
       ? block_t::INVALID_LABEL
@@ -1803,6 +1949,8 @@ void field_writer::write_blocks( size_t prefix, size_t count ) {
         next_label = label;
         block_meta::reset(meta);
         block_start = i;
+        min_suffix = integer_traits<size_t>::const_max;
+        max_suffix = 0;
       }
 
       last_label = label;

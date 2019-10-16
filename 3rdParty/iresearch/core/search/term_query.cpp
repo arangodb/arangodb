@@ -21,10 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "term_query.hpp"
-#include "score_doc_iterators.hpp"
 
+#include "shared.hpp"
+#include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
 
 NS_ROOT

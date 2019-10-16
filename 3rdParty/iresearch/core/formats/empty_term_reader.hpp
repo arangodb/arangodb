@@ -42,7 +42,7 @@ class empty_term_reader: public irs::term_reader {
     return irs::seek_term_iterator::empty(); // no terms in reader
   }
 
-  virtual irs::seek_term_iterator::ptr iterator(const automaton&) const noexcept override {
+  virtual irs::seek_term_iterator::ptr iterator(automaton_table_matcher&) const noexcept override {
     return irs::seek_term_iterator::empty(); // no terms in reader
   }
 

@@ -123,7 +123,7 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
     return irs::seek_term_iterator::empty(); // no terms in reader
   }
 
-  virtual iresearch::seek_term_iterator::ptr iterator(const irs::automaton&) const override {
+  virtual iresearch::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const override {
     return irs::seek_term_iterator::empty(); // no terms in reader
   }
 

@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "wildcard_filter.hpp"
+
+#include "shared.hpp"
 #include "limited_sample_scorer.hpp"
 #include "all_filter.hpp"
 #include "disjunction.hpp"
@@ -89,11 +90,9 @@ filter::prepared::ptr by_wildcard::prepare(
     boost_t boost,
     const attribute_view& /*ctx*/) const {
   boost *= this->boost();
-
   const string_ref field = this->field();
-  const auto wildcard_type = irs::wildcard_type(term());
 
-  switch (wildcard_type) {
+  switch (wildcard_type(term())) {
     case WildcardType::TERM:
       return term_query::make(index, order, boost, field, term());
     case WildcardType::MATCH_ALL:
@@ -105,47 +104,13 @@ filter::prepared::ptr by_wildcard::prepare(
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
                                 scored_terms_limit());
-    default:
-      break;
+    case WildcardType::WILDCARD:
+      return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
+                                      scored_terms_limit(), index, order, boost);
   }
 
-  assert(WildcardType::WILDCARD == wildcard_type);
-
-  limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit()); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
-  auto acceptor = from_wildcard<byte_type, wildcard_traits_t>(term());
-
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const term_reader* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
-    }
-
-    auto it = reader->iterator(acceptor);
-
-    auto& meta = it->attributes().get<term_meta>(); // get term metadata
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
-
-    if (it->next()) {
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        it->read(); // read term attributes
-
-        state.estimation += docs_count;
-        scorer.collect(docs_count, state.count++, state, segment, *it);
-      } while (it->next());
-    }
-  }
-
-  std::vector<bstring> stats;
-  scorer.score(index, order, stats);
-
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  assert(false);
+  return prepared::empty();
 }
 
 by_wildcard::by_wildcard() noexcept

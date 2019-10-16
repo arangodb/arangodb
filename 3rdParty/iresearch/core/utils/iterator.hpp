@@ -26,6 +26,7 @@
 
 #include "noncopyable.hpp"
 #include "ebo.hpp"
+#include "std.hpp"
 
 #include <memory>
 #include <cassert>
@@ -119,20 +120,6 @@ struct extract_element_type<const SmartPtr> {
   typedef const typename SmartPtr::element_type* pointer;
 };
 
-template<typename In, typename Out>
-struct adjust_const {
-  typedef Out value_type;
-  typedef Out& reference;
-  typedef Out* pointer;
-};
-
-template<typename In, typename Out>
-struct adjust_const<const In, Out> {
-  typedef const Out value_type;
-  typedef const Out& reference;
-  typedef const Out* pointer;
-};
-
 NS_END
 
 //////////////////////////////////////////////////////////////////////////////
@@ -165,7 +152,7 @@ class ptr_iterator
   
   template<typename T>
   struct adjust_const 
-    : detail::adjust_const<typename element_type::value_type, T> { };
+    : irstd::adjust_const<typename element_type::value_type, T> { };
   
  public:
   typedef typename iterator_facade::reference reference;

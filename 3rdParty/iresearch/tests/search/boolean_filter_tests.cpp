@@ -54,13 +54,13 @@ struct basic_sort : irs::sort {
     : irs::sort(basic_sort::type()), idx(idx) {
   }
 
-  struct basic_scorer : irs::score_ctx {
+  struct basic_scorer final : irs::score_ctx {
     explicit basic_scorer(size_t idx) : idx(idx) {}
 
     size_t idx;
   };
 
-  struct prepared_sort : irs::sort::prepared {
+  struct prepared_sort final : irs::sort::prepared {
     explicit prepared_sort(size_t idx) : idx(idx) { }
 
     virtual void collect(
@@ -68,7 +68,7 @@ struct basic_sort : irs::sort {
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
-    ) const {
+    ) const override {
       // do not need to collect stats
     }
 

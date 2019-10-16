@@ -61,9 +61,9 @@ class DefaultCacheStore;
 
 // FST templates.
 
-template <class Arc, class Compactor, class U = uint32,
-    class CompactStore = DefaultCompactStore<typename Compactor::Element, U>,
-    class CacheStore = DefaultCacheStore<Arc>>
+template <class A, class ArcCompactor, class Unsigned = uint32,
+    class CompactStore = DefaultCompactStore<typename ArcCompactor::Element, Unsigned>,
+    class CacheStore = DefaultCacheStore<A>>
 class CompactFst;
 
 template <class Arc, class U = uint32>
@@ -81,10 +81,10 @@ class Fst;
 template <class Arc>
 class MutableFst;
 
-template <class Arc, class Allocator = std::allocator<Arc>>
+template <class A, class Allocator = std::allocator<A>>
 class VectorState;
 
-template <class Arc, class State = VectorState<Arc>>
+template <class A, class State = VectorState<A>>
 class VectorFst;
 
 template <class Arc, class U = ssize_t>
@@ -128,8 +128,8 @@ class RandGenFst;
 template <class Arc>
 class RelabelFst;
 
-template <class Arc, class StateTable = DefaultReplaceStateTable<Arc>,
-          class Store = DefaultCacheStore<Arc>>
+template <class A, class StateTable = DefaultReplaceStateTable<A>,
+          class Store = DefaultCacheStore<A>>
 class ReplaceFst;
 
 template <class Arc>
