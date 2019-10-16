@@ -276,19 +276,24 @@ void V8ShellFeature::copyInstallationFiles() {
   std::string const nodeModulesPathVersioned =
       basics::FileUtils::buildFilename("js", versionAppendix, "node",
                                        "node_modules");
-  auto filter = [&nodeModulesPath,
-                 &nodeModulesPathVersioned](std::string const& filename) -> bool {
-    if (filename.size() >= nodeModulesPath.size()) {
-      std::string normalized = filename;
-      FileUtils::normalizePath(normalized);
-      TRI_ASSERT(filename.size() == normalized.size());
-      if (normalized.substr(normalized.size() - nodeModulesPath.size(),
-                            nodeModulesPath.size()) == nodeModulesPath ||
-          normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                            nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
-        // filter it out!
-        return true;
-      }
+  std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
+
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, &binRegex](std::string const& filename) -> bool {
+    if (std::regex_search(filename, binRegex)) {
+      // don't copy files in .bin
+      return true;
+    }
+
+    std::string normalized = filename;
+    FileUtils::normalizePath(normalized);
+    if ((!nodeModulesPath.empty() && 
+         normalized.size() >= nodeModulesPath.size() &&
+         normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+        (!nodeModulesPathVersioned.empty() &&
+         normalized.size() >= nodeModulesPathVersioned.size() &&
+         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+      // filter it out!
+      return true;
     }
     // let the file/directory pass through
     return false;
