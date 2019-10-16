@@ -4207,10 +4207,9 @@ function transactionTTLStreamSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(transactionRevisionsSuite);
-//jsunity.run(transactionRollbackSuite);
+jsunity.run(transactionRevisionsSuite);
+jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
-/*
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
 jsunity.run(transactionBarriersSuite);
@@ -4219,5 +4218,5 @@ jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
-*/
+
 return jsunity.done();
