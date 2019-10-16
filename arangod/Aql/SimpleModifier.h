@@ -100,10 +100,6 @@ class SimpleModifier {
   ModifierOutput getOutput();
   void advanceIterator();
 
-  // We need to have a function that adds a document because returning a
-  // (reference to a) slice has scoping problems
-  void addDocument(VPackSlice const& doc);
-
   ModificationExecutorInfos& getInfos() const;
   size_t getBatchSize() const;
 

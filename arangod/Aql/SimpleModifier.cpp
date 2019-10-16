@@ -121,11 +121,6 @@ void SimpleModifier<ModifierCompletion, Enable>::advanceIterator() {
 }
 
 template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::addDocument(VPackSlice const& doc) {
-  _accumulator.add(doc);
-}
-
-template <typename ModifierCompletion, typename Enable>
 ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const {
   return _infos;
 }
