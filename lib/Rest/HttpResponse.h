@@ -83,6 +83,10 @@ class HttpResponse : public GeneralResponse {
   void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
 
+  bool isResponseEmpty() const override {
+    return _body->empty();
+  }
+
   /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
     return _generateBody = generateBody;

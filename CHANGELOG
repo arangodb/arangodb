@@ -1,6 +1,15 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* The General Graph document API is now persistent with the document API in its
+  errormessages. When attempting to create / modify edges pointing to non
+  existing vertex collections HTTP 400 is returned instead of 404.
+
+* Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
+  Using subqueries inside PRUNE conditions causes undefined behavior,
+  so such queries will now be aborted early on with a parse error 
+  instead of running into undefined behavior.
+
 * Fixed available flag for hotbackup.
 
 * Fixed list with id for partially available hotbackups.
