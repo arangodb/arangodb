@@ -259,7 +259,9 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr, started,
-                          now - started, query->state(), query->queryOptions().stream);
+                          now - started, 
+                          query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, 
+                          query->queryOptions().stream);
     }
   }
 
