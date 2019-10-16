@@ -73,10 +73,8 @@ void UpsertModifier::close() {
   TRI_ASSERT(_updateAccumulator.isClosed());
 }
 
-// TODO: In principle the following two functions should be the same as in the Update/Replace modifier
-// and the insert modifier, respectively; There is probably a sensible way of factoring them out
-Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
-                                  InputAqlItemRow const& row) {
+ModOperationType UpsertModifier::updateReplaceCase(VPackBuilder& accu, AqlValue const& inDoc,
+                                                   AqlValue const& updateDoc) {
   std::string key, rev;
   Result result;
 
@@ -93,43 +91,45 @@ Result UpsertModifier::updateCase(AqlValue const& inDoc, AqlValue const& updateD
 
         buildKeyDocument(keyDocBuilder, key, rev);
 
-        VPackCollection::merge(_updateAccumulator, toUpdate,
-                               keyDocBuilder.slice(), false, false);
+        VPackCollection::merge(accu, toUpdate, keyDocBuilder.slice(), false, false);
 
-        _operations.push_back({ModOperationType::APPLY_UPDATE, row});
+        return ModOperationType::APPLY_UPDATE;
       } else {
-        _operations.push_back({ModOperationType::IGNORE_SKIP, row});
-        return Result{TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                      std::string("expecting 'Object', got: ") +
-                          updateDoc.slice().typeName() +
-                          std::string(" while handling: UPSERT")};
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+            std::string("expecting 'Object', got: ") + updateDoc.slice().typeName() +
+                std::string(" while handling: UPSERT"));
+        return ModOperationType::IGNORE_SKIP;
       }
     } else {
-      _operations.push_back({ModOperationType::IGNORE_SKIP, row});
-      return result;
+      if (!_infos._ignoreErrors) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      }
+      return ModOperationType::IGNORE_SKIP;
     }
   } else {
-    _operations.push_back({ModOperationType::IGNORE_RETURN, row});
+    return ModOperationType::IGNORE_RETURN;
   }
-  return Result{};
 }
 
-Result UpsertModifier::insertCase(AqlValue const& insertDoc, InputAqlItemRow const& row) {
-  auto const& toInsert = insertDoc.slice();
+ModOperationType UpsertModifier::insertCase(VPackBuilder& accu, AqlValue const& insertDoc) {
   if (insertDoc.isObject()) {
+    auto const& toInsert = insertDoc.slice();
     if (writeRequired(_infos, toInsert, StaticStrings::Empty)) {
-      _insertAccumulator.add(toInsert);
-      _operations.push_back({ModOperationType::APPLY_INSERT, row});
+      accu.add(toInsert);
+      return ModOperationType::APPLY_INSERT;
     } else {
-      _operations.push_back({ModOperationType::IGNORE_RETURN, row});
+      return ModOperationType::IGNORE_RETURN;
     }
   } else {
-    _operations.push_back({ModOperationType::IGNORE_SKIP, row});
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                  std::string("expecting 'Object', got: ") +
-                      insertDoc.slice().typeName() + " while handling: UPSERT");
+    if (!_infos._ignoreErrors) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                                     std::string("expecting 'Object', got: ") +
+                                         insertDoc.slice().typeName() +
+                                         " while handling: UPSERT");
+    }
+    return ModOperationType::IGNORE_SKIP;
   }
-  return Result{};
 }
 
 Result UpsertModifier::accumulate(InputAqlItemRow& row) {
@@ -137,25 +137,21 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const insertReg = _infos._input2RegisterId;
   RegisterId const updateReg = _infos._input3RegisterId;
 
-  Result result;
+  ModOperationType result;
 
   // The document to be UPSERTed
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   // if there is a document in the input register, we
   // update that document, otherwise, we insert
-  // TODO: What if inDoc is a string? Should that
-  // be an error?
   if (inDoc.isObject()) {
-    auto const& updateDoc = row.getValue(updateReg);
-    result = updateCase(inDoc, updateDoc, row);
+    auto updateDoc = row.getValue(updateReg);
+    result = updateReplaceCase(_updateAccumulator, inDoc, updateDoc);
   } else {
-    auto const& insertDoc = row.getValue(insertReg);
-    result = insertCase(insertDoc, row);
+    auto insertDoc = row.getValue(insertReg);
+    result = insertCase(_insertAccumulator, insertDoc);
   }
-  if (!result.ok() && !_infos._ignoreErrors) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
-  }
+  _operations.push_back({result, row});
   return Result{};
 }
 

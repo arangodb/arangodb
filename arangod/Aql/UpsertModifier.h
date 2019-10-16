@@ -27,6 +27,9 @@
 #include "Aql/ModificationExecutor2.h"
 #include "Aql/ModificationExecutorTraits.h"
 
+#include "Aql/InsertModifier.h"
+#include "Aql/UpdateReplaceModifier.h"
+
 namespace arangodb {
 namespace aql {
 
@@ -59,9 +62,9 @@ class UpsertModifier {
   size_t getBatchSize() const;
 
  private:
-  Result updateCase(AqlValue const& inDoc, AqlValue const& updateDoc,
-                    InputAqlItemRow const& row);
-  Result insertCase(AqlValue const& insertDoc, InputAqlItemRow const& row);
+  ModOperationType updateReplaceCase(VPackBuilder& accu, AqlValue const& inDoc,
+                                     AqlValue const& updateDoc);
+  ModOperationType insertCase(VPackBuilder& accu, AqlValue const& insertDoc);
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
