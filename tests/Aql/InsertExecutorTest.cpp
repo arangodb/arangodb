@@ -82,7 +82,7 @@ TEST_P(InsertExecutorTestCount, insert) {
                       " INSERT { value: i } INTO testCollection";
   auto const expected = VPackParser::fromJson("[]");
 
-  AssertQueryHasResult(server, query, expected->slice());
+  AssertQueryHasResult(vocbase, query, expected->slice());
 
   std::string checkQuery = "FOR i IN testCollection RETURN i.value";
   VPackBuilder builder;
@@ -91,7 +91,7 @@ TEST_P(InsertExecutorTestCount, insert) {
     builder.add(VPackValue(i));
   }
   builder.close();
-  AssertQueryHasResult(server, checkQuery, builder.slice());
+  AssertQueryHasResult(vocbase, checkQuery, builder.slice());
 }
 
 }  // namespace aql
