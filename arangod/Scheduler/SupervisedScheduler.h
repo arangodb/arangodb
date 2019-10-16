@@ -77,7 +77,7 @@ class SupervisedScheduler final : public Scheduler {
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queue[3];
+  boost::lockfree::queue<WorkItem*> _queues[3];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -143,7 +143,9 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  size_t _maxFifoSize;
+  uint64_t const _maxFifoSize;
+  uint64_t const _fifo1Size;
+  uint64_t const _fifo2Size;
 
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 

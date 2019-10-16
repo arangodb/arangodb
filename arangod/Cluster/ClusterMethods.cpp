@@ -312,7 +312,7 @@ static void mergeResults(std::vector<std::pair<ShardID, VPackValueLength>> const
 namespace {
 // velocypack representation of object
 // {"error":true,"errorMessage":"document not found","errorNum":1202}
-static const char* notFoundSlice = 
+static const char* notFoundSlice =
   "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
   "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
   "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
@@ -327,7 +327,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
-  
+
   resultBody->clear();
   resultBody->openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
@@ -336,7 +336,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      
+
       int errorNum = TRI_ERROR_NO_ERROR;
       VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
       if (errorNumSlice.isNumber()) {
@@ -3260,8 +3260,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
     resSlice = resSlice.get("result");
 
     if (!resSlice.hasKey("list") || !resSlice.get("list").isObject()) {
-      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
-                              "result is missing backup list");
+      continue;
     }
 
     if (!payload.isNone() && plan.slice().isNone()) {
@@ -3313,7 +3312,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       front._sizeInBytes = totalSize;
       front._nrFiles = totalFiles;
       front._serverId = "";  // makes no sense for whole cluster
-      front._isAvailable = i.second.size() == dbServers.size();
+      front._isAvailable = i.second.size() == dbServers.size() && i.second.size() == front._nrDBServers;
       front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
       hotBackups.insert(std::make_pair(front._id, front));
     }
@@ -3615,6 +3614,11 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
         << " on all db servers: " << result.errorMessage();
     return result;
   }
+  if (list.size() == 0) {
+    return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
+      "result is missing backup list");
+  }
+
   if (plan.slice().isNone()) {
     LOG_TOPIC("54b9a", ERR, Logger::BACKUP)
         << "failed to find agency dump for " << backupId
@@ -3622,14 +3626,20 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     return result;
   }
 
+  TRI_ASSERT(list.size() == 1);
+  BackupMeta& meta = list.begin()->second;
+  if (!meta._isAvailable) {
+    LOG_TOPIC("ed4df", ERR, Logger::BACKUP)
+        << "backup not available" << backupId;
+    return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "backup not available for restore");
+  }
+
   // Check if the version matches the current version
   if (!ignoreVersion) {
-    TRI_ASSERT(list.size() == 1);
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
-#ifdef USE_ENTERPRISE
-    BackupMeta& meta = list.begin()->second;
-    // Will never be called in community
+#ifdef USE_ENTERPRISE    // Will never be called in community
     if (!RocksDBHotBackup::versionTestRestore(meta._version)) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Version mismatch");
@@ -3764,27 +3774,42 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
   }
 
   // Perform the requests
-  cc->performRequests(requests, lockWait + 1.0, Logger::BACKUP, false, false);
+  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
 
-  // Now listen to the results:
+  // Now listen to the results and report the aggregated final result:
+  arangodb::Result finalRes(TRI_ERROR_NO_ERROR);
+  auto reportError = [&](int c, std::string const& m) {
+    if (finalRes.ok()) {
+      finalRes = arangodb::Result(c, m);
+    } else {
+      // If we see at least one TRI_ERROR_LOCAL_LOCK_FAILED it is a failure
+      // if all errors are TRI_ERROR_LOCK_TIMEOUT, then we report this and
+      // this will lead to a retry:
+      if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
+        c = TRI_ERROR_LOCAL_LOCK_FAILED;
+      }
+      finalRes = arangodb::Result(c, finalRes.errorMessage() + ", " + m);
+    }
+  };
   for (auto const& req : requests) {
     auto res = req.result;
     int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("Communication error locking transactions on ") + req.destination);
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("Communication error locking transactions on ")
+                  + req.destination);
+      continue;
     }
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
     if (!slc.isObject() || !slc.hasKey("error") || !slc.get("error").isBoolean()) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("invalid response from ") + req.destination +
-              " when trying to freeze transactions for hot backup " + backupId +
-              ": " + slc.toJson());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to freeze transactions for hot backup " +
+                  backupId + ": " + slc.toJson());
+      continue;
     }
 
     if (slc.get("error").getBoolean()) {
@@ -3792,22 +3817,23 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
           << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
       auto errorNum = slc.get("errorNum").getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
+        reportError(errorNum, slc.get("errorMessage").copyString());
+        continue;
       }
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("lock was denied from ") + req.destination +
-              " when trying to check for lockId for hot backup " + backupId +
-              ": " + slc.toJson());
+          " when trying to check for lockId for hot backup " + backupId +
+          ": " + slc.toJson());
+      continue;
     }
 
     if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
         !slc.hasKey("result") || !slc.get("result").isObject()) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("invalid response from ") + req.destination +
-              " when trying to check for lockId for hot backup " + backupId +
-              ": " + slc.toJson());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to check for lockId for hot backup " +
+                  backupId + ": " + slc.toJson());
+      continue;
     }
 
     uint64_t lockId = 0;
@@ -3817,19 +3843,22 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
           << "acquired lock from " << req.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
-      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
-                              std::string("invalid response from ") + req.destination +
-                                  " when trying to get lockId for hot backup " + backupId +
-                                  ": " + slc.toJson() + ", msg: " + e.what());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to get lockId for hot backup " + backupId +
+                  ": " + slc.toJson() + ", msg: " + e.what());
+      continue;
     }
 
     lockedServers.push_back(req.destination.substr(strlen("server:"), std::string::npos));
   }
 
-  LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-      << "acquired transaction locks on all db servers";
+  if (finalRes.ok()) {
+    LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
+        << "acquired transaction locks on all db servers";
+  }
 
-  return arangodb::Result();
+  return finalRes;
 }
 
 arangodb::Result unlockDBServerTransactions(std::string const& backupId,
@@ -4150,7 +4179,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     }
     std::vector<ServerID> dbServers = ci->getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait(0.1);
+    double lockWait(1);
     while (cc != nullptr && steady_clock::now() < end) {
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
@@ -4163,10 +4192,10 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       } else {
         break;
       }
-      if (lockWait < 30.0) {
-        lockWait *= 1.25;
+      if (lockWait < 3600.0) {
+        lockWait *= 1.5;
       }
-      std::this_thread::sleep_for(seconds(1));
+      std::this_thread::sleep_for(milliseconds(300));
     }
 
     bool gotLocks = result.ok();
