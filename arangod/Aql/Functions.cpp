@@ -97,9 +97,9 @@ using namespace date;
 /*
 - always specify your user facing function name MYFUNC in error generators
 - errors are broadcasted like this:
-    - Wrong parameter types: ::registerInvalidArgumentWarning(expressionContext,
+    - Wrong parameter types: registerInvalidArgumentWarning(expressionContext,
 "MYFUNC")
-    - Generic errors: ::registerWarning(expressionContext, "MYFUNC",
+    - Generic errors: registerWarning(expressionContext, "MYFUNC",
 TRI_ERROR_QUERY_INVALID_REGEX);
     - ICU related errors: if (U_FAILURE(status)) {
 ::registerICUWarning(expressionContext, "MYFUNC", status); }
@@ -208,29 +208,6 @@ bool isValidDocument(VPackSlice slice) {
   return true;
 }
 
-/// @brief register warning
-void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, Result const& rr) {
-  std::string msg = "in function '";
-  msg.append(functionName);
-  msg.append("()': ");
-  msg.append(rr.errorMessage());
-  expressionContext->registerWarning(rr.errorNumber(), msg.c_str());
-}
-
-/// @brief register warning
-void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, int code) {
-  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
-      code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
-    registerWarning(expressionContext, functionName, Result(code));
-    return;
-  }
-
-  std::string msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
-  expressionContext->registerWarning(code, msg.c_str());
-}
-
 void registerICUWarning(ExpressionContext* expressionContext,
                         char const* functionName, UErrorCode status) {
   std::string msg;
@@ -240,21 +217,6 @@ void registerICUWarning(ExpressionContext* expressionContext,
   msg.append(arangodb::basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
                                                               u_errorName(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
-}
-
-void registerError(ExpressionContext* expressionContext, char const* functionName, int code) {
-  std::string msg;
-
-  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
-  } else {
-    msg.append("in function '");
-    msg.append(functionName);
-    msg.append("()': ");
-    msg.append(TRI_errno_string(code));
-  }
-
-  expressionContext->registerError(code, msg.c_str());
 }
 
 /// @brief extract a function parameter from the arguments
@@ -299,7 +261,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext,
   auto y = static_cast<int>(ymd.year());
   // quick sanity check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -479,7 +441,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
       ms *= durationUnits;
       break;
     default:
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
   }
   // Here we reconstruct the timepoint again
@@ -506,7 +468,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   
   std::match_results<char const*> durationParts;
   if (!basics::regexIsoDuration(duration, durationParts)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -577,13 +539,6 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
-/// @brief register usage of an invalid function argument
-void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
-                                    char const* functionName) {
-  ::registerWarning(expressionContext, functionName,
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-}
-
 bool parameterToTimePoint(ExpressionContext* expressionContext,
                           VPackFunctionParameters const& parameters,
                           tp_sys_clock_ms& tp, char const* AFN, size_t parameterIndex) {
@@ -595,7 +550,7 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
       // check if value is between "0000-01-01T00:00:00.000Z" and "9999-12-31T23:59:59.999Z"
       // -62167219200000: "0000-01-01T00:00:00.000Z"
       // 253402300799999: "9999-12-31T23:59:59.999Z"
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
     tp = tp_sys_clock_ms(milliseconds(v));
@@ -604,13 +559,13 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
 
   if (value.isString()) {
     if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
     return true;
   }
 
-  ::registerInvalidArgumentWarning(expressionContext, AFN);
+  registerInvalidArgumentWarning(expressionContext, AFN);
   return false;
 }
 
@@ -760,7 +715,7 @@ void extractKeys(std::unordered_set<std::string>& names, ExpressionContext* expr
         if (v.isString()) {
           names.emplace(v.copyString());
         } else {
-          ::registerInvalidArgumentWarning(expressionContext, functionName);
+          registerInvalidArgumentWarning(expressionContext, functionName);
         }
       }
     }
@@ -981,7 +936,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Meth
     // merge in all other arguments
     for (auto const& it : VPackArrayIterator(initialSlice)) {
       if (!it.isObject()) {
-        ::registerInvalidArgumentWarning(expressionContext, funcName);
+        registerInvalidArgumentWarning(expressionContext, funcName);
         return AqlValue(AqlValueHintNull());
       }
       builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it,
@@ -991,7 +946,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Meth
   }
 
   if (!initial.isObject()) {
-    ::registerInvalidArgumentWarning(expressionContext, funcName);
+    registerInvalidArgumentWarning(expressionContext, funcName);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1000,7 +955,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Meth
     AqlValue const& param = extractFunctionParameterValue(parameters, i);
 
     if (!param.isObject()) {
-      ::registerInvalidArgumentWarning(expressionContext, funcName);
+      registerInvalidArgumentWarning(expressionContext, funcName);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -1352,6 +1307,57 @@ static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
 }
 
 }  // namespace
+
+namespace arangodb {
+namespace aql {
+
+/// @brief register warning
+void registerWarning(ExpressionContext* expressionContext,
+                     char const* functionName, Result const& rr) {
+  std::string msg = "in function '";
+  msg.append(functionName);
+  msg.append("()': ");
+  msg.append(rr.errorMessage());
+  expressionContext->registerWarning(rr.errorNumber(), msg.c_str());
+}
+
+/// @brief register warning
+void registerWarning(ExpressionContext* expressionContext,
+                     char const* functionName, int code) {
+  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
+      code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
+    registerWarning(expressionContext, functionName, Result(code));
+    return;
+  }
+
+  std::string msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
+  expressionContext->registerWarning(code, msg.c_str());
+}
+
+void registerError(ExpressionContext* expressionContext, char const* functionName, int code) {
+  std::string msg;
+
+  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
+  } else {
+    msg.append("in function '");
+    msg.append(functionName);
+    msg.append("()': ");
+    msg.append(TRI_errno_string(code));
+  }
+
+  expressionContext->registerError(code, msg.c_str());
+}
+
+/// @brief register usage of an invalid function argument
+void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
+                                    char const* functionName) {
+  registerWarning(expressionContext, functionName,
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+}
+
+} // aql
+} // arangodb
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
@@ -1817,7 +1823,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext, transaction::M
     return AqlValue(utf8);
   } else {
     // neither array nor string...
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 }
@@ -1833,7 +1839,7 @@ AqlValue Functions::First(ExpressionContext* expressionContext,
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1856,7 +1862,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1881,7 +1887,7 @@ AqlValue Functions::Nth(ExpressionContext* expressionContext,
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2195,7 +2201,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
 
   if (search.isObject()) {
     if (parameters.size() > 3) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
     if (parameters.size() == 3) {
@@ -2217,13 +2223,13 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
         // non strings
-        ::registerInvalidArgumentWarning(expressionContext, AFN);
+        registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
     }
   } else {
     if (parameters.size() < 2) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
     if (parameters.size() == 4) {
@@ -2238,13 +2244,13 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
           char const* str = it.getStringUnchecked(length);
           matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
         } else {
-          ::registerInvalidArgumentWarning(expressionContext, AFN);
+          registerInvalidArgumentWarning(expressionContext, AFN);
           return AqlValue(AqlValueHintNull());
         }
       }
     } else {
       if (!search.isString()) {
-        ::registerInvalidArgumentWarning(expressionContext, AFN);
+        registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
       arangodb::velocypack::ValueLength length;
@@ -2266,7 +2272,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
             char const* str = it.getStringUnchecked(length);
             replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
           } else {
-            ::registerInvalidArgumentWarning(expressionContext, AFN);
+            registerInvalidArgumentWarning(expressionContext, AFN);
             return AqlValue(AqlValueHintNull());
           }
         }
@@ -2278,7 +2284,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         char const* str = rslice.getString(length);
         replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
-        ::registerInvalidArgumentWarning(expressionContext, AFN);
+        registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
     }
@@ -2677,7 +2683,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, transaction::Meth
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2692,7 +2698,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, transaction::Meth
 
   if (error) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2711,7 +2717,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
     if (aqlLimit.isNumber()) {
       limitNumber = aqlLimit.toInt64();
     } else {
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2729,7 +2735,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
   if (parameters.size() >= 2) {
     aqlSeparatorExpression = extractFunctionParameterValue(parameters, 1);
     if (aqlSeparatorExpression.isObject()) {
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
   }
@@ -2757,7 +2763,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2781,7 +2787,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2861,7 +2867,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
       expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2918,7 +2924,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
     if (aqlLimit.isNumber()) {
       limitNumber = aqlLimit.toInt64();
     } else {
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2956,7 +2962,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
       expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2985,7 +2991,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -3054,7 +3060,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3069,7 +3075,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
 
   if (error) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3096,7 +3102,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3116,7 +3122,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
 
   if (error) {
     // compiling regular expression failed
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3396,7 +3402,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   AqlValue const& durationType = extractFunctionParameterValue(parameters, 1);
 
   if (!durationType.isString()) {  // unit type must be string
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3424,7 +3430,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
              duration == "milliseconds") {
     ms = day_time.to_duration();
   } else {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
@@ -3448,13 +3454,13 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
   if (parameters.size() == 3) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
     AqlValue const& durationType = extractFunctionParameterValue(parameters, 2);
     if (!durationType.isString()) {  // unit type must be string
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -3464,7 +3470,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -3489,13 +3495,13 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
   if (parameters.size() == 3) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
     AqlValue const& durationType = extractFunctionParameterValue(parameters, 2);
     if (!durationType.isString()) {  // unit type must be string
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -3505,7 +3511,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -3535,7 +3541,7 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext, transaction::
 
   AqlValue const& unitValue = extractFunctionParameterValue(parameters, 2);
   if (!unitValue.isString()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3544,7 +3550,7 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext, transaction::
   if (parameters.size() == 4) {
     AqlValue const& asFloatValue = extractFunctionParameterValue(parameters, 3);
     if (!asFloatValue.isBoolean()) {
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
     asFloat = asFloatValue.toBoolean();
@@ -3582,7 +3588,7 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext, transaction::
       diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
       break;
     case INVALID:
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
   }
 
@@ -3612,7 +3618,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
   DateSelectionModifier rangeStart = ::parseDateModifierFlag(rangeStartValue.slice());
 
   if (rangeStart == INVALID) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3622,7 +3628,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
     rangeEnd = ::parseDateModifierFlag(rangeEndValue.slice());
 
     if (rangeEnd == INVALID) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
   }
@@ -3721,19 +3727,19 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
 
   AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
   if (!durationUnit.isNumber()) {  // unit must be number
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
   AqlValue const& durationType = extractFunctionParameterValue(parameters, 2);
   if (!durationType.isString()) {  // unit type must be string
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
   
   int64_t const m = durationUnit.toInt64(); 
   if (m <= 0) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
   
@@ -3751,7 +3757,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
   } else if (s == "days" || s == "day" || s == "d") {
     factor = 24 * 60 * 60 * 1000;
   } else {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3783,7 +3789,7 @@ AqlValue Functions::Unset(ExpressionContext* expressionContext, transaction::Met
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isObject()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3806,7 +3812,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isObject()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3828,7 +3834,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, transaction::Meth
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isObject()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3853,7 +3859,7 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
   AqlValue const& lookupDocument = extractFunctionParameterValue(parameters, 1);
 
   if (!lookupDocument.isObject()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3941,7 +3947,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isObject()) {
     // not an object
-    ::registerWarning(expressionContext, "ATTRIBUTES",
+    registerWarning(expressionContext, "ATTRIBUTES",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
@@ -4003,7 +4009,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext, transaction::Me
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isObject()) {
     // not an object
-    ::registerWarning(expressionContext, "VALUES",
+    registerWarning(expressionContext, "VALUES",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
@@ -4050,7 +4056,7 @@ AqlValue Functions::Min(ExpressionContext* expressionContext, transaction::Metho
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, "MIN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "MIN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4081,7 +4087,7 @@ AqlValue Functions::Max(ExpressionContext* expressionContext, transaction::Metho
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4108,7 +4114,7 @@ AqlValue Functions::Sum(ExpressionContext* expressionContext, transaction::Metho
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, "SUM", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "SUM", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4140,7 +4146,7 @@ AqlValue Functions::Average(ExpressionContext* expressionContext, transaction::M
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4154,7 +4160,7 @@ AqlValue Functions::Average(ExpressionContext* expressionContext, transaction::M
       continue;
     }
     if (!v.isNumber()) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -4181,7 +4187,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isNumber() || value.toDouble() < 0) {
-    ::registerWarning(expressionContext, "SLEEP", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, "SLEEP", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4401,7 +4407,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4432,7 +4438,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Me
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4474,7 +4480,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4509,7 +4515,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext, transaction::Me
 
   if (!value.isArray()) {
     // not an array
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4552,7 +4558,7 @@ AqlValue Functions::Union(ExpressionContext* expressionContext, transaction::Met
 
     if (!value.isArray()) {
       // not an array
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -4599,7 +4605,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
 
     if (!value.isArray()) {
       // not an array
-      ::registerInvalidArgumentWarning(expressionContext, AFN);
+      registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -4656,7 +4662,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
 
     if (!value.isArray()) {
       // not an array
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -4726,7 +4732,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
 
     if (!value.isArray()) {
       // not an array
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -4776,7 +4782,7 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
 
   // non-numeric input...
   if (!lat1.isNumber() || !lon1.isNumber() || !lat2.isNumber() || !lon2.isNumber()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4792,7 +4798,7 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
   error |= failed;
 
   if (error) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4830,7 +4836,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     res = geo::geojson::parseRegion(mat1.slice(loc1, true), shape1);
   }
   if (res.fail()) {
-    ::registerWarning(expressionContext, "GEO_DISTANCE", res);
+    registerWarning(expressionContext, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4842,7 +4848,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     res = geo::geojson::parseRegion(mat2.slice(loc2, true), shape2);
   }
   if (res.fail()) {
-    ::registerWarning(expressionContext, "GEO_DISTANCE", res);
+    registerWarning(expressionContext, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
   
@@ -4879,7 +4885,7 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValue p2 = extractFunctionParameterValue(parameters, 1);
 
   if (!p1.isObject() || !p2.isObject()) {
-    ::registerWarning(expressionContext, "GEO_EQUALS",
+    registerWarning(expressionContext, "GEO_EQUALS",
                       Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                              "Expecting GeoJSON object"));
     return AqlValue(AqlValueHintNull());
@@ -4893,11 +4899,11 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second);
 
   if (res1.fail()) {
-    ::registerWarning(expressionContext, "GEO_EQUALS", res1);
+    registerWarning(expressionContext, "GEO_EQUALS", res1);
     return AqlValue(AqlValueHintNull());
   }
   if (res2.fail()) {
-    ::registerWarning(expressionContext, "GEO_EQUALS", res2);
+    registerWarning(expressionContext, "GEO_EQUALS", res2);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4918,7 +4924,7 @@ AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
   Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape);
   
   if (res.fail()) {
-    ::registerWarning(expressionContext, "GEO_AREA", res);
+    registerWarning(expressionContext, "GEO_AREA", res);
     return AqlValue(AqlValueHintNull());
   }
   
@@ -4942,7 +4948,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
   AqlValue p3 = extractFunctionParameterValue(parameters, 2);
 
   if (!coords.isArray()) {
-    ::registerWarning(expressionContext, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4950,7 +4956,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
   bool geoJson = false;
   if (p2.isArray()) {
     if (p2.length() < 2) {
-      ::registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
+      registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
       return AqlValue(AqlValueHintNull());
     }
     AqlValueMaterializer materializer(trx);
@@ -4960,7 +4966,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
     VPackSlice lat = geoJson ? arr[1] : arr[0];
     VPackSlice lon = geoJson ? arr[0] : arr[1];
     if (!lat.isNumber() || !lon.isNumber()) {
-      ::registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
+      registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
       return AqlValue(AqlValueHintNull());
     }
     latitude = lat.getNumber<double>();
@@ -4970,11 +4976,11 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
     latitude = p2.toDouble(failed1);
     longitude = p3.toDouble(failed2);
     if (failed1 || failed2) {
-      ::registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
+      registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
       return AqlValue(AqlValueHintNull());
     }
   } else {
-    ::registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
+    registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4982,7 +4988,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
   loop.set_s2debug_override(S2Debug::DISABLE);
   Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
   if (res.fail() || !loop.IsValid()) {
-    ::registerWarning(expressionContext, "IS_IN_POLYGON", res);
+    registerWarning(expressionContext, "IS_IN_POLYGON", res);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5007,7 +5013,7 @@ AqlValue Functions::GeoPoint(ExpressionContext* expressionContext, transaction::
 
   // non-numeric input
   if (!lat1.isNumber() || !lon1.isNumber()) {
-    ::registerWarning(expressionContext, "GEO_POINT",
+    registerWarning(expressionContext, "GEO_POINT",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
@@ -5020,7 +5026,7 @@ AqlValue Functions::GeoPoint(ExpressionContext* expressionContext, transaction::
   error |= failed;
 
   if (error) {
-    ::registerWarning(expressionContext, "GEO_POINT",
+    registerWarning(expressionContext, "GEO_POINT",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
@@ -5052,11 +5058,11 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOINT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "GEO_MULTIPOINT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
   if (geoArray.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOINT",
+    registerWarning(expressionContext, "GEO_MULTIPOINT",
                       Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                              "a MultiPoint needs at least two positions"));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5077,7 +5083,7 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
         if (coord.isNumber()) {
           b.add(VPackValue(coord.getNumber<double>()));
         } else {
-          ::registerWarning(expressionContext, "GEO_MULTIPOINT",
+          registerWarning(expressionContext, "GEO_MULTIPOINT",
                             Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                    "not a numeric value"));
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5085,7 +5091,7 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
       }
       b.close();
     } else {
-      ::registerWarning(expressionContext, "GEO_MULTIPOINT",
+      registerWarning(expressionContext, "GEO_MULTIPOINT",
                         Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5112,7 +5118,7 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "GEO_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5126,7 +5132,7 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
 
   Result res = ::parseGeoPolygon(s, b);
   if (res.fail()) {
-    ::registerWarning(expressionContext, "GEO_POLYGON", res);
+    registerWarning(expressionContext, "GEO_POLYGON", res);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5150,7 +5156,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "GEO_MULTIPOLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
@@ -5171,7 +5177,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   TRI_ASSERT(s.isArray());
   if (s.length() < 2) {
-    ::registerWarning(
+    registerWarning(
       expressionContext, "GEO_MULTIPOLYGON",
       Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
              "a MultiPolygon needs at least two Polygons inside."));
@@ -5185,7 +5191,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   for (auto const& arrayOfPolygons : VPackArrayIterator(s)) {
     if (!arrayOfPolygons.isArray()) {
-      ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
+      registerWarning(expressionContext, "GEO_MULTIPOLYGON", Result(
             TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
             "a MultiPolygon needs at least two Polygons inside."));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5194,7 +5200,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
     for (auto const& v : VPackArrayIterator(arrayOfPolygons)) {
       Result res = ::parseGeoPolygon(v, b);
       if (res.fail()) {
-        ::registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
+        registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     }
@@ -5221,11 +5227,11 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_LINESTRING", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "GEO_LINESTRING", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
   if (geoArray.length() < 2) {
-    ::registerWarning(expressionContext, "GEO_LINESTRING",
+    registerWarning(expressionContext, "GEO_LINESTRING",
                       Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                              "a LineString needs at least two positions"));
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5246,7 +5252,7 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
         if (coord.isNumber()) {
           b.add(VPackValue(coord.getNumber<double>()));
         } else {
-          ::registerWarning(expressionContext, "GEO_LINESTRING",
+          registerWarning(expressionContext, "GEO_LINESTRING",
                             Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                    "not a numeric value"));
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5254,7 +5260,7 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
       }
       b.close();
     } else {
-      ::registerWarning(expressionContext, "GEO_LINESTRING",
+      registerWarning(expressionContext, "GEO_LINESTRING",
                         Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5281,11 +5287,11 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
   AqlValue const& geoArray = extractFunctionParameterValue(parameters, 0);
 
   if (!geoArray.isArray()) {
-    ::registerWarning(expressionContext, "GEO_MULTILINESTRING", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, "GEO_MULTILINESTRING", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
   if (geoArray.length() < 1) {
-    ::registerWarning(
+    registerWarning(
         expressionContext, "GEO_MULTILINESTRING",
         Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                "a MultiLineString needs at least one array of linestrings"));
@@ -5311,7 +5317,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
               if (coord.isNumber()) {
                 b.add(VPackValue(coord.getNumber<double>()));
               } else {
-                ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+                registerWarning(expressionContext, "GEO_MULTILINESTRING",
                                   Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                          "not a numeric value"));
                 return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5319,7 +5325,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
             }
             b.close();
           } else {
-            ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+            registerWarning(expressionContext, "GEO_MULTILINESTRING",
                               Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                      "not an array containing positions"));
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5327,13 +5333,13 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
         }
         b.close();
       } else {
-        ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+        registerWarning(expressionContext, "GEO_MULTILINESTRING",
                           Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                  "not an array containing linestrings"));
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     } else {
-      ::registerWarning(expressionContext, "GEO_MULTILINESTRING",
+      registerWarning(expressionContext, "GEO_MULTILINESTRING",
                         Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                "not an array containing positions"));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
@@ -5354,7 +5360,7 @@ AqlValue Functions::Flatten(ExpressionContext* expressionContext, transaction::M
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5390,7 +5396,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, transaction::Metho
   AqlValue const& values = extractFunctionParameterValue(parameters, 1);
 
   if (!keys.isArray() || !values.isArray() || keys.length() != values.length()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5461,7 +5467,7 @@ AqlValue Functions::JsonParse(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   if (!slice.isString()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5472,7 +5478,7 @@ AqlValue Functions::JsonParse(ExpressionContext* expressionContext,
     std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
     return AqlValue(*builder);
   } catch (...) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 }
@@ -5501,7 +5507,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
   }
 
   if (identifier.empty()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5509,7 +5515,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
       arangodb::basics::StringUtils::split(identifier, "/");
 
   if (parts.size() != 2) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5530,7 +5536,7 @@ AqlValue Functions::Slice(ExpressionContext* expressionContext, transaction::Met
   AqlValue const& baseArray = extractFunctionParameterValue(parameters, 0);
 
   if (!baseArray.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5594,7 +5600,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Met
   AqlValue const& baseArray = extractFunctionParameterValue(parameters, 0);
 
   if (!baseArray.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5619,7 +5625,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Met
   for (size_t k = 1; k < parameters.size(); ++k) {
     AqlValue const& next = extractFunctionParameterValue(parameters, k);
     if (!next.isArray()) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -5683,7 +5689,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
 
   AqlValue const& collectionValue = extractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
   std::string collectionName(collectionValue.slice().copyString());
@@ -5764,7 +5770,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, transaction::M
     idx++;
 
     if (!example.isObject()) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
 
@@ -6057,7 +6063,7 @@ AqlValue Functions::Push(ExpressionContext* expressionContext, transaction::Meth
   }
 
   if (!list.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6095,7 +6101,7 @@ AqlValue Functions::Pop(ExpressionContext* expressionContext, transaction::Metho
   }
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6147,7 +6153,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
   }
 
   if (!l.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6191,7 +6197,7 @@ AqlValue Functions::Unshift(ExpressionContext* expressionContext, transaction::M
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isNull(true) && !list.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6240,7 +6246,7 @@ AqlValue Functions::Shift(ExpressionContext* expressionContext, transaction::Met
   }
 
   if (!list.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6278,7 +6284,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
   }
 
   if (!list.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6339,7 +6345,7 @@ AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
   }
 
   if (!list.isArray() || !values.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6375,7 +6381,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
   }
 
   if (!list.isArray()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6483,7 +6489,7 @@ AqlValue Functions::VarianceSample(ExpressionContext* expressionContext,
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6491,7 +6497,7 @@ AqlValue Functions::VarianceSample(ExpressionContext* expressionContext,
   size_t count = 0;
 
   if (!::variance(trx, list, value, count)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6511,7 +6517,7 @@ AqlValue Functions::VariancePopulation(ExpressionContext* expressionContext,
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6519,7 +6525,7 @@ AqlValue Functions::VariancePopulation(ExpressionContext* expressionContext,
   size_t count = 0;
 
   if (!::variance(trx, list, value, count)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6539,7 +6545,7 @@ AqlValue Functions::StdDevSample(ExpressionContext* expressionContext,
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6547,7 +6553,7 @@ AqlValue Functions::StdDevSample(ExpressionContext* expressionContext,
   size_t count = 0;
 
   if (!::variance(trx, list, value, count)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6567,7 +6573,7 @@ AqlValue Functions::StdDevPopulation(ExpressionContext* expressionContext,
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6575,7 +6581,7 @@ AqlValue Functions::StdDevPopulation(ExpressionContext* expressionContext,
   size_t count = 0;
 
   if (!::variance(trx, list, value, count)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6594,13 +6600,13 @@ AqlValue Functions::Median(ExpressionContext* expressionContext, transaction::Me
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
   std::vector<double> values;
   if (!::sortNumberList(trx, list, values)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6625,20 +6631,20 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
   AqlValue const& border = extractFunctionParameterValue(parameters, 1);
 
   if (!border.isNumber()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
   double p = border.toDouble();
   if (p <= 0.0 || p > 100.0) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6647,7 +6653,7 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
   if (parameters.size() == 3) {
     AqlValue const& methodValue = extractFunctionParameterValue(parameters, 2);
     if (!methodValue.isString()) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
     std::string method = methodValue.slice().copyString();
@@ -6656,14 +6662,14 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
     } else if (method == "rank") {
       useInterpolation = false;
     } else {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
   }
 
   std::vector<double> values;
   if (!::sortNumberList(trx, list, values)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6733,7 +6739,7 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Met
   double step = stepValue.toDouble();
 
   if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6761,7 +6767,7 @@ AqlValue Functions::Position(ExpressionContext* expressionContext, transaction::
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6807,7 +6813,7 @@ AqlValue Functions::Call(ExpressionContext* expressionContext, transaction::Meth
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
   if (!invokeFN.isString()) {
-    ::registerError(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerError(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6833,7 +6839,7 @@ AqlValue Functions::Apply(ExpressionContext* expressionContext, transaction::Met
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
   if (!invokeFN.isString()) {
-    ::registerError(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerError(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -6856,7 +6862,7 @@ AqlValue Functions::Apply(ExpressionContext* expressionContext, transaction::Met
     rawParamArray = extractFunctionParameterValue(parameters, 1);
 
     if (!rawParamArray.isArray()) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
     uint64_t len = rawParamArray.length();
@@ -6891,7 +6897,7 @@ AqlValue Functions::IsSameCollection(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintBool(first == second));
   }
 
-  ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(AqlValueHintNull());
 }
 
@@ -6913,7 +6919,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   uint64_t execNr = arg1.toInt64();
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (!feature) {
-    ::registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
+    registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
     return AqlValue(AqlValueHintEmptyArray());
   }
 
@@ -6922,7 +6928,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   if (ServerState::instance()->isCoordinator()) {
     std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
     if (!c) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
+      registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
     c->collectAQLResults(builder, withId);
@@ -6930,7 +6936,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
     if (!worker) {
-      ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
+      registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
     worker->aqlResult(builder, withId);
@@ -6959,7 +6965,7 @@ AqlValue Functions::Assert(ExpressionContext* expressionContext, transaction::Me
   auto const message = extractFunctionParameterValue(parameters, 1);
 
   if (!message.isString()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
   if (!expr.toBoolean()) {
@@ -6978,7 +6984,7 @@ AqlValue Functions::Warn(ExpressionContext* expressionContext, transaction::Meth
   auto const message = extractFunctionParameterValue(parameters, 1);
 
   if (!message.isString()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -7020,7 +7026,7 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
 
   AqlValue const& aqlFormatString = extractFunctionParameterValue(params, 1);
   if (!aqlFormatString.isString()) {
-    ::registerInvalidArgumentWarning(expressionContext, AFN);
+    registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -7033,7 +7039,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
                               VPackFunctionParameters const& parameters) {
   auto const rev = extractFunctionParameterValue(parameters, 0);
   if (!rev.isString()) {
-    ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
+    registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
     return AqlValue(AqlValueHintNull());
   }
 
@@ -7042,7 +7048,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   uint64_t revInt = arangodb::basics::HybridLogicalClock::decodeTimeStamp(p, l);
  
   if (revInt == 0 || revInt == UINT64_MAX) {
-    ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
+    registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
     return AqlValue(AqlValueHintNull());
   }
 
@@ -7074,6 +7080,6 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
                                    transaction::Methods*,
                                    VPackFunctionParameters const& params) {
-  ::registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
+  registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
