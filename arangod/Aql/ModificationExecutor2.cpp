@@ -209,10 +209,11 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, ModificationStats{}};
     }
-    // Make sure we have a valid row
-    TRI_ASSERT(row.isInitialized());
-
-    _modifier.accumulate(row);
+    if (row.isInitialized()) {
+      // Make sure we have a valid row
+      TRI_ASSERT(row.isInitialized());
+      _modifier.accumulate(row);
+    }
   }
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
   return {state, ModificationStats{}};
