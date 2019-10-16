@@ -179,28 +179,26 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
                                  VPackSlice expected) {
     ASSERT_TRUE(expected.isArray()) << "Invalid input";
     ASSERT_TRUE(result.ok())
-        << "Reason: " << result.errorNumber() << " => " << result.errorMessage()
-        << " rule was on: " << std::boolalpha << ruleEnabled;
+        << "Reason: " << result.errorNumber() << " => " << result.errorMessage();
     auto resultSlice = result.data->slice();
-    ASSERT_TRUE(resultSlice.isArray()) << " rule was on: " << std::boolalpha << ruleEnabled;
-    ASSERT_EQ(expected.length(), resultSlice.length())
-        << " rule was on: " << std::boolalpha << ruleEnabled;
+    ASSERT_TRUE(resultSlice.isArray());
+    ASSERT_EQ(expected.length(), resultSlice.length());
     for (VPackValueLength i = 0; i < expected.length(); ++i) {
       EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
           << "Line " << i << ": " << resultSlice.at(i).toJson()
-          << " (found) != " << expected.at(i).toJson()
-          << " (expected) rule was on: " << std::boolalpha << ruleEnabled;
+          << " (found) != " << expected.at(i).toJson();
     }
   }
 
   void verifyQueryResult(std::string const& query, VPackSlice expected) {
     auto const bindParameters = VPackParser::fromJson("{ }");
-
+    SCOPED_TRACE("Query: " + query);
     // First test original Query (rule-disabled)
     {
       auto queryResult =
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
                                         bindParameters, disableRuleOptions());
+      SCOPED_TRACE("rule was disabled");
       compareQueryResultToSlice(queryResult, false, expected);
     }
 
@@ -209,6 +207,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
       auto queryResult =
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
                                         bindParameters, enableRuleOptions());
+      SCOPED_TRACE("rule was enabled");
       compareQueryResultToSlice(queryResult, true, expected);
     }
   }
