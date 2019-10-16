@@ -80,22 +80,18 @@ INSTANTIATE_TEST_CASE_P(InsertExecutorTestInstance, InsertExecutorTestCounts,
 TEST_P(InsertExecutorTestCount, insert) {
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
                       " INSERT { value: i } INTO testCollection";
-  auto const bindParameters = VPackParser::fromJson("{ }");
   auto const expected = VPackParser::fromJson("[]");
-  auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
 
-  AssertQueryResultToSlice(result, expected->slice());
+  AssertQueryHasResult(server, query, expected->slice());
 
   std::string checkQuery = "FOR i IN testCollection RETURN i.value";
-  auto result2 = arangodb::tests::executeQuery(vocbase, checkQuery, bindParameters);
-
   VPackBuilder builder;
   builder.openArray();
   for (size_t i = 1; i <= GetParam(); i++) {
     builder.add(VPackValue(i));
   }
   builder.close();
-  AssertQueryResultToSlice(result2, builder.slice());
+  AssertQueryHasResult(server, checkQuery, builder.slice());
 }
 
 }  // namespace aql
