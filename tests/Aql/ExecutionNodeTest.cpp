@@ -37,9 +37,7 @@
 
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+namespace arangodb::tests::aql {
 
 class ExecutionNodeTest : public ::testing::Test {
  protected:
@@ -180,6 +178,4 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_outvariable_differ) {
   ASSERT_FALSE(node2->isEqualTo(*node1));
 }
 
-}  // namespace aql
-}  // namespace tests
 }  // namespace arangodb
