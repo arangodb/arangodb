@@ -320,6 +320,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/ShadowAqlItemRow.cpp
   Aql/ShardLocking.cpp
   Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
@@ -686,6 +687,7 @@ set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
 
 set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
   Cluster/ClusterMethods.cpp
+  Cluster/ClusterTtlMethods.cpp
 )
 
 if (USE_MAINTAINER_MODE)
@@ -902,6 +904,10 @@ target_link_libraries(arangoserver
   ${LINENOISE_LIBS} # Is this ever anything but empty?
   ${MSVC_LIBS}
 )
+
+if (MSVC)
+  target_link_libraries(arangoserver Bcrypt.lib)
+endif()
 
 if (USE_ENTERPRISE)
   add_library(arango_rclone STATIC

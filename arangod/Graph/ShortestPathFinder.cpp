@@ -22,10 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathFinder.h"
-#include "Cluster/ClusterComm.h"
+
+#include "Aql/Query.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -37,10 +43,11 @@ ShortestPathFinder::ShortestPathFinder(ShortestPathOptions& options)
 
 void ShortestPathFinder::destroyEngines() {
   if (ServerState::instance()->isCoordinator()) {
+    NetworkFeature const& nf =
+        _options.query()->vocbase().server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
     // We have to clean up the engines in Coordinator Case.
-    auto cc = ClusterComm::instance();
-
-    if (cc != nullptr) {
+    if (pool != nullptr) {
       auto ch = reinterpret_cast<ClusterTraverserCache*>(_options.cache());
       // nullptr only happens on controlled server shutdown
       std::string const url(
@@ -50,22 +57,19 @@ void ShortestPathFinder::destroyEngines() {
 
       for (auto const& it : *ch->engines()) {
         incHttpRequests(1);
-        arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-        std::unordered_map<std::string, std::string> headers;
-        auto res = cc->syncRequest(coordTransactionID, "server:" + it.first,
-                                   RequestType::DELETE_REQ,
-                                   url + arangodb::basics::StringUtils::itoa(it.second),
-                                   "", headers, 30.0);
+        network::Headers headers;
+        auto res =
+            network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                                 url + arangodb::basics::StringUtils::itoa(it.second),
+                                 VPackBuffer<uint8_t>(), network::Timeout(30.0), headers)
+                .get();
 
-        if (res->status != CL_COMM_SENT) {
+        if (res.error != fuerte::Error::NoError) {
           // Note If there was an error on server side we do not have
           // CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
-
-          if (!res->errorMessage.empty()) {
-            message += std::string(": ") + res->errorMessage;
-          }
-
+          message += std::string(": ") +
+                     TRI_errno_string(network::fuerteToArangoErrorCode(res));
           LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
         }
       }

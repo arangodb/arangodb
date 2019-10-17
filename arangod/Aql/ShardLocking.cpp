@@ -21,6 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "ShardLocking.h"
 
 #include "Aql/Collection.h"
@@ -30,8 +32,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
-
-#include <algorithm>
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

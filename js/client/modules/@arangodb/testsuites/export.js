@@ -28,8 +28,7 @@
 const functionsDocumentation = {
   'export': 'export formats tests'
 };
-const optionsDocumentation = [
-];
+const optionsDocumentation = [];
 
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
@@ -100,7 +99,7 @@ function exportTest (options) {
     'overwrite': true,
     'output-directory': tmpPath
   };
-  const results = {failed: 0};
+  let results = {failed: 0};
 
   function shutdown () {
     print(CYAN + 'Shutting down...' + RESET);
@@ -333,7 +332,7 @@ function exportTest (options) {
   results.exportQueryGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportQueryGz.failed = results.exportQuery.status ? 0 : 1;
   try {
-    fs.readGzip(fs.join(tmpPath, 'query.jsonl')).split('\n')
+    fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n')
     .filter(line => line.trim() !== '')
     .forEach(line => JSON.parse(line));
     results.parseQueryResultGz = {
@@ -341,7 +340,6 @@ function exportTest (options) {
       status: true
     };
   } catch (e) {
-    print(e);
     results.failed += 1;
     results.parseQueryResultGz = {
       failed: 1,
@@ -350,6 +348,29 @@ function exportTest (options) {
     };
   }
   args['compress-output'] = 'false';
+  
+  print(CYAN + Date() + ': Export data (csv)' + RESET);
+  args['type'] = 'csv';
+  args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
+  args['fields'] = '_key,value1,value2,value3,value4';
+  results.exportCsv = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportCsv.failed = results.exportJsonl.status ? 0 : 1;
+  try {
+    fs.read(fs.join(tmpPath, 'query.csv'));
+
+    results.parseCsv = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results.parseCsv = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  delete args['fields'];
 
   return shutdown();
 }

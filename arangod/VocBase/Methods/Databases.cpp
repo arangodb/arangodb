@@ -216,7 +216,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, info);
+  CreateDatabaseInfo tmp_info = info;
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(tmp_info));
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
@@ -255,7 +256,8 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
 
   TRI_vocbase_t* vocbase = nullptr;
-  Result createResult = databaseFeature.createDatabase(info, vocbase);
+  auto tmp_info = info;
+  Result createResult = databaseFeature.createDatabase(std::move(tmp_info), vocbase);
   if (createResult.fail()) {
     return createResult;
   }

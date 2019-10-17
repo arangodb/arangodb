@@ -24,6 +24,8 @@
 #define ARANGOD_FUTURES_FUTURE_H 1
 
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include "Basics/debugging.h"
@@ -126,6 +128,28 @@ template <class T>
 using decay_t = typename decay<T>::type;
 
 struct EmptyConstructor {};
+
+// uses a condition_variable to wait
+template<typename T>
+void waitImpl(Future<T>& f) {
+  if (f.isReady()) {
+    return; // short-circuit
+  }
+  
+  std::mutex m;
+  std::condition_variable cv;
+  
+  Promise<T> p;
+  Future<T> ret = p.getFuture();
+  f.thenFinal([&p, &cv, &m](Try<T>&& t) {
+    p.setTry(std::move(t));
+    std::lock_guard<std::mutex> guard(m);
+    cv.notify_one();
+  });
+  std::unique_lock<std::mutex> lock(m);
+  cv.wait(lock, [&ret]{ return ret.isReady(); });
+  f = std::move(ret);
+}
 }  // namespace detail
 
 /// @brief Specifies state of a future as returned by wait_for and wait_until
@@ -176,9 +200,11 @@ class Future {
   }
   Future& operator=(Future const&) = delete;
   Future& operator=(Future<T>&& o) noexcept {
-    detach();
-    std::swap(_state, o._state);
-    TRI_ASSERT(o._state == nullptr);
+    if (this != &o) {
+      detach();
+      std::swap(_state, o._state);
+      TRI_ASSERT(o._state == nullptr);
+    }
     return *this;
   }
 
@@ -189,6 +215,9 @@ class Future {
 
   // True when the result (or exception) is ready
   bool isReady() const { return getState().hasResult(); }
+
+  /// True if the future already has a callback set
+  bool hasCallback() const { return getState().hasCallback(); }
 
   /// True if the result is a value (not an exception)
   bool hasValue() const {
@@ -238,14 +267,6 @@ class Future {
     return std::move(getStateTryChecked());
   }
 
-  /// Returns a reference to the result value if it is ready, with a reference
-  /// category and const-qualification like those of the future.
-  /// Does not `wait()`; see `get()` for that.
-  /*T& value() &;
-  T const& value() const&;
-  T&& value() &&;
-  T const&& value() const&&;*/
-
   /// Returns a reference to the result's Try if it is ready, with a reference
   /// category and const-qualification like those of the future.
   /// Does not `wait()`; see `get()` for that.
@@ -255,10 +276,12 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() const {
-    while (!isReady()) {
+  void wait() {
+    unsigned i = 8;
+    while (!isReady() && i--) {
       std::this_thread::yield();
     }
+    detail::waitImpl(*this);
   }
 
   /// waits for the result, returns if it is not available
@@ -272,15 +295,11 @@ class Future {
   /// specified time point. Future must be valid
   template <class Clock, class Duration>
   FutureStatus wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
-    if (isReady()) {
-      return FutureStatus::Ready;
-    }
-    std::this_thread::yield();
     while (!isReady()) {
+      std::this_thread::yield();
       if (Clock::now() > timeout_time) {
         return FutureStatus::Timeout;
       }
-      std::this_thread::yield();
     }
     return FutureStatus::Ready;
   }
@@ -513,10 +532,13 @@ class Future {
     return state.getTry();
   }
 
-  void detach() {
-    if (_state) {
-      _state->detachFuture();
-      _state = nullptr;
+  void detach() noexcept {
+    detail::SharedState<T>* state = nullptr;
+    std::swap(state, _state);
+    TRI_ASSERT(_state == nullptr);
+    if (state) {
+      // may delete the shared state, so must be last action
+      state->detachFuture();
     }
   }
 

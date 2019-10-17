@@ -51,10 +51,11 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttr
     {arangodb::basics::AttributeName("_from", false)},
     {arangodb::basics::AttributeName("_to", false)}};
 
-MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    arangodb::MMFilesEdgeIndex const* index,
-    TRI_MMFilesEdgeIndexHash_t const* indexImpl, std::unique_ptr<VPackBuilder> keys)
+MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection,
+                                                   transaction::Methods* trx,
+                                                   arangodb::MMFilesEdgeIndex const* index,
+                                                   MMFilesEdgeIndex::ImplType const* indexImpl,
+                                                   std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx),
       _index(indexImpl),
       _context(collection, nullptr, index->fields().size()),
@@ -193,9 +194,9 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
   auto context = [this]() -> std::string { return this->context(); };
 
   _edgesFrom.reset(
-      new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets,
+      new MMFilesEdgeIndex::ImplType(MMFilesEdgeIndexHelper(), indexBuckets,
                                      static_cast<uint32_t>(initialSize), context));
-  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets,
+  _edgesTo.reset(new MMFilesEdgeIndex::ImplType(MMFilesEdgeIndexHelper(), indexBuckets,
                                                 static_cast<uint32_t>(initialSize), context));
 }
 

@@ -107,30 +107,20 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  // TODO refactor into a more general/customizable method
-  //
-  // The below is mostly copied and only lightly modified from
-  // RestReplicationHandler::handleTrampolineCoordinator; however, that method
-  // needs some more specific checks regarding headers and param values, so we
-  // can't just reuse this method there. Maybe we just need to implement some
-  // virtual methods to handle param/header filtering?
-
-  // TODO verify that vst -> http -> vst conversion works correctly
-
-  uint32_t shortId = forwardingTarget();
-  if (shortId == 0) {
+  std::string serverId = forwardingTarget();
+  if (serverId.empty()) {
     // no need to actually forward
     return futures::makeFuture(Result());
   }
 
-  std::string serverId =
-      server().getFeature<ClusterFeature>().clusterInfo().getCoordinatorByShortID(shortId);
-
-  if (serverId.empty()) {
-    // no mapping in agency, try to handle the request here
-    return futures::makeFuture(Result());
+  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
+    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
   }
-
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
 
@@ -158,14 +148,22 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     params.append(StringUtils::urlEncode(i.second));
   }
 
+  network::RequestOptions options;
+  options.timeout = network::Timeout(300);
+  options.contentType = rest::contentTypeToString(_request->contentType());
+  options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
+
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
-  auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  auto* pool = server().getFeature<NetworkFeature>().pool();
+
+  VPackStringRef resPayload = _request->rawPayload();
+  VPackBuffer<uint8_t> payload(resPayload.size());
+  payload.append(resPayload.data(), resPayload.size());
+
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      "/_db/" + StringUtils::urlEncode(dbname) +
                                          _request->requestPath() + params,
-                                     std::move(*payload), network::Timeout(300), headers);
+                                     std::move(payload), std::move(headers), options);
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     int res = network::fuerteToArangoErrorCode(response);
@@ -187,6 +185,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     } else {
       _response->setPayload(std::move(*response.response->stealPayload()), true);
     }
+    
 
     auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
@@ -458,27 +457,29 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
                                 std::string const& message) {
   resetResponse(code);
 
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
-    builder.close();
+  if (_request->requestType() != rest::RequestType::HEAD) {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    try {
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+      builder.add(StaticStrings::Error, VPackValue(true));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+      builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
+      builder.close();
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
+      VPackOptions options(VPackOptions::Defaults);
+      options.escapeUnicode = true;
 
-    TRI_ASSERT(options.escapeUnicode);
-    if (_request != nullptr) {
-      _response->setContentType(_request->contentTypeResponse());
+      TRI_ASSERT(options.escapeUnicode);
+      if (_request != nullptr) {
+        _response->setContentType(_request->contentTypeResponse());
+      }
+      _response->setPayload(std::move(buffer), true, options,
+                            /*resolveExternals*/false);
+    } catch (...) {
+      // exception while generating error
     }
-    _response->setPayload(std::move(buffer), true, options,
-                          /*resolveExternals*/false);
-  } catch (...) {
-    // exception while generating error
   }
 }
 

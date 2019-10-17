@@ -21,28 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Ast.h"
-#include "Aql/AstNode.h"
-#include "Aql/Variable.h"
-#include "Basics/Exceptions.h"
-#include "Basics/HashSet.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/datetime.h"
-#include "Cluster/ServerState.h"
-#include "Index.h"
-#include "IResearch/IResearchCommon.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
+#include <iostream>
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include <iostream>
+
+#include "Index.h"
+
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/datetime.h"
+#include "Cluster/ServerState.h"
+#include "Containers/HashSet.h"
+#include "IResearch/IResearchCommon.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace std::chrono;
@@ -408,12 +410,10 @@ bool Index::validateName(char const* key) {
 namespace {
 bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
-  char c = *p;
 
   // find divider
-
   while (1) {
-    c = *p;
+    char c = *p;
 
     if (c == '\0') {
       return false;
@@ -819,7 +819,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
   }
 
   // test if the reference variable is contained on both sides of the expression
-  arangodb::HashSet<aql::Variable const*> variables;
+  ::arangodb::containers::HashSet<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {

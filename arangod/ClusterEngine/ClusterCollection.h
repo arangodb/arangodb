@@ -111,9 +111,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
 
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
-
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

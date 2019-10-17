@@ -29,7 +29,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -84,10 +83,10 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   }
 
   auto version = arangodb::basics::VelocyPackHelper::readNumericValue<uint32_t>(
-      info, "version", LogicalCollection::currentVersion());
+      info, "version", static_cast<uint32_t>(LogicalCollection::currentVersion()));
 
   // predictable UUID for legacy collections
-  if (version < LogicalCollection::CollectionVersions::VERSION_33 && info.isObject()) {
+  if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
     return arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceName,
                                                               empty);
   }
@@ -132,22 +131,25 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, arangodb::basics::VelocyPackHelper::extractIdValue(info),
+          vocbase, Helper::extractIdValue(info),
           ::readGloballyUniqueId(info),
-          arangodb::basics::VelocyPackHelper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
+          Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
           ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
               ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::readBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
-      _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
-      _internalVersion(0),
+      _version(static_cast<Version>(Helper::readNumericValue<uint32_t>(info, "version",
+                                                    static_cast<uint32_t>(currentVersion())))),
+      _v8CacheVersion(0),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
                                                           TRI_COL_TYPE_UNKNOWN)),
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
+#ifdef USE_ENTERPRISE
       _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
+#endif
       _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
 #ifdef USE_ENTERPRISE
@@ -209,7 +211,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
                                                                                    "'");
       }
 
-      if (_isSmart) {
+      if (isSmart()) {
         if (_type == TRI_COL_TYPE_EDGE) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
@@ -227,8 +229,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     }
   }
 #else
-  // force _isSmart to be false in non-enterprise mode
-  _isSmart = false;
   // whatever we got passed in, in a non-enterprise build, we just ignore
   // any specification for the smartJoinAttribute
   _smartJoinAttribute.clear();
@@ -354,12 +354,6 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Me
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
   return _physical->getAnyIterator(trx);
 }
-
-void LogicalCollection::invokeOnAllElements(transaction::Methods* trx,
-                                            std::function<bool(LocalDocumentId const&)> callback) {
-  _physical->invokeOnAllElements(trx, callback);
-}
-
 // @brief Return the number of documents in this collection
 uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
                                             transaction::CountType type) {
@@ -381,7 +375,7 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
   return static_cast<uint64_t>(documents);
 }
 
-uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
+uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
 
 TRI_col_type_e LogicalCollection::type() const { return _type; }
 
@@ -534,7 +528,7 @@ Result LogicalCollection::rename(std::string&& newName) {
 
   // CHECK if this ordering is okay. Before change the version was increased
   // after swapping in vocbase mapping.
-  increaseInternalVersion();
+  increaseV8Version();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -565,7 +559,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   _status = status;
 
   if (status == TRI_VOC_COL_STATUS_LOADED) {
-    increaseInternalVersion();
+    increaseV8Version();
   }
 }
 
@@ -625,7 +619,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
-  result.add("version", VPackValue(_version));
+  result.add("version", VPackValue(static_cast<uint32_t>(_version)));
 
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
@@ -665,7 +659,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   getIndexesVPack(result, indexFlags, filter);
 
   // Cluster Specific
-  result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
+  result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
 
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
@@ -711,7 +705,7 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
   // We ain't no enterprise
 }
 
-void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
+void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
                                                bool partialUpdate) {
@@ -767,7 +761,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "cannot change replicationFactor for a collection using 'distributeShardsLike'");
-        } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "changing replicationFactor is "
                         "not supported for smart edge collections");
@@ -821,7 +815,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
           return Result(TRI_ERROR_FORBIDDEN,
                         "Cannot change minReplicationFactor, please change " +
                             _sharding->distributeShardsLike());
-        } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing minReplicationFactor "
                         "not supported for smart edge collections");
@@ -1061,75 +1055,4 @@ VPackSlice LogicalCollection::keyOptions() const {
     return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
-}
-
-ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
-  auto ctx = transaction::StandaloneContext::Create(vocbase());
-  SingleCollectionTransaction trx(ctx, *this, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    return ChecksumResult(std::move(res));
-  }
-
-  trx.pinData(id());  // will throw when it fails
-
-  // get last tick
-  LogicalCollection* collection = trx.documentCollection();
-  auto physical = collection->getPhysical();
-  TRI_ASSERT(physical != nullptr);
-  std::string const revisionId = TRI_RidToString(physical->revision(&trx));
-  uint64_t hash = 0;
-
-  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx,
-                                   &collection](LocalDocumentId const& token) {
-    collection->readDocumentWithCallback(&trx, token, [&](LocalDocumentId const&, VPackSlice slice) {
-      uint64_t localHash =
-          transaction::helpers::extractKeyFromDocument(slice).hashString();
-
-      if (withRevisions) {
-        localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
-      }
-
-      if (withData) {
-        // with data
-        uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-        uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
-
-        for (auto const& it : VPackObjectIterator(slice, false)) {
-          // loop over all attributes, but exclude _rev, _id and _key
-          // _id is different for each collection anyway, _rev is covered by
-          // withRevisions, and _key was already handled before
-          VPackValueLength keyLength;
-          char const* key = it.key.getString(keyLength);
-          if (keyLength >= 3 && key[0] == '_' &&
-              ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
-               (keyLength == 4 &&
-                (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
-            // exclude attribute
-            continue;
-          }
-
-          localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
-          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
-        }
-      }
-
-      hash ^= localHash;
-    });
-    return true;
-  });
-
-  trx.finish(res);
-
-  std::string const hashString = std::to_string(hash);
-
-  VPackBuilder b;
-  {
-    VPackObjectBuilder o(&b);
-    b.add("checksum", VPackValue(hashString));
-    b.add("revision", VPackValue(revisionId));
-  }
-
-  return ChecksumResult(std::move(b));
 }

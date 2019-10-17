@@ -24,16 +24,16 @@
 #ifndef ARANGOD_AQL_INDEX_NODE_H
 #define ARANGOD_AQL_INDEX_NODE_H 1
 
+#include <memory>
+#include <vector>
+
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-
-#include <memory>
-#include <vector>
 
 namespace arangodb {
 
@@ -103,7 +103,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<Variable const*> getVariablesSetHere() const final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const final;

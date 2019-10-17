@@ -25,7 +25,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/RegisterPlan.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 

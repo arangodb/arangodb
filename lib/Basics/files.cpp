@@ -1125,7 +1125,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   gzFile gzFd(gzopen(filename,"rb"));
   auto fdGuard = arangodb::scopeGuard([&gzFd](){ if (nullptr != gzFd) gzclose(gzFd); });
-  char * retPtr = nullptr;
+  char* retPtr = nullptr;
 
   if (nullptr != gzFd) {
     TRI_string_buffer_t result;
@@ -1740,7 +1740,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   else {
     std::string pv;
     if (TRI_GETENV("PATH", pv)) {
-      std::vector<std::string> files = basics::StringUtils::split(pv, ':', '\0');
+      std::vector<std::string> files = basics::StringUtils::split(pv, ':');
 
       for (auto const& prefix : files) {
         std::string full;

@@ -152,22 +152,27 @@ void message::requestHeader(RequestHeader const& header,
   // 6 - meta
   {
     VPackObjectBuilder guard(&builder);
-    builder.add(fu_accept_key, VPackValue(to_string(header.acceptType())));
-    builder.add(fu_content_type_key,
-                VPackValue(to_string(header.contentType())));
-    for (auto const& item : header.meta()) {
-      builder.add(item.first, VPackValue(item.second));
+    if (header.acceptType() != ContentType::Custom) {
+      builder.add(fu_accept_key, VPackValue(to_string(header.acceptType())));
+    }
+    if (header.contentType() != ContentType::Custom) {
+      builder.add(fu_content_type_key,
+                  VPackValue(to_string(header.contentType())));
+    }
+    for (auto const& pair : header.meta()) {
+      if (boost::iequals(fu_content_type_key, pair.first) ||
+          boost::iequals(fu_accept_key, pair.first)) {
+        continue;
+      }
+      builder.add(pair.first, VPackValue(pair.second));
     }
   }
-
   builder.close();  // </array>
 }
 
 /// @brief creates a slice containing a VST response-message header.
 void message::responseHeader(ResponseHeader const& header,
                              VPackBuffer<uint8_t>& buffer) {
-  static std::string const message = " for message not set";
-
   VPackBuilder builder(buffer);
   assert(builder.isClosed());
   builder.openArray();
@@ -194,8 +199,11 @@ void message::responseHeader(ResponseHeader const& header,
   builder.add(fu_content_type_key,
               VPackValue(to_string(header.contentType())));
   if (!header.meta().empty()) {
-    for (auto const& item : header.meta()) {
-      builder.add(item.first, VPackValue(item.second));
+    for (auto const& pair : header.meta()) {
+      if (boost::iequals(fu_content_type_key, pair.first)) {
+         continue;
+       }
+      builder.add(pair.first, VPackValue(pair.second));
     }
   }
   builder.close();
@@ -498,7 +506,6 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.at(1).getNumber<int>() ==
          static_cast<int>(MessageType::Response));
   header.responseCode = headerSlice.at(2).getNumber<StatusCode>();
-  // header.contentType(ContentType::VPack); // empty meta
   if (headerSlice.length() >= 4) {
     VPackSlice meta = headerSlice.at(3);
     assert(meta.isObject());
@@ -514,9 +521,9 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
     header.contentType(ContentType::VPack);
   }
   return header;
-};
+}
 
-// Validates if payload consitsts of valid velocypack slices
+// Validates if payload consists of valid velocypack slices
 std::size_t validateAndCount(uint8_t const* const vpStart, std::size_t length) {
   // start points to the begin of a velocypack
   uint8_t const* cursor = vpStart;

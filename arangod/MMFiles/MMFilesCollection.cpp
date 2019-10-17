@@ -1753,7 +1753,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     };
 
     if (nrUsed > 0) {
-      arangodb::basics::BucketPosition position;
+      arangodb::containers::BucketPosition position;
       uint64_t total = 0;
 
       while (true) {
@@ -3163,9 +3163,8 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(MMFilesCollection& 
 }
 
 Result MMFilesCollection::persistLocalDocumentIds() {
-  if (_logicalCollection.version() >= LogicalCollection::CollectionVersions::VERSION_34) {
-    // already good, just continue
-    return Result();
+  if (_logicalCollection.version() >= LogicalCollection::Version::v34) {
+    return Result();  // already good, just continue
   }
 
   WRITE_LOCKER(dataLocker, _dataLock);
@@ -3200,7 +3199,7 @@ Result MMFilesCollection::persistLocalDocumentIds() {
 }
 
 void MMFilesCollection::setCurrentVersion() {
-  _logicalCollection.setVersion(static_cast<LogicalCollection::CollectionVersions>(
+  _logicalCollection.setVersion(static_cast<LogicalCollection::Version>(
       LogicalCollection::currentVersion()));
 
   bool const doSync =
