@@ -81,6 +81,10 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
+  if (_requestInFlight.load(std::memory_order_acquire)) {
+    return {ExecutionState::WAITING, 0};
+  }
+  
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -142,8 +146,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome/",
                               std::move(buffer));
-
-
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -455,26 +457,24 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   
   std::lock_guard<std::mutex> guard(_communicationMutex);
   auto ticket = generateRequestTicket();
-  
-  auto sqs = _query.sharedState();
-  conn->sendRequest(std::move(req),
-                    [=](fuerte::Error err, std::unique_ptr<fuerte::Request>,
-                                          std::unique_ptr<fuerte::Response> res) {
-                      // `this` is only valid as long as sharedState is valid.
-                      // So we must execute this under sharedState's mutex.
-                      sqs->execute([&] {
-                        std::lock_guard<std::mutex> guard(_communicationMutex);
 
-                        if (_lastTicket == ticket) {
-                          _requestInFlight = false;
-                          if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
-                            _lastError = handleErrorResponse(spec, err, res.get());
-                          } else {
-                            _lastResponse = std::move(res);
-                          }
-                        }
-                      });
-                    });
+  auto sqs = _query.sharedState();
+  conn->sendRequest(std::move(req), [=](fuerte::Error err,
+                                        std::unique_ptr<fuerte::Request>,
+                                        std::unique_ptr<fuerte::Response> res) {
+    (void)conn;
+    sqs->executeAndWakeup([&] {
+      std::lock_guard<std::mutex> guard(_communicationMutex);
+      if (_lastTicket == ticket) {
+        _requestInFlight = false;
+        if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+          _lastError = handleErrorResponse(spec, err, res.get());
+        } else {
+          _lastResponse = std::move(res);
+        }
+      }
+    });
+  });
 
   ++_engine->_stats.requests;
 

@@ -282,7 +282,7 @@ void RestTransactionHandler::executeJSTransaction() {
   try {
     {
       WRITE_LOCKER(lock, _lock);
-      if (_canceled) {
+      if (cancel()) {
         generateCanceled();
         return;
       }

@@ -34,13 +34,13 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState() : _numNotifications(0), _valid(true) {}
+  SharedQueryState() : _numWakeups(0), _valid(true) {}
 
   ~SharedQueryState() = default;
 
   void invalidate();
 
-  /// @brief continueAfterPause is to be called on the query object to
+  /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
   /// because it is waiting for network responses. The idea is that a
   /// RemoteBlock that does an asynchronous cluster-internal request can
@@ -53,29 +53,48 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// This will lead to the following: The original request that led to
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
-  void execute();
-  
+  template<typename F>
+  void executeAndWakeup(F&& cb) {
+    std::lock_guard<std::mutex> guard(_mutex);
+    if (!_valid) {
+      return;
+    }
+    
+    std::forward<F>(cb)();
+    
+    unsigned n = _numWakeups++;
+    if (_wakeupCb) {
+      if (n > 0) {
+        return;
+      }
+      executeWakeupCallback();
+    } else {
+      _cv.notify_one();
+    }
+  }
+
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
-  void waitForAsyncResponse();
+  void waitForAsyncWakeup();
 
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
-  void setContinueHandler(std::function<void()> const& handler);
+  void setWakeupHandler(std::function<bool()> const& cb);
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  bool executeContinueCallback();
+  bool executeWakeupCallback();
 
  private:
+  
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
   /// @brief a callback function which is used to implement continueAfterPause.
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
-  std::function<void()> _continueCallback;
+  std::function<bool()> _wakeupCb;
 
-  signed _numNotifications;
+  uint32_t _numWakeups;
 
   bool _valid;
 };

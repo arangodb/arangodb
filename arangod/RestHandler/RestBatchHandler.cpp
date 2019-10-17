@@ -79,7 +79,8 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
   if (partResponse == nullptr) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not create a response for batch part request");
-    continueHandlerExecution();
+    bool didWork = wakeupHandler();
+    TRI_ASSERT(didWork);
     return;
   }
 
@@ -123,10 +124,12 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
       httpResponse->setHeaderNC(StaticStrings::Errors,
                                 StringUtils::itoa(static_cast<uint64_t>(_errors)));
     }
-    continueHandlerExecution();
+    bool didWork = wakeupHandler();
+    TRI_ASSERT(didWork);
   } else {
     if (!executeNextHandler()) {
-      continueHandlerExecution();
+      bool didWork = wakeupHandler();
+      TRI_ASSERT(didWork);
     }
   }
 }

@@ -58,7 +58,7 @@ struct QueryResultV8 : public QueryResult {
     data.Clear();
   }
   
-  v8::Handle<v8::Array> data;
+  v8::Local<v8::Array> data;
 };
 }  // namespace aql
 }  // namespace arangodb

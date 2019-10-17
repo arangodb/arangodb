@@ -770,19 +770,19 @@ QueryResult Query::executeSync(QueryRegistry* registry) {
       TRI_ASSERT(state == aql::ExecutionState::DONE);
       return queryResult;
     }
-    ss->waitForAsyncResponse();
+    ss->waitForAsyncWakeup();
   }
 }
 
 // execute an AQL query: may only be called with an active V8 handle scope
-ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
-                                QueryResultV8& queryResult) {
+QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                              << "Query::executeV8"
                                              << " this: " << (uintptr_t)this;
   TRI_ASSERT(registry != nullptr);
 
   std::shared_ptr<SharedQueryState> ss = sharedState();
+  aql::QueryResultV8 queryResult;
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -822,7 +822,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           queryResult.data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
-          return ExecutionState::DONE;
+          return queryResult;
         }
         // if no permissions, fall through to regular querying
       }
@@ -850,7 +850,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
     auto builder = std::make_shared<VPackBuilder>(&options);
-
+    
     try {
       std::shared_ptr<SharedQueryState> ss = sharedState();
 
@@ -864,7 +864,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
         auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
         state = res.first;
         while (state == ExecutionState::WAITING) {
-          ss->waitForAsyncResponse();
+          ss->waitForAsyncWakeup();
           res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
         }
@@ -930,7 +930,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
     while (state == ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      ss->waitForAsyncWakeup();
       state = finalize(queryResult);
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -957,7 +957,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
                                  QueryExecutionState::toStringWithPrefix(_state)));
   }
 
-  return ExecutionState::DONE;
+  return queryResult;
 }
 
 ExecutionState Query::finalize(QueryResult& result) {
@@ -1393,7 +1393,7 @@ void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) 
 
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      ss->waitForAsyncWakeup();
       ss->invalidate();
       state = cleanupPlanAndEngine(errorCode, statsBuilder);
     }

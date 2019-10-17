@@ -32,50 +32,61 @@ using namespace arangodb::aql;
 
 void SharedQueryState::invalidate() {
   std::lock_guard<std::mutex> guard(_mutex);
+  _numWakeups += 1;
+  _wakeupCb = nullptr;
   _valid = false;
-  _numNotifications += 1;
-  _continueCallback = nullptr;
   // guard.unlock();
-  _cv.notify_one();
+  _cv.notify_all();
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
-void SharedQueryState::waitForAsyncResponse() {
+void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
-  _cv.wait(guard, [&] { return _numNotifications > 0; });
-  TRI_ASSERT(_numNotifications > 0);
-  _numNotifications--;
+  _cv.wait(guard, [&] { return _numWakeups > 0; });
+  TRI_ASSERT(_numWakeups > 0);
+  _numWakeups--;
 }
 
 /// @brief setter for the continue handler:
 ///        We can either have a handler or a callback
-void SharedQueryState::setContinueHandler(std::function<void()> const& handler) {
+void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
-  _continueCallback = handler;
+  _wakeupCb = cb;
 }
 
 /// execute the _continueCallback. must hold _mutex,
-bool SharedQueryState::executeContinueCallback() {
+bool SharedQueryState::executeWakeupCallback() {
   if (!_valid) {
     return false;
   }
   
-  TRI_ASSERT(_continueCallback);
+  TRI_ASSERT(_wakeupCb);
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
     return false;
   }
+  TRI_ASSERT(_numWakeups > 0);
   
-  // do NOT use scheduler->post(), can have high latency that
-  //  then backs up libcurl callbacks to other objects
   return scheduler->queue(RequestLane::CLIENT_AQL,
                           [self = shared_from_this(),
-                           cb = _continueCallback] () mutable {
-    cb();
-    std::lock_guard<std::mutex> guard(self->_mutex);
-    if (--(self->_numNotifications) > 0) {
-      self->executeContinueCallback();
+                           cb = _wakeupCb] () mutable {
+    
+    bool cntn = true;
+    while(cntn) {
+      cntn = false;
+      try {
+        cntn = cb();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("e988a", WARN, Logger::QUERIES)
+        << "Exception when continuing rest handler: " << ex.what();
+      } catch (...) {
+         LOG_TOPIC("e988b", WARN, Logger::QUERIES)
+         << "Exception when continuing rest handler";
+       }
+      std::lock_guard<std::mutex> guard(self->_mutex);
+      TRI_ASSERT(self->_numWakeups > 0);
+      cntn = (--(self->_numWakeups) > 0);
     }
   });
 }

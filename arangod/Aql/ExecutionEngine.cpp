@@ -538,7 +538,7 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
       while (state == ExecutionState::WAITING) {
         std::tie(state, res) = shutdown(errorCode);
         if (state == ExecutionState::WAITING) {
-          sharedState->waitForAsyncResponse();
+          sharedState->waitForAsyncWakeup();
         }
       }
     }
