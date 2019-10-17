@@ -61,7 +61,9 @@ class RemoveExecutorTest : public ::testing::Test {
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
 
     std::string createQuery =
-        "FOR i IN 1..1000 INSERT { value: i, sortvalue: i } IN " + collectionName;
+        "FOR i IN 1..1000 INSERT { _key: TO_STRING(i), value: i, sortvalue: i "
+        "} IN " +
+        collectionName;
     AssertQueryHasResult(vocbase, createQuery, VPackSlice::emptyArraySlice());
   }
 };
@@ -89,6 +91,46 @@ TEST_F(RemoveExecutorTest, remove_all_with_return) {
 
   std::string query =
       std::string("FOR d IN " + collectionName + " REMOVE d IN " +
+                  collectionName + " RETURN OLD");
+  AssertQueryHasResult(vocbase, query, allDocs.data->slice());
+}
+
+TEST_F(RemoveExecutorTest, remove_every_third_without_return) {
+  std::string query = std::string("FOR d IN " + collectionName +
+                                  " FILTER d.value % 3 == 0 REMOVE d IN " + collectionName);
+
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  std::string checkQuery =
+      "FOR d IN " + collectionName + " FILTER d.value % 3 == 0 RETURN d.value";
+  AssertQueryHasResult(vocbase, checkQuery, VPackSlice::emptyArraySlice());
+  // TODO: check that everything else is still ther?
+}
+
+TEST_F(RemoveExecutorTest, remove_every_third_with_return) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+  std::string allQuery = std::string("FOR d IN " + collectionName +
+                                     " FILTER d.value % 3 == 0 RETURN d");
+
+  auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
+  ASSERT_TRUE(allDocs.ok());
+
+  std::string query = std::string("FOR d IN " + collectionName +
+                                  " FILTER d.value % 3 == 0 REMOVE d IN " +
+                                  collectionName + " RETURN OLD");
+  AssertQueryHasResult(vocbase, query, allDocs.data->slice());
+}
+
+TEST_F(RemoveExecutorTest, remove_with_key) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+  std::string allQuery = std::string("FOR d IN " + collectionName +
+                                     " FILTER d.value <= 100 RETURN d");
+
+  auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
+  ASSERT_TRUE(allDocs.ok());
+
+  std::string query =
+      std::string("FOR i IN 1..100 REMOVE { _key: TO_STRING(i) } IN " +
                   collectionName + " RETURN OLD");
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 }
