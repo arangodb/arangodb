@@ -132,6 +132,11 @@ std::string const RestAdminClusterHandler::NodeStatistics = "nodeStatistics";
 std::string const RestAdminClusterHandler::Statistics = "statistics";
 std::string const RestAdminClusterHandler::ShardDistribution = "shardDistribution";
 std::string const RestAdminClusterHandler::CollectionShardDistribution = "collectionShardDistribution";
+std::string const RestAdminClusterHandler::CleanoutServer = "cleanoutServer";
+std::string const RestAdminClusterHandler::ResignLeadership = "resignLeadership";
+std::string const RestAdminClusterHandler::MoveShard = "moveShard";
+std::string const RestAdminClusterHandler::QueryJobStatus = "queryJobStatus";
+
 
 RestStatus RestAdminClusterHandler::execute() {
 
@@ -164,6 +169,14 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleShardDistribution();
     } else if (command == CollectionShardDistribution) {
       return handleCollectionShardDistribution();
+    } else if (command == CleanoutServer) {
+      return handleCleanoutServer();
+    } else if (command == ResignLeadership) {
+      return handleResignLeadership();
+    } else if (command == MoveShard) {
+      return handleMoveShard();
+    } else if (command == QueryJobStatus) {
+      return handleQueryJobStatus();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -173,6 +186,97 @@ RestStatus RestAdminClusterHandler::execute() {
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                 "expecting URL /_api/replication/<command>");
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleCleanoutServer() {
+  return handleSingleServerJob("cleanOutServer");
+}
+
+RestStatus RestAdminClusterHandler::handleResignLeadership() {
+  return handleSingleServerJob("resignLeadership");
+}
+
+RestStatus RestAdminClusterHandler::handleMoveShard() {
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  std::string jobId = request()->value("id");
+  if (jobId.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "missing id parameter");
+    return RestStatus::DONE;
+  }
+
+  auto targetPath = arangodb::cluster::paths::root()->arango()->target();
+  std::vector<std::string> paths = {
+    targetPath->pending()->str() + "/" + jobId,
+    targetPath->failed()->str() + "/" + jobId,
+    targetPath->finished()->str() + "/" + jobId,
+    targetPath->toDo()->str() + "/" + jobId,
+  };
+
+  return waitForFuture(AsyncAgencyComm().sendTransaction(20s, AgencyReadTransaction{std::move(paths)})
+    .thenValue([](AsyncAgencyCommResult &&result) {
+
+    }));
+}
+
+RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job) {
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  if (body.isObject()) {
+    VPackSlice server = body.get("server");
+    if (server.isString()) {
+      std::string serverId = server.copyString();
+      // translate serverId
+      return handleCreateSingleServerJob(job, serverId);
+    }
+  }
+
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with key `server`");
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string const& job, std::string const& server) {
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
   return RestStatus::DONE;
 }
 
@@ -221,7 +325,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
           generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
       }
     }
-  }).thenError<VPackException>([this, self](VPackException const& e) {
+    }).thenError<VPackException>([this, self](VPackException const& e) {
       generateError(Result{e.errorCode(), e.what()});
     }).thenError<std::exception>([this, self](std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());

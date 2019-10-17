@@ -47,6 +47,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const Statistics;
   static std::string const ShardDistribution;
   static std::string const CollectionShardDistribution;
+  static std::string const CleanoutServer;
+  static std::string const ResignLeadership;
+  static std::string const MoveShard;
+  static std::string const QueryJobStatus;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -66,9 +70,14 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleShardDistribution();
   RestStatus handleCollectionShardDistribution();
 
+  RestStatus handleCleanoutServer();
+  RestStatus handleResignLeadership();
+  RestStatus handleMoveShard();
+  RestStatus handleQueryJobStatus();
 
 private:
-  RestStatus handleSingleServerJob(std::string const& job, std::string const& server);
+  RestStatus handleSingleServerJob(std::string const& job);
+  RestStatus handleCreateSingleServerJob(std::string const& job, std::string const& server);
 
 
   typedef std::chrono::steady_clock clock;
