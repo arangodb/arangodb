@@ -79,20 +79,3 @@ bool SharedQueryState::executeContinueCallback() {
     }
   });
 }
-
-void SharedQueryState::execute() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  if (!_valid) {
-    return;
-  }
-  
-  unsigned n = _numNotifications++;
-  if (_continueCallback) {
-    if (n > 0) {
-      return;
-    }
-    executeContinueCallback();
-  } else {
-    _cv.notify_one();
-  }
-}

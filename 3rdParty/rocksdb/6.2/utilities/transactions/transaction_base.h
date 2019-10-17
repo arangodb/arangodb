@@ -292,6 +292,9 @@ class TransactionBaseImpl : public Transaction {
   uint64_t num_deletes_ = 0;
   uint64_t num_merges_ = 0;
 
+#if defined(__APPLE__) && _LIBCPP_STD_VER > 14
+public:
+#endif
   struct SavePoint {
     std::shared_ptr<const Snapshot> snapshot_;
     bool snapshot_needed_;
@@ -313,7 +316,9 @@ class TransactionBaseImpl : public Transaction {
           num_deletes_(num_deletes),
           num_merges_(num_merges) {}
   };
-
+#if defined(__APPLE__) && _LIBCPP_STD_VER > 14
+protected:
+#endif
   // Records writes pending in this transaction
   WriteBatchWithIndex write_batch_;
 

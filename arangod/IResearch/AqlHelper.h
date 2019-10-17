@@ -253,7 +253,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   ScopedAqlValue(ScopedAqlValue&& rhs) noexcept
-      : _value(rhs._value), _node(rhs._node), _type(rhs._type) {
+      : _value(rhs._value), _node(rhs._node), _type(rhs._type), _executed(rhs._executed) {
     rhs._node = &INVALID_NODE;
     rhs._type = SCOPED_VALUE_TYPE_INVALID;
     rhs._destroy = false;

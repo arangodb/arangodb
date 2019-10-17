@@ -137,6 +137,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
   IResearch/IResearchFeature-test.cpp
+  IResearch/IResearchFilterArrayIn-test.cpp
+  IResearch/IResearchFilterArrayInterval-test.cpp
   IResearch/IResearchFilterBoolean-test.cpp
   IResearch/IResearchFilterCompare-test.cpp
   IResearch/IResearchFilterFunction-test.cpp
@@ -263,12 +265,11 @@ target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
 
-
-if(MSVC)
+if(MSVC AND FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN)
+if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
 endif()
@@ -280,6 +281,11 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
+
+# older macos has no uncaught exceptions
+if (DARWIN)
+  target_compile_definitions(arangodbtests PUBLIC CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS)
+endif()
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES

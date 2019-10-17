@@ -55,9 +55,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// continues its execution where it left off.
   void execute();
   
-  /// @brief execute
-  void doneExecutingCallback();
-
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
   void waitForAsyncResponse();
 

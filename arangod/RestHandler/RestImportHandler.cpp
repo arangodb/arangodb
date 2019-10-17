@@ -940,7 +940,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           VPackSlice resultSlice = opResult.slice();
           if (resultSlice.isArray()) {
             size_t pos = 0;
-            for (auto const& it : VPackArrayIterator(resultSlice)) {
+            for (VPackSlice it : VPackArrayIterator(resultSlice)) {
               if (!it.hasKey(StaticStrings::Error) ||
                   !it.get(StaticStrings::Error).getBool()) {
                 ++result._numUpdated;
