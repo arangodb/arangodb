@@ -105,7 +105,7 @@ fur{
         EU{"Union europeane"}
         FI{"Finlandie"}
         FJ{"Fizi"}
-        FK{"Isulis Falkland"}
+        FK{"Isulis Falkland (Isulis Malvinas)"}
         FM{"Micronesie"}
         FO{"Isulis Faroe"}
         FR{"France"}
@@ -289,8 +289,7 @@ fur{
     Countries%variant{
         CD{"Congo (RDC)"}
         CG{"Congo (Republiche)"}
-        FK{"Isulis Falkland (Isulis Malvinas)"}
         MK{"Macedonie (FYROM)"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

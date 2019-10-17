@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -6,7 +6,7 @@
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  charstr.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -15,12 +15,36 @@
 */
 
 #include "unicode/utypes.h"
+#include "unicode/putil.h"
 #include "charstr.h"
 #include "cmemory.h"
 #include "cstring.h"
 #include "uinvchar.h"
 
 U_NAMESPACE_BEGIN
+
+CharString::CharString(CharString&& src) U_NOEXCEPT
+        : buffer(std::move(src.buffer)), len(src.len) {
+    src.len = 0;  // not strictly necessary because we make no guarantees on the source string
+}
+
+CharString& CharString::operator=(CharString&& src) U_NOEXCEPT {
+    buffer = std::move(src.buffer);
+    len = src.len;
+    src.len = 0;  // not strictly necessary because we make no guarantees on the source string
+    return *this;
+}
+
+char *CharString::cloneData(UErrorCode &errorCode) const {
+    if (U_FAILURE(errorCode)) { return nullptr; }
+    char *p = static_cast<char *>(uprv_malloc(len + 1));
+    if (p == nullptr) {
+        errorCode = U_MEMORY_ALLOCATION_ERROR;
+        return nullptr;
+    }
+    uprv_memcpy(p, buffer.getAlias(), len + 1);
+    return p;
+}
 
 CharString &CharString::copyFrom(const CharString &s, UErrorCode &errorCode) {
     if(U_SUCCESS(errorCode) && this!=&s && ensureCapacity(s.len+1, 0, errorCode)) {
@@ -37,6 +61,18 @@ int32_t CharString::lastIndexOf(char c) const {
         }
     }
     return -1;
+}
+
+bool CharString::contains(StringPiece s) const {
+    if (s.empty()) { return false; }
+    const char *p = buffer.getAlias();
+    int32_t lastStart = len - s.length();
+    for (int32_t i = 0; i <= lastStart; ++i) {
+        if (uprv_memcmp(p + i, s.data(), s.length()) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 CharString &CharString::truncate(int32_t newLength) {
@@ -66,7 +102,7 @@ CharString &CharString::append(const char *s, int32_t sLength, UErrorCode &error
         return *this;
     }
     if(sLength<0) {
-        sLength=uprv_strlen(s);
+        sLength= static_cast<int32_t>(uprv_strlen(s));
     }
     if(sLength>0) {
         if(s==(buffer.getAlias()+len)) {
@@ -113,15 +149,21 @@ char *CharString::getAppendBuffer(int32_t minCapacity,
 }
 
 CharString &CharString::appendInvariantChars(const UnicodeString &s, UErrorCode &errorCode) {
+    return appendInvariantChars(s.getBuffer(), s.length(), errorCode);
+}
+
+CharString &CharString::appendInvariantChars(const UChar* uchars, int32_t ucharsLen, UErrorCode &errorCode) {
     if(U_FAILURE(errorCode)) {
         return *this;
     }
-    if (!uprv_isInvariantUnicodeString(s)) {
+    if (!uprv_isInvariantUString(uchars, ucharsLen)) {
         errorCode = U_INVARIANT_CONVERSION_ERROR;
         return *this;
     }
-    if(ensureCapacity(len+s.length()+1, 0, errorCode)) {
-        len+=s.extract(0, 0x7fffffff, buffer.getAlias()+len, buffer.getCapacity()-len, US_INV);
+    if(ensureCapacity(len+ucharsLen+1, 0, errorCode)) {
+        u_UCharsToChars(uchars, buffer.getAlias()+len, ucharsLen);
+        len += ucharsLen;
+        buffer[len] = 0;
     }
     return *this;
 }

@@ -194,10 +194,6 @@ hr{
             "BRR",
             "brazilski cruzeiro",
         }
-        BRZ{
-            "BRZ",
-            "BRZ",
-        }
         BSD{
             "BSD",
             "bahamski dolar",
@@ -261,6 +257,10 @@ hr{
         CLP{
             "CLP",
             "čileanski pezo",
+        }
+        CNH{
+            "CNH",
+            "kineski juan (offshore)",
         }
         CNX{
             "CNX",
@@ -634,10 +634,6 @@ hr{
             "MAF",
             "marokanski franak",
         }
-        MCF{
-            "MCF",
-            "MCF",
-        }
         MDC{
             "MDC",
             "moldavski kupon",
@@ -680,6 +676,10 @@ hr{
         }
         MRO{
             "MRO",
+            "mauritanijska ouguja (1973. – 2017.)",
+        }
+        MRU{
+            "MRU",
             "mauritanijska ouguja",
         }
         MTL{
@@ -780,11 +780,11 @@ hr{
         }
         PEN{
             "PEN",
-            "peruanski novi sol",
+            "peruanski sol",
         }
         PES{
             "PES",
-            "peruanski sol",
+            "peruanski sol (1863–1965)",
         }
         PGK{
             "PGK",
@@ -912,6 +912,10 @@ hr{
         }
         STD{
             "STD",
+            "dobra Svetog Tome i Principa (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra Svetog Tome i Principa",
         }
         SUR{
@@ -1032,6 +1036,10 @@ hr{
         }
         VEF{
             "VEF",
+            "venezuelanski bolivar (2008. – 2018.)",
+        }
+        VES{
+            "VES",
             "venezuelanski bolivar",
         }
         VND{
@@ -1196,105 +1204,10 @@ hr{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        ESP{"₧"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
-        RUB{"₽"}
-        RUR{"р."}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1304,7 +1217,7 @@ hr{
         }
         AED{
             few{"UAE dirhama"}
-            one{"UAE diram"}
+            one{"UAE dirham"}
             other{"UAE dirhama"}
         }
         AFA{
@@ -1616,6 +1529,11 @@ hr{
             few{"čileanska peza"}
             one{"čileanski pezo"}
             other{"čileanskih peza"}
+        }
+        CNH{
+            few{"kineska juana (offshore)"}
+            one{"kineski juan (offshore)"}
+            other{"kineskih juana (offshore)"}
         }
         CNX{
             few{"kineska narodna dolara"}
@@ -2133,6 +2051,11 @@ hr{
             other{"makaoških pataka"}
         }
         MRO{
+            few{"mauritanijske ouguje (1973. – 2017.)"}
+            one{"mauritanijska ouguja (1973. – 2017.)"}
+            other{"mauritanijskih ouguja (1973. – 2017.)"}
+        }
+        MRU{
             few{"mauritanijske ouguje"}
             one{"mauritanijska ouguja"}
             other{"mauritanijskih ouguja"}
@@ -2258,14 +2181,14 @@ hr{
             other{"peruanskih inti"}
         }
         PEN{
-            few{"peruanska nova sola"}
-            one{"peruanski novi sol"}
-            other{"peruanskih novih sola"}
-        }
-        PES{
             few{"peruanska sola"}
             one{"peruanski sol"}
             other{"peruanskih sola"}
+        }
+        PES{
+            few{"peruanska sola (1863–1965)"}
+            one{"peruanski sol (1863–1965)"}
+            other{"peruanskih sola (1863–1965)"}
         }
         PGK{
             few{"kine Papue Nove Gvineje"}
@@ -2423,6 +2346,11 @@ hr{
             other{"južnosudanskih funti"}
         }
         STD{
+            few{"dobre Svetog Tome i Principa (1977–2017)"}
+            one{"dobra Svetog Tome i Principa (1977–2017)"}
+            other{"dobri Svetog Tome i Principa (1977–2017)"}
+        }
+        STN{
             few{"dobre Svetog Tome i Principa"}
             one{"dobra Svetog Tome i Principa"}
             other{"dobri Svetog Tome i Principa"}
@@ -2573,6 +2501,11 @@ hr{
             other{"venezuelanskih bolivara (1871.–2008.)"}
         }
         VEF{
+            few{"venezuelanska bolivara (2008. – 2018.)"}
+            one{"venezuelanski bolivar (2008. – 2018.)"}
+            other{"venezuelanskih bolivara (2008. – 2018.)"}
+        }
+        VES{
             few{"venezuelanska bolivara"}
             one{"venezuelanski bolivar"}
             other{"venezuelanskih bolivara"}
@@ -2783,5 +2716,5 @@ hr{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

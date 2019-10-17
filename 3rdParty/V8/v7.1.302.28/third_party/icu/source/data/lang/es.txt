@@ -46,6 +46,7 @@ es{
         arc{"arameo"}
         arn{"mapuche"}
         arp{"arapaho"}
+        ars{"árabe najdí"}
         arw{"arahuaco"}
         as{"asamés"}
         asa{"asu"}
@@ -169,6 +170,7 @@ es{
         fr{"francés"}
         fr_CA{"francés canadiense"}
         fr_CH{"francés suizo"}
+        frc{"francés cajún"}
         frm{"francés medio"}
         fro{"francés antiguo"}
         frr{"frisón septentrional"}
@@ -295,6 +297,7 @@ es{
         ln{"lingala"}
         lo{"lao"}
         lol{"mongo"}
+        lou{"criollo de Luisiana"}
         loz{"lozi"}
         lrc{"lorí septentrional"}
         lt{"lituano"}
@@ -369,7 +372,7 @@ es{
         non{"nórdico antiguo"}
         nqo{"n’ko"}
         nr{"ndebele meridional"}
-        nso{"sesotho septentrional"}
+        nso{"sotho septentrional"}
         nus{"nuer"}
         nv{"navajo"}
         nwc{"newari clásico"}
@@ -463,7 +466,7 @@ es{
         srr{"serer"}
         ss{"suazi"}
         ssy{"saho"}
-        st{"sesotho meridional"}
+        st{"sotho meridional"}
         su{"sundanés"}
         suk{"sukuma"}
         sus{"susu"}
@@ -574,7 +577,7 @@ es{
         Brai{"braille"}
         Bugi{"buginés"}
         Buhd{"buhid"}
-        Cans{"símbolos aborígenes canadienses unificados"}
+        Cans{"silabarios aborígenes canadienses unificados"}
         Cari{"cario"}
         Cham{"cham"}
         Cher{"cherokee"}
@@ -706,6 +709,7 @@ es{
             indian{"calendario nacional hindú"}
             islamic{"calendario islámico"}
             islamic-civil{"calendario civil islámico"}
+            islamic-umalqura{"calendario islámico umalqura"}
             iso8601{"calendario ISO-8601"}
             japanese{"calendario japonés"}
             persian{"calendario persa"}
@@ -749,8 +753,10 @@ es{
         }
         collation{
             big5han{"orden del chino tradicional - Big5"}
+            compat{"orden de clasificación anterior, para compatibilidad"}
             dictionary{"orden de clasificación del diccionario"}
             ducet{"orden predeterminado de Unicode"}
+            eor{"reglas de ordenación europeas"}
             gb2312han{"orden del chino simplificado - GB2312"}
             phonebook{"orden de listín telefónico"}
             phonetic{"Orden de clasificación fonético"}
@@ -764,8 +770,8 @@ es{
             unihan{"orden de clasificación de trazos radicales"}
         }
         d0{
-            fwidth{"Ancho completo"}
-            hwidth{"Ancho medio"}
+            fwidth{"ancho completo"}
+            hwidth{"ancho medio"}
             npinyin{"Numérico"}
         }
         hc{
@@ -780,8 +786,8 @@ es{
             strict{"estilo de salto de línea estricto"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"transliteración USBGN"}
+            ungegn{"transliteración UNGEGN"}
         }
         ms{
             metric{"sistema métrico"}
@@ -845,7 +851,7 @@ es{
         VALENCIA{"Valenciano"}
         WADEGILE{"Romanización Wade-Giles"}
     }
-    Version{"2.1.28.80"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — Todo"}
         category-list{"{0}: {1}"}

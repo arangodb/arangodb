@@ -8,6 +8,7 @@ nmg{
         " ǒ ö ō ɔ {ɔ\u0301} {ɔ\u0302} {ɔ\u030C} {ɔ\u0304} p r ŕ s t u ú û ǔ ū v w y]"
     }
     ExemplarCharactersIndex{"[A B Ɓ C D E Ǝ Ɛ F G H I J K L M N Ŋ O Ɔ P R S T U V W Y]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -21,7 +22,7 @@ nmg{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

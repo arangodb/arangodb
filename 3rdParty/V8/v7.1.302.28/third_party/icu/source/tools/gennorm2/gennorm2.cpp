@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  gennorm2.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -22,8 +22,10 @@
 #include "unicode/utypes.h"
 #include "n2builder.h"
 
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <string.h>
 #include "unicode/errorcode.h"
 #include "unicode/localpointer.h"
@@ -44,10 +46,8 @@ U_NAMESPACE_BEGIN
 
 UBool beVerbose=FALSE, haveCopyright=TRUE;
 
-U_DEFINE_LOCAL_OPEN_POINTER(LocalStdioFilePointer, FILE, fclose);
-
 #if !UCONFIG_NO_NORMALIZATION
-void parseFile(FILE *f, Normalizer2DataBuilder &builder);
+void parseFile(std::ifstream &f, Normalizer2DataBuilder &builder);
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -61,6 +61,7 @@ enum {
     OUTPUT_FILENAME,
     UNICODE_VERSION,
     WRITE_C_SOURCE,
+    WRITE_COMBINED_DATA,
     OPT_FAST
 };
 
@@ -73,6 +74,7 @@ static UOption options[]={
     UOPTION_DEF("output", 'o', UOPT_REQUIRES_ARG),
     UOPTION_DEF("unicode", 'u', UOPT_REQUIRES_ARG),
     UOPTION_DEF("csource", '\1', UOPT_NO_ARG),
+    UOPTION_DEF("combined", '\1', UOPT_NO_ARG),
     UOPTION_DEF("fast", '\1', UOPT_NO_ARG)
 };
 
@@ -96,17 +98,22 @@ main(int argc, char* argv[]) {
     if( argc<2 ||
         options[HELP_H].doesOccur || options[HELP_QUESTION_MARK].doesOccur
     ) {
-        /*
-         * Broken into chunks because the C89 standard says the minimum
-         * required supported string length is 509 bytes.
-         */
         fprintf(stderr,
             "Usage: %s [-options] infiles+ -o outputfilename\n"
             "\n"
             "Reads the infiles with normalization data and\n"
-            "creates a binary or C source file (outputfilename) with the data.\n"
+            "creates a binary file, or a C source file (--csource), with the data,\n"
+            "or writes a data file with the combined data (--combined).\n"
+            "See http://userguide.icu-project.org/transforms/normalization#TOC-Data-File-Syntax\n"
+            "\n"
+            "Alternate usage: %s [-options] a.txt b.txt minus p.txt q.txt -o outputfilename\n"
+            "\n"
+            "Computes the difference of (a, b) minus (p, q) and writes the diff data\n"
+            "in input-file syntax to the outputfilename.\n"
+            "It is then possible to build (p, q, diff) to get the same data as (a, b).\n"
+            "(Useful for computing minimal incremental mapping data files.)\n"
             "\n",
-            argv[0]);
+            argv[0], argv[0]);
         fprintf(stderr,
             "Options:\n"
             "\t-h or -? or --help  this usage text\n"
@@ -116,7 +123,9 @@ main(int argc, char* argv[]) {
         fprintf(stderr,
             "\t-s or --sourcedir   source directory, followed by the path\n"
             "\t-o or --output      output filename\n"
-            "\t      --csource     writes a C source file with initializers\n");
+            "\t      --csource     writes a C source file with initializers\n"
+            "\t      --combined    writes a .txt file (input-file syntax) with the\n"
+            "\t                    combined data from all of the input files\n");
         fprintf(stderr,
             "\t      --fast        optimize the data for fast normalization,\n"
             "\t                    which might increase its size  (Writes fully decomposed\n"
@@ -144,7 +153,10 @@ main(int argc, char* argv[]) {
 
 #else
 
-    LocalPointer<Normalizer2DataBuilder> builder(new Normalizer2DataBuilder(errorCode), errorCode);
+    LocalPointer<Normalizer2DataBuilder> b1(new Normalizer2DataBuilder(errorCode), errorCode);
+    LocalPointer<Normalizer2DataBuilder> b2;
+    LocalPointer<Normalizer2DataBuilder> diff;
+    Normalizer2DataBuilder *builder = b1.getAlias();
     errorCode.assertSuccess();
 
     if(options[UNICODE_VERSION].doesOccur) {
@@ -166,20 +178,46 @@ main(int argc, char* argv[]) {
         pathLength=filename.length();
     }
 
+    bool doMinus = false;
     for(int i=1; i<argc; ++i) {
         printf("gennorm2: processing %s\n", argv[i]);
+        if(strcmp(argv[i], "minus") == 0) {
+            if(doMinus) {
+                fprintf(stderr, "gennorm2 error: only one 'minus' can be specified\n");
+                exit(U_ILLEGAL_ARGUMENT_ERROR);
+            }
+            // Data from previous input files has been collected in b1.
+            // Collect data from further input files in b2.
+            b2.adoptInsteadAndCheckErrorCode(new Normalizer2DataBuilder(errorCode), errorCode);
+            diff.adoptInsteadAndCheckErrorCode(new Normalizer2DataBuilder(errorCode), errorCode);
+            errorCode.assertSuccess();
+            builder = b2.getAlias();
+            if(options[UNICODE_VERSION].doesOccur) {
+                builder->setUnicodeVersion(options[UNICODE_VERSION].value);
+            }
+            if(options[OPT_FAST].doesOccur) {
+                builder->setOptimization(Normalizer2DataBuilder::OPTIMIZE_FAST);
+            }
+            doMinus = true;
+            continue;
+        }
         filename.append(argv[i], errorCode);
-        LocalStdioFilePointer f(fopen(filename.data(), "r"));
-        if(f==NULL) {
+        std::ifstream f(filename.data());
+        if(f.fail()) {
             fprintf(stderr, "gennorm2 error: unable to open %s\n", filename.data());
             exit(U_FILE_ACCESS_ERROR);
         }
         builder->setOverrideHandling(Normalizer2DataBuilder::OVERRIDE_PREVIOUS);
-        parseFile(f.getAlias(), *builder);
+        parseFile(f, *builder);
         filename.truncate(pathLength);
     }
 
-    if(options[WRITE_C_SOURCE].doesOccur) {
+    if(doMinus) {
+        Normalizer2DataBuilder::computeDiff(*b1, *b2, *diff);
+        diff->writeDataFile(options[OUTPUT_FILENAME].value, /* writeRemoved= */ true);
+    } else if(options[WRITE_COMBINED_DATA].doesOccur) {
+        builder->writeDataFile(options[OUTPUT_FILENAME].value, /* writeRemoved= */ false);
+    } else if(options[WRITE_C_SOURCE].doesOccur) {
         builder->writeCSourceFile(options[OUTPUT_FILENAME].value);
     } else {
         builder->writeBinaryFile(options[OUTPUT_FILENAME].value);
@@ -192,11 +230,19 @@ main(int argc, char* argv[]) {
 
 #if !UCONFIG_NO_NORMALIZATION
 
-void parseFile(FILE *f, Normalizer2DataBuilder &builder) {
+void parseFile(std::ifstream &f, Normalizer2DataBuilder &builder) {
     IcuToolErrorCode errorCode("gennorm2/parseFile()");
-    char line[300];
+    std::string lineString;
     uint32_t startCP, endCP;
-    while(NULL!=fgets(line, (int)sizeof(line), f)) {
+    while(std::getline(f, lineString)) {
+        if (lineString.empty()) {
+            continue;  // skip empty lines.
+        }
+#if (U_CPLUSPLUS_VERSION >= 11)
+        char *line = &lineString.front();
+#else
+        char *line = &lineString.at(0);
+#endif
         char *comment=(char *)strchr(line, '#');
         if(comment!=NULL) {
             *comment=0;
@@ -219,6 +265,11 @@ void parseFile(FILE *f, Normalizer2DataBuilder &builder) {
         if(errorCode.isFailure()) {
             fprintf(stderr, "gennorm2 error: parsing code point range from %s\n", line);
             exit(errorCode.reset());
+        }
+        if (endCP >= 0xd800 && startCP <= 0xdfff) {
+                fprintf(stderr, "gennorm2 error: value or mapping for surrogate code points: %s\n",
+                        line);
+                exit(U_ILLEGAL_ARGUMENT_ERROR);
         }
         delimiter=u_skipWhitespace(delimiter);
         if(*delimiter==':') {

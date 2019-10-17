@@ -163,7 +163,7 @@ yi{
         Cyrl{"ציריליש"}
         Deva{"דעוואַנאַגאַרי"}
         Grek{"גריכיש"}
-        Hebr{"Hebr"}
+        Hebr{"העברעיש"}
         Latn{"גַלחיש"}
     }
     Types{
@@ -171,7 +171,7 @@ yi{
             gregorian{"גרעגארישער קאַלענדאַר"}
         }
     }
-    Version{"2.1.27.97"}
+    Version{"2.1.47.82"}
     codePatterns{
         language{"שפראַך: {0}"}
         script{"שריפֿט: {0}"}

@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  locavailable.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -35,7 +35,7 @@ U_NAMESPACE_BEGIN
 
 static icu::Locale*  availableLocaleList = NULL;
 static int32_t  availableLocaleListCount;
-static icu::UInitOnce gInitOnce = U_INITONCE_INITIALIZER;
+static icu::UInitOnce gInitOnceLocale = U_INITONCE_INITIALIZER;
 
 U_NAMESPACE_END
 
@@ -50,7 +50,7 @@ static UBool U_CALLCONV locale_available_cleanup(void)
         availableLocaleList = NULL;
     }
     availableLocaleListCount = 0;
-    gInitOnce.reset();
+    gInitOnceLocale.reset();
 
     return TRUE;
 }
@@ -81,7 +81,7 @@ void U_CALLCONV locale_available_init() {
 const Locale* U_EXPORT2
 Locale::getAvailableLocales(int32_t& count)
 {
-    umtx_initOnce(gInitOnce, &locale_available_init);
+    umtx_initOnce(gInitOnceLocale, &locale_available_init);
     count = availableLocaleListCount;
     return availableLocaleList;
 }
@@ -125,8 +125,6 @@ static UBool U_CALLCONV uloc_cleanup(void) {
 //   via the initOnce mechanism.
 
 static void U_CALLCONV loadInstalledLocales() {
-    UResourceBundle *indexLocale = NULL;
-    UResourceBundle installed;
     UErrorCode status = U_ZERO_ERROR;
     int32_t i = 0;
     int32_t localeCount;
@@ -135,25 +133,25 @@ static void U_CALLCONV loadInstalledLocales() {
     U_ASSERT(_installedLocalesCount == 0);
 
     _installedLocalesCount = 0;
-    ures_initStackObject(&installed);
-    indexLocale = ures_openDirect(NULL, _kIndexLocaleName, &status);
-    ures_getByKey(indexLocale, _kIndexTag, &installed, &status);
-    
+
+    icu::LocalUResourceBundlePointer indexLocale(ures_openDirect(NULL, _kIndexLocaleName, &status));
+    icu::StackUResourceBundle installed;
+
+    ures_getByKey(indexLocale.getAlias(), _kIndexTag, installed.getAlias(), &status);
+
     if(U_SUCCESS(status)) {
-        localeCount = ures_getSize(&installed);
+        localeCount = ures_getSize(installed.getAlias());
         _installedLocales = (char **) uprv_malloc(sizeof(char*) * (localeCount+1));
         if (_installedLocales != NULL) {
-            ures_resetIterator(&installed);
-            while(ures_hasNext(&installed)) {
-                ures_getNextString(&installed, NULL, (const char **)&_installedLocales[i++], &status);
+            ures_resetIterator(installed.getAlias());
+            while(ures_hasNext(installed.getAlias())) {
+                ures_getNextString(installed.getAlias(), NULL, (const char **)&_installedLocales[i++], &status);
             }
             _installedLocales[i] = NULL;
             _installedLocalesCount = localeCount;
             ucln_common_registerCleanup(UCLN_COMMON_ULOC, uloc_cleanup);
         }
     }
-    ures_close(&installed);
-    ures_close(indexLocale);
 }
 
 static void _load_installedLocales()

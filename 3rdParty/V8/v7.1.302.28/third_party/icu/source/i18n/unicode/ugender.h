@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *****************************************************************************************
@@ -49,11 +49,11 @@ enum UGender {
  */
 typedef enum UGender UGender;
 
+struct UGenderInfo;
 /**
  * Opaque UGenderInfo object for use in C programs.
  * @stable ICU 50
  */
-struct UGenderInfo;
 typedef struct UGenderInfo UGenderInfo;
 
 /**
@@ -77,7 +77,7 @@ ugender_getInstance(const char *locale, UErrorCode *status);
  * @stable ICU 50
  */
 U_STABLE UGender U_EXPORT2
-ugender_getListGender(const UGenderInfo* genderinfo, const UGender *genders, int32_t size, UErrorCode *status);
+ugender_getListGender(const UGenderInfo* genderInfo, const UGender *genders, int32_t size, UErrorCode *status);
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
 

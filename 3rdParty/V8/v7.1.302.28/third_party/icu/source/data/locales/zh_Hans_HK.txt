@@ -31,7 +31,7 @@ zh_Hans_HK{
             }
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -86,9 +86,9 @@ zh_Hans_HK{
                 "z ah:mm:ss",
                 "ah:mm:ss",
                 "ah:mm",
-                "Gy年MM月d日EEEE",
-                "Gy年MM月d日",
-                "Gy年MM月d日",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
                 "d/M/yyGGGGG",
                 "{1} {0}",
                 "{1} {0}",
@@ -113,9 +113,6 @@ zh_Hans_HK{
                 }
                 Hv{
                     H{"vHH–HH"}
-                }
-                MMM{
-                    M{"M月至M月"}
                 }
                 fallback{"{0}–{1}"}
                 h{

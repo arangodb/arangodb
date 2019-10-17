@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hant{
     %%Parent{"root"}
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比讓"}
@@ -167,7 +167,7 @@ zh_Hant{
             ec{"安克拉治"}
         }
         "America:Anguilla"{
-            ec{"安吉拉"}
+            ec{"安奎拉"}
         }
         "America:Antigua"{
             ec{"安地卡"}
@@ -197,7 +197,7 @@ zh_Hant{
             ec{"烏斯懷亞"}
         }
         "America:Aruba"{
-            ec{"阿路巴"}
+            ec{"荷屬阿魯巴"}
         }
         "America:Asuncion"{
             ec{"亞松森"}
@@ -293,7 +293,7 @@ zh_Hant{
             ec{"底特律"}
         }
         "America:Dominica"{
-            ec{"多明尼加"}
+            ec{"多米尼克"}
         }
         "America:Edmonton"{
             ec{"艾德蒙吞"}
@@ -508,6 +508,9 @@ zh_Hant{
         "America:Puerto_Rico"{
             ec{"波多黎各"}
         }
+        "America:Punta_Arenas"{
+            ec{"蓬塔阿雷納斯"}
+        }
         "America:Rainy_River"{
             ec{"雨河鎮"}
         }
@@ -658,6 +661,9 @@ zh_Hant{
         "Asia:Ashgabat"{
             ec{"阿什哈巴特"}
         }
+        "Asia:Atyrau"{
+            ec{"阿特勞"}
+        }
         "Asia:Baghdad"{
             ec{"巴格達"}
         }
@@ -708,6 +714,9 @@ zh_Hant{
         }
         "Asia:Dushanbe"{
             ec{"杜桑貝"}
+        }
+        "Asia:Famagusta"{
+            ec{"法馬古斯塔"}
         }
         "Asia:Gaza"{
             ec{"加薩"}
@@ -802,6 +811,9 @@ zh_Hant{
         "Asia:Qatar"{
             ec{"卡達"}
         }
+        "Asia:Qostanay"{
+            ec{"庫斯塔奈"}
+        }
         "Asia:Qyzylorda"{
             ec{"克孜勒奧爾達"}
         }
@@ -834,12 +846,6 @@ zh_Hant{
         }
         "Asia:Taipei"{
             ec{"台北"}
-            ld{"台北夏令時間"}
-            lg{"台北時間"}
-            ls{"台北標準時間"}
-            sd{"台北"}
-            sg{"台北"}
-            ss{"台北"}
         }
         "Asia:Tashkent"{
             ec{"塔什干"}
@@ -949,6 +955,10 @@ zh_Hant{
         "Australia:Sydney"{
             ec{"雪梨"}
         }
+        "Etc:UTC"{
+            ls{"世界標準時間"}
+            ss{"UTC"}
+        }
         "Etc:Unknown"{
             ec{"未知城市"}
         }
@@ -986,7 +996,7 @@ zh_Hant{
             ec{"布辛根"}
         }
         "Europe:Chisinau"{
-            ec{"奇西瑙"}
+            ec{"基西紐"}
         }
         "Europe:Copenhagen"{
             ec{"哥本哈根"}
@@ -1080,6 +1090,9 @@ zh_Hant{
         "Europe:Sarajevo"{
             ec{"塞拉耶佛"}
         }
+        "Europe:Saratov"{
+            ec{"薩拉托夫"}
+        }
         "Europe:Simferopol"{
             ec{"辛非洛浦"}
         }
@@ -1132,7 +1145,7 @@ zh_Hant{
             ec{"蘇黎世"}
         }
         "Indian:Antananarivo"{
-            ec{"安塔那那利佛"}
+            ec{"安塔那那利弗"}
         }
         "Indian:Chagos"{
             ec{"查戈斯"}
@@ -1307,6 +1320,9 @@ zh_Hant{
             ld{"阿拉斯加夏令時間"}
             lg{"阿拉斯加時間"}
             ls{"阿拉斯加標準時間"}
+            sd{"AKDT"}
+            sg{"AKT"}
+            ss{"AKST"}
         }
         "meta:Almaty"{
             ld{"阿拉木圖夏令時間"}
@@ -1322,21 +1338,33 @@ zh_Hant{
             ld{"中部夏令時間"}
             lg{"中部時間"}
             ls{"中部標準時間"}
+            sd{"CDT"}
+            sg{"CT"}
+            ss{"CST"}
         }
         "meta:America_Eastern"{
             ld{"東部夏令時間"}
             lg{"東部時間"}
             ls{"東部標準時間"}
+            sd{"EDT"}
+            sg{"ET"}
+            ss{"EST"}
         }
         "meta:America_Mountain"{
             ld{"山區夏令時間"}
             lg{"山區時間"}
             ls{"山區標準時間"}
+            sd{"MDT"}
+            sg{"MT"}
+            ss{"MST"}
         }
         "meta:America_Pacific"{
             ld{"太平洋夏令時間"}
             lg{"太平洋時間"}
             ls{"太平洋標準時間"}
+            sd{"PDT"}
+            sg{"PT"}
+            ss{"PST"}
         }
         "meta:Anadyr"{
             ld{"阿那底河夏令時間"}
@@ -1382,6 +1410,9 @@ zh_Hant{
             ld{"大西洋夏令時間"}
             lg{"大西洋時間"}
             ls{"大西洋標準時間"}
+            sd{"ADT"}
+            sg{"AT"}
+            ss{"AST"}
         }
         "meta:Australia_Central"{
             ld{"澳洲中部夏令時間"}
@@ -1537,6 +1568,7 @@ zh_Hant{
         }
         "meta:GMT"{
             ls{"格林威治標準時間"}
+            ss{"GMT"}
         }
         "meta:Galapagos"{
             ls{"加拉巴哥群島時間"}
@@ -1575,6 +1607,9 @@ zh_Hant{
             ld{"夏威夷-阿留申夏令時間"}
             lg{"夏威夷-阿留申時間"}
             ls{"夏威夷-阿留申標準時間"}
+            sd{"HADT"}
+            sg{"HAT"}
+            ss{"HAST"}
         }
         "meta:Hong_Kong"{
             ld{"香港夏令時間"}
@@ -1793,9 +1828,9 @@ zh_Hant{
             ls{"鳳凰群島時間"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"聖皮埃爾和密克隆群島夏令時間"}
-            lg{"聖皮埃爾和密克隆群島時間"}
-            ls{"聖皮埃爾和密克隆群島標準時間"}
+            ld{"聖皮埃與密克隆群島夏令時間"}
+            lg{"聖皮埃與密克隆群島時間"}
+            ls{"聖皮埃與密克隆群島標準時間"}
         }
         "meta:Pitcairn"{
             ls{"皮特肯時間"}

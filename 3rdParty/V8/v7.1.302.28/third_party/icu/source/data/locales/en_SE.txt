@@ -2,18 +2,20 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en_SE{
     %%Parent{"en_150"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
                 percentFormat{"#,##0 %"}
             }
             symbols{
+                decimal{","}
                 exponential{"×10^"}
                 group{" "}
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{

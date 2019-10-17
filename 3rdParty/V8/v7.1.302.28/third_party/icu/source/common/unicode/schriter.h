@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ******************************************************************************
@@ -69,7 +69,7 @@ public:
    * Create an iterator over the UnicodeString referred to by "textStr".
    * The UnicodeString object is copied.
    * The iteration range begins with the code unit specified by
-   * "textBegin" and ends with the code unit BEFORE the code unit specfied
+   * "textBegin" and ends with the code unit BEFORE the code unit specified
    * by "textEnd".  The starting position is specified by "textPos".  If
    * "textBegin" and "textEnd" don't form a valid range on "text" (i.e.,
    * textBegin >= textEnd or either is negative or greater than text.size()),
@@ -175,7 +175,7 @@ protected:
    * @param newTextLength The length of the String
    * @stable ICU 2.0
    */
-  void setText(const UChar* newText, int32_t newTextLength);
+  void setText(const char16_t* newText, int32_t newTextLength);
 
   /**
    * Copy of the iterated string object.

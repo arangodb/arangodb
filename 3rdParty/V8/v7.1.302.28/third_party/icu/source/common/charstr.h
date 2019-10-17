@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 **********************************************************************
@@ -56,6 +56,18 @@ public:
     ~CharString() {}
 
     /**
+     * Move constructor; might leave src in an undefined state.
+     * This string will have the same contents and state that the source string had.
+     */
+    CharString(CharString &&src) U_NOEXCEPT;
+    /**
+     * Move assignment operator; might leave src in an undefined state.
+     * This string will have the same contents and state that the source string had.
+     * The behavior is undefined if *this and src are the same object.
+     */
+    CharString &operator=(CharString &&src) U_NOEXCEPT;
+
+    /**
      * Replaces this string's contents with the other string's contents.
      * CharString does not support the standard copy constructor nor
      * the assignment operator, to make copies explicit and to
@@ -70,9 +82,23 @@ public:
 
     const char *data() const { return buffer.getAlias(); }
     char *data() { return buffer.getAlias(); }
+    /**
+     * Allocates length()+1 chars and copies the NUL-terminated data().
+     * The caller must uprv_free() the result.
+     */
+    char *cloneData(UErrorCode &errorCode) const;
+
+    bool operator==(StringPiece other) const {
+        return len == other.length() && (len == 0 || uprv_memcmp(data(), other.data(), len) == 0);
+    }
+    bool operator!=(StringPiece other) const {
+        return !operator==(other);
+    }
 
     /** @return last index of c, or -1 if c is not in this string */
     int32_t lastIndexOf(char c) const;
+
+    bool contains(StringPiece s) const;
 
     CharString &clear() { len=0; buffer[0]=0; return *this; }
     CharString &truncate(int32_t newLength);
@@ -111,6 +137,7 @@ public:
                           UErrorCode &errorCode);
 
     CharString &appendInvariantChars(const UnicodeString &s, UErrorCode &errorCode);
+    CharString &appendInvariantChars(const UChar* uchars, int32_t ucharsLen, UErrorCode& errorCode);
 
     /**
      * Appends a filename/path part, e.g., a directory name.

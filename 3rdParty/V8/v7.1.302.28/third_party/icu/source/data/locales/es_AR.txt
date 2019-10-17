@@ -13,9 +13,8 @@ es_AR{
                 group{"."}
             }
         }
-        minimumGroupingDigits{"2"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             availableFormats{
@@ -25,12 +24,12 @@ es_AR{
         }
         gregorian{
             AmPmMarkers{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             availableFormats{
                 GyMMMEd{"E, d 'de' MMM 'de' y G"}
@@ -78,17 +77,17 @@ es_AR{
                 }
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
+                        am{"a. m."}
                         noon{"m."}
-                        pm{"p. m."}
+                        pm{"p. m."}
                     }
                     wide{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                 }
             }
@@ -168,6 +167,24 @@ es_AR{
                     y{"dd/MM/y – dd/MM/y"}
                 }
             }
+            quarters{
+                format{
+                    wide{
+                        "1.er trimestre",
+                        "2.º trimestre",
+                        "3.er trimestre",
+                        "4.º trimestre",
+                    }
+                }
+                stand-alone{
+                    wide{
+                        "1.er trimestre",
+                        "2.º trimestre",
+                        "3.er trimestre",
+                        "4.º trimestre",
+                    }
+                }
+            }
         }
     }
     fields{
@@ -196,7 +213,7 @@ es_AR{
             }
         }
         dayperiod{
-            dn{"a. m./p. m."}
+            dn{"a. m./p. m."}
         }
         second-narrow{
             dn{"seg."}
@@ -223,9 +240,6 @@ es_AR{
                     other{"hace {0} seg."}
                 }
             }
-        }
-        zone{
-            dn{"zona horaria"}
         }
     }
 }

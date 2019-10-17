@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ce{
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Абиджан"}
@@ -303,6 +303,9 @@ ce{
         "America:El_Salvador"{
             ec{"Сальвадор"}
         }
+        "America:Fort_Nelson"{
+            ec{"Форт Нельсон"}
+        }
         "America:Fortaleza"{
             ec{"Форталеза"}
         }
@@ -504,6 +507,9 @@ ce{
         "America:Puerto_Rico"{
             ec{"Пуэрто-Рико"}
         }
+        "America:Punta_Arenas"{
+            ec{"Пунта-Аренас"}
+        }
         "America:Rainy_River"{
             ec{"Рейни-Ривер"}
         }
@@ -654,6 +660,9 @@ ce{
         "Asia:Ashgabat"{
             ec{"Ашхабад"}
         }
+        "Asia:Atyrau"{
+            ec{"Атирау"}
+        }
         "Asia:Baghdad"{
             ec{"БагӀдад"}
         }
@@ -665,6 +674,9 @@ ce{
         }
         "Asia:Bangkok"{
             ec{"Бангкок"}
+        }
+        "Asia:Barnaul"{
+            ec{"Барнаул"}
         }
         "Asia:Beirut"{
             ec{"Бейрут"}
@@ -701,6 +713,9 @@ ce{
         }
         "Asia:Dushanbe"{
             ec{"Душанбе"}
+        }
+        "Asia:Famagusta"{
+            ec{"Фамагуста"}
         }
         "Asia:Gaza"{
             ec{"Газа"}
@@ -843,6 +858,9 @@ ce{
         "Asia:Tokyo"{
             ec{"Токио"}
         }
+        "Asia:Tomsk"{
+            ec{"Томск"}
+        }
         "Asia:Ulaanbaatar"{
             ec{"Улан-Батор"}
         }
@@ -942,6 +960,9 @@ ce{
         "Europe:Andorra"{
             ec{"Андорра"}
         }
+        "Europe:Astrakhan"{
+            ec{"Аштаркхне"}
+        }
         "Europe:Athens"{
             ec{"Афина"}
         }
@@ -999,6 +1020,9 @@ ce{
         }
         "Europe:Kiev"{
             ec{"Киев"}
+        }
+        "Europe:Kirov"{
+            ec{"Киров"}
         }
         "Europe:Lisbon"{
             ec{"Лиссабон"}
@@ -1058,6 +1082,9 @@ ce{
         "Europe:Sarajevo"{
             ec{"Сараево"}
         }
+        "Europe:Saratov"{
+            ec{"Саратов"}
+        }
         "Europe:Simferopol"{
             ec{"Симферополь"}
         }
@@ -1075,6 +1102,9 @@ ce{
         }
         "Europe:Tirane"{
             ec{"Тирана"}
+        }
+        "Europe:Ulyanovsk"{
+            ec{"Ульяновск"}
         }
         "Europe:Uzhgorod"{
             ec{"Ужгород"}
@@ -1257,7 +1287,7 @@ ce{
             ec{"Уоллис"}
         }
         "meta:Afghanistan"{
-            ls{"ОвхӀан-пачхьалкх"}
+            ls{"ОвхӀан"}
         }
         "meta:Africa_Central"{
             ls{"Юккъера Африка"}
@@ -1309,9 +1339,9 @@ ce{
             ls{"стандартан хан Апиа, Самоа"}
         }
         "meta:Arabian"{
-            ld{"СаӀудийн Арави, аьхкенан хан"}
-            lg{"СаӀудийн Арави"}
-            ls{"СаӀудийн Арави, стандартан хан"}
+            ld{"СаӀудийн Ӏаьрбийчоьнан, аьхкенан хан"}
+            lg{"СаӀудийн Ӏаьрбийчоь"}
+            ls{"СаӀудийн Ӏаьрбийчоьнан стандартан хан"}
         }
         "meta:Argentina"{
             ld{"Аргентина, аьхкенан хан"}
@@ -1401,9 +1431,9 @@ ce{
             ls{"Чили, стандартан хан"}
         }
         "meta:China"{
-            ld{"Китай, аьхкенан хан"}
-            lg{"Китай"}
-            ls{"Китай, стандартан хан"}
+            ld{"Цийчоьнан, аьхкенан хан"}
+            lg{"Цийчоь"}
+            ls{"Цийчоьнан, стандартан хан"}
         }
         "meta:Choibalsan"{
             ld{"Чойбалсан, аьхкенан хан"}
@@ -1531,7 +1561,7 @@ ce{
             ls{"Ховд, стандартан хан"}
         }
         "meta:India"{
-            ls{"Инди"}
+            ls{"ХӀинди"}
         }
         "meta:Indian_Ocean"{
             ls{"Индин океан"}
@@ -1564,9 +1594,9 @@ ce{
             ls{"Израиль, стандартан хан"}
         }
         "meta:Japan"{
-            ld{"Япони, аьхкенан хан"}
-            lg{"Япони"}
-            ls{"Япони, стандартан хан"}
+            ld{"Япон, аьхкенан хан"}
+            lg{"Япон"}
+            ls{"Япон, стандартан хан"}
         }
         "meta:Kazakhstan_Eastern"{
             ls{"Малхбален Казахстан"}
@@ -1730,6 +1760,9 @@ ce{
         }
         "meta:Ponape"{
             ls{"Понапе, гӀ-наш"}
+        }
+        "meta:Pyongyang"{
+            ls{"Пхеньян"}
         }
         "meta:Reunion"{
             ls{"Реюньон"}

@@ -31,6 +31,7 @@ en{
         151{"Eastern Europe"}
         154{"Northern Europe"}
         155{"Western Europe"}
+        202{"Sub-Saharan Africa"}
         419{"Latin America"}
         AC{"Ascension Island"}
         AD{"Andorra"}
@@ -72,9 +73,9 @@ en{
         BZ{"Belize"}
         CA{"Canada"}
         CC{"Cocos (Keeling) Islands"}
-        CD{"Congo (DRC)"}
+        CD{"Congo - Kinshasa"}
         CF{"Central African Republic"}
-        CG{"Congo (Republic)"}
+        CG{"Congo - Brazzaville"}
         CH{"Switzerland"}
         CI{"Côte d’Ivoire"}
         CK{"Cook Islands"}
@@ -89,7 +90,7 @@ en{
         CW{"Curaçao"}
         CX{"Christmas Island"}
         CY{"Cyprus"}
-        CZ{"Czech Republic"}
+        CZ{"Czechia"}
         DE{"Germany"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -182,11 +183,11 @@ en{
         MF{"St. Martin"}
         MG{"Madagascar"}
         MH{"Marshall Islands"}
-        MK{"Macedonia (FYROM)"}
+        MK{"North Macedonia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
-        MO{"Macau"}
+        MO{"Macao"}
         MP{"Northern Mariana Islands"}
         MQ{"Martinique"}
         MR{"Mauritania"}
@@ -252,7 +253,7 @@ en{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
-        SZ{"Swaziland"}
+        SZ{"Eswatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks & Caicos Islands"}
         TD{"Chad"}
@@ -286,6 +287,8 @@ en{
         VU{"Vanuatu"}
         WF{"Wallis & Futuna"}
         WS{"Samoa"}
+        XA{"Pseudo-Accents"}
+        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -305,10 +308,9 @@ en{
         CD{"Congo (DRC)"}
         CG{"Congo (Republic)"}
         CI{"Ivory Coast"}
-        CZ{"Czechia"}
-        FK{"Falkland Islands (Islas Malvinas)"}
-        MK{"Macedonia (FYROM)"}
+        CZ{"Czech Republic"}
+        SZ{"Swaziland"}
         TL{"East Timor"}
     }
-    Version{"2.1.30.50"}
+    Version{"2.1.48.65"}
 }

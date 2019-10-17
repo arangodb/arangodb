@@ -9,6 +9,7 @@ ewo{
         "ù û ǔ v w y z]"
     }
     ExemplarCharactersIndex{"[A B D E Ə Ɛ F G H I K L M N Ŋ O Ɔ P R S T U V W Y Z]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -22,7 +23,7 @@ ewo{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

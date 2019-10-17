@@ -19,10 +19,10 @@ ml{
         "[അ ആ ഇ ഈ ഉ ഊ ഋ എ ഏ ഐ ഒ ഓ ഔ ക ഖ ഗ ഘ ങ ച ഛ ജ ഝ ഞ ട ഠ ഡ ഢ ണ ത ഥ ദ ധ ന പ ഫ ബ ഭ മ"
         " യ ര ല വ ശ ഷ സ ഹ ള ഴ റ]"
     }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0൦ 1൧ 2൨ 3൩ 4൪ 5൫ 6൬ 7൭ 8൮ 9൯]"}
     ExemplarCharactersPunctuation{"[\\- , ; \\: ! ? . ' ‘ ’ \u0022 “ ” ( ) \\[ \\] \\{ \\}]"}
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -190,18 +190,22 @@ ml{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
-                list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"{0}-ാമത്തെ വലത്തേക്ക് തിരിയുക."}
+            }
+            plural{
+                one{"{0} വ്യക്തി"}
+                other{"{0} വ്യക്തികൾ"}
             }
         }
         minimumGroupingDigits{"1"}
@@ -213,24 +217,244 @@ ml{
                 scientificFormat{"#E0"}
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
             }
         }
         native{"mlym"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     calendar{
+        coptic{
+            eras{
+                abbreviated{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+                narrow{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+                wide{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
+                    narrow{
+                        "ടൗ.",
+                        "ബാ.",
+                        "ഹാ.",
+                        "കി.",
+                        "ടോ.",
+                        "ആം.",
+                        "ബാ.",
+                        "ബാ.",
+                        "ബാ.",
+                        "പ.",
+                        "ഈ.",
+                        "മെ.",
+                        "ന.",
+                    }
+                    wide{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
+                    narrow{
+                        "ടൗ.",
+                        "ബാ.",
+                        "ഹാ.",
+                        "കി.",
+                        "ടോ.",
+                        "ആം.",
+                        "ബാ.",
+                        "ബാ.",
+                        "ബാ.",
+                        "പ.",
+                        "ഈ.",
+                        "മെ.",
+                        "ന.",
+                    }
+                    wide{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
+                }
+            }
+        }
+        ethiopic{
+            eras{
+                abbreviated{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+                narrow{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+                wide{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
+                    }
+                    narrow{
+                        "മെ.",
+                        "ടെ.",
+                        "ഹേ.",
+                        "ത.",
+                        "ടെ.",
+                        "യെ.",
+                        "മെ.",
+                        "മി.",
+                        "ഗെ.",
+                        "സെ.",
+                        "ഹാം",
+                        "നെ.",
+                        "പാ.",
+                    }
+                    wide{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
+                    }
+                    narrow{
+                        "മെ.",
+                        "ടെ.",
+                        "ഹേ.",
+                        "ത.",
+                        "ടെ.",
+                        "യെ.",
+                        "മെ.",
+                        "മി.",
+                        "ഗെ.",
+                        "സെ.",
+                        "ഹാം",
+                        "നെ.",
+                        "പാ.",
+                    }
+                    wide{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
+                    }
+                }
+            }
+        }
         generic{
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -248,8 +472,17 @@ ml{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
-                Ed{"d E"}
+                EBhm{"E, B h:mm"}
+                EBhms{"E, B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"d, E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"G y"}
                 GyMMM{"G y MMM"}
                 GyMMMEd{"G y MMM d, E"}
@@ -285,19 +518,52 @@ ml{
                 yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
-                H{
-                    H{"HH–HH"}
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
                 }
-                Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
                 }
-                Hmv{
-                    H{"HH:mm–HH:mm v"}
-                    m{"HH:mm–HH:mm v"}
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
                 }
-                Hv{
-                    H{"HH–HH v"}
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
                 }
                 M{
                     M{"M – M"}
@@ -327,23 +593,19 @@ ml{
                 d{
                     d{"d – d"}
                 }
-                fallback{"{0} - {1}"}
+                fallback{"{0} – {1}"}
                 h{
-                    a{"h a – h a"}
                     h{"h–h a"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
                     h{"h:mm–h:mm a"}
                     m{"h:mm–h:mm a"}
                 }
                 hmv{
-                    a{"h:mm a – h:mm a v"}
                     h{"h:mm–h:mm a v"}
                     m{"h:mm–h:mm a v"}
                 }
                 hv{
-                    a{"h a – h a v"}
                     h{"h–h a v"}
                 }
                 y{
@@ -415,7 +677,12 @@ ml{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E, B h:mm"}
+                EBhms{"E, B h:mm:ss"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d, E"}
@@ -436,8 +703,8 @@ ml{
                 MMMEd{"MMM d, E"}
                 MMMMEd{"MMMM d, E"}
                 MMMMW{
-                    one{"MMM - ആഴ്ച W"}
-                    other{"MMM - ആഴ്ച W"}
+                    one{"MMMM - ആഴ്ച W"}
+                    other{"MMMM - ആഴ്ച W"}
                 }
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
@@ -462,8 +729,8 @@ ml{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    one{"y-ലെ ആഴ്ച w"}
-                    other{"y-ലെ ആഴ്ച w"}
+                    one{"Y-ലെ ആഴ്ച w"}
+                    other{"Y-ലെ ആഴ്ച w"}
                 }
             }
             dayNames{
@@ -558,9 +825,9 @@ ml{
                         noon{"ഉച്ച"}
                     }
                     narrow{
-                        afternoon1{"ഉച്ചയ്"}
-                        afternoon2{"ഉച്ചതി"}
-                        evening1{"വൈ"}
+                        afternoon1{"ഉച്ചയ്ക്ക്"}
+                        afternoon2{"ഉച്ചതിരിഞ്ഞ്"}
+                        evening1{"വൈകുന്നേരം"}
                         evening2{"സന്ധ്യ"}
                         midnight{"അ"}
                         morning1{"പുലർച്ചെ"}
@@ -631,6 +898,14 @@ ml{
                     "ബിസിഇ",
                     "സിഇ",
                 }
+                narrow{
+                    "ക്രി.മു.",
+                    "എഡി",
+                }
+                narrow%variant{
+                    "ബിസിഇ",
+                    "സിഇ",
+                }
                 wide{
                     "ക്രിസ്‌തുവിന് മുമ്പ്",
                     "ആന്നോ ഡൊമിനി",
@@ -641,6 +916,53 @@ ml{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH – HH"}
                 }
@@ -756,7 +1078,7 @@ ml{
                     }
                     narrow{
                         "ജ",
-                        "ഫ",
+                        "ഫെ",
                         "മാ",
                         "ഏ",
                         "മെ",
@@ -871,14 +1193,152 @@ ml{
                 }
             }
         }
+        hebrew{
+            monthNames{
+                format{
+                    abbreviated{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
+                    narrow{
+                        "തി.",
+                        "ഹെ.",
+                        "കി.",
+                        "ടി.",
+                        "സീ.",
+                        "അ I",
+                        "അ.",
+                        "നി.",
+                        "ഇ.",
+                        "സി.",
+                        "താ.",
+                        "അ.",
+                        "ഏ.",
+                        "അ II",
+                    }
+                    wide{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
+                    narrow{
+                        "തി.",
+                        "ഹെ.",
+                        "കി.",
+                        "ടി.",
+                        "സീ.",
+                        "അ I",
+                        "അ.",
+                        "നി.",
+                        "ഇ.",
+                        "സി.",
+                        "താ.",
+                        "അ.",
+                        "ഏ.",
+                        "അ II",
+                    }
+                    wide{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
+                }
+            }
+        }
         indian{
             eras{
                 abbreviated{
                     "ശക",
                 }
+                narrow{
+                    "ശക",
+                }
+                wide{
+                    "ശക",
+                }
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "ചൈത്രം",
+                        "വൈശാഖം",
+                        "ജ്യേഷ്ഠം",
+                        "ആഷാഢം",
+                        "ശ്രാവണം",
+                        "ഭാദ്രപാദം",
+                        "ആശ്വിനം",
+                        "കാർത്തികം",
+                        "മാർഗശീർഷം",
+                        "പൗഷം",
+                        "മാഘം",
+                        "ഫൽഗുനം",
+                    }
+                    narrow{
+                        "ചൈ",
+                        "വൈ",
+                        "ജ്യേ",
+                        "ആ",
+                        "ശ്രാ",
+                        "ഭാ",
+                        "ആ",
+                        "കാ",
+                        "മാ",
+                        "പൗ",
+                        "മാ",
+                        "ഫ",
+                    }
                     wide{
                         "ചൈത്രം",
                         "വൈശാഖം",
@@ -895,6 +1355,20 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "ചൈത്രം",
+                        "വൈശാഖം",
+                        "ജ്യേഷ്ഠം",
+                        "ആഷാഢം",
+                        "ശ്രാവണം",
+                        "ഭാദ്രപാദം",
+                        "ആശ്വിനം",
+                        "കാർത്തികം",
+                        "മാർഗശീർഷം",
+                        "പൗഷം",
+                        "മാഘം",
+                        "ഫൽഗുനം",
+                    }
                     narrow{
                         "ചൈ",
                         "വൈ",
@@ -909,6 +1383,20 @@ ml{
                         "മാ",
                         "ഫ",
                     }
+                    wide{
+                        "ചൈത്രം",
+                        "വൈശാഖം",
+                        "ജ്യേഷ്ഠം",
+                        "ആഷാഢം",
+                        "ശ്രാവണം",
+                        "ഭാദ്രപാദം",
+                        "ആശ്വിനം",
+                        "കാർത്തികം",
+                        "മാർഗശീർഷം",
+                        "പൗഷം",
+                        "മാഘം",
+                        "ഫൽഗുനം",
+                    }
                 }
             }
         }
@@ -917,9 +1405,43 @@ ml{
                 abbreviated{
                     "ഹിജറ",
                 }
+                narrow{
+                    "ഹിജറ",
+                }
+                wide{
+                    "ഹിജറ",
+                }
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "മുഹ.",
+                        "സഫ.",
+                        "റബീഹുൽ അവ്വ.",
+                        "റബീഹുൽ ആഖി.",
+                        "ജമാദുൽ അവ്വ.",
+                        "ജമാദുൽ ആഖി.",
+                        "റജ.",
+                        "ശഹബാ.",
+                        "റമദാ.",
+                        "ശവ്വാ.",
+                        "ദുൽ ഖഹ.",
+                        "ദുൽ ഹി.",
+                    }
+                    narrow{
+                        "മു",
+                        "സ",
+                        "റ",
+                        "റ",
+                        "ജ",
+                        "ജ",
+                        "റ",
+                        "ശ",
+                        "റ",
+                        "ശ",
+                        "ദു",
+                        "ദു",
+                    }
                     wide{
                         "മുഹറം",
                         "സഫർ",
@@ -936,6 +1458,20 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "മുഹ.",
+                        "സഫ.",
+                        "റബീഹുൽ അവ്വ.",
+                        "റബീഹുൽ ആഖി.",
+                        "ജമാദുൽ അവ്വ.",
+                        "ജമാദുൽ ആഖി.",
+                        "റജ.",
+                        "ശഹബാ.",
+                        "റമദാ.",
+                        "ശവ്വാ.",
+                        "ദുൽ ഖഹ.",
+                        "ദുൽ ഹി.",
+                    }
                     narrow{
                         "മു",
                         "സ",
@@ -950,20 +1486,142 @@ ml{
                         "ദു",
                         "ദു",
                     }
+                    wide{
+                        "മുഹറം",
+                        "സഫർ",
+                        "റബീഹുൽ അവ്വൽ",
+                        "റബീഹുൽ ആഖിർ",
+                        "ജമാദുൽ അവ്വൽ",
+                        "ജമാദുൽ ആഖിർ",
+                        "റജബ്",
+                        "ശഹബാൻ",
+                        "റമദാൻ",
+                        "ശവ്വാൽ",
+                        "ദുൽ ഖഹദ്",
+                        "ദുൽ ഹിജ്ജ",
+                    }
+                }
+            }
+        }
+        persian{
+            monthNames{
+                format{
+                    abbreviated{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
+                    narrow{
+                        "ഫ.",
+                        "ഓ.",
+                        "ഖോ",
+                        "ടി.",
+                        "മോ.",
+                        "ഷ.",
+                        "മെ.",
+                        "അ.",
+                        "അ.",
+                        "ഡെ.",
+                        "ബ.",
+                        "എ.",
+                    }
+                    wide{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
+                    narrow{
+                        "ഫ.",
+                        "ഓ.",
+                        "ഖോ",
+                        "ടി.",
+                        "മോ.",
+                        "ഷ.",
+                        "മെ.",
+                        "അ.",
+                        "അ.",
+                        "ഡെ.",
+                        "ബ.",
+                        "എ.",
+                    }
+                    wide{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
+                }
+            }
+        }
+        roc{
+            eras{
+                abbreviated{
+                    "R.O.C-യ്‌ക്ക് മു.",
+                    "മിംഗ്വോ",
+                }
+                narrow{
+                    "R.O.C-യ്‌ക്ക് മു.",
+                    "മിംഗ്വോ",
+                }
+                wide{
+                    "R.O.C-യ്‌ക്ക് മുമ്പ്",
+                    "മിംഗ്വോ",
                 }
             }
         }
     }
     characterLabel{
-        activities{"ആക്‌റ്റിവിറ്റികൾ"}
+        activities{"ആക്‌റ്റിവിറ്റി"}
         african_scripts{"ആഫ്രിക്കൻ ലിപികൾ"}
         american_scripts{"അമേരിക്കൻ ലിപികൾ"}
         animal{"മൃഗം"}
         animals_nature{"മൃഗങ്ങളും പ്രകൃതിയും"}
         arrows{"അമ്പടയാളങ്ങൾ"}
-        body{"ബോഡി"}
+        body{"ശരീരം"}
         box_drawing{"ബോക്‌സ് ഡ്രോയിംഗ്"}
-        braille{"ബ്രെയിൽ"}
+        braille{"ബ്രെയ്‌ലി"}
         building{"കെട്ടിടം"}
         bullets_stars{"ബുള്ളറ്റുകൾ/നക്ഷത്രങ്ങൾ"}
         consonantal_jamo{"കൺസോണന്റൽ ജാമോ"}
@@ -985,7 +1643,7 @@ ml{
         format_whitespace{"ഫോർമാറ്റും വൈറ്റ്‌സ്പെയ്‌സും"}
         full_width_form_variant{"ഫുൾ-വിഡ്ത്ത് ഫോം വേരിയന്റ്"}
         geometric_shapes{"ജ്യാമിതീയ രൂപങ്ങൾ"}
-        half_width_form_variant{"വിഡ്‌ത്ത് ഫോം വേരിയന്റുകൾ"}
+        half_width_form_variant{"ഹാഫ്-വിഡ്‌ത്ത് വേരിയന്റ്"}
         han_characters{"ഹാൻ പ്രതീകങ്ങൾ"}
         han_radicals{"ഹാൻ മൂലസംഖ്യകൾ"}
         hanja{"ഹഞ്ഞ"}
@@ -1022,9 +1680,9 @@ ml{
         plant{"സസ്യം"}
         punctuation{"വിരാമചിഹ്നം"}
         rightwards_arrows{"വലത്തേക്ക് ചൂണ്ടുന്ന അമ്പടയാളങ്ങൾ"}
-        sign_standard_symbols{"അടയാള/സ്റ്റാൻഡേർഡ് ചിഹ്നങ്ങൾ"}
+        sign_standard_symbols{"അടയാളങ്ങളും ചിഹ്നങ്ങളും"}
         small_form_variant{"സ്മോൾ ഫോം വേരിയന്റുകൾ"}
-        smiley{"മുഖഭാവം"}
+        smiley{"സ്‌മൈലി"}
         smileys_people{"സ്മൈലികളും ആളുകളും"}
         south_asian_scripts{"ദക്ഷിണേഷ്യൻ ലിപികൾ"}
         southeast_asian_scripts{"തെക്കുകിഴക്കനേഷ്യൻ ലിപികൾ"}
@@ -1109,10 +1767,31 @@ ml{
                 }
             }
         }
+        dayOfYear{
+            dn{"വർഷത്തിലെ ദിവസം"}
+        }
+        dayOfYear-narrow{
+            dn{"വർഷ. ദിവസം"}
+        }
+        dayOfYear-short{
+            dn{"വർഷ. ദിവസം"}
+        }
         dayperiod{
             dn{"AM/PM"}
         }
+        dayperiod-narrow{
+            dn{"AM/PM"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
         era{
+            dn{"കാലഘട്ടം"}
+        }
+        era-narrow{
+            dn{"കാലഘട്ടം"}
+        }
+        era-short{
             dn{"കാലഘട്ടം"}
         }
         fri{
@@ -1375,6 +2054,11 @@ ml{
         }
         quarter-narrow{
             dn{"പാദം"}
+            relative{
+                "-1"{"കഴിഞ്ഞ പാദം"}
+                "0"{"ഈ പാദം"}
+                "1"{"അടുത്ത പാദം"}
+            }
             relativeTime{
                 future{
                     one{"{0} പാദത്തിൽ"}
@@ -1388,6 +2072,11 @@ ml{
         }
         quarter-short{
             dn{"പാദം"}
+            relative{
+                "-1"{"കഴിഞ്ഞ പാദം"}
+                "0"{"ഈ പാദം"}
+                "1"{"അടുത്ത പാദം"}
+            }
             relativeTime{
                 future{
                     one{"{0} പാദത്തിൽ"}
@@ -1753,8 +2442,32 @@ ml{
                 }
             }
         }
+        weekOfMonth{
+            dn{"മാസത്തിലെ ആഴ്‌ച"}
+        }
+        weekOfMonth-narrow{
+            dn{"മാസ. ആഴ്‌ച"}
+        }
+        weekOfMonth-short{
+            dn{"മാസ. ആഴ്‌ച"}
+        }
         weekday{
             dn{"ആഴ്ചയിലെ ദിവസം"}
+        }
+        weekday-narrow{
+            dn{"ആഴ്‌ച. ദിവസം"}
+        }
+        weekday-short{
+            dn{"ആഴ്‌ച. ദിവസം"}
+        }
+        weekdayOfMonth{
+            dn{"മാസത്തിലെ പ്രവർത്തിദിനം"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"മാസ. പ്രവർത്തിദിനം"}
+        }
+        weekdayOfMonth-short{
+            dn{"മാസ. പ്രവർത്തിദിനം"}
         }
         year{
             dn{"വർഷം"}
@@ -1813,8 +2526,20 @@ ml{
         zone{
             dn{"സമയ മേഖല"}
         }
+        zone-narrow{
+            dn{"സമയ മേഖല"}
+        }
+        zone-short{
+            dn{"സമയ മേഖല"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} അല്ലെങ്കിൽ {1}"}
+            end{"{0}, അല്ലെങ്കിൽ {1}"}
+            middle{"{0}, {1} എന്നിവ"}
+            start{"{0}, {1} എന്നിവ"}
+        }
         standard{
             2{"{0} കൂടാതെ {1}"}
             end{"{0}, {1} എന്നിവ"}
@@ -1850,5 +2575,37 @@ ml{
         UK{"യുകെ"}
         US{"യുഎസ്"}
         metric{"മെട്രിക്ക്"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

@@ -31,6 +31,7 @@ nl{
         151{"Oost-Europa"}
         154{"Noord-Europa"}
         155{"West-Europa"}
+        202{"Sub-Saharaans Afrika"}
         419{"Latijns-Amerika"}
         AC{"Ascension"}
         AD{"Andorra"}
@@ -106,9 +107,10 @@ nl{
         ES{"Spanje"}
         ET{"Ethiopië"}
         EU{"Europese Unie"}
+        EZ{"eurozone"}
         FI{"Finland"}
         FJ{"Fiji"}
-        FK{"Falklandeilanden"}
+        FK{"Falklandeilanden (Islas Malvinas)"}
         FM{"Micronesia"}
         FO{"Faeröer"}
         FR{"Frankrijk"}
@@ -143,7 +145,7 @@ nl{
         IL{"Israël"}
         IM{"Isle of Man"}
         IN{"India"}
-        IO{"Britse Gebieden in de Indische Oceaan"}
+        IO{"Brits Indische Oceaanterritorium"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"IJsland"}
@@ -181,7 +183,7 @@ nl{
         MF{"Saint-Martin"}
         MG{"Madagaskar"}
         MH{"Marshalleilanden"}
-        MK{"Macedonië"}
+        MK{"Noord-Macedonië"}
         ML{"Mali"}
         MM{"Myanmar (Birma)"}
         MN{"Mongolië"}
@@ -251,7 +253,7 @@ nl{
         SV{"El Salvador"}
         SX{"Sint-Maarten"}
         SY{"Syrië"}
-        SZ{"Swaziland"}
+        SZ{"eSwatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks- en Caicoseilanden"}
         TD{"Tsjaad"}
@@ -272,7 +274,7 @@ nl{
         UA{"Oekraïne"}
         UG{"Oeganda"}
         UM{"Kleine afgelegen eilanden van de Verenigde Staten"}
-        UN{"verenigde naties"}
+        UN{"Verenigde Naties"}
         US{"Verenigde Staten"}
         UY{"Uruguay"}
         UZ{"Oezbekistan"}
@@ -285,6 +287,8 @@ nl{
         VU{"Vanuatu"}
         WF{"Wallis en Futuna"}
         WS{"Samoa"}
+        XA{"Pseudo-Accenten"}
+        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -295,15 +299,16 @@ nl{
     }
     Countries%short{
         GB{"VK"}
-        UN{"vn"}
+        UN{"VN"}
         US{"VS"}
     }
     Countries%variant{
         CD{"Congo (DRC)"}
         CG{"Congo (Republiek)"}
+        CI{"Republiek Ivoorkust"}
         CZ{"Tsjechische Republiek"}
-        FK{"Falklandeilanden (Islas Malvinas)"}
-        MK{"Macedonië (FYROM)"}
+        SZ{"Swaziland"}
+        TL{"Democratische Republiek Oost-Timor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

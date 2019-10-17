@@ -3,6 +3,7 @@
 to{
     Keys{
         calendar{"tohi māhina"}
+        cf{"anga paʻanga"}
         collation{"tohi hokohoko"}
         currency{"paʻanga"}
         hc{"takai houa"}
@@ -77,7 +78,7 @@ to{
         bkm{"lea fakakome"}
         bla{"lea fakasikesikā"}
         bm{"lea fakapamipala"}
-        bn{"lea fakapengikali"}
+        bn{"lea fakapāngilā"}
         bo{"lea fakatipeti"}
         bpy{"lea fakapisinupilia"}
         bqi{"lea fakapakitiāli"}
@@ -642,7 +643,7 @@ to{
         Bamu{"tohinima fakapamumi"}
         Bass{"tohinima fakapasa-vā"}
         Batk{"tohinima fakapātaki"}
-        Beng{"tohinima fakapengikali"}
+        Beng{"tohinima fakapāngilā"}
         Blis{"tohinima fakaʻilonga-pilisi"}
         Bopo{"tohinima fakapopomofo"}
         Brah{"tohinima fakapalāmī"}
@@ -818,7 +819,11 @@ to{
             iso8601{"faka-iso8601"}
             japanese{"fakasiapani"}
             persian{"fakapēsia"}
-            roc{"fakalēpupelika siaina"}
+            roc{"fakalepupelika siaina"}
+        }
+        cf{
+            account{"anga paʻanga-kalake"}
+            standard{"anga paʻanga-sīpinga"}
         }
         collation{
             ducet{"ʻunikōti"}
@@ -848,7 +853,7 @@ to{
             arabext{"fika fakaʻalepea fakalahi"}
             armn{"fika fakaʻāmenia"}
             armnlow{"fika fakaʻāmenia fakalalo"}
-            beng{"fika fakapengikali"}
+            beng{"faka fakapāngilā"}
             deva{"fika fakatevanākalī"}
             ethi{"fika fakaʻītiōpia"}
             fullwide{"fika laulahi"}
@@ -882,7 +887,7 @@ to{
             tibt{"fika fakatipeti"}
         }
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Lea: {0}"}
         script{"Tohinima: {0}"}

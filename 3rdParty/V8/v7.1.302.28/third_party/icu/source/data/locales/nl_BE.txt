@@ -1,14 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 nl_BE{
-    NumberElements{
-        latn{
-            patterns{
-                currencyFormat{"#,##0.00 ¤"}
-            }
-        }
-    }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.71"}
     calendar{
         generic{
             DateTimePatterns{
@@ -67,7 +60,7 @@ nl_BE{
                 "EEEE d MMMM y",
                 "d MMMM y",
                 "d MMM y",
-                "d/MM/yy",
+                "d/MM/y",
                 "{1} {0}",
                 "{1} 'om' {0}",
                 "{1} 'om' {0}",

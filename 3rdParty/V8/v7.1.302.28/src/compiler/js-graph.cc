@@ -4,10 +4,10 @@
 
 #include "src/compiler/js-graph.h"
 
-#include "src/code-factory.h"
+#include "src/codegen/code-factory.h"
 #include "src/compiler/node-properties.h"
 #include "src/compiler/typer.h"
-#include "src/objects-inl.h"
+#include "src/objects/objects-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -73,24 +73,23 @@ Node* JSGraph::Constant(const ObjectRef& ref) {
   if (ref.IsHeapNumber()) {
     return Constant(ref.AsHeapNumber().value());
   } else if (oddball_type == OddballType::kUndefined) {
-    DCHECK(
-        ref.object<Object>().equals(isolate()->factory()->undefined_value()));
+    DCHECK(ref.object().equals(isolate()->factory()->undefined_value()));
     return UndefinedConstant();
   } else if (oddball_type == OddballType::kNull) {
-    DCHECK(ref.object<Object>().equals(isolate()->factory()->null_value()));
+    DCHECK(ref.object().equals(isolate()->factory()->null_value()));
     return NullConstant();
   } else if (oddball_type == OddballType::kHole) {
-    DCHECK(ref.object<Object>().equals(isolate()->factory()->the_hole_value()));
+    DCHECK(ref.object().equals(isolate()->factory()->the_hole_value()));
     return TheHoleConstant();
   } else if (oddball_type == OddballType::kBoolean) {
-    if (ref.object<Object>().equals(isolate()->factory()->true_value())) {
+    if (ref.object().equals(isolate()->factory()->true_value())) {
       return TrueConstant();
     } else {
-      DCHECK(ref.object<Object>().equals(isolate()->factory()->false_value()));
+      DCHECK(ref.object().equals(isolate()->factory()->false_value()));
       return FalseConstant();
     }
   } else {
-    return HeapConstant(ref.object<HeapObject>());
+    return HeapConstant(ref.AsHeapObject().object());
   }
 }
 
@@ -126,14 +125,26 @@ void JSGraph::GetCachedNodes(NodeVector* nodes) {
 #undef DO_CACHED_FIELD
 }
 
-DEFINE_GETTER(AllocateInNewSpaceStubConstant,
-              HeapConstant(BUILTIN_CODE(isolate(), AllocateInNewSpace)))
+DEFINE_GETTER(AllocateInYoungGenerationStubConstant,
+              HeapConstant(BUILTIN_CODE(isolate(), AllocateInYoungGeneration)))
 
-DEFINE_GETTER(AllocateInOldSpaceStubConstant,
-              HeapConstant(BUILTIN_CODE(isolate(), AllocateInOldSpace)))
+DEFINE_GETTER(AllocateRegularInYoungGenerationStubConstant,
+              HeapConstant(BUILTIN_CODE(isolate(),
+                                        AllocateRegularInYoungGeneration)))
+
+DEFINE_GETTER(AllocateInOldGenerationStubConstant,
+              HeapConstant(BUILTIN_CODE(isolate(), AllocateInOldGeneration)))
+
+DEFINE_GETTER(AllocateRegularInOldGenerationStubConstant,
+              HeapConstant(BUILTIN_CODE(isolate(),
+                                        AllocateRegularInOldGeneration)))
 
 DEFINE_GETTER(ArrayConstructorStubConstant,
               HeapConstant(BUILTIN_CODE(isolate(), ArrayConstructorImpl)))
+
+DEFINE_GETTER(BigIntMapConstant, HeapConstant(factory()->bigint_map()))
+
+DEFINE_GETTER(BooleanMapConstant, HeapConstant(factory()->boolean_map()))
 
 DEFINE_GETTER(ToNumberBuiltinConstant,
               HeapConstant(BUILTIN_CODE(isolate(), ToNumber)))

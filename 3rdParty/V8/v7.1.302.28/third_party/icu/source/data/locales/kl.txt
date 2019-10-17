@@ -1,11 +1,12 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 kl{
-    AuxExemplarCharacters{"[]"}
+    AuxExemplarCharacters{"[ĸ]"}
     ExemplarCharacters{
-        "[a á â ã b c d e é ê f g h i í î ĩ j k l m n o ô p q ĸ r s t u ú û ũ v w x y"
-        " z æ ø å]"
+        "[a á â ã b c d e é ê f g h i í î ĩ j k l m n o ô p q r s t u ú û ũ v w x y z"
+        " æ ø å]"
     }
+    ExemplarCharactersNumbers{"[, . % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -17,14 +18,35 @@ kl{
                 group{"."}
             }
         }
+        minimalPairs{
+            plural{
+                one{"{0} Ulloq"}
+                other{"{0} Ullut"}
+            }
+        }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         gregorian{
+            DateTimePatterns{
+                "HH.mm.ss zzzz",
+                "HH.mm.ss z",
+                "HH.mm.ss",
+                "HH.mm",
+                "y MMMM d, EEEE",
+                "y MMMM d",
+                "y MMM d",
+                "y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
             dayNames{
                 format{
                     abbreviated{
-                        "sab",
+                        "sap",
                         "ata",
                         "mar",
                         "pin",
@@ -33,7 +55,7 @@ kl{
                         "arf",
                     }
                     short{
-                        "sab",
+                        "sap",
                         "ata",
                         "mar",
                         "pin",
@@ -42,7 +64,7 @@ kl{
                         "arf",
                     }
                     wide{
-                        "sabaat",
+                        "sapaat",
                         "ataasinngorneq",
                         "marlunngorneq",
                         "pingasunngorneq",
@@ -53,7 +75,7 @@ kl{
                 }
                 stand-alone{
                     short{
-                        "sab",
+                        "sap",
                         "ata",
                         "mar",
                         "pin",
@@ -62,7 +84,7 @@ kl{
                         "arf",
                     }
                     wide{
-                        "sabaat",
+                        "sapaat",
                         "ataasinngorneq",
                         "marlunngorneq",
                         "pingasunngorneq",

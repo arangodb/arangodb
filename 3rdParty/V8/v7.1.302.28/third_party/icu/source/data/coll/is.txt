@@ -8,7 +8,7 @@ is{
                 "[import und-u-co-search]"
                 "[import is-u-co-standard]"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -21,7 +21,7 @@ is{
                 "&[before 1]z<ý<<<Ý"
                 "&[before 1]ǀ<æ<<<Æ<<ä<<<Ä<ö<<<Ö<<ø<<<Ø<å<<<Å"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

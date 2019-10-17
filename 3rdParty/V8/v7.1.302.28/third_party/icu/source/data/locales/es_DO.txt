@@ -6,12 +6,10 @@ es_DO{
         latn{
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
-                percentFormat{"#,##0%"}
             }
         }
-        minimumGroupingDigits{"2"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
@@ -32,12 +30,12 @@ es_DO{
         }
         gregorian{
             AmPmMarkers{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -82,17 +80,17 @@ es_DO{
                 }
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
+                        am{"a. m."}
                         noon{"m."}
-                        pm{"p. m."}
+                        pm{"p. m."}
                     }
                     wide{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                 }
             }
@@ -127,7 +125,7 @@ es_DO{
             dn{"Día"}
         }
         dayperiod{
-            dn{"a. m./p. m."}
+            dn{"a. m./p. m."}
         }
         era{
             dn{"Era"}

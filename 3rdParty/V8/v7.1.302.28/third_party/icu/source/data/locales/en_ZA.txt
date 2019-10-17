@@ -6,6 +6,7 @@ en_ZA{
         "[á à ă â å ä ā æ ç ḓ é è ĕ ê ë ē í ì ĭ î ï ī ḽ ñ ṅ ṋ ó ò ŏ ô ö ø ō œ š ṱ ú ù"
         " ŭ û ü ū ÿ]"
     }
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             symbols{
@@ -14,7 +15,7 @@ en_ZA{
             }
         }
     }
-    Version{"2.1.27.64"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{

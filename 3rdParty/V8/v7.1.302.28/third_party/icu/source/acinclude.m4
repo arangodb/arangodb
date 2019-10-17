@@ -464,12 +464,12 @@ AC_DEFUN([AC_CHECK_STRICT_COMPILE],
         then
             case "${host}" in
             *-*-solaris*)
-                # Don't use -std=c99 on Solaris because of timezone check fails
+                # Don't use -std=c11 on Solaris because of timezone check fails
                 ;;
             *)
                 # Do not use -ansi. It limits us to C90, and it breaks some platforms.
-                # We use -std=c99 to disable the gnu99 defaults and its associated warnings
-                CFLAGS="$CFLAGS -std=c99"
+                # We use -std=c11 to disable the gnu99 defaults and its associated warnings
+                CFLAGS="$CFLAGS -std=c11"
                 ;;
             esac
             

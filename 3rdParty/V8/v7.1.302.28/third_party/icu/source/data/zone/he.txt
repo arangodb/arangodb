@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 he{
-    Version{"2.1.29.27"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"אביג׳אן"}
@@ -121,7 +121,7 @@ he{
             ec{"מסרו"}
         }
         "Africa:Mbabane"{
-            ec{"אמבאבאנה"}
+            ec{"מבבנה"}
         }
         "Africa:Mogadishu"{
             ec{"מוגדישו"}
@@ -507,6 +507,9 @@ he{
         "America:Puerto_Rico"{
             ec{"פוארטו ריקו"}
         }
+        "America:Punta_Arenas"{
+            ec{"פונטה ארנס"}
+        }
         "America:Rainy_River"{
             ec{"רייני ריבר"}
         }
@@ -526,7 +529,7 @@ he{
             ec{"ריו ברנקו"}
         }
         "America:Santa_Isabel"{
-            ec{"סנטה איסבל"}
+            ec{"סנטה איזבל"}
         }
         "America:Santarem"{
             ec{"סנטרם"}
@@ -657,6 +660,9 @@ he{
         "Asia:Ashgabat"{
             ec{"אשגבט"}
         }
+        "Asia:Atyrau"{
+            ec{"אטיראו"}
+        }
         "Asia:Baghdad"{
             ec{"בגדד"}
         }
@@ -707,6 +713,9 @@ he{
         }
         "Asia:Dushanbe"{
             ec{"דושנבה"}
+        }
+        "Asia:Famagusta"{
+            ec{"פמגוסטה"}
         }
         "Asia:Gaza"{
             ec{"עזה"}
@@ -800,6 +809,9 @@ he{
         }
         "Asia:Qatar"{
             ec{"קטאר"}
+        }
+        "Asia:Qostanay"{
+            ec{"קוסטנאי"}
         }
         "Asia:Qyzylorda"{
             ec{"קיזילורדה"}
@@ -942,6 +954,9 @@ he{
         "Australia:Sydney"{
             ec{"סידני"}
         }
+        "Etc:UTC"{
+            ls{"זמן אוניברסלי מתואם"}
+        }
         "Etc:Unknown"{
             ec{"עיר לא ידועה"}
         }
@@ -1072,6 +1087,9 @@ he{
         }
         "Europe:Sarajevo"{
             ec{"סרייבו"}
+        }
+        "Europe:Saratov"{
+            ec{"סראטוב"}
         }
         "Europe:Simferopol"{
             ec{"סימפרופול"}
@@ -1296,6 +1314,11 @@ he{
             lg{"שעון אלסקה"}
             ls{"שעון אלסקה (חורף)"}
         }
+        "meta:Almaty"{
+            ld{"שעון אלמטי (קיץ)"}
+            lg{"שעון אלמטי"}
+            ls{"שעון אלמטי (חורף)"}
+        }
         "meta:Amazon"{
             ld{"שעון אמזונס (קיץ)"}
             lg{"שעון אמזונס"}
@@ -1330,6 +1353,16 @@ he{
             ld{"שעון אפיה (קיץ)"}
             lg{"שעון אפיה"}
             ls{"שעון אפיה (חורף)"}
+        }
+        "meta:Aqtau"{
+            ld{"שעון אקטאו (קיץ)"}
+            lg{"שעון אקטאו"}
+            ls{"שעון אקטאו (חורף)"}
+        }
+        "meta:Aqtobe"{
+            ld{"שעון אוקטובה (קיץ)"}
+            lg{"שעון אקטובה"}
+            ls{"שעון אוקטובה (חורף)"}
         }
         "meta:Arabian"{
             ld{"שעון חצי האי ערב (קיץ)"}
@@ -1532,6 +1565,9 @@ he{
             lg{"שעון מערב גרינלנד"}
             ls{"שעון מערב גרינלנד (חורף)"}
         }
+        "meta:Guam"{
+            ls{"שעון גואם"}
+        }
         "meta:Gulf"{
             ls{"שעון מדינות המפרץ"}
         }
@@ -1714,6 +1750,9 @@ he{
             lg{"שעון פרננדו די נורוניה"}
             ls{"שעון פרננדו די נורוניה (חורף)"}
         }
+        "meta:North_Mariana"{
+            ls{"שעון איי מריאנה הצפוניים"}
+        }
         "meta:Novosibirsk"{
             ld{"שעון נובוסיבירסק (קיץ)"}
             lg{"שעון נובוסיבירסק"}
@@ -1766,6 +1805,11 @@ he{
         }
         "meta:Pyongyang"{
             ls{"שעון פיונגיאנג"}
+        }
+        "meta:Qyzylorda"{
+            ld{"שעון קיזילורדה (קיץ)"}
+            lg{"שעון קיזילורדה"}
+            ls{"שעון קיזילורדה (חורף)"}
         }
         "meta:Reunion"{
             ls{"שעון ראוניון"}

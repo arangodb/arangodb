@@ -3,8 +3,12 @@
 nn{
     Keys{
         calendar{"kalender"}
-        collation{"kollasjon"}
+        cf{"valutaformat"}
+        collation{"sorteringsrekkjefølgje"}
         currency{"valuta"}
+        hc{"timesyklus (12 eller 24)"}
+        lb{"lineskiftstil"}
+        ms{"målesystem"}
         numbers{"tal"}
     }
     Languages{
@@ -194,7 +198,7 @@ nn{
         io{"ido"}
         is{"islandsk"}
         it{"italiensk"}
-        iu{"inuittisk"}
+        iu{"inuktitut"}
         ja{"japansk"}
         jbo{"lojban"}
         jgo{"ngomba"}
@@ -510,11 +514,11 @@ nn{
         Avst{"avestisk"}
         Bali{"balinesisk"}
         Batk{"batak"}
-        Beng{"bengali"}
+        Beng{"bengalsk"}
         Blis{"blissymbol"}
         Bopo{"bopomofo"}
         Brah{"brahmi"}
-        Brai{"braille"}
+        Brai{"punktskrift"}
         Bugi{"buginesisk"}
         Buhd{"buhid"}
         Cakm{"chakma"}
@@ -540,18 +544,20 @@ nn{
         Grek{"gresk"}
         Gujr{"gujarati"}
         Guru{"gurmukhi"}
+        Hanb{"han med bopomofo"}
         Hang{"hangul"}
         Hani{"han"}
         Hano{"hanunoo"}
-        Hans{"forenkla kinesisk"}
-        Hant{"tradisjonell kinesisk"}
+        Hans{"forenkla"}
+        Hant{"tradisjonell"}
         Hebr{"hebraisk"}
         Hira{"hiragana"}
         Hmng{"pahawk hmong"}
-        Hrkt{"katakana eller hiragana"}
+        Hrkt{"japansk stavingsskrifter"}
         Hung{"gammalungarsk"}
         Inds{"indus"}
         Ital{"gammalitalisk"}
+        Jamo{"jamo"}
         Java{"javanesisk"}
         Jpan{"japansk"}
         Kali{"kayah li"}
@@ -580,12 +586,12 @@ nn{
         Mong{"mongolsk"}
         Moon{"moon"}
         Mtei{"meitei-mayek"}
-        Mymr{"myanmar"}
+        Mymr{"burmesisk"}
         Nkoo{"n’ko"}
         Ogam{"ogham"}
         Olck{"ol-chiki"}
         Orkh{"orkhon"}
-        Orya{"oriya"}
+        Orya{"odia"}
         Osma{"osmanya"}
         Perm{"gammalpermisk"}
         Phag{"phags-pa"}
@@ -603,7 +609,7 @@ nn{
         Saur{"saurashtra"}
         Sgnw{"teiknskrift"}
         Shaw{"shavisk"}
-        Sinh{"sinhala"}
+        Sinh{"singalesisk"}
         Sund{"sundanesisk"}
         Sylo{"syloti nagri"}
         Syrc{"syriakisk"}
@@ -630,15 +636,21 @@ nn{
         Yiii{"yi"}
         Zinh{"nedarva"}
         Zmth{"matematisk notasjon"}
+        Zsye{"emoji"}
         Zsym{"symbol"}
-        Zxxx{"kode for språk utan skrift"}
+        Zxxx{"språk utan skrift"}
         Zyyy{"felles"}
         Zzzz{"ukjend skrift"}
+    }
+    Scripts%stand-alone{
+        Hans{"forenkla han"}
+        Hant{"tradisjonell han"}
     }
     Types{
         calendar{
             buddhist{"buddhistisk kalender"}
             chinese{"kinesisk kalender"}
+            dangi{"dangisk kalender"}
             ethiopic{"etiopisk kalender"}
             ethiopic-amete-alem{"etiopisk amete-alem-kalender"}
             gregorian{"gregoriansk kalender"}
@@ -646,19 +658,78 @@ nn{
             indian{"indisk nasjonalkalender"}
             islamic{"islamsk kalender"}
             islamic-civil{"islamsk sivil kalender"}
+            iso8601{"ISO 8601-kalender"}
             japanese{"japansk kalender"}
             persian{"persisk kalender"}
             roc{"kalender for Republikken Kina"}
         }
+        cf{
+            account{"valutaformat for rekneskapsføring"}
+            standard{"standard valutaformat"}
+        }
         collation{
             big5han{"tradisjonell kinesisk sortering"}
-            ducet{"grunnleggjande Unicode-sorteringsrekkjefølgje"}
+            ducet{"standard Unicode-sorteringsrekkjefølgje"}
             gb2312han{"forenkla kinesisk sortering"}
             phonebook{"telefonkatalogsortering"}
             pinyin{"pinyin-sortering"}
-            search{"søksorteringsrekkjefølgje etter CLDR"}
+            search{"generelt søk"}
+            standard{"standard sorteringsrekkjefølgje"}
             stroke{"streksortering"}
             traditional{"tradisjonell sortering"}
+        }
+        hc{
+            h11{"12-timesystem (0–11)"}
+            h12{"12-timesystem (1–12)"}
+            h23{"24-timesystem (0–23)"}
+            h24{"24-timesystem (1–24)"}
+        }
+        lb{
+            loose{"laus lineskiftstil"}
+            normal{"normal lineskiftstil"}
+            strict{"streng lineskiftstil"}
+        }
+        ms{
+            metric{"metrisk system"}
+            uksystem{"britisk målesystem"}
+            ussystem{"amerikansk målesystem"}
+        }
+        numbers{
+            arab{"arabisk-indiske siffer"}
+            arabext{"utvida arabisk-indiske siffer"}
+            armn{"armenske tal"}
+            armnlow{"små armenske tal"}
+            beng{"bengalske siffer"}
+            deva{"devanagari-siffer"}
+            ethi{"etiopiske tal"}
+            fullwide{"siffer med full breidd"}
+            geor{"georgiske tal"}
+            grek{"greske tal"}
+            greklow{"små greske tal"}
+            gujr{"gujarati-siffer"}
+            guru{"gurmukhi-siffer"}
+            hanidec{"kinesiske desimaltal"}
+            hans{"forenkla kinesiske tal"}
+            hansfin{"forenkla kinesiske finanstal"}
+            hant{"tradisjonelle kinesiske tal"}
+            hantfin{"tradisjonelle kinesiske finanstal"}
+            hebr{"hebraiske tal"}
+            jpan{"japanske tal"}
+            jpanfin{"japanske finanstal"}
+            khmr{"khmer-siffer"}
+            knda{"kannada-siffer"}
+            laoo{"laotiske siffer"}
+            latn{"vestlege siffer"}
+            mlym{"malayalam-siffer"}
+            mymr{"burmesiske siffer"}
+            orya{"odia-siffer"}
+            roman{"romartal"}
+            romanlow{"små romartal"}
+            taml{"tamilske tal"}
+            tamldec{"tamilske siffer"}
+            telu{"telugu-siffer"}
+            thai{"thailandske siffer"}
+            tibt{"tibetanske siffer"}
         }
     }
     Variants{
@@ -690,7 +761,22 @@ nn{
         TARASK{"taraskievica-ortografi"}
         VALENCIA{"valensisk dialekt"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
+    characterLabelPattern{
+        all{"{0} – alt"}
+        category-list{"{0}: {1}"}
+        compatibility{"{0} – kompatibilitet"}
+        enclosed{"{0} – omslutta"}
+        extended{"{0} – utvida"}
+        historic{"{0} – historisk"}
+        miscellaneous{"{0} – diverse"}
+        other{"{0} – anna"}
+        scripts{"skriftsystem – {0}"}
+        strokes{
+            one{"{0} strek"}
+            other{"{0} strekar"}
+        }
+    }
     codePatterns{
         language{"Språk: {0}"}
         script{"Skrift: {0}"}

@@ -46,6 +46,7 @@ hr{
         arc{"aramejski"}
         arn{"mapuche"}
         arp{"arapaho"}
+        ars{"najdi arapski"}
         arw{"aravački"}
         as{"asamski"}
         asa{"asu"}
@@ -92,6 +93,7 @@ hr{
         car{"karipski"}
         cay{"cayuga"}
         cch{"atsam"}
+        ccp{"chakma"}
         ce{"čečenski"}
         ceb{"cebuano"}
         cgg{"chiga"}
@@ -170,6 +172,7 @@ hr{
         fr{"francuski"}
         fr_CA{"kanadski francuski"}
         fr_CH{"švicarski francuski"}
+        frc{"kajunski francuski"}
         frm{"srednjofrancuski"}
         fro{"starofrancuski"}
         frr{"sjevernofrizijski"}
@@ -223,7 +226,7 @@ hr{
         id{"indonezijski"}
         ie{"interligua"}
         ig{"igbo"}
-        ii{"sichuan yi"}
+        ii{"sichuan ji"}
         ik{"inupiaq"}
         ilo{"iloko"}
         inh{"ingušetski"}
@@ -296,6 +299,7 @@ hr{
         ln{"lingala"}
         lo{"laoski"}
         lol{"mongo"}
+        lou{"lujzijanski kreolski"}
         loz{"lozi"}
         lrc{"sjevernolurski"}
         lt{"litavski"}
@@ -743,6 +747,7 @@ hr{
             indian{"indijski nacionalni kalendar"}
             islamic{"islamski kalendar"}
             islamic-civil{"islamski civilni kalendar"}
+            islamic-umalqura{"islamski kalendar (Umm al-Qura)"}
             iso8601{"ISO-8601 kalendar"}
             japanese{"japanski kalendar"}
             persian{"perzijski kalendar"}
@@ -786,8 +791,10 @@ hr{
         }
         collation{
             big5han{"razvrstavanje prema tradicionalnom kineskom - Big5"}
+            compat{"Prethodni redoslijed razvrstavanja, radi kompatibilnosti"}
             dictionary{"rječničko razvrstavanje"}
             ducet{"Standardno Unicode razvrstavanje"}
+            eor{"Europska pravila razvrstavanja"}
             gb2312han{"razvrstavanje prema pojednostavljenom kineskom - GB2312"}
             phonebook{"razvrstavanje po abecedi"}
             phonetic{"Fonetski poredak"}
@@ -795,7 +802,7 @@ hr{
             reformed{"reformirano razvrstavanje"}
             search{"Općenito pretraživanje"}
             searchjl{"Pretraživanje po početnom suglasniku hangula"}
-            standard{"standardno razvrstavanje"}
+            standard{"Standardno razvrstavanje"}
             stroke{"razvrstavanje po redoslijedu poteza za kineski"}
             traditional{"tradicionalno razvrstavanje"}
             unihan{"razvrstavanje prema korijenu i potezu"}
@@ -818,8 +825,8 @@ hr{
             strict{"strogi stil prijeloma retka"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"transliteracija prema BGN-u"}
+            ungegn{"transliteracija prema UNGEGN-u"}
         }
         ms{
             metric{"metrički sustav"}
@@ -910,17 +917,17 @@ hr{
         VALENCIA{"valencijski"}
         WADEGILE{"Wade-Giles romanizacija"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
-        all{"{0} — Sve"}
+        all{"{0} – sve"}
         category-list{"{0}: {1}"}
-        compatibility{"{0} — Kompatibilnost"}
-        enclosed{"{0} — Priloženo"}
-        extended{"{0} — Prošireno"}
-        historic{"{0} — Povijesno"}
-        miscellaneous{"{0} — Razno"}
-        other{"{0} — Ostalo"}
-        scripts{"Pisma — {0}"}
+        compatibility{"{0} – kompatibilnost"}
+        enclosed{"{0} – priloženo"}
+        extended{"{0} – prošireno"}
+        historic{"{0} – povijesno"}
+        miscellaneous{"{0} – razno"}
+        other{"{0} – ostalo"}
+        scripts{"pisma – {0}"}
         strokes{
             few{"{0} poteza"}
             one{"{0} potez"}
@@ -931,10 +938,5 @@ hr{
         language{"Jezik: {0}"}
         script{"Pismo: {0}"}
         territory{"Regija: {0}"}
-    }
-    localeDisplayPattern{
-        keyTypePattern{"{0}: {1}"}
-        pattern{"{0} ({1})"}
-        separator{"{0}, {1}"}
     }
 }

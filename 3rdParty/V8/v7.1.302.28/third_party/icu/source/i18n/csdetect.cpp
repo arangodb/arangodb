@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
  **********************************************************************
@@ -36,9 +36,9 @@ U_NAMESPACE_BEGIN
 
 struct CSRecognizerInfo : public UMemory {
     CSRecognizerInfo(CharsetRecognizer *recognizer, UBool isDefaultEnabled)
-        : recognizer(recognizer), isDefaultEnabled(isDefaultEnabled) {};
+        : recognizer(recognizer), isDefaultEnabled(isDefaultEnabled) {}
 
-    ~CSRecognizerInfo() {delete recognizer;};
+    ~CSRecognizerInfo() {delete recognizer;}
 
     CharsetRecognizer *recognizer;
     UBool isDefaultEnabled;

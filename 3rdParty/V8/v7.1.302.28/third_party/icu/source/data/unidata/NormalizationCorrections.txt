@@ -1,6 +1,6 @@
-# NormalizationCorrections-9.0.0.txt
-# Date: 2016-01-21, 22:00:00 GMT [KW, LI]
-# © 2016 Unicode®, Inc.
+# NormalizationCorrections-12.1.0.txt
+# Date: 2019-03-08, 23:59:00 GMT [KW, LI]
+# © 2019 Unicode®, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 #
 # Unicode Character Database
@@ -27,7 +27,7 @@
 #
 # Currently this list has exactly six entries in it, one for the
 # typo found and corrected in Corrigendum #3, and five for
-# the typos and misidentifications found and corrected in 
+# the typos and misidentifications found and corrected in
 # Corrigendum #4. All efforts
 # will be made to keep the entries limited to just those fixes.
 #
@@ -37,7 +37,7 @@
 #   Field 2: Corrected decomposition
 #   Field 3: Version of Unicode for which the correction was
 #            entered into UnicodeData.txt, in n.n.n format.
-#   Comment: Indicates the Unicode Corrigendum which documents 
+#   Comment: Indicates the Unicode Corrigendum which documents
 #            the correction
 #
 # For more information, see UAX #15, Unicode Normalization Forms.

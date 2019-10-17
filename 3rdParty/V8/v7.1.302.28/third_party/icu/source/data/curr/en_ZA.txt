@@ -8,5 +8,5 @@ en_ZA{
             "South African Rand",
         }
     }
-    Version{"2.1.27.64"}
+    Version{"2.1.47.70"}
 }

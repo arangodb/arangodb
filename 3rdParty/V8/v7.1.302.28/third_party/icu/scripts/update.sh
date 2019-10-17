@@ -13,8 +13,8 @@ then
 fi
 
 version="$1"
-repoprefix="http://source.icu-project.org/repos/icu/icu/tags/release-"
-repo="${repoprefix}${version}"
+repoprefix="https://github.com/unicode-org/icu/tags/release-"
+repo="${repoprefix}${version}/icu4c"
 treeroot="$(dirname "$0")/.."
 
 # Check if the repo for $version is available.
@@ -55,7 +55,72 @@ sed -i.orig -e '/^ac_config_files=/ s:\ layoutex/Makefile::g' \
   "${treeroot}/source/configure"
 rm -f "${treeroot}/source/configure.orig"
 
-# TODO(jshin): Automatically update BUILD.gn and icu.gypi with the updated
-# list of source files.
+echo "git-adding new files"
+git status source | sed -n '/^Untracked/,$ p' | grep source | xargs git add
+
+cd "${treeroot}"
+
+echo "Updating BUILD.gn"
+
+find  source/i18n -maxdepth 1  ! -type d  | egrep  '\.(c|cpp|h)$' |sort | \
+  sed 's/^\(.*\)$/    "\1",/' > i18n_src.list
+ls source/i18n/unicode/*h | sort | sed 's/^\(.*\)$/    "\1",/' > i18n_hdr.list
+
+find  source/common -maxdepth 1  ! -type d  | egrep  '\.(c|cpp|h)$' |sort | \
+  sed 's/^\(.*\)$/    "\1",/' > common_src.list
+ls source/common/unicode/*h | sort | \
+  sed 's/^\(.*\)$/    "\1",/' > common_hdr.list
+
+sed   -i \
+  '/I18N_SRC_START/,/I18N_SRC_END/ {
+      /I18N_SRC_START/ r i18n_src.list
+      /source.i18n/ d
+   }
+   /I18N_HDR_START/,/I18N_HDR_END/ {
+      /I18N_HDR_START/ r i18n_hdr.list
+      /source.i18n/ d
+   }
+   /COMMON_SRC_START/,/COMMON_SRC_END/ {
+      /COMMON_SRC_START/ r common_src.list
+      /source.common/ d
+   }
+   /COMMON_HDR_START/,/COMMON_HDR_END/ {
+      /COMMON_HDR_START/ r common_hdr.list
+      /source.common/ d
+   }' BUILD.gn
+
+echo "Updating icu.gyp* files"
+
+ls source/i18n/unicode/*h | sort | \
+  sed "s/^.*i18n\/\(.*\)$/              '\1',/" > i18n_hdr.list
+ls source/common/unicode/*h | sort | \
+  sed "s/^.*common\/\(.*\)$/              '\1',/" > common_hdr.list
+
+
+find  source/i18n -maxdepth 1  ! -type d  | egrep  '\.(c|cpp)$' | \
+  sort | sed "s/^\(.*\)$/      '\1',/" > i18n_src.list
+find  source/common -maxdepth 1  ! -type d  | egrep  '\.(c|cpp)$' | \
+  sort | sed "s/^\(.*\)$/      '\1',/" > common_src.list
+
+sed   -i \
+  '/I18N_HDR_START/,/I18N_HDR_END/ {
+      /I18N_HDR_START/ r i18n_hdr.list
+      /.unicode.*\.h.,$/ d
+   }
+   /COMMON_HDR_START/,/COMMON_HDR_END/ {
+      /COMMON_HDR_START/ r common_hdr.list
+      /.unicode.*\.h.,$/ d
+   }' icu.gyp
+
+sed   -i \
+  '/I18N_SRC_START/,/I18N_SRC_END/ {
+      /I18N_SRC_START/ r i18n_src.list
+      /source\/i18n/ d
+   }
+   /COMMON_SRC_START/,/COMMON_SRC_END/ {
+      /COMMON_SRC_START/ r common_src.list
+      /source\/common/ d
+   }' icu.gypi
+
 
 echo "Done"

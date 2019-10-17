@@ -6,13 +6,13 @@
 #define V8_COMPILER_COMMON_OPERATOR_H_
 
 #include "src/base/compiler-specific.h"
+#include "src/codegen/machine-type.h"
+#include "src/codegen/reloc-info.h"
+#include "src/codegen/string-constants.h"
+#include "src/common/globals.h"
 #include "src/compiler/frame-states.h"
-#include "src/deoptimize-reason.h"
-#include "src/globals.h"
-#include "src/machine-type.h"
-#include "src/reloc-info.h"
-#include "src/string-constants.h"
-#include "src/vector-slot-pair.h"
+#include "src/compiler/vector-slot-pair.h"
+#include "src/deoptimizer/deoptimize-reason.h"
 #include "src/zone/zone-containers.h"
 #include "src/zone/zone-handle-set.h"
 
@@ -244,7 +244,7 @@ size_t hash_value(RelocatablePtrConstantInfo const& p);
 // value.
 class SparseInputMask final {
  public:
-  typedef uint32_t BitMaskType;
+  using BitMaskType = uint32_t;
 
   // The mask representing a dense input set.
   static const BitMaskType kDenseBitMask = 0x0;
@@ -399,7 +399,7 @@ ZoneVector<MachineType> const* MachineTypesOf(Operator const*)
 //
 // Also note that it is possible for an arguments object of {kMappedArguments}
 // type to carry a backing store of {kUnappedArguments} type when {K == 0}.
-typedef CreateArgumentsType ArgumentsStateType;
+using ArgumentsStateType = CreateArgumentsType;
 
 ArgumentsStateType ArgumentsStateTypeOf(Operator const*) V8_WARN_UNUSED_RESULT;
 
@@ -410,15 +410,18 @@ MachineRepresentation DeadValueRepresentationOf(Operator const*)
 
 class IfValueParameters final {
  public:
-  IfValueParameters(int32_t value, int32_t comparison_order)
-      : value_(value), comparison_order_(comparison_order) {}
+  IfValueParameters(int32_t value, int32_t comparison_order,
+                    BranchHint hint = BranchHint::kNone)
+      : value_(value), comparison_order_(comparison_order), hint_(hint) {}
 
   int32_t value() const { return value_; }
   int32_t comparison_order() const { return comparison_order_; }
+  BranchHint hint() const { return hint_; }
 
  private:
   int32_t value_;
   int32_t comparison_order_;
+  BranchHint hint_;
 };
 
 V8_EXPORT_PRIVATE bool operator==(IfValueParameters const&,
@@ -435,7 +438,8 @@ V8_EXPORT_PRIVATE IfValueParameters const& IfValueParametersOf(
 const FrameStateInfo& FrameStateInfoOf(const Operator* op)
     V8_WARN_UNUSED_RESULT;
 
-Handle<HeapObject> HeapConstantOf(const Operator* op) V8_WARN_UNUSED_RESULT;
+V8_EXPORT_PRIVATE Handle<HeapObject> HeapConstantOf(const Operator* op)
+    V8_WARN_UNUSED_RESULT;
 
 const StringConstantBase* StringConstantBaseOf(const Operator* op)
     V8_WARN_UNUSED_RESULT;
@@ -450,6 +454,7 @@ class V8_EXPORT_PRIVATE CommonOperatorBuilder final
   const Operator* Dead();
   const Operator* DeadValue(MachineRepresentation rep);
   const Operator* Unreachable();
+  const Operator* StaticAssert();
   const Operator* End(size_t control_input_count);
   const Operator* Branch(BranchHint = BranchHint::kNone,
                          IsSafetyCheck = IsSafetyCheck::kSafetyCheck);
@@ -458,8 +463,9 @@ class V8_EXPORT_PRIVATE CommonOperatorBuilder final
   const Operator* IfSuccess();
   const Operator* IfException();
   const Operator* Switch(size_t control_output_count);
-  const Operator* IfValue(int32_t value, int32_t order = 0);
-  const Operator* IfDefault();
+  const Operator* IfValue(int32_t value, int32_t order = 0,
+                          BranchHint hint = BranchHint::kNone);
+  const Operator* IfDefault(BranchHint hint = BranchHint::kNone);
   const Operator* Throw();
   const Operator* Deoptimize(DeoptimizeKind kind, DeoptimizeReason reason,
                              VectorSlotPair const& feedback);
@@ -493,6 +499,7 @@ class V8_EXPORT_PRIVATE CommonOperatorBuilder final
   const Operator* NumberConstant(volatile double);
   const Operator* PointerConstant(intptr_t);
   const Operator* HeapConstant(const Handle<HeapObject>&);
+  const Operator* CompressedHeapConstant(const Handle<HeapObject>&);
   const Operator* ObjectId(uint32_t);
 
   const Operator* RelocatableInt32Constant(int32_t value,

@@ -2,7 +2,6 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ur_IN{
     Languages{
-        af{"افریقی"}
         ar_001{"جدید معیاری عربی"}
         awa{"اودھی"}
         ckb{"سورانی کردی"}
@@ -14,7 +13,6 @@ ur_IN{
         kn{"کنڑ"}
         ku{"کرد"}
         mag{"مگہی"}
-        mas{"مسائی"}
         zgh{"معیاری مراقشی تمازیقی"}
         zh_Hans{"آسان چینی"}
     }
@@ -25,5 +23,5 @@ ur_IN{
             tibt{"تبتی ہندسے"}
         }
     }
-    Version{"2.1.27.79"}
+    Version{"2.1.47.71"}
 }

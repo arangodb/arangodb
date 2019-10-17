@@ -9,8 +9,8 @@
 #ifndef V8_OBJECTS_JS_BREAK_ITERATOR_INL_H_
 #define V8_OBJECTS_JS_BREAK_ITERATOR_INL_H_
 
-#include "src/objects-inl.h"
 #include "src/objects/js-break-iterator.h"
+#include "src/objects/objects-inl.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -18,14 +18,14 @@
 namespace v8 {
 namespace internal {
 
-inline void JSV8BreakIterator::set_type(Type type) {
-  DCHECK_GT(JSV8BreakIterator::Type::COUNT, type);
-  WRITE_FIELD(this, kTypeOffset, Smi::FromInt(static_cast<int>(type)));
-}
+OBJECT_CONSTRUCTORS_IMPL(JSV8BreakIterator, JSObject)
 
 inline JSV8BreakIterator::Type JSV8BreakIterator::type() const {
-  Object* value = READ_FIELD(this, kTypeOffset);
-  return static_cast<JSV8BreakIterator::Type>(Smi::ToInt(value));
+  return static_cast<JSV8BreakIterator::Type>(raw_type());
+}
+
+inline void JSV8BreakIterator::set_type(Type type) {
+  set_raw_type(static_cast<int>(type));
 }
 
 ACCESSORS(JSV8BreakIterator, locale, String, kLocaleOffset)
@@ -38,6 +38,8 @@ ACCESSORS(JSV8BreakIterator, bound_first, Object, kBoundFirstOffset)
 ACCESSORS(JSV8BreakIterator, bound_next, Object, kBoundNextOffset)
 ACCESSORS(JSV8BreakIterator, bound_current, Object, kBoundCurrentOffset)
 ACCESSORS(JSV8BreakIterator, bound_break_type, Object, kBoundBreakTypeOffset)
+
+SMI_ACCESSORS(JSV8BreakIterator, raw_type, kBreakIteratorTypeOffset)
 
 CAST_ACCESSOR(JSV8BreakIterator)
 

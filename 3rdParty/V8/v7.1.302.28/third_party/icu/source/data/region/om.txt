@@ -15,5 +15,5 @@ om{
         RU{"Russia"}
         US{"United States"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.47.82"}
 }

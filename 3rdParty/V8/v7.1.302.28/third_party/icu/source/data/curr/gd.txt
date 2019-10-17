@@ -262,6 +262,10 @@ gd{
             "CLP",
             "Peso Sileach",
         }
+        CNH{
+            "CNH",
+            "Yuan Sìneach (far-thìreach)",
+        }
         CNX{
             "CNX",
             "Dolar an t-sluagh-bhanca Shìnich",
@@ -680,6 +684,10 @@ gd{
         }
         MRO{
             "MRO",
+            "Ouguiya Moratàineach (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ouguiya Moratàineach",
         }
         MTL{
@@ -780,7 +788,7 @@ gd{
         }
         PEN{
             "PEN",
-            "Sol ùr Pearùthach",
+            "Sol Pearùthach",
         }
         PES{
             "PES",
@@ -912,6 +920,10 @@ gd{
         }
         STD{
             "STD",
+            "Dobra São Tomé agus Príncipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra São Tomé agus Príncipe",
         }
         SUR{
@@ -1032,6 +1044,10 @@ gd{
         }
         VEF{
             "VEF",
+            "Bolívar Bheinisealach (2008–2018)",
+        }
+        VES{
+            "VES",
             "Bolívar Bheinisealach",
         }
         VND{
@@ -1196,105 +1212,8 @@ gd{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        ESP{"₧"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        LTL{"Lt"}
-        LVL{"Ls"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
-        RUB{"₽"}
-        RUR{"р."}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
+        RON{"leu"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
-    }
-    Currencies%variant{
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1686,6 +1605,12 @@ gd{
             one{"pheso Sileach"}
             other{"peso Sileach"}
             two{"pheso Sileach"}
+        }
+        CNH{
+            few{"yuan Sìneach (far-thìreach)"}
+            one{"yuan Sìneach (far-thìreach)"}
+            other{"yuan Sìneach (far-thìreach)"}
+            two{"yuan Sìneach (far-thìreach)"}
         }
         CNX{
             few{"dolaran an t-sluagh-bhanca Shìnich"}
@@ -2312,6 +2237,12 @@ gd{
             two{"phataca Macàthuach"}
         }
         MRO{
+            few{"ouguiya Moratàineach (1973–2017)"}
+            one{"ouguiya Moratàineach (1973–2017)"}
+            other{"ouguiya Moratàineach (1973–2017)"}
+            two{"ouguiya Moratàineach (1973–2017)"}
+        }
+        MRU{
             few{"ouguiya Moratàineach"}
             one{"ouguiya Moratàineach"}
             other{"ouguiya Moratàineach"}
@@ -2462,10 +2393,10 @@ gd{
             two{"inti Pearùthach"}
         }
         PEN{
-            few{"sol ùra Pearùthach"}
-            one{"sol ùr Pearùthach"}
-            other{"sol ùr Pearùthach"}
-            two{"shol ùr Pearùthach"}
+            few{"sol Pearùthach"}
+            one{"sol Pearùthach"}
+            other{"sol Pearùthach"}
+            two{"shol Pearùthach"}
         }
         PES{
             few{"sol Pearùthach (1863–1965)"}
@@ -2660,6 +2591,12 @@ gd{
             two{"phunnd Sudàin a Deas"}
         }
         STD{
+            few{"dobra São Tomé agus Príncipe (1977–2017)"}
+            one{"dobra São Tomé agus Príncipe (1977–2017)"}
+            other{"dobra São Tomé agus Príncipe (1977–2017)"}
+            two{"dhobra São Tomé agus Príncipe (1977–2017)"}
+        }
+        STN{
             few{"dobra São Tomé agus Príncipe"}
             one{"dobra São Tomé agus Príncipe"}
             other{"dobra São Tomé agus Príncipe"}
@@ -2840,6 +2777,12 @@ gd{
             two{"bholívar Bheinisealach (1871–2008)"}
         }
         VEF{
+            few{"bolívar Bheinisealach (2008–2018)"}
+            one{"bholívar Bheinisealach (2008–2018)"}
+            other{"bolívar Bheinisealach (2008–2018)"}
+            two{"bholívar Bheinisealach (2008–2018)"}
+        }
+        VES{
             few{"bolívar Bheinisealach"}
             one{"bholívar Bheinisealach"}
             other{"bolívar Bheinisealach"}
@@ -3092,5 +3035,5 @@ gd{
         other{"{0} {1}"}
         two{"{0} {1}"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
 }

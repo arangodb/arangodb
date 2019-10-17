@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 **********************************************************************
@@ -86,10 +86,6 @@ class CurrencyFormat : public MeasureFormat {
      * Returns the class ID for this class.
      */
     static UClassID U_EXPORT2 getStaticClassID();
-
- private:
-
-    NumberFormat* fmt;
 };
 
 U_NAMESPACE_END

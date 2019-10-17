@@ -1,6 +1,6 @@
 /*
 *************************************************************************
-*   Copyright (C) 2016 and later: Unicode, Inc. and others.
+*   © 2016 and later: Unicode, Inc. and others.
 *   License & terms of use: http://www.unicode.org/copyright.html#License
 *************************************************************************
 ***********************************************************************
@@ -48,8 +48,8 @@ int main(int argc, char **argv)
 /* Protos */
 static void usage(void);
 static void version(void);
-static void date(UDate when, const UChar *tz, UDateFormatStyle style, const char *format, UErrorCode *status);
-static UDate getWhen(const char *millis, const char *seconds, const char *format, UDateFormatStyle style, const char *parse, const UChar *tz, UErrorCode *status);
+static void date(UDate when, const UChar *tz, UDateFormatStyle style, const char *format, const char *locale, UErrorCode *status);
+static UDate getWhen(const char *millis, const char *seconds, const char *format, const char *locale, UDateFormatStyle style, const char *parse, const UChar *tz, UErrorCode *status);
 
 UConverter *cnv = NULL;
 
@@ -74,6 +74,7 @@ main(int argc,
   UDateFormatStyle style = UDAT_DEFAULT;
   UErrorCode status = U_ZERO_ERROR;
   const char *format = NULL;
+  const char *locale = NULL;
   char *parse = NULL;
   char *seconds = NULL;
   char *millis = NULL;
@@ -132,6 +133,12 @@ main(int argc,
          parse = argv[optInd];
       }
     }
+    else if (strcmp(arg, "-L") == 0) {
+      if (optInd + 1 < argc) {
+         optInd++;
+         locale = argv[optInd];
+      }
+    }
     /* POSIX.1 says all arguments after -- are not options */
     else if(strcmp(arg, "--") == 0) {
       /* skip the -- */
@@ -162,13 +169,13 @@ main(int argc,
   }
 
   /* get the 'when' (or now) */
-  when = getWhen(millis, seconds, format, style, parse, tz, &status);
+  when = getWhen(millis, seconds, format, locale, style, parse, tz, &status);
   if(parse != NULL) {
     format = FORMAT_MILLIS; /* output in millis */
   }
 
   /* print the date */
-  date(when, tz, style, format, &status);
+  date(when, tz, style, format, locale, &status);
 
   ucnv_close(cnv);
 
@@ -194,6 +201,7 @@ usage()
   puts("  -r <seconds>      Use <seconds> as the time (Epoch 1970) rather than now.");
   puts("  -R <millis>       Use <millis> as the time (Epoch 1970) rather than now.");
   puts("  -P <string>       Parse <string> as the time, output in millis format.");
+  puts("  -L <string>       Use the locale <string> instead of the default ICU locale.");
 }
 
 /* Version information */
@@ -245,6 +253,7 @@ date(UDate when,
      const UChar *tz,
      UDateFormatStyle style,
      const char *format,
+     const char *locale,
      UErrorCode *status )
 {
   UChar *s = 0;
@@ -264,7 +273,7 @@ date(UDate when,
     }
   }
 
-  fmt = udat_open(style, style, 0, tz, -1,NULL,0, status);
+  fmt = udat_open(style, style, locale, tz, -1,NULL,0, status);
   if ( format != NULL ) {
     charsToUCharsDefault(uFormat,sizeof(uFormat)/sizeof(uFormat[0]),format,-1,status);
     udat_applyPattern(fmt,FALSE,uFormat,-1);
@@ -292,7 +301,7 @@ date(UDate when,
   free(s);
 }
 
-static UDate getWhen(const char *millis, const char *seconds, const char *format, 
+static UDate getWhen(const char *millis, const char *seconds, const char *format, const char *locale,
                      UDateFormatStyle style, const char *parse, const UChar *tz, UErrorCode *status) {
   UDateFormat *fmt = NULL; 
   UChar uFormat[100];
@@ -319,7 +328,7 @@ static UDate getWhen(const char *millis, const char *seconds, const char *format
       }
     }
 
-    fmt = udat_open(style, style, 0, tz, -1,NULL,0, status);
+    fmt = udat_open(style, style, locale, tz, -1,NULL,0, status);
     if ( format != NULL ) {
       charsToUCharsDefault(uFormat,sizeof(uFormat)/sizeof(uFormat[0]), format,-1,status);
       udat_applyPattern(fmt,FALSE,uFormat,-1);

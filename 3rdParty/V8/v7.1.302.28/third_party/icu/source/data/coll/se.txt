@@ -8,7 +8,7 @@ se{
                 "[import und-u-co-search]"
                 "[import se-u-co-standard]"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -53,7 +53,7 @@ se{
                 "<<<Ô<<ǫ"
                 "<<<Ǫ"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

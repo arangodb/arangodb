@@ -24,14 +24,13 @@ InvalidatedSlotsFilter::InvalidatedSlotsFilter(MemoryChunk* chunk) {
   iterator_end_ = invalidated_slots->end();
   sentinel_ = chunk->area_end();
   if (iterator_ != iterator_end_) {
-    invalidated_start_ = iterator_->first->address();
+    invalidated_start_ = iterator_->first.address();
     invalidated_end_ = invalidated_start_ + iterator_->second;
   } else {
     invalidated_start_ = sentinel_;
     invalidated_end_ = sentinel_;
   }
   // These values will be lazily set when needed.
-  invalidated_object_ = nullptr;
   invalidated_object_size_ = 0;
 #ifdef DEBUG
   last_slot_ = chunk->area_start();

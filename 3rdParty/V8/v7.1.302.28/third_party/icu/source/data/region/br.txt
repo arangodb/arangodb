@@ -31,6 +31,7 @@ br{
         151{"Europa ar Reter"}
         154{"Europa an Norzh"}
         155{"Europa ar Cʼhornôg"}
+        202{"Afrika issaharat"}
         419{"Amerika Latin"}
         AC{"Enez Ascension"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ br{
         CW{"Curaçao"}
         CX{"Enez Christmas"}
         CY{"Kiprenez"}
-        CZ{"Republik Tchek"}
+        CZ{"Tchekia"}
         DE{"Alamagn"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -106,9 +107,10 @@ br{
         ES{"Spagn"}
         ET{"Etiopia"}
         EU{"Unaniezh Europa"}
+        EZ{"takad an euro"}
         FI{"Finland"}
         FJ{"Fidji"}
-        FK{"Inizi Falkland"}
+        FK{"Inizi Falkland (Inizi Maloù)"}
         FM{"Mikronezia"}
         FO{"Inizi Faero"}
         FR{"Frañs"}
@@ -272,6 +274,7 @@ br{
         UA{"Ukraina"}
         UG{"Ouganda"}
         UM{"Inizi diabell ar Stadoù-Unanet"}
+        UN{"Broadoù unanet"}
         US{"Stadoù-Unanet"}
         UY{"Uruguay"}
         UZ{"Ouzbekistan"}
@@ -300,9 +303,9 @@ br{
         CD{"Kongo (RDK)"}
         CG{"Kongo (Republik)"}
         CI{"Aod Olifant"}
-        FK{"Inizi Falkland (Inizi Maloù)"}
+        CZ{"Republik Tchek"}
         MK{"Makedonia (RYKM)"}
         TL{"Timor ar Reter"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.48.86"}
 }

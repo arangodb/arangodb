@@ -31,6 +31,7 @@ tr{
         151{"Doğu Avrupa"}
         154{"Kuzey Avrupa"}
         155{"Batı Avrupa"}
+        202{"Sahra Altı Afrika"}
         419{"Latin Amerika"}
         AC{"Ascension Adası"}
         AD{"Andorra"}
@@ -62,7 +63,7 @@ tr{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivya"}
-        BQ{"Karayip Hollanda"}
+        BQ{"Karayip Hollandası"}
         BR{"Brezilya"}
         BS{"Bahamalar"}
         BT{"Butan"}
@@ -89,7 +90,7 @@ tr{
         CW{"Curaçao"}
         CX{"Christmas Adası"}
         CY{"Kıbrıs"}
-        CZ{"Çek Cumhuriyeti"}
+        CZ{"Çekya"}
         DE{"Almanya"}
         DG{"Diego Garcia"}
         DJ{"Cibuti"}
@@ -97,7 +98,7 @@ tr{
         DM{"Dominika"}
         DO{"Dominik Cumhuriyeti"}
         DZ{"Cezayir"}
-        EA{"Septe ve Melilla"}
+        EA{"Ceuta ve Melilla"}
         EC{"Ekvador"}
         EE{"Estonya"}
         EG{"Mısır"}
@@ -106,9 +107,10 @@ tr{
         ES{"İspanya"}
         ET{"Etiyopya"}
         EU{"Avrupa Birliği"}
+        EZ{"Euro Bölgesi"}
         FI{"Finlandiya"}
         FJ{"Fiji"}
-        FK{"Falkland Adaları"}
+        FK{"Falkland Adaları (Malvinas Adaları)"}
         FM{"Mikronezya"}
         FO{"Faroe Adaları"}
         FR{"Fransa"}
@@ -123,7 +125,7 @@ tr{
         GL{"Grönland"}
         GM{"Gambiya"}
         GN{"Gine"}
-        GP{"Guadalupe"}
+        GP{"Guadeloupe"}
         GQ{"Ekvator Ginesi"}
         GR{"Yunanistan"}
         GS{"Güney Georgia ve Güney Sandwich Adaları"}
@@ -181,7 +183,7 @@ tr{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Marshall Adaları"}
-        MK{"Makedonya"}
+        MK{"Kuzey Makedonya"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Moğolistan"}
@@ -251,7 +253,7 @@ tr{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Suriye"}
-        SZ{"Svaziland"}
+        SZ{"Esvatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks ve Caicos Adaları"}
         TD{"Çad"}
@@ -271,7 +273,7 @@ tr{
         TZ{"Tanzanya"}
         UA{"Ukrayna"}
         UG{"Uganda"}
-        UM{"ABD Uzak Adaları"}
+        UM{"ABD Küçük Harici Adaları"}
         UN{"Birleşmiş Milletler"}
         US{"Amerika Birleşik Devletleri"}
         UY{"Uruguay"}
@@ -301,9 +303,9 @@ tr{
     Countries%variant{
         CD{"Kongo Demokratik Cumhuriyeti"}
         CG{"Kongo Cumhuriyeti"}
-        CZ{"Çekya"}
-        FK{"Falkland Adaları (Malvinas Adaları)"}
+        CZ{"Çek Cumhuriyeti"}
+        SZ{"Svaziland"}
         TL{"Doğu Timor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

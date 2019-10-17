@@ -18,7 +18,10 @@ class CSAGenerator {
  public:
   CSAGenerator(const ControlFlowGraph& cfg, std::ostream& out,
                base::Optional<Builtin::Kind> linkage = base::nullopt)
-      : cfg_(cfg), out_(out), linkage_(linkage) {}
+      : cfg_(cfg),
+        out_(out),
+        linkage_(linkage),
+        previous_position_(SourcePosition::Invalid()) {}
   base::Optional<Stack<std::string>> EmitGraph(Stack<std::string> parameters);
 
   static constexpr const char* ARGUMENTS_VARIABLE_STRING = "arguments";
@@ -31,11 +34,27 @@ class CSAGenerator {
   std::ostream& out_;
   size_t fresh_id_ = 0;
   base::Optional<Builtin::Kind> linkage_;
+  SourcePosition previous_position_;
+
+  void EmitSourcePosition(SourcePosition pos, bool always_emit = false);
+
+  std::string PreCallableExceptionPreparation(
+      base::Optional<Block*> catch_block);
+  void PostCallableExceptionPreparation(const std::string& catch_name,
+                                        const Type* return_type,
+                                        base::Optional<Block*> catch_block,
+                                        Stack<std::string>* stack);
 
   std::string FreshNodeName() { return "tmp" + std::to_string(fresh_id_++); }
+  std::string FreshCatchName() { return "catch" + std::to_string(fresh_id_++); }
   std::string BlockName(const Block* block) {
     return "block" + std::to_string(block->id());
   }
+
+  void ProcessArgumentsCommon(const TypeVector& parameter_types,
+                              std::vector<std::string>* args,
+                              std::vector<std::string>* constexpr_arguments,
+                              Stack<std::string>* stack);
 
   Stack<std::string> EmitBlock(const Block* block);
   void EmitInstruction(const Instruction& instruction,

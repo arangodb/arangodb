@@ -1,8 +1,16 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ug{
-    ExemplarCharacters{"[ئ ا ە ب پ ت ج چ خ د ر ز ژ س ش غ ف ق ك گ ڭ ل م ن ھ و ۇ ۆ ۈ ۋ ې ى ي]"}
-    ExemplarCharactersIndex{"[ئ ا ە ب پ ت ج چ خ د ر ز ژ س ش غ ف ق ك گ ڭ ل م ن ھ و ۇ ۆ ۈ ۋ ې ى ي]"}
+    AuxExemplarCharacters{"[\u200E\u200F ئ]"}
+    ExemplarCharacters{
+        "[{ئا} {ئه} {ئو} {ئۇ} {ئۆ} {ئۈ} {ئې} {ئى} ا ە ب پ ت ج چ خ د ر ز ژ س ش غ ف ق ك"
+        " گ ڭ ل م ن ھ و ۇ ۆ ۈ ۋ ې ى ي]"
+    }
+    ExemplarCharactersIndex{
+        "[{ئا} {ئه} {ئو} {ئۇ} {ئۆ} {ئۈ} {ئې} {ئى} ا ە ب پ ت ج چ خ د ر ز ژ س ش غ ف ق ك"
+        " گ ڭ ل م ن ھ و ۇ ۆ ۈ ۋ ې ى ي]"
+    }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             miscPatterns{
@@ -133,9 +141,15 @@ ug{
                 superscriptingExponent{"×"}
             }
         }
+        minimalPairs{
+            plural{
+                one{"{0}  كىتاب"}
+                other{"{0} بېلىق كۆردۈم ۋە ئۇنى يەۋەتتىم."}
+            }
+        }
         native{"arabext"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             eras{
@@ -375,8 +389,8 @@ ug{
                 MMM{"LLL"}
                 MMMEd{"d-MMM، E"}
                 MMMMW{
-                    one{"MMM، W-ھەپتە"}
-                    other{"MMM، W-ھەپتە"}
+                    one{"MMMM، W-ھەپتە"}
+                    other{"MMMM، W-ھەپتە"}
                 }
                 MMMMd{"d-MMMM"}
                 MMMd{"d-MMM"}
@@ -399,8 +413,8 @@ ug{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    one{"y، w-ھەپتە"}
-                    other{"y، w-ھەپتە"}
+                    one{"Y، w-ھەپتە"}
+                    other{"Y، w-ھەپتە"}
                 }
             }
             dayNames{

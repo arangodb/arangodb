@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn_XK{
-    Version{"2.1.29.33"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             intervalFormats{

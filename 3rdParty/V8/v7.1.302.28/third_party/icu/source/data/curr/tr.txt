@@ -220,7 +220,7 @@ tr{
         }
         BYN{
             "BYN",
-            "Beyaz Rusya Rublesi",
+            "Belarus Rublesi",
         }
         BYR{
             "BYR",
@@ -261,6 +261,10 @@ tr{
         CLP{
             "CLP",
             "Şili Pesosu",
+        }
+        CNH{
+            "CNH",
+            "Çin Yuanı (offshore)",
         }
         CNX{
             "CNX",
@@ -680,7 +684,11 @@ tr{
         }
         MRO{
             "MRO",
-            "Moritanya Ouguiyası",
+            "Moritanya Ugiyası (1973–2017)",
+        }
+        MRU{
+            "MRU",
+            "Moritanya Ugiyası",
         }
         MTL{
             "MTL",
@@ -780,11 +788,11 @@ tr{
         }
         PEN{
             "PEN",
-            "Peru Nuevo Solü",
+            "Peru Solü",
         }
         PES{
             "PES",
-            "Peru Solu",
+            "Peru Solü (1863–1965)",
         }
         PGK{
             "PGK",
@@ -912,6 +920,10 @@ tr{
         }
         STD{
             "STD",
+            "São Tomé ve Príncipe Dobrası (1977–2017)",
+        }
+        STN{
+            "STN",
             "São Tomé ve Príncipe Dobrası",
         }
         SUR{
@@ -1037,6 +1049,10 @@ tr{
         }
         VEF{
             "VEF",
+            "Venezuela Bolivarı (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venezuela Bolivarı",
         }
         VND{
@@ -1136,7 +1152,7 @@ tr{
             "ADB Hesap Birimi",
         }
         XXX{
-            "XXX",
+            "¤",
             "Bilinmeyen Para Birimi",
         }
         YDD{
@@ -1226,7 +1242,6 @@ tr{
         DKK{"kr"}
         DOP{"$"}
         EGP{"E£"}
-        ESP{"₧"}
         EUR{"€"}
         FJD{"$"}
         FKP{"£"}
@@ -1274,7 +1289,6 @@ tr{
         PYG{"₲"}
         RON{"L"}
         RUB{"₽"}
-        RUR{"р."}
         RWF{"RF"}
         SBD{"$"}
         SEK{"kr"}
@@ -1282,7 +1296,6 @@ tr{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1508,8 +1521,8 @@ tr{
             other{"Yeni Beyaz Rusya Rublesi (1994–1999)"}
         }
         BYN{
-            one{"Beyaz Rusya rublesi"}
-            other{"Beyaz Rusya rublesi"}
+            one{"Belarus rublesi"}
+            other{"Belarus rublesi"}
         }
         BYR{
             one{"Beyaz Rusya rublesi (2000–2016)"}
@@ -1550,6 +1563,10 @@ tr{
         CLP{
             one{"Şili pesosu"}
             other{"Şili pesosu"}
+        }
+        CNH{
+            one{"Çin yuanı (offshore)"}
+            other{"Çin yuanı (offshore)"}
         }
         CNX{
             one{"Çin Halk Cumhuriyeti Merkez Bankası doları"}
@@ -1932,8 +1949,12 @@ tr{
             other{"Makao patakası"}
         }
         MRO{
-            one{"Moritanya ouguiyası"}
-            other{"Moritanya ouguiyası"}
+            one{"Moritanya ugiyası (1973–2017)"}
+            other{"Moritanya ugiyası (1973–2017)"}
+        }
+        MRU{
+            one{"Moritanya ugiyası"}
+            other{"Moritanya ugiyası"}
         }
         MTL{
             one{"Malta Lirası"}
@@ -2024,12 +2045,12 @@ tr{
             other{"Peru İnti"}
         }
         PEN{
-            one{"Peru nuevo solü"}
-            other{"Peru nuevo solü"}
+            one{"Peru solü"}
+            other{"Peru solü"}
         }
         PES{
-            one{"Peru Solu"}
-            other{"Peru Solu"}
+            one{"Peru Solü (1863–1965)"}
+            other{"Peru Solü (1863–1965)"}
         }
         PGK{
             one{"Papua Yeni Gine kinası"}
@@ -2144,6 +2165,10 @@ tr{
             other{"Güney Sudan lirası"}
         }
         STD{
+            one{"São Tomé ve Príncipe dobrası (1977–2017)"}
+            other{"São Tomé ve Príncipe dobrası (1977–2017)"}
+        }
+        STN{
             one{"São Tomé ve Príncipe dobrası"}
             other{"São Tomé ve Príncipe dobrası"}
         }
@@ -2260,6 +2285,10 @@ tr{
             other{"Venezuela Bolivarı (1871–2008)"}
         }
         VEF{
+            one{"Venezuela bolivarı (2008–2018)"}
+            other{"Venezuela bolivarı (2008–2018)"}
+        }
+        VES{
             one{"Venezuela bolivarı"}
             other{"Venezuela bolivarı"}
         }
@@ -2368,5 +2397,5 @@ tr{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

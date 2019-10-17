@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn_ME{
-    Version{"2.1.29.33"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             intervalFormats{
@@ -22,14 +22,14 @@ sr_Latn_ME{
             }
             availableFormats{
                 MMMMW{
-                    few{"W. 'sjedmica' 'u' MMM"}
-                    one{"W. 'sjedmica' 'u' MMM"}
-                    other{"W. 'sjedmica' 'u' MMM"}
+                    few{"W. 'sjedmica' 'u' MMMM"}
+                    one{"W. 'sjedmica' 'u' MMMM"}
+                    other{"W. 'sjedmica' 'u' MMMM"}
                 }
                 yw{
-                    few{"w. 'sjedmica' 'u' y."}
-                    one{"w. 'sjedmica' 'u' y."}
-                    other{"w. 'sjedmica' 'u' y."}
+                    few{"w. 'sjedmica' 'u' Y."}
+                    one{"w. 'sjedmica' 'u' Y."}
+                    other{"w. 'sjedmica' 'u' Y."}
                 }
             }
             dayNames{

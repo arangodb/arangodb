@@ -57,7 +57,7 @@ rw{
         lo{"Ikilawotiyani"}
         lt{"Ikilituwaniya"}
         lv{"Ikinyaletoviyani"}
-        mk{"Ikimasedoniyani"}
+        mk{"Ikimasedoniya"}
         ml{"Ikimalayalami"}
         mn{"Ikimongoli"}
         mr{"Ikimarati"}
@@ -108,5 +108,5 @@ rw{
         yi{"Inyeyidishi"}
         zu{"Inyezulu"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.49.82"}
 }

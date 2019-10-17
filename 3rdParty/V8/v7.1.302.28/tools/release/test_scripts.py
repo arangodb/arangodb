@@ -26,6 +26,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# for py2/py3 compatibility
+from __future__ import print_function
+
 import os
 import shutil
 import tempfile
@@ -383,11 +386,11 @@ class ScriptTest(unittest.TestCase):
     return script(TEST_CONFIG, self, self._state).RunSteps([step_class], args)
 
   def Call(self, fun, *args, **kwargs):
-    print "Calling %s with %s and %s" % (str(fun), str(args), str(kwargs))
+    print("Calling %s with %s and %s" % (str(fun), str(args), str(kwargs)))
 
   def Command(self, cmd, args="", prefix="", pipe=True, cwd=None):
-    print "%s %s" % (cmd, args)
-    print "in %s" % cwd
+    print("%s %s" % (cmd, args))
+    print("in %s" % cwd)
     return self._mock.Call("command", cmd + " " + args, cwd=cwd)
 
   def ReadLine(self):
@@ -933,8 +936,9 @@ TBR=reviewer@chromium.org"""
           cb=self.WriteFakeWatchlistsFile),
       Cmd("git commit -aF \"%s\"" % TEST_CONFIG["COMMITMSG_FILE"], "",
           cb=CheckVersionCommit),
-      Cmd("git cl upload --send-mail --email \"author@chromium.org\" "
-          "-f --bypass-hooks --no-autocc --gerrit", ""),
+      Cmd("git cl upload --send-mail "
+          "-f --bypass-hooks --no-autocc --message-file "
+          "\"%s\" --gerrit" % TEST_CONFIG["COMMITMSG_FILE"], ""),
       Cmd("git cl land --bypass-hooks -f", ""),
       Cmd("git fetch", ""),
       Cmd("git log -1 --format=%H --grep="
@@ -997,13 +1001,17 @@ Summary of changes available at:
 https://chromium.googlesource.com/v8/v8/+log/last_rol..roll_hsh
 
 Please follow these instructions for assigning/CC'ing issues:
-https://github.com/v8/v8/wiki/Triaging%20issues
+https://v8.dev/docs/triage-issues
 
 Please close rolling in case of a roll revert:
 https://v8-roll.appspot.com/
 This only works with a Google account.
 
-CQ_INCLUDE_TRYBOTS=master.tryserver.blink:linux_trusty_blink_rel;luci.chromium.try:linux_optional_gpu_tests_rel;luci.chromium.try:mac_optional_gpu_tests_rel;luci.chromium.try:win_optional_gpu_tests_rel;luci.chromium.try:android_optional_gpu_tests_rel
+CQ_INCLUDE_TRYBOTS=luci.chromium.try:linux-blink-rel
+CQ_INCLUDE_TRYBOTS=luci.chromium.try:linux_optional_gpu_tests_rel
+CQ_INCLUDE_TRYBOTS=luci.chromium.try:mac_optional_gpu_tests_rel
+CQ_INCLUDE_TRYBOTS=luci.chromium.try:win_optional_gpu_tests_rel
+CQ_INCLUDE_TRYBOTS=luci.chromium.try:android_optional_gpu_tests_rel
 
 TBR=reviewer@chromium.org"""
 
@@ -1085,7 +1093,7 @@ deps = {
            "--author \"author@chromium.org <author@chromium.org>\"" %
            self.ROLL_COMMIT_MSG),
           "", cwd=chrome_dir),
-      Cmd("git cl upload --send-mail --email \"author@chromium.org\" -f "
+      Cmd("git cl upload --send-mail -f "
           "--cq-dry-run --bypass-hooks --gerrit", "",
           cwd=chrome_dir),
       Cmd("git checkout -f master", "", cwd=chrome_dir),

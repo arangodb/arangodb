@@ -18,5 +18,5 @@ es_CO{
         wo{"wolof"}
         zgh{"tamazight marroquí estándar"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
 }

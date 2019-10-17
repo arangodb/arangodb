@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 es_PA{
     %%Parent{"es_419"}
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
@@ -57,12 +57,12 @@ es_PA{
         }
         gregorian{
             AmPmMarkers{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -107,16 +107,16 @@ es_PA{
                 }
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     wide{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                 }
             }
@@ -145,24 +145,6 @@ es_PA{
                     y{"d 'de' MMM 'de' y 'al' d 'de' MMM 'de' y"}
                 }
             }
-            monthNames{
-                format{
-                    narrow{
-                        "E",
-                        "F",
-                        "M",
-                        "A",
-                        "M",
-                        "J",
-                        "J",
-                        "A",
-                        "S",
-                        "O",
-                        "N",
-                        "D",
-                    }
-                }
-            }
             quarters{
                 format{
                     wide{
@@ -187,7 +169,7 @@ es_PA{
         day{
             relative{
                 "-1"{"ayer"}
-                "-2"{"antier"}
+                "-2"{"anteayer"}
                 "0"{"hoy"}
                 "1"{"mañana"}
                 "2"{"pasado mañana"}

@@ -13,7 +13,7 @@ de{
         colStrength{"Sortierstärke"}
         collation{"Sortierung"}
         currency{"Währung"}
-        hc{"Stundenzählung (12 vs. 24)"}
+        hc{"Stundenformat (12h/24h)"}
         lb{"Zeilenumbruchstil"}
         ms{"Maßsystem"}
         numbers{"Zahlen"}
@@ -51,6 +51,7 @@ de{
         aro{"Araona"}
         arp{"Arapaho"}
         arq{"Algerisches Arabisch"}
+        ars{"Arabisch (Nadschd)"}
         arw{"Arawak"}
         ary{"Marokkanisches Arabisch"}
         arz{"Ägyptisches Arabisch"}
@@ -164,16 +165,9 @@ de{
         el{"Griechisch"}
         elx{"Elamisch"}
         en{"Englisch"}
-        en_AU{"Australisches Englisch"}
-        en_CA{"Kanadisches Englisch"}
-        en_GB{"Britisches Englisch"}
-        en_US{"Amerikanisches Englisch"}
         enm{"Mittelenglisch"}
         eo{"Esperanto"}
         es{"Spanisch"}
-        es_419{"Lateinamerikanisches Spanisch"}
-        es_ES{"Europäisches Spanisch"}
-        es_MX{"Mexikanisches Spanisch"}
         esu{"Zentral-Alaska-Yupik"}
         et{"Estnisch"}
         eu{"Baskisch"}
@@ -190,8 +184,6 @@ de{
         fo{"Färöisch"}
         fon{"Fon"}
         fr{"Französisch"}
-        fr_CA{"Kanadisches Französisch"}
-        fr_CH{"Schweizer Französisch"}
         frc{"Cajun"}
         frm{"Mittelfranzösisch"}
         fro{"Altfranzösisch"}
@@ -213,7 +205,7 @@ de{
         gl{"Galicisch"}
         glk{"Gilaki"}
         gmh{"Mittelhochdeutsch"}
-        gn{"Guarani"}
+        gn{"Guaraní"}
         goh{"Althochdeutsch"}
         gom{"Goa-Konkani"}
         gon{"Gondi"}
@@ -339,6 +331,7 @@ de{
         ln{"Lingala"}
         lo{"Laotisch"}
         lol{"Mongo"}
+        lou{"Kreol (Louisiana)"}
         loz{"Lozi"}
         lrc{"Nördliches Luri"}
         lt{"Litauisch"}
@@ -458,8 +451,6 @@ de{
         pro{"Altprovenzalisch"}
         ps{"Paschtu"}
         pt{"Portugiesisch"}
-        pt_BR{"Brasilianisches Portugiesisch"}
-        pt_PT{"Europäisches Portugiesisch"}
         qu{"Quechua"}
         quc{"K’iche’"}
         qug{"Chimborazo Hochland-Quechua"}
@@ -639,8 +630,8 @@ de{
     }
     Languages%short{
         az{"Aserbaidschanisch"}
-        en_GB{"UK-Englisch"}
-        en_US{"US-Englisch"}
+        en_GB{"Englisch (GB)"}
+        en_US{"Englisch (USA)"}
     }
     Scripts{
         Afak{"Afaka"}
@@ -657,13 +648,12 @@ de{
         Blis{"Bliss-Symbole"}
         Bopo{"Bopomofo"}
         Brah{"Brahmi"}
-        Brai{"Blindenschrift"}
+        Brai{"Braille"}
         Bugi{"Buginesisch"}
         Buhd{"Buhid"}
         Cakm{"Chakma"}
         Cans{"UCAS"}
         Cari{"Karisch"}
-        Cham{"Cham"}
         Cher{"Cherokee"}
         Cirt{"Cirth"}
         Copt{"Koptisch"}
@@ -734,7 +724,6 @@ de{
         Merc{"Meroitisch kursiv"}
         Mero{"Meroitisch"}
         Mlym{"Malayalam"}
-        Modi{"Modi"}
         Mong{"Mongolisch"}
         Moon{"Moon"}
         Mroo{"Mro"}
@@ -877,6 +866,7 @@ de{
         }
         collation{
             big5han{"Traditionelles Chinesisch - Big5"}
+            compat{"vorherige Sortierung, Kompatibilität"}
             dictionary{"Lexikographische Sortierreihenfolge"}
             ducet{"Unicode-Sortierung"}
             eor{"Europäische Sortierregeln"}
@@ -885,7 +875,7 @@ de{
             phonetic{"Sortierung nach Phonetik"}
             pinyin{"Pinyin-Sortierregeln"}
             reformed{"Reformierte Sortierreihenfolge"}
-            search{"Allgemeine Suche"}
+            search{"allgemeine Suche"}
             searchjl{"Suche nach Anfangsbuchstaben des koreanischen Alphabets"}
             standard{"Standard-Sortierung"}
             stroke{"Strichfolge"}
@@ -899,10 +889,10 @@ de{
             npinyin{"Numerisch"}
         }
         hc{
-            h11{"12-Stunden-Zählung (0-11)"}
-            h12{"12-Stunden-Zählung (1-12)"}
-            h23{"24-Stunden-Zählung (0-23)"}
-            h24{"24-Stunden-Zählung (1-24)"}
+            h11{"12-Stunden-Format (0-11)"}
+            h12{"12-Stunden-Format (1-12)"}
+            h23{"24-Stunden-Format (0-23)"}
+            h24{"24-Stunden-Format (1-24)"}
         }
         lb{
             loose{"lockerer Zeilenumbruch"}
@@ -1016,7 +1006,7 @@ de{
         VALENCIA{"Valencianisch"}
         WADEGILE{"Wade-Giles"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
         all{"{0} — Alle"}
         category-list{"{0}: {1}"}

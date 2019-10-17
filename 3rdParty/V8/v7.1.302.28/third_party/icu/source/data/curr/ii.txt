@@ -7,12 +7,12 @@ ii{
             "CNY",
         }
         XXX{
-            "XXX",
+            "¤",
             "ꅉꀋꐚꌠꌋꆀꎆꃀꀋꈁꀐꌠ",
         }
     }
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

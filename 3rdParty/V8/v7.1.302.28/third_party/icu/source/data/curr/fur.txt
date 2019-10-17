@@ -263,7 +263,7 @@ fur{
             "codiç di verifiche de monede",
         }
         XXX{
-            "XXX",
+            "¤",
             "Monede no valide o no cognossude",
         }
         ZAR{
@@ -377,5 +377,5 @@ fur{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

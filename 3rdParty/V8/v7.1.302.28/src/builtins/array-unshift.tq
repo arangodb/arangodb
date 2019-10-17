@@ -2,16 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-module array {
+namespace array_unshift {
   extern builtin ArrayUnshift(Context, JSFunction, Object, int32);
 
   macro TryFastArrayUnshift(
-      context: Context, receiver: Object, arguments: constexpr Arguments):
-      never
+      context: Context, receiver: Object, arguments: Arguments): never
       labels Slow {
-    EnsureFastJSArray(context, receiver) otherwise Slow;
-    const array: JSArray = UnsafeCast<JSArray>(receiver);
-    EnsureWriteableFastElements(array);
+    const array: FastJSArray = Cast<FastJSArray>(receiver) otherwise Slow;
+    array::EnsureWriteableFastElements(array);
 
     const map: Map = array.map;
     if (!IsExtensibleMap(map)) goto Slow;
@@ -22,14 +20,13 @@ module array {
         Convert<int32>(arguments.length));
   }
 
-  macro GenericArrayUnshift(
-      context: Context, receiver: Object,
-      arguments: constexpr Arguments): Number {
+  transitioning macro GenericArrayUnshift(
+      context: Context, receiver: Object, arguments: Arguments): Number {
     // 1. Let O be ? ToObject(this value).
     const object: JSReceiver = ToObject_Inline(context, receiver);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    const length: Number = GetLengthProperty(context, object);
+    const length: Number = GetLengthProperty(object);
 
     // 3. Let argCount be the number of actual arguments.
     const argCount: Smi = Convert<Smi>(arguments.length);
@@ -38,7 +35,7 @@ module array {
     if (argCount > 0) {
       // a. If len + argCount > 2**53 - 1, throw a TypeError exception.
       if (length + argCount > kMaxSafeInteger) {
-        ThrowTypeError(context, kInvalidArrayLength);
+        ThrowTypeError(kInvalidArrayLength);
       }
 
       // b. Let k be len.
@@ -53,18 +50,18 @@ module array {
         const to: Number = k + argCount - 1;
 
         // iii. Let fromPresent be ? HasProperty(O, from).
-        const fromPresent: Boolean = HasProperty(context, object, from);
+        const fromPresent: Boolean = HasProperty(object, from);
 
         // iv. If fromPresent is true, then
         if (fromPresent == True) {
           // 1. Let fromValue be ? Get(O, from).
-          const fromValue: Object = GetProperty(context, object, from);
+          const fromValue: Object = GetProperty(object, from);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          SetProperty(context, object, to, fromValue);
+          SetProperty(object, to, fromValue);
         } else {
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeleteProperty(context, object, to, kStrict);
+          DeleteProperty(object, to, kStrict);
         }
 
         // vi. Decrease k by 1.
@@ -79,7 +76,7 @@ module array {
       // f. Repeat, while items is not empty
       while (j < argCount) {
         // ii .Perform ? Set(O, ! ToString(j), E, true).
-        SetProperty(context, object, j, arguments[Convert<intptr>(j)]);
+        SetProperty(object, j, arguments[Convert<intptr>(j)]);
 
         // iii. Increase j by 1.
         ++j;
@@ -88,15 +85,15 @@ module array {
 
     // 5. Perform ? Set(O, "length", len + argCount, true).
     const newLength: Number = length + argCount;
-    SetProperty(context, object, kLengthString, newLength);
+    SetProperty(object, kLengthString, newLength);
 
     // 6. Return length + argCount.
     return newLength;
   }
 
   // https://tc39.github.io/ecma262/#sec-array.prototype.unshift
-  javascript builtin ArrayPrototypeUnshift(
-      context: Context, receiver: Object, ...arguments): Object {
+  transitioning javascript builtin ArrayPrototypeUnshift(
+      js-implicit context: Context, receiver: Object)(...arguments): Object {
     try {
       TryFastArrayUnshift(context, receiver, arguments) otherwise Baseline;
     }

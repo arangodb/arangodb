@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 si{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"අබිජාන්"}
@@ -214,7 +214,7 @@ si{
             ec{"බෙලෙම්"}
         }
         "America:Belize"{
-            ec{"බේලිස්"}
+            ec{"බෙලීස්"}
         }
         "America:Blanc-Sablon"{
             ec{"බ්ලැන්ක්-සැබ්ලන්"}
@@ -507,6 +507,9 @@ si{
         "America:Puerto_Rico"{
             ec{"පුවටොරිකෝව"}
         }
+        "America:Punta_Arenas"{
+            ec{"පුන්ටා ඇරිනාස්"}
+        }
         "America:Rainy_River"{
             ec{"රෙයිනි ගඟ"}
         }
@@ -598,7 +601,7 @@ si{
             ec{"යකුටට්"}
         }
         "America:Yellowknife"{
-            ec{"යෙලෝනයිෆ"}
+            ec{"යෙලෝනයිෆ්"}
         }
         "Antarctica:Casey"{
             ec{"කැසේ"}
@@ -657,6 +660,9 @@ si{
         "Asia:Ashgabat"{
             ec{"අශ්ගබැට්"}
         }
+        "Asia:Atyrau"{
+            ec{"ඇටිරවු"}
+        }
         "Asia:Baghdad"{
             ec{"බැග්ඩෑඩ්"}
         }
@@ -707,6 +713,9 @@ si{
         }
         "Asia:Dushanbe"{
             ec{"ඩුශන්බේ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ෆැමගුස්ටා"}
         }
         "Asia:Gaza"{
             ec{"ගාසා"}
@@ -880,7 +889,7 @@ si{
             ec{"ඇසොරේ"}
         }
         "Atlantic:Bermuda"{
-            ec{"බර්මියුඩාව"}
+            ec{"බර්මියුඩා"}
         }
         "Atlantic:Canary"{
             ec{"කැනරි"}
@@ -942,6 +951,9 @@ si{
         "Australia:Sydney"{
             ec{"සිඩ්නි"}
         }
+        "Etc:UTC"{
+            ls{"සමකක්ෂ සාර්ව වේලාව"}
+        }
         "Etc:Unknown"{
             ec{"හඳුනා නොගත් නගරය"}
         }
@@ -986,7 +998,7 @@ si{
         }
         "Europe:Dublin"{
             ec{"ඩබ්ලින්"}
-            ld{"අයර්ලන්ත ගිම්හාන කාලය"}
+            ld{"අයර්ලන්ත සම්මත වේලාව"}
         }
         "Europe:Gibraltar"{
             ec{"ජිබ්රෝල්ටා"}
@@ -1023,7 +1035,7 @@ si{
         }
         "Europe:London"{
             ec{"ලන්ඩන්"}
-            ld{"බ්‍රිතාන්‍ය ගිම්හාන කාලය"}
+            ld{"බ්‍රිතාන්‍ය ගිම්හාන වේලාව"}
         }
         "Europe:Luxembourg"{
             ec{"ලක්සැම්බර්ග්"}
@@ -1072,6 +1084,9 @@ si{
         }
         "Europe:Sarajevo"{
             ec{"සරාජෙවෝ"}
+        }
+        "Europe:Saratov"{
+            ec{"සරටොව්"}
         }
         "Europe:Simferopol"{
             ec{"සිම්ෆෙරෝපොල්"}

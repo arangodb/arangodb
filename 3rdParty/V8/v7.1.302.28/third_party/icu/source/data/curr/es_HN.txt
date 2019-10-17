@@ -8,5 +8,5 @@ es_HN{
             "lempira hondureño",
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
 }

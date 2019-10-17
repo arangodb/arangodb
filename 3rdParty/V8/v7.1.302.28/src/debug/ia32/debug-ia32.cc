@@ -6,9 +6,9 @@
 
 #include "src/debug/debug.h"
 
+#include "src/codegen/macro-assembler.h"
 #include "src/debug/liveedit.h"
-#include "src/frames-inl.h"
-#include "src/macro-assembler.h"
+#include "src/execution/frames-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -16,8 +16,6 @@ namespace internal {
 #define __ ACCESS_MASM(masm)
 
 void DebugCodegen::GenerateHandleDebuggerStatement(MacroAssembler* masm) {
-  Assembler::SupportsRootRegisterScope supports_root_register(masm);
-
   {
     FrameScope scope(masm, StackFrame::INTERNAL);
     __ CallRuntime(Runtime::kHandleDebuggerStatement, 0);
@@ -29,8 +27,6 @@ void DebugCodegen::GenerateHandleDebuggerStatement(MacroAssembler* masm) {
 }
 
 void DebugCodegen::GenerateFrameDropperTrampoline(MacroAssembler* masm) {
-  Assembler::SupportsRootRegisterScope supports_root_register(masm);
-
   // Frame is being dropped:
   // - Drop to the target frame specified by eax.
   // - Look up current function on the frame.

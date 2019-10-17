@@ -9,7 +9,7 @@ az{
                 "[import az-u-co-standard]"
                 "[reorder others]"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -26,7 +26,7 @@ az{
                 "&H<x<<<X"
                 "&Z<w<<<W"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

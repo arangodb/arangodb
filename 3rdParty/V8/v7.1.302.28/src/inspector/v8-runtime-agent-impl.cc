@@ -55,7 +55,7 @@ static const char customObjectFormatterEnabled[] =
     "customObjectFormatterEnabled";
 static const char runtimeEnabled[] = "runtimeEnabled";
 static const char bindings[] = "bindings";
-};
+}  // namespace V8RuntimeAgentImplState
 
 using protocol::Runtime::RemoteObject;
 
@@ -90,14 +90,14 @@ template <typename ProtocolCallback>
 bool wrapEvaluateResultAsync(InjectedScript* injectedScript,
                              v8::MaybeLocal<v8::Value> maybeResultValue,
                              const v8::TryCatch& tryCatch,
-                             const String16& objectGroup, bool returnByValue,
-                             bool generatePreview, ProtocolCallback* callback) {
+                             const String16& objectGroup, WrapMode wrapMode,
+                             ProtocolCallback* callback) {
   std::unique_ptr<RemoteObject> result;
   Maybe<protocol::Runtime::ExceptionDetails> exceptionDetails;
 
   Response response = injectedScript->wrapEvaluateResult(
-      maybeResultValue, tryCatch, objectGroup, returnByValue, generatePreview,
-      &result, &exceptionDetails);
+      maybeResultValue, tryCatch, objectGroup, wrapMode, &result,
+      &exceptionDetails);
   if (response.isSuccess()) {
     callback->sendSuccess(std::move(result), std::move(exceptionDetails));
     return true;
@@ -107,11 +107,12 @@ bool wrapEvaluateResultAsync(InjectedScript* injectedScript,
 }
 
 void innerCallFunctionOn(
-    V8InspectorSessionImpl* session, InjectedScript::Scope& scope,
+    V8InspectorSessionImpl* session,
+    InjectedScript::Scope& scope,  // NOLINT(runtime/references)
     v8::Local<v8::Value> recv, const String16& expression,
     Maybe<protocol::Array<protocol::Runtime::CallArgument>> optionalArguments,
-    bool silent, bool returnByValue, bool generatePreview, bool userGesture,
-    bool awaitPromise, const String16& objectGroup,
+    bool silent, WrapMode wrapMode, bool userGesture, bool awaitPromise,
+    const String16& objectGroup,
     std::unique_ptr<V8RuntimeAgentImpl::CallFunctionOnCallback> callback) {
   V8InspectorImpl* inspector = session->inspector();
 
@@ -120,12 +121,12 @@ void innerCallFunctionOn(
   if (optionalArguments.isJust()) {
     protocol::Array<protocol::Runtime::CallArgument>* arguments =
         optionalArguments.fromJust();
-    argc = static_cast<int>(arguments->length());
+    argc = static_cast<int>(arguments->size());
     argv.reset(new v8::Local<v8::Value>[argc]);
     for (int i = 0; i < argc; ++i) {
       v8::Local<v8::Value> argumentValue;
       Response response = scope.injectedScript()->resolveCallArgument(
-          arguments->get(i), &argumentValue);
+          (*arguments)[i].get(), &argumentValue);
       if (!response.isSuccess()) {
         callback->sendFailure(response);
         return;
@@ -159,7 +160,7 @@ void innerCallFunctionOn(
 
   if (scope.tryCatch().HasCaught()) {
     wrapEvaluateResultAsync(scope.injectedScript(), maybeFunctionValue,
-                            scope.tryCatch(), objectGroup, false, false,
+                            scope.tryCatch(), objectGroup, WrapMode::kNoPreview,
                             callback.get());
     return;
   }
@@ -189,13 +190,13 @@ void innerCallFunctionOn(
 
   if (!awaitPromise || scope.tryCatch().HasCaught()) {
     wrapEvaluateResultAsync(scope.injectedScript(), maybeResultValue,
-                            scope.tryCatch(), objectGroup, returnByValue,
-                            generatePreview, callback.get());
+                            scope.tryCatch(), objectGroup, wrapMode,
+                            callback.get());
     return;
   }
 
   scope.injectedScript()->addPromiseCallback(
-      session, maybeResultValue, objectGroup, returnByValue, generatePreview,
+      session, maybeResultValue, objectGroup, wrapMode,
       EvaluateCallbackWrapper<V8RuntimeAgentImpl::CallFunctionOnCallback>::wrap(
           std::move(callback)));
 }
@@ -261,7 +262,7 @@ void V8RuntimeAgentImpl::evaluate(
   scope.allowCodeGenerationFromStrings();
   v8::MaybeLocal<v8::Value> maybeResultValue;
   {
-    V8InspectorImpl::EvaluateScope evaluateScope(m_inspector->isolate());
+    V8InspectorImpl::EvaluateScope evaluateScope(scope);
     if (timeout.isJust()) {
       response = evaluateScope.setTimeout(timeout.fromJust() / 1000.0);
       if (!response.isSuccess()) {
@@ -284,16 +285,17 @@ void V8RuntimeAgentImpl::evaluate(
     return;
   }
 
+  WrapMode mode = generatePreview.fromMaybe(false) ? WrapMode::kWithPreview
+                                                   : WrapMode::kNoPreview;
+  if (returnByValue.fromMaybe(false)) mode = WrapMode::kForceValue;
   if (!awaitPromise.fromMaybe(false) || scope.tryCatch().HasCaught()) {
     wrapEvaluateResultAsync(scope.injectedScript(), maybeResultValue,
-                            scope.tryCatch(), objectGroup.fromMaybe(""),
-                            returnByValue.fromMaybe(false),
-                            generatePreview.fromMaybe(false), callback.get());
+                            scope.tryCatch(), objectGroup.fromMaybe(""), mode,
+                            callback.get());
     return;
   }
   scope.injectedScript()->addPromiseCallback(
-      m_session, maybeResultValue, objectGroup.fromMaybe(""),
-      returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
+      m_session, maybeResultValue, objectGroup.fromMaybe(""), mode,
       EvaluateCallbackWrapper<EvaluateCallback>::wrap(std::move(callback)));
 }
 
@@ -312,9 +314,11 @@ void V8RuntimeAgentImpl::awaitPromise(
         Response::Error("Could not find promise with given id"));
     return;
   }
+  WrapMode mode = generatePreview.fromMaybe(false) ? WrapMode::kWithPreview
+                                                   : WrapMode::kNoPreview;
+  if (returnByValue.fromMaybe(false)) mode = WrapMode::kForceValue;
   scope.injectedScript()->addPromiseCallback(
-      m_session, scope.object(), scope.objectGroupName(),
-      returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
+      m_session, scope.object(), scope.objectGroupName(), mode,
       EvaluateCallbackWrapper<AwaitPromiseCallback>::wrap(std::move(callback)));
 }
 
@@ -335,6 +339,9 @@ void V8RuntimeAgentImpl::callFunctionOn(
         "Either ObjectId or executionContextId must be specified"));
     return;
   }
+  WrapMode mode = generatePreview.fromMaybe(false) ? WrapMode::kWithPreview
+                                                   : WrapMode::kNoPreview;
+  if (returnByValue.fromMaybe(false)) mode = WrapMode::kForceValue;
   if (objectId.isJust()) {
     InjectedScript::ObjectScope scope(m_session, objectId.fromJust());
     Response response = scope.initialize();
@@ -342,14 +349,13 @@ void V8RuntimeAgentImpl::callFunctionOn(
       callback->sendFailure(response);
       return;
     }
-    innerCallFunctionOn(
-        m_session, scope, scope.object(), expression,
-        std::move(optionalArguments), silent.fromMaybe(false),
-        returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
-        userGesture.fromMaybe(false), awaitPromise.fromMaybe(false),
-        objectGroup.isJust() ? objectGroup.fromMaybe(String16())
-                             : scope.objectGroupName(),
-        std::move(callback));
+    innerCallFunctionOn(m_session, scope, scope.object(), expression,
+                        std::move(optionalArguments), silent.fromMaybe(false),
+                        mode, userGesture.fromMaybe(false),
+                        awaitPromise.fromMaybe(false),
+                        objectGroup.isJust() ? objectGroup.fromMaybe(String16())
+                                             : scope.objectGroupName(),
+                        std::move(callback));
   } else {
     int contextId = 0;
     Response response =
@@ -365,12 +371,11 @@ void V8RuntimeAgentImpl::callFunctionOn(
       callback->sendFailure(response);
       return;
     }
-    innerCallFunctionOn(
-        m_session, scope, scope.context()->Global(), expression,
-        std::move(optionalArguments), silent.fromMaybe(false),
-        returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
-        userGesture.fromMaybe(false), awaitPromise.fromMaybe(false),
-        objectGroup.fromMaybe(""), std::move(callback));
+    innerCallFunctionOn(m_session, scope, scope.context()->Global(), expression,
+                        std::move(optionalArguments), silent.fromMaybe(false),
+                        mode, userGesture.fromMaybe(false),
+                        awaitPromise.fromMaybe(false),
+                        objectGroup.fromMaybe(""), std::move(callback));
   }
 }
 
@@ -381,8 +386,11 @@ Response V8RuntimeAgentImpl::getProperties(
         result,
     Maybe<protocol::Array<protocol::Runtime::InternalPropertyDescriptor>>*
         internalProperties,
+    Maybe<protocol::Array<protocol::Runtime::PrivatePropertyDescriptor>>*
+        privateProperties,
     Maybe<protocol::Runtime::ExceptionDetails>* exceptionDetails) {
   using protocol::Runtime::InternalPropertyDescriptor;
+  using protocol::Runtime::PrivatePropertyDescriptor;
 
   InjectedScript::ObjectScope scope(m_session, objectId);
   Response response = scope.initialize();
@@ -397,42 +405,25 @@ Response V8RuntimeAgentImpl::getProperties(
   v8::Local<v8::Object> object = scope.object().As<v8::Object>();
   response = scope.injectedScript()->getProperties(
       object, scope.objectGroupName(), ownProperties.fromMaybe(false),
-      accessorPropertiesOnly.fromMaybe(false), generatePreview.fromMaybe(false),
+      accessorPropertiesOnly.fromMaybe(false),
+      generatePreview.fromMaybe(false) ? WrapMode::kWithPreview
+                                       : WrapMode::kNoPreview,
       result, exceptionDetails);
   if (!response.isSuccess()) return response;
   if (exceptionDetails->isJust() || accessorPropertiesOnly.fromMaybe(false))
     return Response::OK();
-  v8::Local<v8::Array> propertiesArray;
-  if (!m_inspector->debugger()
-           ->internalProperties(scope.context(), scope.object())
-           .ToLocal(&propertiesArray)) {
-    return Response::InternalError();
-  }
   std::unique_ptr<protocol::Array<InternalPropertyDescriptor>>
-      propertiesProtocolArray =
-          protocol::Array<InternalPropertyDescriptor>::create();
-  for (uint32_t i = 0; i < propertiesArray->Length(); i += 2) {
-    v8::Local<v8::Value> name;
-    if (!propertiesArray->Get(scope.context(), i).ToLocal(&name) ||
-        !name->IsString()) {
-      return Response::InternalError();
-    }
-    v8::Local<v8::Value> value;
-    if (!propertiesArray->Get(scope.context(), i + 1).ToLocal(&value))
-      return Response::InternalError();
-    std::unique_ptr<RemoteObject> wrappedValue;
-    protocol::Response response = scope.injectedScript()->wrapObject(
-        value, scope.objectGroupName(), false, false, &wrappedValue);
-    if (!response.isSuccess()) return response;
-    propertiesProtocolArray->addItem(
-        InternalPropertyDescriptor::create()
-            .setName(
-                toProtocolString(m_inspector->isolate(), name.As<v8::String>()))
-            .setValue(std::move(wrappedValue))
-            .build());
-  }
-  if (propertiesProtocolArray->length())
-    *internalProperties = std::move(propertiesProtocolArray);
+      internalPropertiesProtocolArray;
+  std::unique_ptr<protocol::Array<PrivatePropertyDescriptor>>
+      privatePropertiesProtocolArray;
+  response = scope.injectedScript()->getInternalAndPrivateProperties(
+      object, scope.objectGroupName(), &internalPropertiesProtocolArray,
+      &privatePropertiesProtocolArray);
+  if (!response.isSuccess()) return response;
+  if (!internalPropertiesProtocolArray->empty())
+    *internalProperties = std::move(internalPropertiesProtocolArray);
+  if (!privatePropertiesProtocolArray->empty())
+    *privateProperties = std::move(privatePropertiesProtocolArray);
   return Response::OK();
 }
 
@@ -499,7 +490,7 @@ Response V8RuntimeAgentImpl::compileScript(
   if (!isOk) {
     if (scope.tryCatch().HasCaught()) {
       response = scope.injectedScript()->createExceptionDetails(
-          scope.tryCatch(), String16(), false, exceptionDetails);
+          scope.tryCatch(), String16(), WrapMode::kNoPreview, exceptionDetails);
       if (!response.isSuccess()) return response;
       return Response::OK();
     } else {
@@ -577,17 +568,18 @@ void V8RuntimeAgentImpl::runScript(
     return;
   }
 
+  WrapMode mode = generatePreview.fromMaybe(false) ? WrapMode::kWithPreview
+                                                   : WrapMode::kNoPreview;
+  if (returnByValue.fromMaybe(false)) mode = WrapMode::kForceValue;
   if (!awaitPromise.fromMaybe(false) || scope.tryCatch().HasCaught()) {
     wrapEvaluateResultAsync(scope.injectedScript(), maybeResultValue,
-                            scope.tryCatch(), objectGroup.fromMaybe(""),
-                            returnByValue.fromMaybe(false),
-                            generatePreview.fromMaybe(false), callback.get());
+                            scope.tryCatch(), objectGroup.fromMaybe(""), mode,
+                            callback.get());
     return;
   }
   scope.injectedScript()->addPromiseCallback(
-      m_session, maybeResultValue.ToLocalChecked(),
-      objectGroup.fromMaybe(""), returnByValue.fromMaybe(false),
-      generatePreview.fromMaybe(false),
+      m_session, maybeResultValue.ToLocalChecked(), objectGroup.fromMaybe(""),
+      mode,
       EvaluateCallbackWrapper<RunScriptCallback>::wrap(std::move(callback)));
 }
 
@@ -603,8 +595,8 @@ Response V8RuntimeAgentImpl::queryObjects(
   v8::Local<v8::Array> resultArray = m_inspector->debugger()->queryObjects(
       scope.context(), v8::Local<v8::Object>::Cast(scope.object()));
   return scope.injectedScript()->wrapObject(
-      resultArray, objectGroup.fromMaybe(scope.objectGroupName()), false, false,
-      objects);
+      resultArray, objectGroup.fromMaybe(scope.objectGroupName()),
+      WrapMode::kNoPreview, objects);
 }
 
 Response V8RuntimeAgentImpl::globalLexicalScopeNames(
@@ -621,9 +613,9 @@ Response V8RuntimeAgentImpl::globalLexicalScopeNames(
 
   v8::PersistentValueVector<v8::String> names(m_inspector->isolate());
   v8::debug::GlobalLexicalScopeNames(scope.context(), &names);
-  *outNames = protocol::Array<String16>::create();
+  *outNames = v8::base::make_unique<protocol::Array<String16>>();
   for (size_t i = 0; i < names.Size(); ++i) {
-    (*outNames)->addItem(
+    (*outNames)->emplace_back(
         toProtocolString(m_inspector->isolate(), names.Get(i)));
   }
   return Response::OK();

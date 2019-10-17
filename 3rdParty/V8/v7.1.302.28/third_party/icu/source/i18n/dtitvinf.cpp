@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*******************************************************************************
 * Copyright (C) 2008-2016, International Business Machines Corporation and
@@ -48,6 +48,7 @@ U_NAMESPACE_BEGIN
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(DateIntervalInfo)
 
 static const char gCalendarTag[]="calendar";
+static const char gGenericTag[]="generic";
 static const char gGregorianTag[]="gregorian";
 static const char gIntervalDateTimePatternTag[]="intervalFormats";
 static const char gFallbackPatternTag[]="fallback";
@@ -326,7 +327,9 @@ struct DateIntervalInfo::DateIntervalSink : public ResourceSink {
         char c0;
         if ((c0 = patternLetter[0]) != 0 && patternLetter[1] == 0) {
             // Check that the pattern letter is accepted
-            if (c0 == 'y') {
+            if (c0 == 'G') {
+                return UCAL_ERA;
+            } else if (c0 == 'y') {
                 return UCAL_YEAR;
             } else if (c0 == 'M') {
                 return UCAL_MONTH;
@@ -422,9 +425,32 @@ DateIntervalInfo::initializeData(const Locale& locale, UErrorCode& status)
         calTypeBundle = ures_getByKeyWithFallback(calBundle, calendarTypeToUse, NULL, &status);
         itvDtPtnResource = ures_getByKeyWithFallback(calTypeBundle,
                                                      gIntervalDateTimePatternTag, NULL, &status);
-        resStr = ures_getStringByKeyWithFallback(itvDtPtnResource, gFallbackPatternTag,
-                                                 &resStrLen, &status);
+
+        // TODO(ICU-20400): After the fixing, we should find the "fallback" from
+        // the rb directly by the path "calendar/${calendar}/intervalFormats/fallback".
         if ( U_SUCCESS(status) ) {
+            resStr = ures_getStringByKeyWithFallback(itvDtPtnResource, gFallbackPatternTag,
+                                                     &resStrLen, &status);
+            if ( U_FAILURE(status) ) {
+                // Try to find "fallback" from "generic" to work around the bug in
+                // ures_getByKeyWithFallback
+                UErrorCode localStatus = U_ZERO_ERROR;
+                UResourceBundle *genericCalBundle =
+                    ures_getByKeyWithFallback(calBundle, gGenericTag, NULL, &localStatus);
+                UResourceBundle *genericItvDtPtnResource =
+                    ures_getByKeyWithFallback(
+                        genericCalBundle, gIntervalDateTimePatternTag, NULL, &localStatus);
+                resStr = ures_getStringByKeyWithFallback(
+                    genericItvDtPtnResource, gFallbackPatternTag, &resStrLen, &localStatus);
+                ures_close(genericItvDtPtnResource);
+                ures_close(genericCalBundle);
+                if ( U_SUCCESS(localStatus) ) {
+                    status = U_USING_FALLBACK_WARNING;;
+                }
+            }
+        }
+
+        if ( U_SUCCESS(status) && (resStr != nullptr)) {
             UnicodeString pattern = UnicodeString(TRUE, resStr, resStrLen);
             setFallbackIntervalPattern(pattern, status);
         }
@@ -594,7 +620,7 @@ DateIntervalInfo::getBestSkeleton(const UnicodeString& skeleton,
     const UHashElement* elem = NULL;
     while ( (elem = fIntervalPatterns->nextElement(pos)) != NULL ) {
         const UHashTok keyTok = elem->key;
-        UnicodeString* skeleton = (UnicodeString*)keyTok.pointer;
+        UnicodeString* newSkeleton = (UnicodeString*)keyTok.pointer;
 #ifdef DTITVINF_DEBUG
     skeleton->extract(0,  skeleton->length(), result, "UTF-8");
     sprintf(mesg, "available skeletons: skeleton: %s; \n", result);
@@ -606,7 +632,7 @@ DateIntervalInfo::getBestSkeleton(const UnicodeString& skeleton,
         for ( i = 0; i < fieldLength; ++i ) {
             skeletonFieldWidth[i] = 0;
         }
-        parseSkeleton(*skeleton, skeletonFieldWidth);
+        parseSkeleton(*newSkeleton, skeletonFieldWidth);
         // calculate distance
         int32_t distance = 0;
         int8_t fieldDifference = 1;
@@ -632,7 +658,7 @@ DateIntervalInfo::getBestSkeleton(const UnicodeString& skeleton,
             }
         }
         if ( distance < bestDistance ) {
-            bestSkeleton = skeleton;
+            bestSkeleton = newSkeleton;
             bestDistance = distance;
             bestMatchDistanceInfo = fieldDifference;
         }

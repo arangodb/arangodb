@@ -207,7 +207,7 @@ he{
             "x.x: <%%spellout-numbering-m< \u05E0\u05E7\u05D5\u05D3\u05D4 >> ;",
             "0: \u05D0\u05E4\u05E1;",
             "1: \u05D0\u05D7\u05D3;",
-            "2: \u05E9\u05E0\u05D9\u05D9\u05DD;",
+            "2: \u05E9\u05E0\u05D9;",
             "3: \u05E9\u05DC\u05D5\u05E9\u05D4;",
             "4: \u05D0\u05E8\u05D1\u05E2\u05D4;",
             "5: \u05D7\u05DE\u05D9\u05E9\u05D4;",
@@ -248,6 +248,18 @@ he{
             "3000000000000000: <%%spellout-numbering-m< \u05D8\u05E8\u05D9\u05DC\u05D9\u05D5\u05DF[ >%%and-masculine>];",
             "1000000000000000000: =#,##0=;",
             "%spellout-cardinal-feminine:",
+            "-x: \u05DE\u05D9\u05E0\u05D5\u05E1 >>;",
+            "x.x: << \u05E0\u05E7\u05D5\u05D3\u05D4 >>;",
+            "0: =%spellout-numbering=;",
+            "2: \u05E9\u05EA\u05D9;",
+            "3: =%spellout-numbering=;",
+            "%spellout-cardinal-masculine-standalone:",
+            "-x: \u05DE\u05D9\u05E0\u05D5\u05E1 >>;",
+            "x.x: <%%spellout-numbering-m< \u05E0\u05E7\u05D5\u05D3\u05D4 >> ;",
+            "0: =%spellout-cardinal-masculine=;",
+            "2: \u05E9\u05E0\u05D9\u05D9\u05DD;",
+            "3: =%spellout-cardinal-masculine=;",
+            "%spellout-cardinal-feminine-standalone:",
             "0: =%spellout-numbering=;",
             "%spellout-construct-masculine:",
             "-x: \u05DE\u05D9\u05E0\u05D5\u05E1 >>;",
@@ -300,5 +312,5 @@ he{
             "11: =%spellout-numbering=;",
         }
     }
-    Version{"2.1.27.22"}
+    Version{"2.1.38.34"}
 }

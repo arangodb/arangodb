@@ -9,9 +9,10 @@ en_CH{
                 currencyFormat{"¤ #,##0.00;¤-#,##0.00"}
             }
             symbols{
+                group{"’"}
                 superscriptingExponent{"·"}
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.48.50"}
 }

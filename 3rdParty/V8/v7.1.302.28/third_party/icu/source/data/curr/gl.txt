@@ -39,7 +39,7 @@ gl{
             "Peso arxentino",
         }
         AUD{
-            "$A",
+            "A$",
             "Dólar australiano",
         }
         AWG{
@@ -119,7 +119,7 @@ gl{
             "Cruzeiro brasileiro (1990–1993)",
         }
         BRL{
-            "$R",
+            "R$",
             "Real brasileiro",
         }
         BRN{
@@ -155,7 +155,7 @@ gl{
             "Dólar belizense",
         }
         CAD{
-            "$CA",
+            "CA$",
             "Dólar canadense",
         }
         CDF{
@@ -173,6 +173,10 @@ gl{
         CLP{
             "CLP",
             "Peso chileno",
+        }
+        CNH{
+            "CNH",
+            "Iuán chinés (extracontinental)",
         }
         CNY{
             "CN¥",
@@ -289,7 +293,7 @@ gl{
         }
         GIP{
             "GIP",
-            "libra xibraltareña",
+            "Libra xibraltareña",
         }
         GMD{
             "GMD",
@@ -497,6 +501,10 @@ gl{
         }
         MRO{
             "MRO",
+            "Ouguiya mauritano (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ouguiya mauritano",
         }
         MUR{
@@ -677,6 +685,10 @@ gl{
         }
         STD{
             "STD",
+            "Dobra de São Tomé e Príncipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra de São Tomé e Príncipe",
         }
         SUR{
@@ -765,6 +777,10 @@ gl{
         }
         VEF{
             "VEF",
+            "Bolívar venezolano (2008–2018)",
+        }
+        VES{
+            "VES",
             "Bolívar venezolano",
         }
         VND{
@@ -812,7 +828,7 @@ gl{
             "Platino",
         }
         XXX{
-            "XXX",
+            "¤",
             "Moeda descoñecida",
         }
         YER{
@@ -833,103 +849,12 @@ gl{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"$R"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
         KMF{"FC"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
         RUB{"руб"}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1099,6 +1024,10 @@ gl{
         CLP{
             one{"peso chileno"}
             other{"pesos chilenos"}
+        }
+        CNH{
+            one{"iuán chinés (extracontinental)"}
+            other{"iuáns chineses (extracontinentais)"}
         }
         CNY{
             one{"iuán chinés"}
@@ -1369,6 +1298,10 @@ gl{
             other{"patacas de Macau"}
         }
         MRO{
+            one{"ouguiya mauritano (1973–2017)"}
+            other{"ouguiyas mauritanos (1973–2017)"}
+        }
+        MRU{
             one{"ouguiya mauritano"}
             other{"ouguiyas mauritanos"}
         }
@@ -1431,6 +1364,10 @@ gl{
         PEN{
             one{"sol peruano"}
             other{"soles peruanos"}
+        }
+        PES{
+            one{"sol peruano (1863–1965)"}
+            other{"soles peruanos (1863–1965)"}
         }
         PGK{
             one{"kina de Papúa-Nova Guinea"}
@@ -1521,6 +1458,10 @@ gl{
             other{"libras sursudanesa"}
         }
         STD{
+            one{"dobra de São Tomé e Príncipe (1977–2017)"}
+            other{"dobras de São Tomé e Príncipe (1977–2017)"}
+        }
+        STN{
             one{"dobra de São Tomé e Príncipe"}
             other{"dobras de São Tomé e Príncipe"}
         }
@@ -1601,6 +1542,10 @@ gl{
             other{"bolívares venezolanos (1871–2008)"}
         }
         VEF{
+            one{"bolívar venezolano (2008–2018)"}
+            other{"bolívares venezolanos (2008–2018)"}
+        }
+        VES{
             one{"bolívar venezolano"}
             other{"bolívares venezolanos"}
         }
@@ -1653,5 +1598,5 @@ gl{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

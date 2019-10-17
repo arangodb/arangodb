@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *   Copyright (C) 2016 and later: Unicode, Inc. and others.
+ *   © 2016 and later: Unicode, Inc. and others.
  *   License & terms of use: http://www.unicode.org/copyright.html#License
  *
  *************************************************************************
@@ -25,7 +25,7 @@ const char gHelpString[] =
     "-lower           Lower case first\n"
     "-upper           Upper case first\n"
     "-case            Enable separate case level\n"
-    "-level n         Sort level, 1 to 5, for Primary, Secndary, Tertiary, Quaternary, Identical\n"
+    "-level n         Sort level, 1 to 5, for Primary, Secondary, Tertiary, Quaternary, Identical\n"
 	"-source string   Source string for comparison\n"
 	"-target string   Target string for comparison\n"
     "Example coll -rules \\u0026b\\u003ca -source a -target b\n"

@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  uinvchar.h
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:2
 *
@@ -53,22 +53,6 @@ uprv_isInvariantString(const char *s, int32_t length);
 U_INTERNAL UBool U_EXPORT2
 uprv_isInvariantUString(const UChar *s, int32_t length);
 
-#ifdef __cplusplus
-
-/**
- * Check if a UnicodeString only contains invariant characters.
- * See utypes.h for details.
- *
- * @param s Input string.
- * @return TRUE if s contains only invariant characters.
- */
-U_INTERNAL inline UBool U_EXPORT2
-uprv_isInvariantUnicodeString(const icu::UnicodeString &s) {
-    return uprv_isInvariantUString(s.getBuffer(), s.length());
-}
-
-#endif  /* __cplusplus */
-
 /**
  * \def U_UPPER_ORDINAL
  * Get the ordinal number of an uppercase invariant character
@@ -80,6 +64,75 @@ uprv_isInvariantUnicodeString(const icu::UnicodeString &s) {
 #   define U_UPPER_ORDINAL(x) (((x) < 'J') ? ((x)-'A') : \
                               (((x) < 'S') ? ((x)-'J'+9) : \
                                ((x)-'S'+18)))
+#else
+#   error Unknown charset family!
+#endif
+
+#ifdef __cplusplus
+
+U_NAMESPACE_BEGIN
+
+/**
+ * Like U_UPPER_ORDINAL(x) but with validation.
+ * Returns 0..25 for A..Z else a value outside 0..25.
+ */
+inline int32_t uprv_upperOrdinal(int32_t c) {
+#if U_CHARSET_FAMILY==U_ASCII_FAMILY
+    return c - 'A';
+#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
+    // EBCDIC: A-Z (26 letters) is split into three ranges A-I (9 letters), J-R (9), S-Z (8).
+    // https://en.wikipedia.org/wiki/EBCDIC_037#Codepage_layout
+    if (c <= 'I') { return c - 'A'; }  // A-I --> 0-8
+    if (c < 'J') { return -1; }
+    if (c <= 'R') { return c - 'J' + 9; }  // J-R --> 9..17
+    if (c < 'S') { return -1; }
+    return c - 'S' + 18;  // S-Z --> 18..25
+#else
+#   error Unknown charset family!
+#endif
+}
+
+// Like U_UPPER_ORDINAL(x) but for lowercase and with validation.
+// Returns 0..25 for a..z else a value outside 0..25.
+inline int32_t uprv_lowerOrdinal(int32_t c) {
+#if U_CHARSET_FAMILY==U_ASCII_FAMILY
+    return c - 'a';
+#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
+    // EBCDIC: a-z (26 letters) is split into three ranges a-i (9 letters), j-r (9), s-z (8).
+    // https://en.wikipedia.org/wiki/EBCDIC_037#Codepage_layout
+    if (c <= 'i') { return c - 'a'; }  // a-i --> 0-8
+    if (c < 'j') { return -1; }
+    if (c <= 'r') { return c - 'j' + 9; }  // j-r --> 9..17
+    if (c < 's') { return -1; }
+    return c - 's' + 18;  // s-z --> 18..25
+#else
+#   error Unknown charset family!
+#endif
+}
+
+U_NAMESPACE_END
+
+#endif
+
+/**
+ * Returns true if c == '@' is possible.
+ * The @ sign is variant, and the @ sign used on one
+ * EBCDIC machine won't be compiled the same way on other EBCDIC based machines.
+ * @internal
+ */
+U_CFUNC UBool
+uprv_isEbcdicAtSign(char c);
+
+/**
+ * \def uprv_isAtSign
+ * Returns true if c == '@' is possible.
+ * For ASCII, checks for exactly '@'. For EBCDIC, calls uprv_isEbcdicAtSign().
+ * @internal
+ */
+#if U_CHARSET_FAMILY==U_ASCII_FAMILY
+#   define uprv_isAtSign(c) ((c)=='@')
+#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
+#   define uprv_isAtSign(c) uprv_isEbcdicAtSign(c)
 #else
 #   error Unknown charset family!
 #endif
@@ -100,6 +153,26 @@ uprv_compareInvEbcdicAsAscii(const char *s1, const char *s2);
 #   define uprv_compareInvCharsAsAscii(s1, s2) uprv_strcmp(s1, s2)
 #elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
 #   define uprv_compareInvCharsAsAscii(s1, s2) uprv_compareInvEbcdicAsAscii(s1, s2)
+#else
+#   error Unknown charset family!
+#endif
+
+/**
+ * Converts an EBCDIC invariant character to ASCII.
+ * @internal
+ */
+U_INTERNAL char U_EXPORT2
+uprv_ebcdicToAscii(char c);
+
+/**
+ * \def uprv_invCharToAscii
+ * Converts an invariant character to ASCII.
+ * @internal
+ */
+#if U_CHARSET_FAMILY==U_ASCII_FAMILY
+#   define uprv_invCharToAscii(c) (c)
+#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
+#   define uprv_invCharToAscii(c) uprv_ebcdicToAscii(c)
 #else
 #   error Unknown charset family!
 #endif

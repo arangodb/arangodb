@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sw_KE{
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
     calendar{
         generic{
             DateTimePatterns{
@@ -39,14 +39,6 @@ sw_KE{
                 "{1} 'saa' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-            }
-            dayPeriod{
-                stand-alone{
-                    narrow{
-                        am{"AM"}
-                        pm{"PM"}
-                    }
-                }
             }
         }
     }

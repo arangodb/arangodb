@@ -12,6 +12,7 @@ fo{
     }
     ExemplarCharacters{"[a á b d ð e f g h i í j k l m n o ó p r s t u ú v y ý æ ø]"}
     ExemplarCharactersIndex{"[A Á B C D Ð E F G H I Í J K L M N O Ó P Q R S T U Ú V W X Y Ý Z Æ Ø]"}
+    ExemplarCharactersNumbers{"[, . % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[\\- ‐ – , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ′ ″]"}
     MoreInformation{"?"}
     NumberElements{
@@ -197,10 +198,19 @@ fo{
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                other{"Tak {0}. vegin til høgru."}
+            }
+            plural{
+                one{"{0} dag"}
+                other{"{0} dagar"}
+            }
+        }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.48.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -219,8 +229,17 @@ fo{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d."}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E d. MMM y G"}
@@ -388,7 +407,12 @@ fo{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d."}
@@ -408,8 +432,8 @@ fo{
                 MMM{"LLL"}
                 MMMEd{"E d. MMM"}
                 MMMMW{
-                    one{"W. 'vika' 'í' MMM"}
-                    other{"W. 'vika' 'í' MMM"}
+                    one{"W. 'vika' 'í' MMMM"}
+                    other{"W. 'vika' 'í' MMMM"}
                 }
                 MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
@@ -432,8 +456,8 @@ fo{
                 yQQQ{"QQQ 'í' y"}
                 yQQQQ{"QQQQ 'í' y"}
                 yw{
-                    one{"w. 'vika' 'í' y"}
-                    other{"w. 'vika' 'í' y"}
+                    one{"w. 'vika' 'í' Y"}
+                    other{"w. 'vika' 'í' Y"}
                 }
             }
             dayNames{
@@ -789,10 +813,13 @@ fo{
         activities{"Virksemi"}
         african_scripts{"Afrikanskar skriftir"}
         american_scripts{"Amerikanskar skriftir"}
-        animals_nature{"Djór og náttúra"}
-        arrows{"Pílar"}
+        animal{"Dýr"}
+        animals_nature{"Dýr og náttúra"}
+        arrows{"Pílur"}
+        body{"Kroppur"}
         box_drawing{"Kassatekning"}
         braille{"Blindaskrift"}
+        building{"Bygningur"}
         bullets_stars{"Prikkar/Stjørnur"}
         consonantal_jamo{"Jamo hjáljóð"}
         currency_symbols{"Gjaldoyra tekin"}
@@ -805,6 +832,8 @@ fo{
         east_asian_scripts{"Eysturasiatiskar skriftir"}
         emoji{"Emoji"}
         european_scripts{"Evropeiskar skriftir"}
+        female{"Kvinna"}
+        flag{"Flagg"}
         flags{"Fløgg"}
         food_drink{"Matur og drekka"}
         format{"Forsniða"}
@@ -817,43 +846,54 @@ fo{
         hanja{"Hanja"}
         hanzi_simplified{"Hanzi (einkult)"}
         hanzi_traditional{"Hanzi (vanligt)"}
+        heart{"Hjarta"}
         historic_scripts{"Søguligar skriftir"}
         ideographic_desc_characters{"Hugtaksskrift eftirkomandi bókstavar"}
         japanese_kana{"Japanskt kana"}
         kanbun{"Kanbun"}
         kanji{"Kanji"}
+        keycap{"Knappahetta"}
         leftwards_arrows{"Pílar peikandi til vinstru"}
         leftwards_rightwards_arrows{"Pílar peikandi til vinstru og høgru"}
         letterlike_symbols{"Bókstavalíknandi tekin"}
         limited_use{"Avmarkað brúk"}
+        male{"Mannfólk"}
         math_symbols{"Støddfrøðilig tekin"}
         middle_eastern_scripts{"Miðeystur skiftir"}
         miscellaneous{"Ymiskt"}
         modern_scripts{"Nútíðar skriftir"}
         modifier{"Laga eftir"}
         musical_symbols{"Tónleika tekin"}
+        nature{"Natúr"}
         nonspacing{"Einki glopp"}
         numbers{"Tøl"}
         objects{"Lutir"}
         other{"Annað"}
         paired{"Greipa saman"}
+        person{"Persónur"}
         phonetic_alphabet{"Ljóðstavrað"}
         pictographs{"Myndatekin"}
+        place{"Staður"}
+        plant{"Planta"}
         punctuation{"Teknseting"}
         rightwards_arrows{"Pílar peikandi til høgru"}
         sign_standard_symbols{"Tekn/vanlig tekin"}
         small_form_variant{"Lítil avbrigdir formur"}
+        smiley{"Brostekn"}
         smileys_people{"Brostekin og fólk"}
         south_asian_scripts{"Suðurasiatiskar skriftir"}
         southeast_asian_scripts{"Útsynningsasiatiskar skriftir"}
         spacing{"Regluglopp"}
+        sport{"Ítróttur"}
         symbols{"Tekin"}
         technical_symbols{"Tøknilig tekin"}
         tone_marks{"Litdámt merkir"}
+        travel{"Ferðing"}
         travel_places{"Ferðing og støð"}
         upwards_arrows{"Pílar peikandi uppeftir"}
         variant_forms{"Frábrigdi formar"}
         vocalic_jamo{"Jamo sjálvljóð"}
+        weather{"Veður"}
         western_asian_scripts{"Vesturasiatiskar skriftir"}
         whitespace{"Hvíttglopp"}
     }
@@ -910,10 +950,31 @@ fo{
                 }
             }
         }
+        dayOfYear{
+            dn{"dagur í árinum"}
+        }
+        dayOfYear-narrow{
+            dn{"dagur í ár."}
+        }
+        dayOfYear-short{
+            dn{"dagur í ár."}
+        }
         dayperiod{
             dn{"AM/PM"}
         }
+        dayperiod-narrow{
+            dn{"AM/PM"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
         era{
+            dn{"tíðarrokning"}
+        }
+        era-narrow{
+            dn{"tíðarrokning"}
+        }
+        era-short{
             dn{"tíðarrokning"}
         }
         fri{
@@ -1534,8 +1595,32 @@ fo{
                 }
             }
         }
+        weekOfMonth{
+            dn{"vika í mánaðinum"}
+        }
+        weekOfMonth-narrow{
+            dn{"vi. í mnð."}
+        }
+        weekOfMonth-short{
+            dn{"vi. í mnð."}
+        }
         weekday{
-            dn{"gerandisdagur"}
+            dn{"vikudagur"}
+        }
+        weekday-narrow{
+            dn{"vikudagur"}
+        }
+        weekday-short{
+            dn{"vikudagur"}
+        }
+        weekdayOfMonth{
+            dn{"vikudagur í mánaðinum"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"vikudagur í mnð."}
+        }
+        weekdayOfMonth-short{
+            dn{"vikudagur í mnð."}
         }
         year{
             dn{"ár"}
@@ -1584,8 +1669,20 @@ fo{
         zone{
             dn{"tíðarøki"}
         }
+        zone-narrow{
+            dn{"tíðarøki"}
+        }
+        zone-short{
+            dn{"tíðarøki"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ella {1}"}
+            end{"{0}, ella {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} og {1}"}
             end{"{0} og {1}"}
@@ -1621,5 +1718,37 @@ fo{
         UK{"UK"}
         US{"US"}
         metric{"metralagið"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

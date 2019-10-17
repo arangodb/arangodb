@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 et{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -85,7 +85,7 @@ et{
             ec{"Kampala"}
         }
         "Africa:Khartoum"{
-            ec{"Khartoum"}
+            ec{"Hartum"}
         }
         "Africa:Kigali"{
             ec{"Kigali"}
@@ -133,7 +133,7 @@ et{
             ec{"Nairobi"}
         }
         "Africa:Ndjamena"{
-            ec{"Ndjamena"}
+            ec{"N’Djamena"}
         }
         "Africa:Niamey"{
             ec{"Niamey"}
@@ -507,6 +507,9 @@ et{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -547,7 +550,7 @@ et{
             ec{"Sitka"}
         }
         "America:St_Barthelemy"{
-            ec{"Saint Barthélemy"}
+            ec{"Saint-Barthélemy"}
         }
         "America:St_Johns"{
             ec{"Saint John’s"}
@@ -657,6 +660,9 @@ et{
         "Asia:Ashgabat"{
             ec{"Aşgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atõrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -707,6 +713,9 @@ et{
         }
         "Asia:Dushanbe"{
             ec{"Dušanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -801,6 +810,9 @@ et{
         "Asia:Qatar"{
             ec{"Katar"}
         }
+        "Asia:Qostanay"{
+            ec{"Kostanaj"}
+        }
         "Asia:Qyzylorda"{
             ec{"Kõzõlorda"}
         }
@@ -889,7 +901,7 @@ et{
             ec{"Roheneemesaared"}
         }
         "Atlantic:Faeroe"{
-            ec{"Fääri"}
+            ec{"Fääri saared"}
         }
         "Atlantic:Madeira"{
             ec{"Madeira"}
@@ -942,6 +954,9 @@ et{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Koordineeritud maailmaaeg"}
+        }
         "Etc:Unknown"{
             ec{"määramata linn"}
         }
@@ -976,7 +991,7 @@ et{
             ec{"Budapest"}
         }
         "Europe:Busingen"{
-            ec{"Busingen"}
+            ec{"Büsingen"}
         }
         "Europe:Chisinau"{
             ec{"Chișinău"}
@@ -1073,6 +1088,9 @@ et{
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopol"}
         }
@@ -1134,7 +1152,7 @@ et{
             ec{"Jõulusaar"}
         }
         "Indian:Cocos"{
-            ec{"Cocos"}
+            ec{"Kookossaared"}
         }
         "Indian:Comoro"{
             ec{"Comoro"}
@@ -1218,7 +1236,7 @@ et{
             ec{"Majuro"}
         }
         "Pacific:Marquesas"{
-            ec{"Marquesas"}
+            ec{"Markiisaared"}
         }
         "Pacific:Midway"{
             ec{"Midway"}
@@ -1239,7 +1257,7 @@ et{
             ec{"Pago Pago"}
         }
         "Pacific:Palau"{
-            ec{"Palau"}
+            ec{"Belau"}
         }
         "Pacific:Pitcairn"{
             ec{"Pitcairn"}
@@ -1382,9 +1400,9 @@ et{
             ls{"Kesk-Austraalia standardaeg"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"Kesk-Lääne Austraalia suveaeg"}
-            lg{"Kesk-Lääne Austraalia aeg"}
-            ls{"Kesk-Lääne Austraalia standardaeg"}
+            ld{"Austraalia Kesk-Lääne suveaeg"}
+            lg{"Austraalia Kesk-Lääne aeg"}
+            ls{"Austraalia Kesk-Lääne standardaeg"}
         }
         "meta:Australia_Eastern"{
             ld{"Ida-Austraalia suveaeg"}
@@ -1429,6 +1447,9 @@ et{
             ld{"Roheneemesaarte suveaeg"}
             lg{"Roheneemesaarte aeg"}
             ls{"Roheneemesaarte standardaeg"}
+        }
+        "meta:Casey"{
+            ls{"Casey aeg"}
         }
         "meta:Chamorro"{
             ls{"Tšamorro standardaeg"}
@@ -1563,7 +1584,7 @@ et{
         }
         "meta:Hawaii_Aleutian"{
             ld{"Hawaii-Aleuudi suveaeg"}
-            lg{"Hawaii-aleuudi aeg"}
+            lg{"Hawaii-Aleuudi aeg"}
             ls{"Hawaii-Aleuudi standardaeg"}
         }
         "meta:Hong_Kong"{
@@ -1641,6 +1662,9 @@ et{
         "meta:Kyrgystan"{
             ls{"Kõrgõzstani aeg"}
         }
+        "meta:Lanka"{
+            ls{"Sri Lanka aeg"}
+        }
         "meta:Line_Islands"{
             ls{"Line’i saarte aeg"}
         }
@@ -1648,6 +1672,11 @@ et{
             ld{"Lord Howe’i suveaeg"}
             lg{"Lord Howe’i aeg"}
             ls{"Lord Howe’i standardaeg"}
+        }
+        "meta:Macau"{
+            ld{"Macau suveaeg"}
+            lg{"Macau aeg"}
+            ls{"Macau standardaeg"}
         }
         "meta:Macquarie"{
             ls{"Macquarie saare aeg"}
@@ -1731,6 +1760,9 @@ et{
             ld{"Fernando de Noronha suveaeg"}
             lg{"Fernando de Noronha aeg"}
             ls{"Fernando de Noronha standardaeg"}
+        }
+        "meta:North_Mariana"{
+            ls{"Põhja-Mariaani aeg"}
         }
         "meta:Novosibirsk"{
             ld{"Novosibirski suveaeg"}
@@ -1902,12 +1934,12 @@ et{
             ls{"Jakutski standardaeg"}
         }
         "meta:Yekaterinburg"{
-            ld{"Jakaterinburgi suveaeg"}
-            lg{"Jakaterinburgi aeg"}
+            ld{"Jekaterinburgi suveaeg"}
+            lg{"Jekaterinburgi aeg"}
             ls{"Jekaterinburgi standardaeg"}
         }
         fallbackFormat{"{1} ({0})"}
-        gmtFormat{"GMT{0}"}
+        gmtFormat{"GMT {0}"}
         gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;−HH:mm"}
         regionFormat{"({0})"}

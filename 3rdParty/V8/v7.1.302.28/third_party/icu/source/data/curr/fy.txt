@@ -664,6 +664,10 @@ fy{
         }
         MRO{
             "MRO",
+            "Mauritaanske ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritaanske ouguiya",
         }
         MTL{
@@ -760,11 +764,11 @@ fy{
         }
         PEN{
             "PEN",
-            "Peruaanske nieuwe sol",
+            "Peruaanske sol",
         }
         PES{
             "PES",
-            "Peruaanske sol",
+            "Peruaanske sol (1863–1985)",
         }
         PGK{
             "PGK",
@@ -892,6 +896,10 @@ fy{
         }
         STD{
             "STD",
+            "Santomese dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Santomese dobra",
         }
         SUR{
@@ -1012,6 +1020,10 @@ fy{
         }
         VEF{
             "VEF",
+            "Fenezolaanske bolivar (2008–2018)",
+        }
+        VES{
+            "VES",
             "Fenezolaanske bolivar",
         }
         VND{
@@ -1111,7 +1123,7 @@ fy{
             "ADB-rekkenienheid",
         }
         XXX{
-            "XXX",
+            "¤",
             "Unbekende muntienheid",
         }
         YDD{
@@ -1837,6 +1849,10 @@ fy{
             other{"Macause pataca"}
         }
         MRO{
+            one{"Mauritaanske ouguiya (1973–2017)"}
+            other{"Mauritaanske ouguiya (1973–2017)"}
+        }
+        MRU{
             one{"Mauritaanske ouguiya"}
             other{"Mauritaanske ouguiya"}
         }
@@ -1933,12 +1949,12 @@ fy{
             other{"Peruaanske inti"}
         }
         PEN{
-            one{"Peruaanske nieuwe sol"}
-            other{"Peruaanske nieuwe sol"}
-        }
-        PES{
             one{"Peruaanske sol"}
             other{"Peruaanske sol"}
+        }
+        PES{
+            one{"Peruaanske sol (1863–1985)"}
+            other{"Peruaanske sol (1863–1985)"}
         }
         PGK{
             one{"Papuaanske kina"}
@@ -2065,6 +2081,10 @@ fy{
             other{"Sûd-Soedaneeske pûn"}
         }
         STD{
+            one{"Santomese dobra (1977–2017)"}
+            other{"Santomese dobra (1977–2017)"}
+        }
+        STN{
             one{"Santomese dobra"}
             other{"Santomese dobra"}
         }
@@ -2185,6 +2205,10 @@ fy{
             other{"Fenezolaanske bolivar (1871–2008)"}
         }
         VEF{
+            one{"Fenezolaanske bolivar (2008–2018)"}
+            other{"Fenezolaanske bolivar (2008–2018)"}
+        }
+        VES{
             one{"Fenezolaanske bolivar"}
             other{"Fenezolaanske bolivar"}
         }
@@ -2353,5 +2377,5 @@ fy{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.47.82"}
 }

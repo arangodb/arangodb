@@ -132,15 +132,6 @@ utf-16be { MIME* HTML* }
 utf-16le { MIME* HTML* }
     utf-16
 
-# Keep UTF-32 entries for now until we sort out Blink's behavior when
-# UTF-32 is dropped.
-UTF-32 { IANA* MIME* }          ISO-10646-UCS-4 { IANA }
-                                csUCS4
-                                ucs-4
-# Until we kill UTF-32 in Blink, add MIME tag here.
-UTF-32BE { MIME* IANA* }              UTF32_BigEndian
-UTF-32LE { MIME* IANA* }              UTF32_LittleEndian
-
 ibm866-html
     IBM866 { MIME* HTML* }
     866
@@ -377,22 +368,17 @@ x-mac-cyrillic-html
 
 windows-936-2000
                        GBK { MIME* IANA* }
-                       CP936 { IANA }
-                       MS936 { IANA }
                        chinese { IANA }
                        iso-ir-58 { IANA }
                        GB2312 { IANA MIME }
                        GB_2312-80 { IANA }
                        gb_2312
-                       gb2312-1980
                        csGB2312 { IANA }
                        csiso58gb231280
-                       EUC-CN
                        x-gbk
-                       windows-936
 
 # GB 18030 is partly algorithmic, using the MBCS converter
-gb18030 { IANA* }      gb18030 { HTML* MIME* }  ibm-1392 windows-54936
+gb18030 { IANA* }      gb18030 { HTML* MIME* }
 
 big5-html
     Big5 { MIME* HTML* }
@@ -438,4 +424,3 @@ ISO-2022-KR { HTML* MIME* } csISO2022KR { IANA }
 ISO-2022-CN { IANA* HTML* } csISO2022CN  x-ISO-2022-CN-GB
 ISO-2022-CN-EXT { IANA* HTML* }
 HZ-GB-2312 { HTML* IANA* } HZ
-

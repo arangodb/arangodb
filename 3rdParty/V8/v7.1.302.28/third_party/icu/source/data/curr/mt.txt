@@ -342,6 +342,10 @@ mt{
             "MRO",
             "MRO",
         }
+        MRU{
+            "MRU",
+            "MRU",
+        }
         MTL{
             "MTL",
             "Lira Maltija",
@@ -490,6 +494,10 @@ mt{
             "STD",
             "STD",
         }
+        STN{
+            "STN",
+            "STN",
+        }
         SYP{
             "SYP",
             "SYP",
@@ -558,6 +566,10 @@ mt{
             "VEF",
             "VEF",
         }
+        VES{
+            "VES",
+            "VES",
+        }
         VND{
             "₫",
             "VND",
@@ -587,7 +599,7 @@ mt{
             "XPF",
         }
         XXX{
-            "XXX",
+            "¤",
             "Munita Mhix Magħrufa jew Mhix Valida",
         }
         YER{
@@ -674,7 +686,7 @@ mt{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1202,6 +1214,12 @@ mt{
             one{"MRO"}
             other{"MRO"}
         }
+        MRU{
+            few{"MRU"}
+            many{"MRU"}
+            one{"MRU"}
+            other{"MRU"}
+        }
         MUR{
             few{"MUR"}
             many{"MUR"}
@@ -1412,6 +1430,12 @@ mt{
             one{"STD"}
             other{"STD"}
         }
+        STN{
+            few{"STN"}
+            many{"STN"}
+            one{"STN"}
+            other{"STN"}
+        }
         SYP{
             few{"SYP"}
             many{"SYP"}
@@ -1514,6 +1538,12 @@ mt{
             one{"VEF"}
             other{"VEF"}
         }
+        VES{
+            few{"VES"}
+            many{"VES"}
+            one{"VES"}
+            other{"VES"}
+        }
         VND{
             few{"VND"}
             many{"VND"}
@@ -1581,5 +1611,11 @@ mt{
             other{"ZMW"}
         }
     }
-    Version{"2.1.28.76"}
+    CurrencyUnitPatterns{
+        few{"{0} {1}"}
+        many{"{0} {1}"}
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.49.82"}
 }

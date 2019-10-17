@@ -25,6 +25,14 @@ void SourceRangeAstVisitor::VisitBlock(Block* stmt) {
   }
 }
 
+void SourceRangeAstVisitor::VisitSwitchStatement(SwitchStatement* stmt) {
+  AstTraversalVisitor::VisitSwitchStatement(stmt);
+  ZonePtrList<CaseClause>* clauses = stmt->cases();
+  for (CaseClause* clause : *clauses) {
+    MaybeRemoveLastContinuationRange(clause->statements());
+  }
+}
+
 void SourceRangeAstVisitor::VisitFunctionLiteral(FunctionLiteral* expr) {
   AstTraversalVisitor::VisitFunctionLiteral(expr);
   ZonePtrList<Statement>* stmts = expr->body();
@@ -53,10 +61,21 @@ bool SourceRangeAstVisitor::VisitNode(AstNode* node) {
 
 void SourceRangeAstVisitor::MaybeRemoveLastContinuationRange(
     ZonePtrList<Statement>* statements) {
-  if (statements == nullptr || statements->is_empty()) return;
+  if (statements->is_empty()) return;
 
   Statement* last_statement = statements->last();
-  AstNodeSourceRanges* last_range = source_range_map_->Find(last_statement);
+  AstNodeSourceRanges* last_range = nullptr;
+
+  if (last_statement->IsExpressionStatement() &&
+      last_statement->AsExpressionStatement()->expression()->IsThrow()) {
+    // For ThrowStatement, source range is tied to Throw expression not
+    // ExpressionStatement.
+    last_range = source_range_map_->Find(
+        last_statement->AsExpressionStatement()->expression());
+  } else {
+    last_range = source_range_map_->Find(last_statement);
+  }
+
   if (last_range == nullptr) return;
 
   if (last_range->HasRange(SourceRangeKind::kContinuation)) {

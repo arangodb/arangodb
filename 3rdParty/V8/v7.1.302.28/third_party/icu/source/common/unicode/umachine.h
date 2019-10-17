@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ******************************************************************************
@@ -8,7 +8,7 @@
 *
 ******************************************************************************
 *   file name:  umachine.h
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -50,29 +50,6 @@
  * stddef.h defines wchar_t
  */
 #include <stddef.h>
-
-#ifndef U_HIDE_INTERNAL_API
-/*
- *  U_USE_CHAR16_T
- *     When defined, force use of char16_t for UChar.
- *     Note: char16_t is expected to become the default and required in the future,
- *           and this option will be removed.
- *     @internal
- */
-#ifdef U_USE_CHAR16_T
-#ifdef UCHAR_TYPE
-#undef UCHAR_TYPE
-#endif
-#define UCHAR_TYPE char16_t
-
-/*
- * In plain C, <uchar.h> is needed for the definition of char16_t
- */
-#ifndef __cplusplus
-#include <uchar.h>
-#endif
-#endif
-#endif  /* U_HIDE_INTERNAL_API */
 
 /*==========================================================================*/
 /* For C wrappers, we use the symbol U_STABLE.                                */
@@ -148,6 +125,9 @@
  * May result in an error if it applied to something not an override.
  * @internal
  */
+#ifndef U_OVERRIDE
+#define U_OVERRIDE override
+#endif
 
 /**
  * \def U_FINAL
@@ -156,24 +136,10 @@
  * May result in an error if subclasses attempt to override.
  * @internal
  */
-
-#if U_CPLUSPLUS_VERSION >= 11
-/* C++11 */
-#ifndef U_OVERRIDE
-#define U_OVERRIDE override
-#endif
-#ifndef U_FINAL
+#if !defined(U_FINAL) || defined(U_IN_DOXYGEN)
 #define U_FINAL final
 #endif
-#else
-/* not C++11 - define to nothing */
-#ifndef U_OVERRIDE
-#define U_OVERRIDE
-#endif
-#ifndef U_FINAL
-#define U_FINAL
-#endif
-#endif
+
 
 /*==========================================================================*/
 /* limits for int32_t etc., like in POSIX inttypes.h                        */
@@ -314,27 +280,93 @@ typedef int8_t UBool;
 #define U_SIZEOF_UCHAR 2
 
 /**
+ * \def U_CHAR16_IS_TYPEDEF
+ * If 1, then char16_t is a typedef and not a real type (yet)
+ * @internal
+ */
+#if (U_PLATFORM == U_PF_AIX) && defined(__cplusplus) &&(U_CPLUSPLUS_VERSION < 11)
+// for AIX, uchar.h needs to be included
+# include <uchar.h>
+# define U_CHAR16_IS_TYPEDEF 1
+#elif defined(_MSC_VER) && (_MSC_VER < 1900)
+// Versions of Visual Studio/MSVC below 2015 do not support char16_t as a real type,
+// and instead use a typedef.  https://msdn.microsoft.com/library/bb531344.aspx
+# define U_CHAR16_IS_TYPEDEF 1
+#else
+# define U_CHAR16_IS_TYPEDEF 0
+#endif
+
+
+/**
  * \var UChar
- * Define UChar to be UCHAR_TYPE, if that is #defined (for example, to char16_t),
- * or wchar_t if that is 16 bits wide; always assumed to be unsigned.
- * If neither is available, then define UChar to be uint16_t.
  *
- * This makes the definition of UChar platform-dependent
- * but allows direct string type compatibility with platforms with
- * 16-bit wchar_t types.
+ * The base type for UTF-16 code units and pointers.
+ * Unsigned 16-bit integer.
+ * Starting with ICU 59, C++ API uses char16_t directly, while C API continues to use UChar.
+ *
+ * UChar is configurable by defining the macro UCHAR_TYPE
+ * on the preprocessor or compiler command line:
+ * -DUCHAR_TYPE=uint16_t or -DUCHAR_TYPE=wchar_t (if U_SIZEOF_WCHAR_T==2) etc.
+ * (The UCHAR_TYPE can also be \#defined earlier in this file, for outside the ICU library code.)
+ * This is for transitional use from application code that uses uint16_t or wchar_t for UTF-16.
+ *
+ * The default is UChar=char16_t.
+ *
+ * C++11 defines char16_t as bit-compatible with uint16_t, but as a distinct type.
+ *
+ * In C, char16_t is a simple typedef of uint_least16_t.
+ * ICU requires uint_least16_t=uint16_t for data memory mapping.
+ * On macOS, char16_t is not available because the uchar.h standard header is missing.
  *
  * @stable ICU 4.4
  */
-#if defined(UCHAR_TYPE)
+
+#if 1
+    // #if 1 is normal. UChar defaults to char16_t in C++.
+    // For configuration testing of UChar=uint16_t temporarily change this to #if 0.
+    // The intltest Makefile #defines UCHAR_TYPE=char16_t,
+    // so we only #define it to uint16_t if it is undefined so far.
+#elif !defined(UCHAR_TYPE)
+#   define UCHAR_TYPE uint16_t
+#endif
+
+#if defined(U_COMBINED_IMPLEMENTATION) || defined(U_COMMON_IMPLEMENTATION) || \
+        defined(U_I18N_IMPLEMENTATION) || defined(U_IO_IMPLEMENTATION)
+    // Inside the ICU library code, never configurable.
+    typedef char16_t UChar;
+#elif defined(UCHAR_TYPE)
     typedef UCHAR_TYPE UChar;
-/* Not #elif U_HAVE_CHAR16_T -- because that is type-incompatible with pre-C++11 callers
-    typedef char16_t UChar;  */
-#elif U_SIZEOF_WCHAR_T==2
-    typedef wchar_t UChar;
-#elif defined(__CHAR16_TYPE__)
-    typedef __CHAR16_TYPE__ UChar;
+#elif defined(__cplusplus)
+    typedef char16_t UChar;
 #else
     typedef uint16_t UChar;
+#endif
+
+/**
+ * \var OldUChar
+ * Default ICU 58 definition of UChar.
+ * A base type for UTF-16 code units and pointers.
+ * Unsigned 16-bit integer.
+ *
+ * Define OldUChar to be wchar_t if that is 16 bits wide.
+ * If wchar_t is not 16 bits wide, then define UChar to be uint16_t.
+ *
+ * This makes the definition of OldUChar platform-dependent
+ * but allows direct string type compatibility with platforms with
+ * 16-bit wchar_t types.
+ *
+ * This is how UChar was defined in ICU 58, for transition convenience.
+ * Exception: ICU 58 UChar was defined to UCHAR_TYPE if that macro was defined.
+ * The current UChar responds to UCHAR_TYPE but OldUChar does not.
+ *
+ * @stable ICU 59
+ */
+#if U_SIZEOF_WCHAR_T==2
+    typedef wchar_t OldUChar;
+#elif defined(__CHAR16_TYPE__)
+    typedef __CHAR16_TYPE__ OldUChar;
+#else
+    typedef uint16_t OldUChar;
 #endif
 
 /**

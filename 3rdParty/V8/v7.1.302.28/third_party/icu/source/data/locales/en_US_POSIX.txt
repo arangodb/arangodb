@@ -1,12 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en_US_POSIX{
+    ExemplarCharactersNumbers{"[\\- , . / % + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
-                currencyFormat{"¤ #0.00"}
-                decimalFormat{"#0.######"}
-                percentFormat{"#0%"}
+                currencyFormat{"¤ 0.00"}
+                decimalFormat{"0.######"}
+                percentFormat{"0%"}
                 scientificFormat{"0.000000E+000"}
             }
             symbols{
@@ -15,5 +16,5 @@ en_US_POSIX{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
 }

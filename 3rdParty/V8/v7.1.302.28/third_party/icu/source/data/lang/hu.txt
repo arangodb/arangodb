@@ -46,6 +46,7 @@ hu{
         arc{"arámi"}
         arn{"mapucse"}
         arp{"arapaho"}
+        ars{"nedzsdi arab"}
         arw{"aravak"}
         as{"asszámi"}
         asa{"asu"}
@@ -91,6 +92,7 @@ hu{
         car{"karib"}
         cay{"kajuga"}
         cch{"atszam"}
+        ccp{"csakma"}
         ce{"csecsen"}
         ceb{"szebuano"}
         cgg{"kiga"}
@@ -169,6 +171,7 @@ hu{
         fr{"francia"}
         fr_CA{"kanadai francia"}
         fr_CH{"svájci francia"}
+        frc{"cajun francia"}
         frm{"közép francia"}
         fro{"ófrancia"}
         frr{"északi fríz"}
@@ -295,6 +298,7 @@ hu{
         ln{"lingala"}
         lo{"lao"}
         lol{"mongó"}
+        lou{"louisianai kreol"}
         loz{"lozi"}
         lrc{"északi luri"}
         lt{"litván"}
@@ -350,7 +354,7 @@ hu{
         nan{"min nan kínai"}
         nap{"nápolyi"}
         naq{"nama"}
-        nb{"norvég (bokmál)"}
+        nb{"norvég (bokmål)"}
         nd{"északi ndebele"}
         nds{"alsónémet"}
         nds_NL{"alsószász"}
@@ -362,7 +366,7 @@ hu{
         nl{"holland"}
         nl_BE{"flamand"}
         nmg{"ngumba"}
-        nn{"norvég (nynrosk)"}
+        nn{"norvég (nynorsk)"}
         nnh{"ngiemboon"}
         no{"norvég"}
         nog{"nogaj"}
@@ -711,6 +715,7 @@ hu{
             indian{"Indiai nemzeti naptár"}
             islamic{"Iszlám naptár"}
             islamic-civil{"Iszlám civil naptár"}
+            islamic-umalqura{"Iszlám Umm al-Qura naptár"}
             iso8601{"ISO-8601 naptár"}
             japanese{"Japán naptár"}
             persian{"Perzsa naptár"}
@@ -754,8 +759,10 @@ hu{
         }
         collation{
             big5han{"Hagyományos kínai sorrend - Big5"}
+            compat{"Előző rendezési sorrend a kompatibilitás érdekében"}
             dictionary{"Szótári rendezési sorrend"}
             ducet{"Alapértelmezett Unicode rendezési sorrend"}
+            eor{"Európai rendezési szabályok"}
             gb2312han{"Egyszerűsített kínai sorrend - GB2312"}
             phonebook{"Telefonkönyv sorrend"}
             phonetic{"Fonetikus rendezési sorrend"}
@@ -827,7 +834,7 @@ hu{
             orya{"Orija számjegyek"}
             roman{"Római számok"}
             romanlow{"Római kisbetűs számok"}
-            taml{"Tamil hagyományos számok"}
+            taml{"Hagyományos tamil számjegyek"}
             tamldec{"Tamil számjegyek"}
             telu{"Telugu számjegyek"}
             thai{"Thai számjegyek"}
@@ -894,17 +901,17 @@ hu{
         VALLADER{"Vallader"}
         WADEGILE{"Wade-Giles átírás"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
-        all{"{0} — Összes"}
+        all{"{0} – összes"}
         category-list{"{0}: {1}"}
-        compatibility{"{0} — Kompatibilitás"}
-        enclosed{"{0} — Zárt"}
-        extended{"{0} — Kibővített"}
-        historic{"{0} — Történelmi"}
-        miscellaneous{"{0} — Vegyes"}
-        other{"{0} — Egyéb"}
-        scripts{"Kézírások — {0}"}
+        compatibility{"{0} – kompatibilitás"}
+        enclosed{"{0} – zárt"}
+        extended{"{0} – kibővített"}
+        historic{"{0} – történelmi"}
+        miscellaneous{"{0} – vegyes"}
+        other{"{0} – egyéb"}
+        scripts{"kézírások – {0}"}
         strokes{
             one{"{0} vonás"}
             other{"{0} vonás"}

@@ -15,18 +15,19 @@ sl{
     }
     ExemplarCharacters{"[a b c č d e f g h i j k l m n o p r s š t u v z ž]"}
     ExemplarCharactersIndex{"[A B C Č Ć D Đ E F G H I J K L M N O P Q R S Š T U V W X Y Z Ž]"}
+    ExemplarCharactersNumbers{"[, . % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{"[\\- – , ; \\: ! ? . … ' \u0022 „ ‟ « » ( ) \\[ \\] \\{ \\} @ *]"}
     MoreInformation{"?"}
     NumberElements{
         default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
                 scientificFormat{"#E0"}
             }
@@ -262,20 +263,42 @@ sl{
                 group{"."}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"–"}
+                minusSign{"−"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"V {0}. križišču zavijte desno."}
+            }
+            plural{
+                few{"{0} ure"}
+                one{"{0} ura"}
+                other{"{0} ur"}
+                two{"{0} uri"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     calendar{
+        buddhist{
+            eras{
+                abbreviated{
+                    "bud. kol.",
+                }
+                narrow{
+                    "BK",
+                }
+                wide{
+                    "budistični koledar",
+                }
+            }
+        }
         generic{
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -293,8 +316,17 @@ sl{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E, HH:mm"}
+                EHms{"E, HH:mm:ss"}
                 Ed{"E, d."}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyM{"M/y G"}
                 GyMMM{"MMM y G"}
@@ -304,7 +336,7 @@ sl{
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
                 M{"L"}
-                MEd{"E, d. MM."}
+                MEd{"E, d. M."}
                 MMM{"LLL"}
                 MMMEd{"E, d. MMM"}
                 MMMMd{"d. MMMM"}
@@ -328,6 +360,53 @@ sl{
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B–h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B–h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -346,23 +425,23 @@ sl{
                     M{"M.–M."}
                 }
                 MEd{
-                    M{"E, d. M. – E, d. M."}
-                    d{"E, d. – E, d. M."}
+                    M{"E, d. M.–E, d. M."}
+                    d{"E, d.–E, d. M."}
                 }
                 MMM{
                     M{"MMM–MMM"}
                 }
                 MMMEd{
-                    M{"E, d. MMM – E, d. MMM"}
-                    d{"E, d. – E, d. MMM"}
+                    M{"E, d. MMM–E, d. MMM"}
+                    d{"E, d.–E, d. MMM"}
                 }
                 MMMd{
-                    M{"d. MMM – d. MMM"}
+                    M{"d. MMM–d. MMM"}
                     d{"d.–d. MMM"}
                 }
                 Md{
-                    M{"d. M. – d. M."}
-                    d{"d. – d. M."}
+                    M{"d. M.–d. M."}
+                    d{"d.–d. M."}
                 }
                 d{
                     d{"d.–d."}
@@ -455,7 +534,12 @@ sl{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E, d."}
@@ -476,10 +560,10 @@ sl{
                 MMM{"LLL"}
                 MMMEd{"E, d. MMM"}
                 MMMMW{
-                    few{"W. 'teden' 'v' MMM"}
-                    one{"W. 'teden' 'v' MMM"}
-                    other{"W. 'teden' 'v' MMM"}
-                    two{"W. 'teden' 'v' MMM"}
+                    few{"W. 'teden' 'v' MMMM"}
+                    one{"W. 'teden' 'v' MMMM"}
+                    other{"W. 'teden' 'v' MMMM"}
+                    two{"W. 'teden' 'v' MMMM"}
                 }
                 MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
@@ -502,10 +586,10 @@ sl{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    few{"w. 'teden' 'v' y"}
-                    one{"w. 'teden' 'v' y"}
-                    other{"w. 'teden' 'v' y"}
-                    two{"w. 'teden' 'v' y"}
+                    few{"w. 'teden' 'v' Y"}
+                    one{"w. 'teden' 'v' Y"}
+                    other{"w. 'teden' 'v' Y"}
+                    two{"w. 'teden' 'v' Y"}
                 }
             }
             dayNames{
@@ -594,7 +678,7 @@ sl{
                         midnight{"opoln."}
                         morning1{"zjut."}
                         morning2{"dop."}
-                        night1{"noč"}
+                        night1{"ponoči"}
                         noon{"opold."}
                     }
                     narrow{
@@ -671,6 +755,53 @@ sl{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B–h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h.mm B–h.mm B"}
+                    h{"h.mm–h.mm B"}
+                    m{"h.mm–h.mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -898,6 +1029,22 @@ sl{
                 }
             }
         }
+        roc{
+            eras{
+                abbreviated{
+                    "pred RK",
+                    "Minguo koledar",
+                }
+                narrow{
+                    "pred RK",
+                    "Minguo koledar",
+                }
+                wide{
+                    "pred RK",
+                    "Minguo koledar",
+                }
+            }
+        }
     }
     characterLabel{
         activities{"dejavnosti"}
@@ -914,7 +1061,7 @@ sl{
         consonantal_jamo{"soglasniška črka jamo"}
         currency_symbols{"valutni simboli"}
         dash_connector{"pomišljaj/povezovalnik"}
-        digits{"številke"}
+        digits{"števke"}
         dingbats{"Dingbati"}
         divination_symbols{"vedeževalski simboli"}
         downwards_arrows{"puščice dol"}
@@ -1020,6 +1167,13 @@ sl{
         }
         day-narrow{
             dn{"dan"}
+            relative{
+                "-1"{"včeraj"}
+                "-2"{"predvčerajšnjim"}
+                "0"{"danes"}
+                "1"{"jutri"}
+                "2"{"pojutrišnjem"}
+            }
             relativeTime{
                 future{
                     few{"čez {0} dni"}
@@ -1037,6 +1191,13 @@ sl{
         }
         day-short{
             dn{"dan"}
+            relative{
+                "-1"{"včeraj"}
+                "-2"{"predvčerajšnjim"}
+                "0"{"danes"}
+                "1"{"jutri"}
+                "2"{"pojutrišnjem"}
+            }
             relativeTime{
                 future{
                     few{"čez {0} dni"}
@@ -1052,10 +1213,31 @@ sl{
                 }
             }
         }
+        dayOfYear{
+            dn{"dan leta"}
+        }
+        dayOfYear-narrow{
+            dn{"dan leta"}
+        }
+        dayOfYear-short{
+            dn{"dan leta"}
+        }
         dayperiod{
             dn{"dop/pop"}
         }
+        dayperiod-narrow{
+            dn{"dop/pop"}
+        }
+        dayperiod-short{
+            dn{"dop/pop"}
+        }
         era{
+            dn{"doba"}
+        }
+        era-narrow{
+            dn{"doba"}
+        }
+        era-short{
             dn{"doba"}
         }
         fri{
@@ -1087,16 +1269,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} petke"}
-                    one{"čez {0} petek"}
-                    other{"čez {0} petkov"}
-                    two{"čez {0} petka"}
+                    few{"čez {0} pet."}
+                    one{"čez {0} pet."}
+                    other{"čez {0} pet."}
+                    two{"čez {0} pet."}
                 }
                 past{
-                    few{"pred {0} petki"}
-                    one{"pred {0} petkom"}
-                    other{"pred {0} petki"}
-                    two{"pred {0} petkoma"}
+                    few{"pred {0} pet."}
+                    one{"pred {0} pet."}
+                    other{"pred {0} pet."}
+                    two{"pred {0} pet."}
                 }
             }
         }
@@ -1108,16 +1290,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} petke"}
-                    one{"čez {0} petek"}
-                    other{"čez {0} petkov"}
-                    two{"čez {0} petka"}
+                    few{"čez {0} pet."}
+                    one{"čez {0} pet."}
+                    other{"čez {0} pet."}
+                    two{"čez {0} pet."}
                 }
                 past{
-                    few{"pred {0} petki"}
-                    one{"pred {0} petkom"}
-                    other{"pred {0} petki"}
-                    two{"pred {0} petkoma"}
+                    few{"pred {0} pet."}
+                    one{"pred {0} pet."}
+                    other{"pred {0} pet."}
+                    two{"pred {0} pet."}
                 }
             }
         }
@@ -1279,16 +1461,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} ponedeljke"}
-                    one{"čez {0} ponedeljek"}
-                    other{"čez {0} ponedeljkov"}
-                    two{"čez {0} ponedeljka"}
+                    few{"čez {0} pon."}
+                    one{"čez {0} pon."}
+                    other{"čez {0} pon."}
+                    two{"čez {0} pon."}
                 }
                 past{
-                    few{"pred {0} ponedeljki"}
-                    one{"pred {0} ponedeljkom"}
-                    other{"pred {0} ponedeljki"}
-                    two{"pred {0} ponedeljkoma"}
+                    few{"pred {0} pon."}
+                    one{"pred {0} pon."}
+                    other{"pred {0} pon."}
+                    two{"pred {0} pon."}
                 }
             }
         }
@@ -1316,6 +1498,11 @@ sl{
         }
         month-narrow{
             dn{"mes."}
+            relative{
+                "-1"{"prejšnji mesec"}
+                "0"{"ta mesec"}
+                "1"{"naslednji mesec"}
+            }
             relativeTime{
                 future{
                     few{"čez {0} mes."}
@@ -1333,9 +1520,14 @@ sl{
         }
         month-short{
             dn{"mes."}
+            relative{
+                "-1"{"prejšnji mesec"}
+                "0"{"ta mesec"}
+                "1"{"naslednji mesec"}
+            }
             relativeTime{
                 future{
-                    few{"čez {0} mesece"}
+                    few{"čez {0} mes."}
                     one{"čez {0} mes."}
                     other{"čez {0} mes."}
                     two{"čez {0} mes."}
@@ -1444,13 +1636,13 @@ sl{
             relativeTime{
                 future{
                     few{"čez {0} sobote"}
-                    one{"čez {0} soboto"}
+                    one{"čez {0} sob."}
                     other{"čez {0} sobot"}
                     two{"čez {0} soboti"}
                 }
                 past{
                     few{"pred {0} sobotami"}
-                    one{"pred {0} soboto"}
+                    one{"pred {0} sob."}
                     other{"pred {0} sobotami"}
                     two{"pred {0} sobotama"}
                 }
@@ -1464,16 +1656,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} sobote"}
-                    one{"čez {0} soboto"}
-                    other{"čez {0} sobot"}
-                    two{"čez {0} soboti"}
+                    few{"čez {0} sob."}
+                    one{"čez {0} sob."}
+                    other{"čez {0} sob."}
+                    two{"čez {0} sob."}
                 }
                 past{
-                    few{"pred {0} sobotami"}
-                    one{"pred {0} soboto"}
-                    other{"pred {0} sobotami"}
-                    two{"pred {0} sobotama"}
+                    few{"pred {0} sob."}
+                    one{"pred {0} sob."}
+                    other{"pred {0} sob."}
+                    two{"pred {0} sob."}
                 }
             }
         }
@@ -1539,7 +1731,7 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} nedelje"}
+                    few{"čez {0} nedelj"}
                     one{"čez {0} nedeljo"}
                     other{"čez {0} nedelj"}
                     two{"čez {0} nedelji"}
@@ -1560,16 +1752,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} nedelje"}
-                    one{"čez {0} nedeljo"}
-                    other{"čez {0} nedelj"}
-                    two{"čez {0} nedelji"}
+                    few{"čez {0} ned."}
+                    one{"čez {0} ned."}
+                    other{"čez {0} ned."}
+                    two{"čez {0} ned."}
                 }
                 past{
-                    few{"pred {0} nedeljami"}
-                    one{"pred {0} nedeljo"}
-                    other{"pred {0} nedeljami"}
-                    two{"pred {0} nedeljama"}
+                    few{"pred {0} ned."}
+                    one{"pred {0} ned."}
+                    other{"pred {0} ned."}
+                    two{"pred {0} ned."}
                 }
             }
         }
@@ -1624,13 +1816,13 @@ sl{
             relativeTime{
                 future{
                     few{"čez {0} četrtke"}
-                    one{"čez {0} četrtek"}
-                    other{"čez {0} četrtkov"}
-                    two{"čez {0} četrtka"}
+                    one{"čez {0} čet."}
+                    other{"čez {0} čet."}
+                    two{"čez {0} čet."}
                 }
                 past{
                     few{"pred {0} četrtki"}
-                    one{"pred {0} četrtkom"}
+                    one{"pred {0} čet."}
                     other{"pred {0} četrtki"}
                     two{"pred {0} četrtkoma"}
                 }
@@ -1644,16 +1836,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} četrtke"}
-                    one{"čez {0} četrtek"}
-                    other{"čez {0} četrtkov"}
-                    two{"čez {0} četrtka"}
+                    few{"čez {0} čet."}
+                    one{"čez {0} čet."}
+                    other{"čez {0} čet."}
+                    two{"čez {0} čet."}
                 }
                 past{
-                    few{"pred {0} četrtki"}
-                    one{"pred {0} četrtkom"}
-                    other{"pred {0} četrtki"}
-                    two{"pred {0} četrtkoma"}
+                    few{"pred {0} čet."}
+                    one{"pred {0} čet."}
+                    other{"pred {0} čet."}
+                    two{"pred {0} čet."}
                 }
             }
         }
@@ -1707,16 +1899,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} torke"}
-                    one{"čez {0} torek"}
-                    other{"čez {0} torkov"}
-                    two{"čez {0} torka"}
+                    few{"čez {0} tor."}
+                    one{"čez {0} tor."}
+                    other{"čez {0} tor."}
+                    two{"čez {0} tor."}
                 }
                 past{
-                    few{"pred {0} torki"}
-                    one{"pred {0} torkom"}
-                    other{"pred {0} torki"}
-                    two{"pred {0} torkoma"}
+                    few{"pred {0} tor."}
+                    one{"pred {0} tor."}
+                    other{"pred {0} tor."}
+                    two{"pred {0} tor."}
                 }
             }
         }
@@ -1749,16 +1941,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} srede"}
-                    one{"čez {0} sredo"}
-                    other{"čez {0} sred"}
-                    two{"čez {0} sredi"}
+                    few{"čez {0} sre."}
+                    one{"čez {0} sre."}
+                    other{"čez {0} sre."}
+                    two{"čez {0} sre."}
                 }
                 past{
-                    few{"pred {0} sredami"}
-                    one{"pred {0} sredo"}
-                    other{"pred {0} sredami"}
-                    two{"pred {0} sredama"}
+                    few{"pred {0} sre."}
+                    one{"pred {0} sre."}
+                    other{"pred {0} sre."}
+                    two{"pred {0} sre."}
                 }
             }
         }
@@ -1770,16 +1962,16 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"čez {0} srede"}
-                    one{"čez {0} sredo"}
-                    other{"čez {0} sred"}
-                    two{"čez {0} sredi"}
+                    few{"čez {0} sre."}
+                    one{"čez {0} sre."}
+                    other{"čez {0} sre."}
+                    two{"čez {0} sre."}
                 }
                 past{
-                    few{"pred {0} sredami"}
-                    one{"pred {0} sredo"}
-                    other{"pred {0} sredami"}
-                    two{"pred {0} sredama"}
+                    few{"pred {0} sre."}
+                    one{"pred {0} sre."}
+                    other{"pred {0} sre."}
+                    two{"pred {0} sre."}
                 }
             }
         }
@@ -1808,6 +2000,11 @@ sl{
         }
         week-narrow{
             dn{"ted."}
+            relative{
+                "-1"{"prejšnji teden"}
+                "0"{"ta teden"}
+                "1"{"naslednji teden"}
+            }
             relativePeriod{"v tednu {0}"}
             relativeTime{
                 future{
@@ -1826,6 +2023,11 @@ sl{
         }
         week-short{
             dn{"ted."}
+            relative{
+                "-1"{"prejšnji teden"}
+                "0"{"ta teden"}
+                "1"{"naslednji teden"}
+            }
             relativePeriod{"v tednu {0}"}
             relativeTime{
                 future{
@@ -1842,8 +2044,32 @@ sl{
                 }
             }
         }
+        weekOfMonth{
+            dn{"teden meseca"}
+        }
+        weekOfMonth-narrow{
+            dn{"teden meseca"}
+        }
+        weekOfMonth-short{
+            dn{"ted. v mes."}
+        }
         weekday{
             dn{"dan v tednu"}
+        }
+        weekday-narrow{
+            dn{"dan v tednu"}
+        }
+        weekday-short{
+            dn{"dan v tednu"}
+        }
+        weekdayOfMonth{
+            dn{"dan meseca"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"dan v mes."}
+        }
+        weekdayOfMonth-short{
+            dn{"dan meseca"}
         }
         year{
             dn{"leto"}
@@ -1869,6 +2095,11 @@ sl{
         }
         year-narrow{
             dn{"leto"}
+            relative{
+                "-1"{"lani"}
+                "0"{"letos"}
+                "1"{"naslednje leto"}
+            }
             relativeTime{
                 future{
                     few{"čez {0} leta"}
@@ -1886,6 +2117,11 @@ sl{
         }
         year-short{
             dn{"leto"}
+            relative{
+                "-1"{"lani"}
+                "0"{"letos"}
+                "1"{"naslednje leto"}
+            }
             relativeTime{
                 future{
                     few{"čez {0} leta"}
@@ -1904,9 +2140,27 @@ sl{
         zone{
             dn{"časovni pas"}
         }
+        zone-narrow{
+            dn{"časovni pas"}
+        }
+        zone-short{
+            dn{"časovni pas"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ali {1}"}
+            end{"{0} ali {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
+            2{"{0} in {1}"}
+            end{"{0} in {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} in {1}"}
             end{"{0} in {1}"}
             middle{"{0}, {1}"}
@@ -1941,5 +2195,37 @@ sl{
         UK{"angleški"}
         US{"imperialni"}
         metric{"metrični"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

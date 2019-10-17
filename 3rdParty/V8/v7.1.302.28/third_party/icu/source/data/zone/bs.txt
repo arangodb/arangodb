@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 bs{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -58,7 +58,7 @@ bs{
             ec{"Dar es Salaam"}
         }
         "Africa:Djibouti"{
-            ec{"Djibouti"}
+            ec{"Džibuti"}
         }
         "Africa:Douala"{
             ec{"Douala"}
@@ -166,7 +166,7 @@ bs{
             ec{"Anchorage"}
         }
         "America:Anguilla"{
-            ec{"Anguilla"}
+            ec{"Angvila"}
         }
         "America:Antigua"{
             ec{"Antigva"}
@@ -250,7 +250,7 @@ bs{
             ec{"Cayenne"}
         }
         "America:Cayman"{
-            ec{"Cayman"}
+            ec{"Kajman"}
         }
         "America:Chicago"{
             ec{"Chicago"}
@@ -274,7 +274,7 @@ bs{
             ec{"Cuiaba"}
         }
         "America:Curacao"{
-            ec{"Curacao"}
+            ec{"Kurasao"}
         }
         "America:Danmarkshavn"{
             ec{"Danmarkshavn"}
@@ -292,7 +292,7 @@ bs{
             ec{"Detroit"}
         }
         "America:Dominica"{
-            ec{"Dominica"}
+            ec{"Dominika"}
         }
         "America:Edmonton"{
             ec{"Edmonton"}
@@ -301,7 +301,7 @@ bs{
             ec{"Eirunepe"}
         }
         "America:El_Salvador"{
-            ec{"El Salvador"}
+            ec{"Salvador"}
         }
         "America:Fort_Nelson"{
             ec{"Fort Nelson"}
@@ -325,7 +325,7 @@ bs{
             ec{"Grenada"}
         }
         "America:Guadeloupe"{
-            ec{"Guadeloupe"}
+            ec{"Gvadalupe"}
         }
         "America:Guatemala"{
             ec{"Gvatemala"}
@@ -507,6 +507,9 @@ bs{
         "America:Puerto_Rico"{
             ec{"Portoriko"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -657,6 +660,9 @@ bs{
         "Asia:Ashgabat"{
             ec{"Ašhabad"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -707,6 +713,9 @@ bs{
         }
         "Asia:Dushanbe"{
             ec{"Dušanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -886,7 +895,7 @@ bs{
             ec{"Kanari"}
         }
         "Atlantic:Cape_Verde"{
-            ec{"Cape Verde"}
+            ec{"Kape Verde"}
         }
         "Atlantic:Faeroe"{
             ec{"Faroe"}
@@ -901,7 +910,7 @@ bs{
             ec{"South Georgia"}
         }
         "Atlantic:St_Helena"{
-            ec{"St. Helena"}
+            ec{"Sveta Helena"}
         }
         "Atlantic:Stanley"{
             ec{"Stanley"}
@@ -931,7 +940,7 @@ bs{
             ec{"Lindeman"}
         }
         "Australia:Lord_Howe"{
-            ec{"Lord Howe"}
+            ec{"Lord Hau"}
         }
         "Australia:Melbourne"{
             ec{"Melburn"}
@@ -941,6 +950,9 @@ bs{
         }
         "Australia:Sydney"{
             ec{"Sidnej"}
+        }
+        "Etc:UTC"{
+            ls{"Koordinirano svjetsko vrijeme"}
         }
         "Etc:Unknown"{
             ec{"Nepoznati grad"}
@@ -992,7 +1004,7 @@ bs{
             ec{"Gibraltar"}
         }
         "Europe:Guernsey"{
-            ec{"Guernsey"}
+            ec{"Gernzi"}
         }
         "Europe:Helsinki"{
             ec{"Helsinki"}
@@ -1010,7 +1022,7 @@ bs{
             ec{"Kalinjingrad"}
         }
         "Europe:Kiev"{
-            ec{"Kiev"}
+            ec{"Kijev"}
         }
         "Europe:Kirov"{
             ec{"Kirov"}
@@ -1073,6 +1085,9 @@ bs{
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopolj"}
         }
@@ -1131,10 +1146,10 @@ bs{
             ec{"Chagos"}
         }
         "Indian:Christmas"{
-            ec{"Božićno Ostrvo"}
+            ec{"Božićno ostrvo"}
         }
         "Indian:Cocos"{
-            ec{"Kokosova Ostrva"}
+            ec{"Kokosova ostrva"}
         }
         "Indian:Comoro"{
             ec{"Comoro"}
@@ -1783,12 +1798,12 @@ bs{
             ls{"Vrijeme na Ostrvima Finiks"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"Ljetno vrijeme na Ostrvima Sen Pjer i Mikelon"}
-            lg{"Vrijeme na Ostrvima Sen Pjer i Mikelon"}
-            ls{"Standardno vrijeme na Ostrvima Sen Pjer i Mikelon"}
+            ld{"Ljetno vrijeme na Ostrvima Sveti Petar i Mikelon"}
+            lg{"Vrijeme na Ostrvima Sveti Petar i Mikelon"}
+            ls{"Standardno vrijeme na Ostrvima Sveti Petar i Mikelon"}
         }
         "meta:Pitcairn"{
-            ls{"Vrijeme na Ostrvu Pitkern"}
+            ls{"Vrijeme na Ostrvima Pitkern"}
         }
         "meta:Ponape"{
             ls{"Vrijeme na Ostrvu Ponape"}

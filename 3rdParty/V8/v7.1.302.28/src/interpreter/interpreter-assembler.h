@@ -5,13 +5,13 @@
 #ifndef V8_INTERPRETER_INTERPRETER_ASSEMBLER_H_
 #define V8_INTERPRETER_INTERPRETER_ASSEMBLER_H_
 
-#include "src/allocation.h"
 #include "src/builtins/builtins.h"
-#include "src/code-stub-assembler.h"
-#include "src/globals.h"
+#include "src/codegen/code-stub-assembler.h"
+#include "src/common/globals.h"
 #include "src/interpreter/bytecode-register.h"
 #include "src/interpreter/bytecodes.h"
 #include "src/runtime/runtime.h"
+#include "src/utils/allocation.h"
 
 namespace v8 {
 namespace internal {
@@ -144,8 +144,9 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   // Load and untag constant at |index| in the constant pool.
   compiler::Node* LoadAndUntagConstantPoolEntry(compiler::Node* index);
 
-  // Load the FeedbackVector for the current function.
-  compiler::TNode<FeedbackVector> LoadFeedbackVector();
+  // Load the FeedbackVector for the current function. The retuned node could be
+  // undefined.
+  compiler::TNode<HeapObject> LoadFeedbackVector();
 
   // Increment the call count for a CALL_IC or construct call.
   // The call count is located at feedback_vector[slot_id + 1].
@@ -162,7 +163,7 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   // |feedback_vector| at |slot_id|, and the call counts in
   // the |feedback_vector| at |slot_id+1|.
   void CollectCallFeedback(compiler::Node* target, compiler::Node* context,
-                           compiler::Node* feedback_vector,
+                           compiler::Node* maybe_feedback_vector,
                            compiler::Node* slot_id);
 
   // Call JSFunction or Callable |function| with |args| arguments, possibly
@@ -236,7 +237,7 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   void UpdateInterruptBudgetOnReturn();
 
   // Returns the OSR nesting level from the bytecode header.
-  compiler::Node* LoadOSRNestingLevel();
+  compiler::Node* LoadOsrNestingLevel();
 
   // Dispatch to the bytecode.
   compiler::Node* Dispatch();
@@ -269,9 +270,6 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   static bool TargetSupportsUnalignedAccess();
 
   void ToNumberOrNumeric(Object::Conversion mode);
-
-  // Lazily deserializes the current bytecode's handler and tail-calls into it.
-  void DeserializeLazyAndDispatch();
 
  private:
   // Returns a tagged pointer to the current function's BytecodeArray object.

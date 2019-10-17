@@ -43,15 +43,23 @@ RESOURCES_PATTERN = re.compile(r"//\s+Resources:(.*)")
 # Pattern to auto-detect files to push on Android for statements like:
 # load("path/to/file.js")
 LOAD_PATTERN = re.compile(
-    r"(?:load|readbuffer|read)\((?:'|\")([^'\"]*)(?:'|\")\)")
+    r"(?:load|readbuffer|read)\((?:'|\")([^'\"]+)(?:'|\")\)")
 # Pattern to auto-detect files to push on Android for statements like:
 # import "path/to/file.js"
 MODULE_RESOURCES_PATTERN_1 = re.compile(
-    r"(?:import|export)(?:\(| )(?:'|\")([^'\"]*)(?:'|\")")
+    r"(?:import|export)(?:\(| )(?:'|\")([^'\"]+)(?:'|\")")
 # Pattern to auto-detect files to push on Android for statements like:
 # import foobar from "path/to/file.js"
 MODULE_RESOURCES_PATTERN_2 = re.compile(
-    r"(?:import|export).*from (?:'|\")([^'\"]*)(?:'|\")")
+    r"(?:import|export).*from (?:'|\")([^'\"]+)(?:'|\")")
+
+TIMEOUT_LONG = "long"
+
+try:
+  cmp             # Python 2
+except NameError:
+  def cmp(x, y):  # Python 3
+    return (x > y) - (x < y)
 
 
 class TestCase(object):
@@ -135,7 +143,8 @@ class TestCase(object):
 
   @property
   def do_skip(self):
-    return statusfile.SKIP in self._statusfile_outcomes
+    return (statusfile.SKIP in self._statusfile_outcomes and
+            not self.suite.test_config.run_skipped)
 
   @property
   def is_slow(self):
@@ -196,6 +205,9 @@ class TestCase(object):
   def _get_files_params(self):
     return []
 
+  def _get_timeout_param(self):
+    return None
+
   def _get_random_seed_flags(self):
     return ['--random-seed=%d' % self.random_seed]
 
@@ -232,11 +244,16 @@ class TestCase(object):
     timeout = self._test_config.timeout
     if "--stress-opt" in params:
       timeout *= 4
+    if "--jitless" in params:
+      timeout *= 2
+    if "--no-opt" in params:
+      timeout *= 2
     if "--noenable-vfp3" in params:
       timeout *= 2
-
-    # TODO(majeski): make it slow outcome dependent.
-    timeout *= 2
+    if self._get_timeout_param() == TIMEOUT_LONG:
+      timeout *= 10
+    if self.is_slow:
+      timeout *= 4
     return timeout
 
   def get_shell(self):

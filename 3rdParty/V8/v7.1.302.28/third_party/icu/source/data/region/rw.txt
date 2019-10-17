@@ -2,8 +2,9 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 rw{
     Countries{
-        RW{"Rwanda"}
-        TO{"Igitonga"}
+        MK{"Masedoniya y'Amajyaruguru"}
+        RW{"U Rwanda"}
+        TO{"Tonga"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.49.82"}
 }

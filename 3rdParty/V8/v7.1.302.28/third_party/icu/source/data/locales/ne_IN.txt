@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ne_IN{
-    Version{"2.1.27.40"}
+    Version{"2.1.47.71"}
     calendar{
         gregorian{
             DateTimePatterns{
@@ -12,7 +12,7 @@ ne_IN{
                 "y MMMM d, EEEE",
                 "y MMMM d",
                 "y MMM d",
-                "y-MM-dd",
+                "yy/M/d",
                 "{1}, {0}",
                 "{1} {0}",
                 "{1} {0}",

@@ -31,6 +31,7 @@ ms{
         151{"Eropah Timur"}
         154{"Eropah Utara"}
         155{"Eropah Barat"}
+        202{"Afrika Sub-Sahara"}
         419{"Amerika Latin"}
         AC{"Pulau Ascension"}
         AD{"Andorra"}
@@ -58,7 +59,7 @@ ms{
         BH{"Bahrain"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Saint Barthélemy"}
+        BL{"St. Barthelemy"}
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
@@ -89,7 +90,7 @@ ms{
         CW{"Curacao"}
         CX{"Pulau Krismas"}
         CY{"Cyprus"}
-        CZ{"Republik Czech"}
+        CZ{"Czechia"}
         DE{"Jerman"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -106,9 +107,10 @@ ms{
         ES{"Sepanyol"}
         ET{"Ethiopia"}
         EU{"Kesatuan Eropah"}
+        EZ{"Zon Euro"}
         FI{"Finland"}
         FJ{"Fiji"}
-        FK{"Kepulauan Falkland"}
+        FK{"Kepulauan Falkland (Islas Malvinas)"}
         FM{"Micronesia"}
         FO{"Kepulauan Faroe"}
         FR{"Perancis"}
@@ -181,7 +183,7 @@ ms{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Kepulauan Marshall"}
-        MK{"Macedonia"}
+        MK{"Macedonia Utara"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -285,6 +287,8 @@ ms{
         VU{"Vanuatu"}
         WF{"Wallis dan Futuna"}
         WS{"Samoa"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Kosovo"}
         YE{"Yaman"}
         YT{"Mayotte"}
@@ -302,10 +306,8 @@ ms{
         CD{"Congo (DRC)"}
         CG{"Congo (Republik)"}
         CI{"Ivory Coast"}
-        CZ{"Czechia"}
-        FK{"Kepulauan Falkland (Islas Malvinas)"}
-        MK{"Macedonia (FYROM)"}
+        CZ{"Republik Czech"}
         TL{"Timor Timur"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.2"}
 }

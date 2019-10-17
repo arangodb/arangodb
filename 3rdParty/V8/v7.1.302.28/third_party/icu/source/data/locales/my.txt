@@ -1,7 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 my{
-    AuxExemplarCharacters{"[ၐ ၑ ဨ ဢ ၒ ၓ ၔ ၕ ၖ ၗ \u1058 \u1059]"}
+    AuxExemplarCharacters{
+        "[၀႐ ၁႑ ၂႒ ၃႓ ၄႔ ၅႕ ၆႖ ၇႗ ၈႘ ၉႙ ၵ ၚ ၽ ၾ ၐ ၑ ၥ ဨ ဢ ၒ ၓ ၔ ၕ \u1033 ၖ ၗ \u1058 "
+        "\u1059 \u1034 ၢ \u1086 ၤ ႈ ႊ ႏ]"
+    }
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
@@ -11,24 +14,26 @@ my{
         word-medial{"{0} … {1}"}
     }
     ExemplarCharacters{
-        "[က ခ ဂ ဃ င စ ဆ ဇ ဈ ဉ ည ဋ ဌ ဍ ဎ ဏ တ ထ ဒ ဓ န ပ ဖ ဗ ဘ မ ယ ရ လ ဝ သ ဟ ဠ အ ဣ ဤ ဥ ဦ"
-        " ဧ ဩ ဪ ာ ါ \u102D \u102E \u102F \u1030 ေ \u1032 \u1036 ဿ ျ ြ \u103D \u103E "
-        "\u1039 \u103A \u1037 း]"
+        "[က ခ ဂ ဃ င စ ဆ ဇ ဈ ဉ ည ဋ ဌ ဍ ဎ ဏ တ ထ ဒ ဓ န ပ ဖ ဗ ဘ မ ယ ရ လ ဝ သ ဟ ဠ အ ဣ ၏ ဤ ဥ"
+        " ဦ ဧ ဩ ဪ ာ ါ \u102D \u102E \u102F \u1030 ေ \u1032 \u1036 ဿ ျ ြ \u103D "
+        "\u103E \u1039 \u103A \u1037 း]"
     }
     ExemplarCharactersIndex{"[က ခ ဂ ဃ င စ ဆ ဇ ဈ ဉ ည ဋ ဌ ဍ ဎ ဏ တ ထ ဒ ဓ န ပ ဖ ဗ ဘ မ ယ ရ လ ဝ သ ဟ ဠ အ]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0၀ 1၁ 2၂ 3၃ 4၄ 5၅ 6၆ 7၇ 8၈ 9၉]"}
     ExemplarCharactersPunctuation{"[၊ ။ ‘ ’ “ ”]"}
     MoreInformation{"?"}
     NumberElements{
         default{"mymr"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0} နှင့်အထက်"}
+                atMost{"≤{0}"}
                 range{"{0} - {1}"}
             }
             patterns{
                 accountingFormat{"¤ #,##0.00"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -151,47 +156,56 @@ my{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"ဂဏန်းမဟုတ်သော"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"{0} အုပ်မြောက်"}
+            }
+            plural{
+                other{"{0}ရက်"}
             }
         }
         minimumGroupingDigits{"1"}
         mymr{
             patterns{
                 currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             symbols{
+                decimal{"."}
                 exponential{"E"}
+                group{","}
                 infinity{"∞"}
                 list{"၊"}
+                minusSign{"-"}
                 nan{"ဂဏန်းမဟုတ်သော"}
                 perMille{"‰"}
                 percentSign{"%"}
+                plusSign{"+"}
                 superscriptingExponent{"×"}
             }
         }
         native{"mymr"}
     }
-    Version{"2.1.30.50"}
+    Version{"2.1.49.82"}
     calendar{
         generic{
             DateTimePatterns{
                 "zzzz HH:mm:ss",
                 "z HH:mm:ss",
-                "HH:mm:ss",
-                "HH:mm",
+                "B HH:mm:ss",
+                "B H:mm",
                 "EEEE G dd MMMM y",
                 "G dd MMMM y",
                 "G d MMM y",
@@ -203,10 +217,19 @@ my{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
-                Ed{"d Eနေ့"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"d E"}
+                Ehm{"E a h:mm"}
+                Ehms{"E a h:mm:ss"}
                 Gy{"G y"}
-                GyMMM{"G MMM y"}
+                GyMMM{"G y MMM"}
                 GyMMMEd{"G d MMM y Eနေ့"}
                 GyMMMd{"G d MMM y"}
                 H{"HH"}
@@ -215,26 +238,38 @@ my{
                 M{"L"}
                 MEd{"d/M Eနေ့"}
                 MMM{"LLL"}
-                MMMEd{"MMM d Eနေ့"}
+                MMMEd{"MMM d၊ E"}
                 MMMMEd{"MMMM d Eနေ့"}
-                MMMMd{"d MMMM"}
-                MMMd{"d MMM"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"d/M"}
                 d{"d"}
+                h{"a h"}
+                hm{"a h:mm"}
+                hms{"a h:mm:ss"}
                 ms{"mm:ss"}
                 y{"G y"}
                 yyyy{"G y"}
                 yyyyM{"G M/y"}
                 yyyyMEd{"GGGGG dd/MM/y Eနေ့"}
-                yyyyMMM{"G MMM y"}
+                yyyyMMM{"G y MMM"}
                 yyyyMMMEd{"G d MMM y Eနေ့"}
-                yyyyMMMM{"G MMMM y"}
+                yyyyMMMM{"G y MMMM"}
                 yyyyMMMd{"G d MMM y"}
                 yyyyMd{"GGGGG dd/MM/Y"}
                 yyyyQQQ{"G y QQQ"}
                 yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -346,11 +381,11 @@ my{
             DateTimePatterns{
                 "zzzz HH:mm:ss",
                 "z HH:mm:ss",
-                "HH:mm:ss",
-                "HH:mm",
-                "EEEE d MMMM y",
-                "d MMMM y",
-                "d MMM y",
+                "B HH:mm:ss",
+                "B H:mm",
+                "y၊ MMMM d၊ EEEE",
+                "y၊ d MMMM",
+                "y၊ MMM d",
                 "dd-MM-yy",
                 "{1} {0}",
                 "{1} {0}",
@@ -362,51 +397,56 @@ my{
                 Timezone{"{1} {0}"}
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"cccနေ့"}
-                EHm{"HH:mm Eနေ့"}
-                EHms{"HH:mm:ss Eနေ့"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d ရက် Eနေ့"}
-                Ehm{"Eနေ့ a h:mm"}
-                Ehms{"Eနေ့ a h:mm:ss"}
+                Ehm{"E B h:mm"}
+                Ehms{"E B h:mm:ss"}
                 Gy{"G y"}
                 GyMMM{"G y MMM"}
-                GyMMMEd{"G y MMM d ရက် Eနေ့"}
-                GyMMMd{"G y MMM d ရက်"}
+                GyMMMEd{"G y၊ MMM d၊ E"}
+                GyMMMd{"G y၊ MMM d"}
                 H{"HH"}
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
                 Hmsv{"v HH:mm:ss"}
                 Hmv{"v HH:mm"}
                 M{"L"}
-                MEd{"d/M Eနေ့"}
+                MEd{"d/M၊ E"}
                 MMM{"LLL"}
-                MMMEd{"MMM d ရက် Eနေ့"}
+                MMMEd{"MMM d၊ E"}
                 MMMMEd{"MMMM d ရက် Eနေ့"}
                 MMMMW{
-                    other{"MMM လ W ပတ်မြောက်"}
+                    other{"MMMM လ W ပတ်မြောက်"}
                 }
                 MMMMd{"MMMM d"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
                 d{"d"}
-                h{"a h နာရီ"}
-                hm{"a h:mm"}
-                hms{"a h:mm:ss"}
+                h{"B h"}
+                hm{"B h:mm"}
+                hms{"B h:mm:ss"}
                 hmsv{"v a h:mm:ss"}
                 hmv{"v a h:mm"}
                 ms{"mm:ss"}
                 y{"y"}
                 yM{"M/y"}
-                yMEd{"d-M-y Eနေ့"}
+                yMEd{"d/M/y၊ E"}
                 yMMM{"MMM y"}
-                yMMMEd{"d MMM y Eနေ့"}
-                yMMMM{"MMMM y"}
-                yMMMd{"d MMM y"}
+                yMMMEd{"y၊ MMM d၊ E"}
+                yMMMM{"y MMMM"}
+                yMMMd{"y၊ MMM d"}
                 yMd{"dd-MM-y"}
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    other{"y ခု w ပတ်မြောက်"}
+                    other{"Y ခု w ပတ်မြောက်"}
                 }
             }
             dayNames{
@@ -550,7 +590,7 @@ my{
             eras{
                 abbreviated{
                     "ဘီစီ",
-                    "အေဒီ",
+                    "အဒေီ",
                 }
                 abbreviated%variant{
                     "ဘီစီအီး",
@@ -561,11 +601,58 @@ my{
                     "ခရစ်နှစ်",
                 }
                 wide%variant{
-                    "သာမန်ကာလ မတိုင်မီ ခေတ်",
-                    "သာမန်ကာလ",
+                    "ဘုံခေတ် မတိုင်မီ",
+                    "ဘုံခေတ်",
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y – y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM   "}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM "}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d   "}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d – d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH – HH"}
                 }
@@ -584,15 +671,15 @@ my{
                     M{"M – M"}
                 }
                 MEd{
-                    M{"d/M EEEEနေ့ – d/M EEEEနေ့"}
-                    d{"d/M EEEEနေ့ – d/M EEEEနေ့"}
+                    M{"d/M၊ EEEE – d/M၊ EEEE"}
+                    d{"d/M၊ EEEE – d/M၊ EEEE"}
                 }
                 MMM{
                     M{"MMM – MMM"}
                 }
                 MMMEd{
-                    M{"MMM d Eနေ့ – MMM d Eနေ့"}
-                    d{"MMM d Eနေ့ – MMM d Eနေ့"}
+                    M{"MMM d၊ E – MMM d၊ E"}
+                    d{"MMM d၊ E – MMM d၊ E"}
                 }
                 MMMd{
                     M{"MMM d – MMM d"}
@@ -632,27 +719,27 @@ my{
                     y{"M/y – M/y"}
                 }
                 yMEd{
-                    M{"d/M/y EEEEနေ့ – d/M/y EEEEနေ့"}
-                    d{"d/M/y EEEEနေ့ – d/M/y EEEEနေ့"}
-                    y{"d/M/y EEEEနေ့ – d/M/y EEEEနေ့"}
+                    M{"d/M/y၊ EEEE – d/M/y၊ EEEE"}
+                    d{"d/M/y၊ EEEE – d/M/y၊ EEEE"}
+                    y{"d/M/y၊ EEEE – d/M/y၊ EEEE"}
                 }
                 yMMM{
                     M{"y MMM – MMM"}
                     y{"y MMM – y MMM"}
                 }
                 yMMMEd{
-                    M{"y MMM d EEEEနေ့ – MMM d EEEEနေ့"}
-                    d{"y MMM d EEEEနေ့ – MMM d EEEEနေ့"}
-                    y{"y MMM d EEEEနေ့ – y MMM d EEEEနေ့"}
+                    M{"y၊ MMM d၊ EEEE – MMM d၊ EEEE"}
+                    d{"y၊ MMM d၊ EEEE – MMM d၊ EEEE"}
+                    y{"y၊ MMM d၊ EEEE – y၊ MMM d၊ EEEE"}
                 }
                 yMMMM{
                     M{"y MMMM – MMMM"}
                     y{"y MMMM – y MMMM"}
                 }
                 yMMMd{
-                    M{"y MMM d – y MMM d"}
-                    d{"y MMM d – d"}
-                    y{"y MMM d – y MMM d"}
+                    M{"y၊ MMM d – MMM d"}
+                    d{"y၊ MMM d – d"}
+                    y{"y၊ MMM d – y၊ MMM d"}
                 }
                 yMd{
                     M{"d/M/y – d/M/y"}
@@ -799,30 +886,30 @@ my{
         african_scripts{"အာဖရိက လက်ရေးမူ"}
         american_scripts{"အမေရိကန် လက်ရေးမူ"}
         animal{"တိရိစ္ဆာန်"}
-        animals_nature{"တိရစ္ဆာန်နှင့် သဘာဝ"}
+        animals_nature{"တိရစ္ဆာန် (သို့) သဘာဝ"}
         arrows{"မြား"}
         body{"ကိုယ်ခန္ဓာ"}
         box_drawing{"ကွန်ပျူတာလက်ရေးမူ"}
         braille{"မျက်မမြင်စာ"}
         building{"အဆောက်အအုံ"}
-        bullets_stars{"ဘူးလက်/စတား"}
+        bullets_stars{"ဘူးလက် (သို့) စတား"}
         consonantal_jamo{"ဗျည်းသံ"}
         currency_symbols{"ငွေကြေးသင်္ကေတ"}
-        dash_connector{"မျဉ်းတို/မျဉ်းဆက်"}
+        dash_connector{"မျဉ်းတို (သို့) မျဉ်းဆက်"}
         digits{"ဆယ်လီစိတ်"}
         dingbats{"ပုံနှိပ်သင်္ကေတ"}
         divination_symbols{"ဂမ္ဘီရအက္ခရာ"}
         downwards_arrows{"အောက်ညွှန်မြား"}
         downwards_upwards_arrows{"အပေါ်အောက်ညွှန်မြား"}
         east_asian_scripts{"အရှေ့အာရှ လက်ရေးမူ"}
-        emoji{"အီမို"}
+        emoji{"အီမိုဂျီ"}
         european_scripts{"ဥရောပ လက်ရေးမူ"}
         female{"အမ"}
         flag{"အလံ"}
-        flags{"အလံ"}
+        flags{"အလံများ"}
         food_drink{"အစားအသောက်"}
-        format{"ဖော်မက်"}
-        format_whitespace{"ဖော်မက်နှင့်ကွက်လပ်"}
+        format{"ပုံစံ"}
+        format_whitespace{"ပုံစံနှင့် ကွက်လပ်"}
         full_width_form_variant{"ဗြက်အပြည့် မူကွဲပုံစံ"}
         geometric_shapes{"ဂျီဩမေတြီ သင်္ကေတ"}
         half_width_form_variant{"ဗြက်တစ်ဝက် မူကွဲပုံစံ"}
@@ -833,7 +920,7 @@ my{
         hanzi_traditional{"ဟန်ဇီ (ရိုးရာ)"}
         heart{"အသည်းနှလုံး"}
         historic_scripts{"ရှေးဟောင်း လက်ရေးမူ"}
-        ideographic_desc_characters{"ယူနီကုတ် အက္ခရာ"}
+        ideographic_desc_characters{"အရုပ်စာ"}
         japanese_kana{"ဂျပန် ခန အက္ခရာ"}
         kanbun{"တရုတ်ရိုးရာ ရေးဟန်"}
         kanji{"ဂျပန် လက်ရေးမူ"}
@@ -841,11 +928,11 @@ my{
         leftwards_arrows{"ဘယ်ညွှန်မြား"}
         leftwards_rightwards_arrows{"ဘယ်ညာ ညွှန်မြား"}
         letterlike_symbols{"စာသုံးသင်္ကေတ"}
-        limited_use{"အသုံးနည်း"}
+        limited_use{"ကန့်သတ်သုံးခြင်း"}
         male{"အဖို"}
         math_symbols{"ဂဏန်းသင်္ကေတ"}
         middle_eastern_scripts{"အရှေ့အလယ်ပိုင်း လက်ရေးမူ"}
-        miscellaneous{"အထွေထွေ"}
+        miscellaneous{"သောင်းပြောင်းထွေလာ"}
         modern_scripts{"ခေတ်သစ်လက်ရေးမူ"}
         modifier{"အထူးပြု"}
         musical_symbols{"ဂီတသင်္ကေတ"}
@@ -862,10 +949,10 @@ my{
         plant{"အပင်"}
         punctuation{"ပုဒ်ဖြတ်ပုဒ်ရပ်"}
         rightwards_arrows{"ညာညွှန်မြား"}
-        sign_standard_symbols{"စံထားသော ဆိုင်းသင်္ကေတ"}
+        sign_standard_symbols{"လက္ခဏာ (သို့) သင်္ကေတ"}
         small_form_variant{"ယူနီကုတ်သုံး အက္ခရာအသေးမူကွဲပုံစံ"}
         smiley{"အပြုံးပုံ"}
-        smileys_people{"လူရုပ်ပြအီမို"}
+        smileys_people{"အပြုံးပုံ (သို့) လူရုပ်"}
         south_asian_scripts{"တောင်အာရှ လက်ရေးမူ"}
         southeast_asian_scripts{"အရှေ့တောင်အာရှ လက်ရေးမူ"}
         spacing{"စာလုံးခြား"}
@@ -874,7 +961,7 @@ my{
         technical_symbols{"စက်သုံးသင်္ကေတ"}
         tone_marks{"အသံနိမ့်မြင့်အမှတ်အသား"}
         travel{"ခရီးသွား"}
-        travel_places{"ခရီးသွားခြင်းနှင့်နေရာများ"}
+        travel_places{"ခရီးသွားခြင်း (သို့) နေရာ"}
         upwards_arrows{"အပေါ်ညွှန်မြား"}
         variant_forms{"မူကွဲများ"}
         vocalic_jamo{"သရသံ"}
@@ -929,10 +1016,31 @@ my{
                 }
             }
         }
+        dayOfYear{
+            dn{"တစ်နှစ်အတွင်း ရက်ရေတွက်ပုံ"}
+        }
+        dayOfYear-narrow{
+            dn{"တစ်နှစ်အတွင်း ရက်ရေတွက်ပုံ"}
+        }
+        dayOfYear-short{
+            dn{"တစ်နှစ်အတွင်း ရက်ရေတွက်ပုံ"}
+        }
         dayperiod{
             dn{"နံနက်/ညနေ"}
         }
+        dayperiod-narrow{
+            dn{"နံနက်/ညနေ"}
+        }
+        dayperiod-short{
+            dn{"နံနက်/ညနေ"}
+        }
         era{
+            dn{"ခေတ်"}
+        }
+        era-narrow{
+            dn{"ခေတ်"}
+        }
+        era-short{
             dn{"ခေတ်"}
         }
         fri{
@@ -1485,8 +1593,32 @@ my{
                 }
             }
         }
+        weekOfMonth{
+            dn{"တစ်လအတွင်းရှိသီတင်းပတ်"}
+        }
+        weekOfMonth-narrow{
+            dn{"တစ်လအတွင်းရှိသီတင်းပတ်"}
+        }
+        weekOfMonth-short{
+            dn{"တစ်လအတွင်းရှိသီတင်းပတ်"}
+        }
         weekday{
             dn{"နေ့"}
+        }
+        weekday-narrow{
+            dn{"နေ့"}
+        }
+        weekday-short{
+            dn{"နေ့"}
+        }
+        weekdayOfMonth{
+            dn{"တစ်လအတွင်းရှိအလုပ်ရက်"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"တစ်လအတွင်းရှိအလုပ်ရက်"}
+        }
+        weekdayOfMonth-short{
+            dn{"တစ်လအတွင်းရှိအလုပ်ရက်"}
         }
         year{
             dn{"နှစ်"}
@@ -1529,9 +1661,27 @@ my{
         zone{
             dn{"ဇုန်"}
         }
+        zone-narrow{
+            dn{"ဇုန်"}
+        }
+        zone-short{
+            dn{"ဇုန်"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} သို့မဟုတ် {1}"}
+            end{"{0} သို့မဟုတ် {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
         standard{
+            2{"{0}နှင့် {1}"}
+            end{"{0}နှင့် {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
+        standard-narrow{
             2{"{0}နှင့် {1}"}
             end{"{0}နှင့် {1}"}
             middle{"{0} {1}"}
@@ -1566,5 +1716,33 @@ my{
         UK{"ဗြိတိန်စနစ်"}
         US{"အမေရိကန်စနစ်"}
         metric{"မက်ထရစ်စနစ်"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+        }
     }
 }

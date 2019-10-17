@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ja{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"アビジャン"}
@@ -507,6 +507,9 @@ ja{
         "America:Puerto_Rico"{
             ec{"プエルトリコ"}
         }
+        "America:Punta_Arenas"{
+            ec{"プンタアレナス"}
+        }
         "America:Rainy_River"{
             ec{"レイニーリバー"}
         }
@@ -553,7 +556,7 @@ ja{
             ec{"セントジョンズ"}
         }
         "America:St_Kitts"{
-            ec{"セントキッツ"}
+            ec{"セントクリストファー"}
         }
         "America:St_Lucia"{
             ec{"セントルシア"}
@@ -657,6 +660,9 @@ ja{
         "Asia:Ashgabat"{
             ec{"アシガバード"}
         }
+        "Asia:Atyrau"{
+            ec{"アティラウ"}
+        }
         "Asia:Baghdad"{
             ec{"バグダッド"}
         }
@@ -707,6 +713,9 @@ ja{
         }
         "Asia:Dushanbe"{
             ec{"ドゥシャンベ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ファマグスタ"}
         }
         "Asia:Gaza"{
             ec{"ガザ"}
@@ -805,7 +814,7 @@ ja{
             ec{"クズロルダ"}
         }
         "Asia:Rangoon"{
-            ec{"ラングーン"}
+            ec{"ヤンゴン"}
         }
         "Asia:Riyadh"{
             ec{"リヤド"}
@@ -942,6 +951,9 @@ ja{
         "Australia:Sydney"{
             ec{"シドニー"}
         }
+        "Etc:UTC"{
+            ls{"協定世界時"}
+        }
         "Etc:Unknown"{
             ec{"地域不明"}
         }
@@ -1072,6 +1084,9 @@ ja{
         }
         "Europe:Sarajevo"{
             ec{"サラエボ"}
+        }
+        "Europe:Saratov"{
+            ec{"サラトフ"}
         }
         "Europe:Simferopol"{
             ec{"シンフェロポリ"}
@@ -1645,7 +1660,7 @@ ja{
             ls{"クラスノヤルスク標準時"}
         }
         "meta:Kyrgystan"{
-            ls{"キルギスタン時間"}
+            ls{"キルギス時間"}
         }
         "meta:Lanka"{
             ls{"ランカ時間"}
@@ -1789,9 +1804,9 @@ ja{
             ls{"フェニックス諸島時間"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"サンピエール・ミクロン夏時間"}
-            lg{"サンピエール・ミクロン時間"}
-            ls{"サンピエール・ミクロン標準時"}
+            ld{"サンピエール島・ミクロン島夏時間"}
+            lg{"サンピエール島・ミクロン島時間"}
+            ls{"サンピエール島・ミクロン島標準時"}
         }
         "meta:Pitcairn"{
             ls{"ピトケアン時間"}

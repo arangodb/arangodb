@@ -124,6 +124,10 @@ twq{
         }
         MRO{
             "MRO",
+            "Mooritaani Ugiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mooritaani Ugiya",
         }
         MUR{
@@ -180,6 +184,10 @@ twq{
         }
         STD{
             "STD",
+            "Sao Tome nda Prinsipe Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Sao Tome nda Prinsipe Dobra",
         }
         SZL{
@@ -227,5 +235,5 @@ twq{
             "Zimbabwe Dollar",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

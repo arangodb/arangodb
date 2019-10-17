@@ -7,8 +7,6 @@
 
 #include "src/wasm/baseline/liftoff-assembler.h"
 
-#define BAILOUT(reason) bailout("arm64 " reason)
-
 namespace v8 {
 namespace internal {
 namespace wasm {
@@ -41,8 +39,8 @@ namespace liftoff {
 //  -----+--------------------+  <-- stack ptr (sp)
 //
 
-constexpr int32_t kInstanceOffset = 2 * kPointerSize;
-constexpr int32_t kFirstStackSlotOffset = kInstanceOffset + kPointerSize;
+constexpr int32_t kInstanceOffset = 2 * kSystemPointerSize;
+constexpr int32_t kFirstStackSlotOffset = kInstanceOffset + kSystemPointerSize;
 constexpr int32_t kConstantStackSpace = 0;
 
 inline MemOperand GetStackSlot(uint32_t index) {
@@ -135,7 +133,7 @@ void LiftoffAssembler::PatchPrepareStackFrame(int offset,
     if (!IsImmAddSub(bytes)) {
       // Stack greater than 4M! Because this is a quite improbable case, we
       // just fallback to Turbofan.
-      BAILOUT("Stack too big");
+      bailout(kOtherReason, "Stack too big");
       return;
     }
   }
@@ -144,15 +142,37 @@ void LiftoffAssembler::PatchPrepareStackFrame(int offset,
   // before checking it.
   // TODO(arm): Remove this when the stack check mechanism will be updated.
   if (bytes > KB / 2) {
-    BAILOUT("Stack limited to 512 bytes to avoid a bug in StackCheck");
+    bailout(kOtherReason,
+            "Stack limited to 512 bytes to avoid a bug in StackCheck");
     return;
   }
 #endif
-  PatchingAssembler patching_assembler(AssemblerOptions{}, buffer_ + offset, 1);
+  PatchingAssembler patching_assembler(AssemblerOptions{},
+                                       buffer_start_ + offset, 1);
+#if V8_OS_WIN
+  if (bytes > kStackPageSize) {
+    // Generate OOL code (at the end of the function, where the current
+    // assembler is pointing) to do the explicit stack limit check (see
+    // https://docs.microsoft.com/en-us/previous-versions/visualstudio/
+    // visual-studio-6.0/aa227153(v=vs.60)).
+    // At the function start, emit a jump to that OOL code (from {offset} to
+    // {pc_offset()}).
+    int ool_offset = pc_offset() - offset;
+    patching_assembler.b(ool_offset >> kInstrSizeLog2);
+
+    // Now generate the OOL code.
+    Claim(bytes, 1);
+    // Jump back to the start of the function (from {pc_offset()} to {offset +
+    // kInstrSize}).
+    int func_start_offset = offset + kInstrSize - pc_offset();
+    b(func_start_offset >> kInstrSizeLog2);
+    return;
+  }
+#endif
   patching_assembler.PatchSubSp(bytes);
 }
 
-void LiftoffAssembler::FinishCode() { CheckConstPool(true, false); }
+void LiftoffAssembler::FinishCode() { ForceConstantPoolEmissionWithoutJump(); }
 
 void LiftoffAssembler::AbortCompilation() { AbortedCodeGeneration(); }
 
@@ -188,12 +208,27 @@ void LiftoffAssembler::LoadFromInstance(Register dst, uint32_t offset,
   }
 }
 
+void LiftoffAssembler::LoadTaggedPointerFromInstance(Register dst,
+                                                     uint32_t offset) {
+  LoadFromInstance(dst, offset, kTaggedSize);
+}
+
 void LiftoffAssembler::SpillInstance(Register instance) {
   Str(instance, liftoff::GetInstanceOperand());
 }
 
 void LiftoffAssembler::FillInstanceInto(Register dst) {
   Ldr(dst, liftoff::GetInstanceOperand());
+}
+
+void LiftoffAssembler::LoadTaggedPointer(Register dst, Register src_addr,
+                                         Register offset_reg,
+                                         uint32_t offset_imm,
+                                         LiftoffRegList pinned) {
+  UseScratchRegisterScope temps(this);
+  MemOperand src_op =
+      liftoff::GetMemOp(this, &temps, src_addr, offset_reg, offset_imm);
+  LoadTaggedPointerField(dst, src_op);
 }
 
 void LiftoffAssembler::Load(LiftoffRegister dst, Register src_addr,
@@ -329,12 +364,20 @@ void LiftoffAssembler::Spill(uint32_t index, WasmValue value) {
   CPURegister src = CPURegister::no_reg();
   switch (value.type()) {
     case kWasmI32:
-      src = temps.AcquireW();
-      Mov(src.W(), value.to_i32());
+      if (value.to_i32() == 0) {
+        src = wzr;
+      } else {
+        src = temps.AcquireW();
+        Mov(src.W(), value.to_i32());
+      }
       break;
     case kWasmI64:
-      src = temps.AcquireX();
-      Mov(src.X(), value.to_i64());
+      if (value.to_i64() == 0) {
+        src = xzr;
+      } else {
+        src = temps.AcquireX();
+        Mov(src.X(), value.to_i64());
+      }
       break;
     default:
       // We do not track f32 and f64 constants, hence they are unreachable.
@@ -349,7 +392,7 @@ void LiftoffAssembler::Fill(LiftoffRegister reg, uint32_t index,
   Ldr(liftoff::GetRegFromType(reg, type), src);
 }
 
-void LiftoffAssembler::FillI64Half(Register, uint32_t half_index) {
+void LiftoffAssembler::FillI64Half(Register, uint32_t index, RegPairHalf) {
   UNREACHABLE();
 }
 
@@ -358,10 +401,22 @@ void LiftoffAssembler::FillI64Half(Register, uint32_t half_index) {
                                      Register rhs) {             \
     instruction(dst.W(), lhs.W(), rhs.W());                      \
   }
+#define I32_BINOP_I(name, instruction)                           \
+  I32_BINOP(name, instruction)                                   \
+  void LiftoffAssembler::emit_##name(Register dst, Register lhs, \
+                                     int32_t imm) {              \
+    instruction(dst.W(), lhs.W(), Immediate(imm));               \
+  }
 #define I64_BINOP(name, instruction)                                           \
   void LiftoffAssembler::emit_##name(LiftoffRegister dst, LiftoffRegister lhs, \
                                      LiftoffRegister rhs) {                    \
     instruction(dst.gp().X(), lhs.gp().X(), rhs.gp().X());                     \
+  }
+#define I64_BINOP_I(name, instruction)                                         \
+  I64_BINOP(name, instruction)                                                 \
+  void LiftoffAssembler::emit_##name(LiftoffRegister dst, LiftoffRegister lhs, \
+                                     int32_t imm) {                            \
+    instruction(dst.gp().X(), lhs.gp().X(), imm);                              \
   }
 #define FP32_BINOP(name, instruction)                                        \
   void LiftoffAssembler::emit_##name(DoubleRegister dst, DoubleRegister lhs, \
@@ -371,6 +426,11 @@ void LiftoffAssembler::FillI64Half(Register, uint32_t half_index) {
 #define FP32_UNOP(name, instruction)                                           \
   void LiftoffAssembler::emit_##name(DoubleRegister dst, DoubleRegister src) { \
     instruction(dst.S(), src.S());                                             \
+  }
+#define FP32_UNOP_RETURN_TRUE(name, instruction)                               \
+  bool LiftoffAssembler::emit_##name(DoubleRegister dst, DoubleRegister src) { \
+    instruction(dst.S(), src.S());                                             \
+    return true;                                                               \
   }
 #define FP64_BINOP(name, instruction)                                        \
   void LiftoffAssembler::emit_##name(DoubleRegister dst, DoubleRegister lhs, \
@@ -410,21 +470,21 @@ void LiftoffAssembler::FillI64Half(Register, uint32_t half_index) {
     instruction(dst.gp().X(), src.gp().X(), amount);                           \
   }
 
-I32_BINOP(i32_add, Add)
+I32_BINOP_I(i32_add, Add)
 I32_BINOP(i32_sub, Sub)
 I32_BINOP(i32_mul, Mul)
-I32_BINOP(i32_and, And)
-I32_BINOP(i32_or, Orr)
-I32_BINOP(i32_xor, Eor)
+I32_BINOP_I(i32_and, And)
+I32_BINOP_I(i32_or, Orr)
+I32_BINOP_I(i32_xor, Eor)
 I32_SHIFTOP(i32_shl, Lsl)
 I32_SHIFTOP(i32_sar, Asr)
 I32_SHIFTOP_I(i32_shr, Lsr)
-I64_BINOP(i64_add, Add)
+I64_BINOP_I(i64_add, Add)
 I64_BINOP(i64_sub, Sub)
 I64_BINOP(i64_mul, Mul)
-I64_BINOP(i64_and, And)
-I64_BINOP(i64_or, Orr)
-I64_BINOP(i64_xor, Eor)
+I64_BINOP_I(i64_and, And)
+I64_BINOP_I(i64_or, Orr)
+I64_BINOP_I(i64_xor, Eor)
 I64_SHIFTOP(i64_shl, Lsl)
 I64_SHIFTOP(i64_sar, Asr)
 I64_SHIFTOP_I(i64_shr, Lsr)
@@ -436,10 +496,10 @@ FP32_BINOP(f32_min, Fmin)
 FP32_BINOP(f32_max, Fmax)
 FP32_UNOP(f32_abs, Fabs)
 FP32_UNOP(f32_neg, Fneg)
-FP32_UNOP(f32_ceil, Frintp)
-FP32_UNOP(f32_floor, Frintm)
-FP32_UNOP(f32_trunc, Frintz)
-FP32_UNOP(f32_nearest_int, Frintn)
+FP32_UNOP_RETURN_TRUE(f32_ceil, Frintp)
+FP32_UNOP_RETURN_TRUE(f32_floor, Frintm)
+FP32_UNOP_RETURN_TRUE(f32_trunc, Frintz)
+FP32_UNOP_RETURN_TRUE(f32_nearest_int, Frintn)
 FP32_UNOP(f32_sqrt, Fsqrt)
 FP64_BINOP(f64_add, Fadd)
 FP64_BINOP(f64_sub, Fsub)
@@ -628,12 +688,24 @@ void LiftoffAssembler::emit_i32_to_intptr(Register dst, Register src) {
 
 void LiftoffAssembler::emit_f32_copysign(DoubleRegister dst, DoubleRegister lhs,
                                          DoubleRegister rhs) {
-  BAILOUT("f32_copysign");
+  UseScratchRegisterScope temps(this);
+  DoubleRegister scratch = temps.AcquireD();
+  Ushr(scratch.V2S(), rhs.V2S(), 31);
+  if (dst != lhs) {
+    Fmov(dst.S(), lhs.S());
+  }
+  Sli(dst.V2S(), scratch.V2S(), 31);
 }
 
 void LiftoffAssembler::emit_f64_copysign(DoubleRegister dst, DoubleRegister lhs,
                                          DoubleRegister rhs) {
-  BAILOUT("f64_copysign");
+  UseScratchRegisterScope temps(this);
+  DoubleRegister scratch = temps.AcquireD();
+  Ushr(scratch.V1D(), rhs.V1D(), 63);
+  if (dst != lhs) {
+    Fmov(dst.D(), lhs.D());
+  }
+  Sli(dst.V1D(), scratch.V1D(), 63);
 }
 
 bool LiftoffAssembler::emit_type_conversion(WasmOpcode opcode,
@@ -993,7 +1065,7 @@ void LiftoffStackSlots::Construct() {
         asm_->Poke(liftoff::GetRegFromType(slot.src_.reg(), slot.src_.type()),
                    poke_offset);
         break;
-      case LiftoffAssembler::VarState::KIntConst:
+      case LiftoffAssembler::VarState::kIntConst:
         DCHECK(slot.src_.type() == kWasmI32 || slot.src_.type() == kWasmI64);
         if (slot.src_.i32_const() == 0) {
           Register zero_reg = slot.src_.type() == kWasmI32 ? wzr : xzr;
@@ -1014,7 +1086,5 @@ void LiftoffStackSlots::Construct() {
 }  // namespace wasm
 }  // namespace internal
 }  // namespace v8
-
-#undef BAILOUT
 
 #endif  // V8_WASM_BASELINE_ARM64_LIFTOFF_ASSEMBLER_ARM64_H_

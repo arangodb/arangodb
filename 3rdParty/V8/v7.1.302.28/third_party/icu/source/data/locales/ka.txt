@@ -15,23 +15,24 @@ ka{
     }
     ExemplarCharacters{"[ა ბ გ დ ე ვ ზ თ ი კ ლ მ ნ ო პ ჟ რ ს ტ უ ფ ქ ღ ყ შ ჩ ც ძ წ ჭ ხ ჯ ჰ]"}
     ExemplarCharactersIndex{"[ა ბ გ დ ე ვ ზ თ ი კ ლ მ ნ ო პ ჟ რ ს ტ უ ფ ქ ღ ყ შ ჩ ც ძ წ ჭ ხ ჯ ჰ]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ჻ ' ‘ ‚ “ „ « » ( ) \\[ \\] \\{ \\} § @ * / \\& #"
         " † ‡ ′ ″ №]"
     }
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"≈{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}-{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
-                percentFormat{"#,##0 %"}
+                percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             patternsLong{
@@ -194,20 +195,28 @@ ka{
                 group{" "}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"არ არის რიცხვი"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                many{"მე-{0}"}
+                one{"{0}-ლი"}
+                other{"{0}-ე"}
+            }
+            plural{
+                one{"კალათში {0} X-ია. შეიძენთ მას?"}
+                other{"კალათში {0} X-ია. შეიძენთ მათ?"}
+            }
+        }
         minimumGroupingDigits{"2"}
-        native{"latn"}
         traditional{"geor"}
     }
-    Version{"2.1.29.20"}
+    Version{"2.1.48.17"}
     calendar{
         generic{
             DateTimePatterns{
@@ -226,8 +235,17 @@ ka{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM, y G"}
                 GyMMMEd{"E, d MMM, y G"}
@@ -260,6 +278,53 @@ ka{
                 yyyyQQQQ{"QQQQ, y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -387,7 +452,12 @@ ka{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E, HH:mm"}
                 EHms{"E, HH:mm:ss"}
                 Ed{"d E"}
@@ -407,8 +477,8 @@ ka{
                 MMM{"LLL"}
                 MMMEd{"E, d MMM"}
                 MMMMW{
-                    one{"MMM-ის კვირა W"}
-                    other{"MMM-ის კვირა W"}
+                    one{"MMMM-ის კვირა W"}
+                    other{"MMMM-ის კვირა W"}
                 }
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
@@ -431,8 +501,8 @@ ka{
                 yQQQ{"QQQ, y"}
                 yQQQQ{"QQQQ, y"}
                 yw{
-                    one{"კვირა w, y"}
-                    other{"კვირა w, y"}
+                    one{"კვირა w, Y"}
+                    other{"კვირა w, Y"}
                 }
             }
             dayNames{
@@ -592,6 +662,53 @@ ka{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -975,10 +1092,31 @@ ka{
                 }
             }
         }
+        dayOfYear{
+            dn{"წლის დღე"}
+        }
+        dayOfYear-narrow{
+            dn{"წლ. დღე"}
+        }
+        dayOfYear-short{
+            dn{"წლ. დღე"}
+        }
         dayperiod{
             dn{"დღის ნახევარი"}
         }
+        dayperiod-narrow{
+            dn{"დღ. ნახევარი"}
+        }
+        dayperiod-short{
+            dn{"დღ. ნახევარი"}
+        }
         era{
+            dn{"ეპოქა"}
+        }
+        era-narrow{
+            dn{"ეპოქა"}
+        }
+        era-short{
             dn{"ეპოქა"}
         }
         fri{
@@ -1619,8 +1757,32 @@ ka{
                 }
             }
         }
+        weekOfMonth{
+            dn{"თვის კვირა"}
+        }
+        weekOfMonth-narrow{
+            dn{"თვ. კვირა"}
+        }
+        weekOfMonth-short{
+            dn{"თვ. კვირა"}
+        }
         weekday{
             dn{"კვირის დღე"}
+        }
+        weekday-narrow{
+            dn{"კვ. დღე"}
+        }
+        weekday-short{
+            dn{"კვ. დღე"}
+        }
+        weekdayOfMonth{
+            dn{"კვირის დღე თვეში"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"კვ. დღე თვეში"}
+        }
+        weekdayOfMonth-short{
+            dn{"კვ. დღე თვეში"}
         }
         year{
             dn{"წელი"}
@@ -1679,9 +1841,27 @@ ka{
         zone{
             dn{"დროის სარტყელი"}
         }
+        zone-narrow{
+            dn{"დროის სარტყ."}
+        }
+        zone-short{
+            dn{"დროის სარტყ."}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ან {1}"}
+            end{"{0} ან {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
+            2{"{0} და {1}"}
+            end{"{0} და {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} და {1}"}
             end{"{0} და {1}"}
             middle{"{0}, {1}"}

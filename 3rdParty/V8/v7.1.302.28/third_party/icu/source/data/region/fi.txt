@@ -31,6 +31,7 @@ fi{
         151{"Itä-Eurooppa"}
         154{"Pohjois-Eurooppa"}
         155{"Länsi-Eurooppa"}
+        202{"Saharan eteläpuolinen Afrikka"}
         419{"Latinalainen Amerikka"}
         AC{"Ascension-saari"}
         AD{"Andorra"}
@@ -106,9 +107,10 @@ fi{
         ES{"Espanja"}
         ET{"Etiopia"}
         EU{"Euroopan unioni"}
+        EZ{"euroalue"}
         FI{"Suomi"}
         FJ{"Fidži"}
-        FK{"Falklandinsaaret"}
+        FK{"Falklandinsaaret (Malvinassaaret)"}
         FM{"Mikronesian liittovaltio"}
         FO{"Färsaaret"}
         FR{"Ranska"}
@@ -181,7 +183,7 @@ fi{
         MF{"Saint-Martin"}
         MG{"Madagaskar"}
         MH{"Marshallinsaaret"}
-        MK{"Makedonia"}
+        MK{"Pohjois-Makedonia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -302,10 +304,8 @@ fi{
         CD{"Kongo-Kinshasa"}
         CG{"Kongo-Brazzaville"}
         CI{"Côte d’Ivoire"}
-        CZ{"Tšekinmaa"}
-        FK{"Falklandinsaaret (Malvinassaaret)"}
-        MK{"EJT Makedonia"}
+        CZ{"Tšekin tasavalta"}
         TL{"Timor-Leste"}
     }
-    Version{"2.1.29.88"}
+    Version{"2.1.48.42"}
 }

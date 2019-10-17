@@ -7,5 +7,5 @@ hr_BA{
             "konvertibilna marka",
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
 }

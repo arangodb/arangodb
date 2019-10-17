@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 vi{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -507,6 +507,9 @@ vi{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -547,7 +550,7 @@ vi{
             ec{"Sitka"}
         }
         "America:St_Barthelemy"{
-            ec{"Saint Barthélemy"}
+            ec{"St. Barthélemy"}
         }
         "America:St_Johns"{
             ec{"St. John’s"}
@@ -657,6 +660,9 @@ vi{
         "Asia:Ashgabat"{
             ec{"Ashgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Baghdad"}
         }
@@ -707,6 +713,9 @@ vi{
         }
         "Asia:Dushanbe"{
             ec{"Dushanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -800,6 +809,9 @@ vi{
         }
         "Asia:Qatar"{
             ec{"Qatar"}
+        }
+        "Asia:Qostanay"{
+            ec{"Qostanay"}
         }
         "Asia:Qyzylorda"{
             ec{"Qyzylorda"}
@@ -942,6 +954,10 @@ vi{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Giờ Phối hợp Quốc tế"}
+            ss{"UTC"}
+        }
         "Etc:Unknown"{
             ec{"Thành phố Không xác định"}
         }
@@ -1073,6 +1089,9 @@ vi{
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopol"}
         }
@@ -1201,6 +1220,9 @@ vi{
         }
         "Pacific:Honolulu"{
             ec{"Honolulu"}
+            sd{"HDT"}
+            sg{"Giờ HST"}
+            ss{"HST"}
         }
         "Pacific:Johnston"{
             ec{"Johnston"}
@@ -1300,6 +1322,9 @@ vi{
             ld{"Giờ Mùa Hè Alaska"}
             lg{"Giờ Alaska"}
             ls{"Giờ Chuẩn Alaska"}
+            sd{"AKDT"}
+            sg{"AKT"}
+            ss{"AKST"}
         }
         "meta:Almaty"{
             ld{"Giờ Mùa Hè Almaty"}
@@ -1312,24 +1337,36 @@ vi{
             ls{"Giờ Chuẩn Amazon"}
         }
         "meta:America_Central"{
-            ld{"Giờ mùa hè miền trung"}
-            lg{"Giờ miền trung"}
-            ls{"Giờ chuẩn miền trung"}
+            ld{"Giờ mùa hè miền Trung"}
+            lg{"Giờ miền Trung"}
+            ls{"Giờ chuẩn miền Trung"}
+            sd{"CDT"}
+            sg{"CT"}
+            ss{"CST"}
         }
         "meta:America_Eastern"{
-            ld{"Giờ mùa hè miền đông"}
-            lg{"Giờ miền đông"}
-            ls{"Giờ chuẩn miền đông"}
+            ld{"Giờ mùa hè miền Đông"}
+            lg{"Giờ miền Đông"}
+            ls{"Giờ chuẩn miền Đông"}
+            sd{"EDT"}
+            sg{"ET"}
+            ss{"EST"}
         }
         "meta:America_Mountain"{
             ld{"Giờ mùa hè miền núi"}
             lg{"Giờ miền núi"}
             ls{"Giờ chuẩn miền núi"}
+            sd{"MDT"}
+            sg{"MT"}
+            ss{"MST"}
         }
         "meta:America_Pacific"{
-            ld{"Giờ Mùa hè Thái Bình Dương"}
+            ld{"Giờ mùa hè Thái Bình Dương"}
             lg{"Giờ Thái Bình Dương"}
             ls{"Giờ chuẩn Thái Bình Dương"}
+            sd{"PDT"}
+            sg{"PT"}
+            ss{"PST"}
         }
         "meta:Anadyr"{
             ld{"Giờ mùa hè Anadyr"}
@@ -1364,7 +1401,7 @@ vi{
         "meta:Argentina_Western"{
             ld{"Giờ mùa hè miền tây Argentina"}
             lg{"Giờ miền tây Argentina"}
-            ls{"Giờ chuẩn miền mây Argentina"}
+            ls{"Giờ chuẩn miền tây Argentina"}
         }
         "meta:Armenia"{
             ld{"Giờ Mùa Hè Armenia"}
@@ -1372,29 +1409,32 @@ vi{
             ls{"Giờ Chuẩn Armenia"}
         }
         "meta:Atlantic"{
-            ld{"Giờ Mùa hè Đại Tây Dương"}
+            ld{"Giờ mùa hè Đại Tây Dương"}
             lg{"Giờ Đại Tây Dương"}
             ls{"Giờ Chuẩn Đại Tây Dương"}
+            sd{"ADT"}
+            sg{"AT"}
+            ss{"AST"}
         }
         "meta:Australia_Central"{
-            ld{"Giờ Mùa Hè Miền Trung Nước Úc"}
-            lg{"Giờ Miền Trung Nước Úc"}
-            ls{"Giờ Chuẩn Miền Trung Nước Úc"}
+            ld{"Giờ Mùa Hè Miền Trung Australia"}
+            lg{"Giờ Miền Trung Australia"}
+            ls{"Giờ Chuẩn Miền Trung Australia"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"Giờ Mùa Hè Miền Trung Tây Nước Úc"}
-            lg{"Giờ Miền Trung Tây Nước Úc"}
-            ls{"Giờ Chuẩn Miền Trung Tây Nước Úc"}
+            ld{"Giờ Mùa Hè Miền Trung Tây Australia"}
+            lg{"Giờ Miền Trung Tây Australia"}
+            ls{"Giờ Chuẩn Miền Trung Tây Australia"}
         }
         "meta:Australia_Eastern"{
-            ld{"Giờ Mùa Hè Miền Đông Nước Úc"}
-            lg{"Giờ Miền Đông Nước Úc"}
-            ls{"Giờ Chuẩn Miền Đông Nước Úc"}
+            ld{"Giờ Mùa Hè Miền Đông Australia"}
+            lg{"Giờ Miền Đông Australia"}
+            ls{"Giờ Chuẩn Miền Đông Australia"}
         }
         "meta:Australia_Western"{
-            ld{"Giờ Mùa Hè Miền Tây Nước Úc"}
-            lg{"Giờ Miền Tây Nước Úc"}
-            ls{"Giờ Chuẩn Miền Tây Nước Úc"}
+            ld{"Giờ Mùa Hè Miền Tây Australia"}
+            lg{"Giờ Miền Tây Australia"}
+            ls{"Giờ Chuẩn Miền Tây Australia"}
         }
         "meta:Azerbaijan"{
             ld{"Giờ Mùa Hè Azerbaijan"}
@@ -1429,6 +1469,9 @@ vi{
             ld{"Giờ Mùa Hè Cape Verde"}
             lg{"Giờ Cape Verde"}
             ls{"Giờ Chuẩn Cape Verde"}
+        }
+        "meta:Casey"{
+            ls{"Giờ Casey"}
         }
         "meta:Chamorro"{
             ls{"Giờ Chamorro"}
@@ -1492,20 +1535,20 @@ vi{
             ls{"Giờ Ecuador"}
         }
         "meta:Europe_Central"{
-            ld{"Giờ Mùa Hè Trung Âu"}
+            ld{"Giờ mùa hè Trung Âu"}
             lg{"Giờ Trung Âu"}
-            ls{"Giờ Chuẩn Trung Âu"}
+            ls{"Giờ chuẩn Trung Âu"}
         }
         "meta:Europe_Eastern"{
-            ld{"Giờ Mùa Hè Đông Âu"}
+            ld{"Giờ mùa hè Đông Âu"}
             lg{"Giờ Đông Âu"}
-            ls{"Giờ Chuẩn Đông Âu"}
+            ls{"Giờ chuẩn Đông Âu"}
         }
         "meta:Europe_Further_Eastern"{
             ls{"Giờ Châu Âu Viễn Đông"}
         }
         "meta:Europe_Western"{
-            ld{"Giờ Mùa hè Tây Âu"}
+            ld{"Giờ mùa hè Tây Âu"}
             lg{"Giờ Tây Âu"}
             ls{"Giờ Chuẩn Tây Âu"}
         }
@@ -1562,9 +1605,12 @@ vi{
             ls{"Giờ Guyana"}
         }
         "meta:Hawaii_Aleutian"{
-            ld{"Giờ Mùa Hè Hawaii-Aleutian"}
-            lg{"Giờ Hawaii-Aleutian"}
-            ls{"Giờ Chuẩn Hawaii-Aleutian"}
+            ld{"Giờ Mùa Hè Hawaii-Aleut"}
+            lg{"Giờ Hawaii-Aleut"}
+            ls{"Giờ Chuẩn Hawaii-Aleut"}
+            sd{"HADT"}
+            sg{"HAT"}
+            ss{"HAST"}
         }
         "meta:Hong_Kong"{
             ld{"Giờ Mùa Hè Hồng Kông"}

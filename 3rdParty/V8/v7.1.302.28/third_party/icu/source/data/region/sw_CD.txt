@@ -32,5 +32,5 @@ sw_CD{
         TL{"Timori ya Mashariki"}
         VN{"Vietnamu"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
 }

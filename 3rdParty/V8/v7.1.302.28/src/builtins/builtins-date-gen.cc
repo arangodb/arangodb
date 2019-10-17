@@ -4,7 +4,7 @@
 
 #include "src/builtins/builtins-utils-gen.h"
 #include "src/builtins/builtins.h"
-#include "src/code-stub-assembler.h"
+#include "src/codegen/code-stub-assembler.h"
 
 namespace v8 {
 namespace internal {
@@ -44,8 +44,8 @@ void DateBuiltinsAssembler::Generate_DatePrototype_GetField(Node* context,
 
       Node* cache_stamp = LoadObjectField(receiver, JSDate::kCacheStampOffset);
       GotoIf(WordNotEqual(date_cache_stamp, cache_stamp), &stamp_mismatch);
-      Return(LoadObjectField(
-          receiver, JSDate::kValueOffset + field_index * kPointerSize));
+      Return(LoadObjectField(receiver,
+                             JSDate::kValueOffset + field_index * kTaggedSize));
 
       BIND(&stamp_mismatch);
     }
@@ -53,9 +53,10 @@ void DateBuiltinsAssembler::Generate_DatePrototype_GetField(Node* context,
     Node* field_index_smi = SmiConstant(field_index);
     Node* function =
         ExternalConstant(ExternalReference::get_date_field_function());
-    Node* result = CallCFunction2(
-        MachineType::AnyTagged(), MachineType::AnyTagged(),
-        MachineType::AnyTagged(), function, receiver, field_index_smi);
+    Node* result = CallCFunction(
+        function, MachineType::AnyTagged(),
+        std::make_pair(MachineType::AnyTagged(), receiver),
+        std::make_pair(MachineType::AnyTagged(), field_index_smi));
     Return(result);
   }
 

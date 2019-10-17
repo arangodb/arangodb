@@ -5,5 +5,5 @@ ro_MD{
         sw_CD{"swahili (R. D. Congo)"}
         wal{"wolaytta"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.48.43"}
 }

@@ -31,6 +31,7 @@ de{
         151{"Osteuropa"}
         154{"Nordeuropa"}
         155{"Westeuropa"}
+        202{"Subsahara-Afrika"}
         419{"Lateinamerika"}
         AC{"Ascension"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ de{
         CW{"Curaçao"}
         CX{"Weihnachtsinsel"}
         CY{"Zypern"}
-        CZ{"Tschechische Republik"}
+        CZ{"Tschechien"}
         DE{"Deutschland"}
         DG{"Diego Garcia"}
         DJ{"Dschibuti"}
@@ -106,9 +107,10 @@ de{
         ES{"Spanien"}
         ET{"Äthiopien"}
         EU{"Europäische Union"}
+        EZ{"Eurozone"}
         FI{"Finnland"}
         FJ{"Fidschi"}
-        FK{"Falklandinseln"}
+        FK{"Falklandinseln (Malwinen)"}
         FM{"Mikronesien"}
         FO{"Färöer"}
         FR{"Frankreich"}
@@ -181,7 +183,7 @@ de{
         MF{"St. Martin"}
         MG{"Madagaskar"}
         MH{"Marshallinseln"}
-        MK{"Mazedonien"}
+        MK{"Nordmazedonien"}
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolei"}
@@ -239,7 +241,7 @@ de{
         SG{"Singapur"}
         SH{"St. Helena"}
         SI{"Slowenien"}
-        SJ{"Spitzbergen"}
+        SJ{"Spitzbergen und Jan Mayen"}
         SK{"Slowakei"}
         SL{"Sierra Leone"}
         SM{"San Marino"}
@@ -260,7 +262,7 @@ de{
         TH{"Thailand"}
         TJ{"Tadschikistan"}
         TK{"Tokelau"}
-        TL{"Osttimor"}
+        TL{"Timor-Leste"}
         TM{"Turkmenistan"}
         TN{"Tunesien"}
         TO{"Tonga"}
@@ -302,9 +304,9 @@ de{
         CD{"Kongo (Demokratische Republik)"}
         CG{"Kongo (Republik)"}
         CI{"Elfenbeinküste"}
-        CZ{"Tschechien"}
-        FK{"Falklandinseln (Malwinen)"}
-        MK{"Mazedonien (EJR)"}
+        CZ{"Tschechische Republik"}
+        SZ{"Eswatini"}
+        TL{"Osttimor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

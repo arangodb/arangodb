@@ -60,7 +60,7 @@ rm{
         BM{"Bermudas"}
         BN{"Brunei"}
         BO{"Bolivia"}
-        BR{"Brasila"}
+        BR{"Brasilia"}
         BS{"Bahamas"}
         BT{"Bhutan"}
         BV{"Insla Bouvet"}
@@ -125,7 +125,7 @@ rm{
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
         HK{"Regiun d’administraziun speziala da Hongkong, China"}
-        HM{"Inslas da Heard e da McDonlad"}
+        HM{"Inslas da Heard e da McDonald"}
         HN{"Honduras"}
         HR{"Croazia"}
         HT{"Haiti"}
@@ -267,8 +267,8 @@ rm{
         VA{"Citad dal Vatican"}
         VC{"Saint Vincent e las Grenadinas"}
         VE{"Venezuela"}
-        VG{"Inslas Verginas Britannicas"}
-        VI{"Inslas Verginas Americanas"}
+        VG{"Inslas Virginas Britannicas"}
+        VI{"Inslas Virginas Americanas"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Wallis e Futuna"}
@@ -280,5 +280,5 @@ rm{
         ZW{"Simbabwe"}
         ZZ{"Regiun betg encouschenta u nunvalaivla"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.48.4"}
 }

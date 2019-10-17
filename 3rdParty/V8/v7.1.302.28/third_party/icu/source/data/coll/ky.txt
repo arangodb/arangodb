@@ -8,7 +8,7 @@ ky{
                 "[reorder Cyrl]"
                 "&е<ё<<<Ё"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

@@ -7,8 +7,8 @@
 
 #include "src/objects/js-promise.h"
 
-#include "src/objects-inl.h"  // Needed for write barriers
-#include "src/objects.h"
+#include "src/objects/objects-inl.h"  // Needed for write barriers
+#include "src/objects/objects.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -16,6 +16,7 @@
 namespace v8 {
 namespace internal {
 
+OBJECT_CONSTRUCTORS_IMPL(JSPromise, JSObject)
 CAST_ACCESSOR(JSPromise)
 
 ACCESSORS(JSPromise, reactions_or_result, Object, kReactionsOrResultOffset)
@@ -23,12 +24,12 @@ SMI_ACCESSORS(JSPromise, flags, kFlagsOffset)
 BOOL_ACCESSORS(JSPromise, flags, has_handler, kHasHandlerBit)
 BOOL_ACCESSORS(JSPromise, flags, handled_hint, kHandledHintBit)
 
-Object* JSPromise::result() const {
+Object JSPromise::result() const {
   DCHECK_NE(Promise::kPending, status());
   return reactions_or_result();
 }
 
-Object* JSPromise::reactions() const {
+Object JSPromise::reactions() const {
   DCHECK_EQ(Promise::kPending, status());
   return reactions_or_result();
 }

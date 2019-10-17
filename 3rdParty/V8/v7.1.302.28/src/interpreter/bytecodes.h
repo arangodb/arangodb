@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "src/globals.h"
+#include "src/common/globals.h"
 #include "src/interpreter/bytecode-operands.h"
 
 // This interface and it's implementation are independent of the
@@ -235,7 +235,7 @@ namespace interpreter {
   V(TestReferenceEqual, AccumulatorUse::kReadWrite, OperandType::kReg)         \
   V(TestInstanceOf, AccumulatorUse::kReadWrite, OperandType::kReg,             \
     OperandType::kIdx)                                                         \
-  V(TestIn, AccumulatorUse::kReadWrite, OperandType::kReg)                     \
+  V(TestIn, AccumulatorUse::kReadWrite, OperandType::kReg, OperandType::kIdx)  \
   V(TestUndetectable, AccumulatorUse::kReadWrite)                              \
   V(TestNull, AccumulatorUse::kReadWrite)                                      \
   V(TestUndefined, AccumulatorUse::kReadWrite)                                 \
@@ -255,8 +255,8 @@ namespace interpreter {
     OperandType::kIdx, OperandType::kFlag8)                                    \
   V(CreateArrayFromIterable, AccumulatorUse::kReadWrite)                       \
   V(CreateEmptyArrayLiteral, AccumulatorUse::kWrite, OperandType::kIdx)        \
-  V(CreateObjectLiteral, AccumulatorUse::kNone, OperandType::kIdx,             \
-    OperandType::kIdx, OperandType::kFlag8, OperandType::kRegOut)              \
+  V(CreateObjectLiteral, AccumulatorUse::kWrite, OperandType::kIdx,            \
+    OperandType::kIdx, OperandType::kFlag8)                                    \
   V(CreateEmptyObjectLiteral, AccumulatorUse::kWrite)                          \
   V(CloneObject, AccumulatorUse::kWrite, OperandType::kReg,                    \
     OperandType::kFlag8, OperandType::kIdx)                                    \
@@ -685,6 +685,15 @@ class V8_EXPORT_PRIVATE Bytecodes final : public AllStatic {
     return bytecode == Bytecode::kCallRuntime ||
            bytecode == Bytecode::kCallRuntimeForPair ||
            bytecode == Bytecode::kInvokeIntrinsic;
+  }
+
+  // Returns true if the bytecode is an one-shot bytecode.  One-shot bytecodes
+  // don`t collect feedback and are intended for code that runs only once and
+  // shouldn`t be optimized.
+  static constexpr bool IsOneShotBytecode(Bytecode bytecode) {
+    return bytecode == Bytecode::kCallNoFeedback ||
+           bytecode == Bytecode::kLdaNamedPropertyNoFeedback ||
+           bytecode == Bytecode::kStaNamedPropertyNoFeedback;
   }
 
   // Returns true if the bytecode is a scaling prefix bytecode.

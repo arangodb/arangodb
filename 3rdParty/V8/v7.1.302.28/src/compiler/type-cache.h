@@ -6,7 +6,7 @@
 #define V8_COMPILER_TYPE_CACHE_H_
 
 #include "src/compiler/types.h"
-#include "src/date.h"
+#include "src/date/date.h"
 #include "src/objects/code.h"
 #include "src/objects/js-array-buffer.h"
 #include "src/objects/string.h"
@@ -15,14 +15,14 @@ namespace v8 {
 namespace internal {
 namespace compiler {
 
-class TypeCache final {
+class V8_EXPORT_PRIVATE TypeCache final {
  private:
   // This has to be first for the initialization magic to work.
   AccountingAllocator allocator;
   Zone zone_;
 
  public:
-  static TypeCache const& Get();
+  static TypeCache const* Get();
 
   TypeCache() : zone_(&allocator, ZONE_NAME) {}
 
@@ -113,9 +113,10 @@ class TypeCache final {
   // JSArrayBuffer::byte_length above.
   Type const kJSArrayBufferViewByteOffsetType = kJSArrayBufferByteLengthType;
 
-  // The JSTypedArray::length property always contains a tagged number in the
-  // range [0, kMaxSmiValue].
-  Type const kJSTypedArrayLengthType = Type::UnsignedSmall();
+  // The JSTypedArray::length property always contains an untagged number in
+  // the range [0, kMaxSmiValue].
+  Type const kJSTypedArrayLengthType =
+      CreateRange(0.0, JSTypedArray::kMaxLength);
 
   // The String::length property always contains a smi in the range
   // [0, String::kMaxLength].
@@ -165,9 +166,10 @@ class TypeCache final {
   Type const kJSDateYearType =
       Type::Union(Type::SignedSmall(), Type::NaN(), zone());
 
-  // The valid number of arguments for JavaScript functions.
-  Type const kArgumentsLengthType =
-      Type::Range(0.0, Code::kMaxArguments, zone());
+  // The valid number of arguments for JavaScript functions. We can never
+  // materialize more than the max size of a fixed array, because we require a
+  // fixed array in spread/apply calls.
+  Type const kArgumentsLengthType = CreateRange(0.0, FixedArray::kMaxLength);
 
   // The JSArrayIterator::kind property always contains an integer in the
   // range [0, 2], representing the possible IterationKinds.

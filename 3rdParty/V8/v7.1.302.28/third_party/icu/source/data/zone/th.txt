@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 th{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"อาบีจาน"}
@@ -507,6 +507,9 @@ th{
         "America:Puerto_Rico"{
             ec{"เปอโตริโก"}
         }
+        "America:Punta_Arenas"{
+            ec{"ปุนตาอาเรนัส"}
+        }
         "America:Rainy_River"{
             ec{"เรนนี่ริเวอร์"}
         }
@@ -657,6 +660,9 @@ th{
         "Asia:Ashgabat"{
             ec{"อาชกาบัต"}
         }
+        "Asia:Atyrau"{
+            ec{"อทีราว"}
+        }
         "Asia:Baghdad"{
             ec{"แบกแดด"}
         }
@@ -670,7 +676,7 @@ th{
             ec{"กรุงเทพ"}
         }
         "Asia:Barnaul"{
-            ec{"บราโมล"}
+            ec{"บาร์เนาว์"}
         }
         "Asia:Beirut"{
             ec{"เบรุต"}
@@ -707,6 +713,9 @@ th{
         }
         "Asia:Dushanbe"{
             ec{"ดูชานเบ"}
+        }
+        "Asia:Famagusta"{
+            ec{"แฟมากุสตา"}
         }
         "Asia:Gaza"{
             ec{"กาซา"}
@@ -800,6 +809,9 @@ th{
         }
         "Asia:Qatar"{
             ec{"กาตาร์"}
+        }
+        "Asia:Qostanay"{
+            ec{"คอสตาเนย์"}
         }
         "Asia:Qyzylorda"{
             ec{"ไคซีลอร์ดา"}
@@ -942,8 +954,11 @@ th{
         "Australia:Sydney"{
             ec{"ซิดนีย์"}
         }
+        "Etc:UTC"{
+            ls{"เวลาสากลเชิงพิกัด"}
+        }
         "Etc:Unknown"{
-            ec{"เมืองที่ไม่รู้จัก"}
+            ec{"ไม่ทราบชื่อเมือง"}
         }
         "Europe:Amsterdam"{
             ec{"อัมสเตอดัม"}
@@ -1072,6 +1087,9 @@ th{
         }
         "Europe:Sarajevo"{
             ec{"ซาราเยโว"}
+        }
+        "Europe:Saratov"{
+            ec{"ซาราทอฟ"}
         }
         "Europe:Simferopol"{
             ec{"ซิมเฟอโรโปล"}
@@ -1920,10 +1938,6 @@ th{
             lg{"เวลาเยคาเตรินบูร์ก"}
             ls{"เวลามาตรฐานเยคาเตรินบูร์ก"}
         }
-        fallbackFormat{"{1} ({0})"}
-        gmtFormat{"GMT{0}"}
-        gmtZeroFormat{"GMT"}
-        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"เวลา{0}"}
         regionFormatDaylight{"เวลาออมแสง{0}"}
         regionFormatStandard{"เวลามาตรฐาน{0}"}

@@ -15,13 +15,15 @@ be{
     }
     ExemplarCharacters{"[а б в г д {дж} {дз} е ё ж з і й к л м н о п р с т у ў ф х ц ч ш ы ь э ю я]"}
     ExemplarCharactersIndex{"[А Б В Г Д Е Ж З І Й К Л М Н О П Р С Т У Ф Х Ц Ч Ш Ы Э Ю Я]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[\\- , ; \\: ! ? . « » ( ) \\[ \\] \\{ \\}]"}
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"≈{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -271,10 +273,21 @@ be{
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                few{"{0}-і дом злева"}
+                other{"{0}-ы дом злева"}
+            }
+            plural{
+                few{"з {0} кніг за {0} дні"}
+                many{"з {0} кніг за {0} дзён"}
+                one{"з {0} кнігі за {0} дзень"}
+                other{"з {0} кнігі за {0} дня"}
+            }
+        }
         minimumGroupingDigits{"2"}
-        native{"latn"}
     }
-    Version{"2.1.29.66"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -332,12 +345,22 @@ be{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E, d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"LLL y G"}
                 GyMMMEd{"E, d MMM y G"}
                 GyMMMd{"d MMM y G"}
+                H{"HH"}
                 Hm{"HH.mm"}
                 Hms{"HH.mm.ss"}
                 M{"L"}
@@ -348,9 +371,10 @@ be{
                 MMMd{"d MMM"}
                 Md{"d.M"}
                 d{"d"}
+                h{"h a"}
                 hm{"h.mm a"}
                 hms{"h.mm.ss a"}
-                ms{"mm.ss"}
+                ms{"mm:ss"}
                 y{"y G"}
                 yyyy{"y G"}
                 yyyyM{"M.y G"}
@@ -364,6 +388,15 @@ be{
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
                 M{
                     M{"M–M"}
                 }
@@ -459,7 +492,12 @@ be{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d, E"}
@@ -480,10 +518,10 @@ be{
                 MMMEd{"E, d MMM"}
                 MMMMEd{"E, d MMMM"}
                 MMMMW{
-                    few{"W 'тыдзень' MMM"}
-                    many{"W 'тыдзень' MMM"}
-                    one{"W 'тыдзень' MMM"}
-                    other{"W 'тыдзень' MMM"}
+                    few{"W 'тыдзень' MMMM"}
+                    many{"W 'тыдзень' MMMM"}
+                    one{"W 'тыдзень' MMMM"}
+                    other{"W 'тыдзень' MMMM"}
                 }
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
@@ -506,10 +544,10 @@ be{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    few{"w 'тыдзень' y"}
-                    many{"w 'тыдзень' y"}
-                    one{"w 'тыдзень' y"}
-                    other{"w 'тыдзень' y"}
+                    few{"w 'тыдзень' Y"}
+                    many{"w 'тыдзень' Y"}
+                    one{"w 'тыдзень' Y"}
+                    other{"w 'тыдзень' Y"}
                 }
             }
             dayNames{
@@ -621,6 +659,53 @@ be{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    G{"y G – y G"}
+                    y{"y – y G"}
+                }
+                GyM{
+                    G{"M.y GGGGG – M.y GGGGG"}
+                    M{"M.y – M.y GGGGG"}
+                    y{"M.y – M.y GGGGG"}
+                }
+                GyMEd{
+                    G{"E, d.M.y GGGGG – E, d.M.y GGGGG"}
+                    M{"E, d.M.y – E, d.M.y GGGGG"}
+                    d{"E, d.M.y – E, d.M.y GGGGG"}
+                    y{"E, d.M.y – E, d.M.y GGGGG"}
+                }
+                GyMMM{
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM – MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                GyMMMEd{
+                    G{"E, d MMM, y G – E, d MMM, y G"}
+                    M{"E, d MMM – E, d MMM, y G"}
+                    d{"E, d MMM – E, d MMM, y G"}
+                    y{"E, d MMM, y – E, d MMM, y G"}
+                }
+                GyMMMd{
+                    G{"d MMM, y G – d MMM, y G"}
+                    M{"d MMM – d MMM, y G"}
+                    d{"d – d MMM, y G"}
+                    y{"d MMM, y – d MMM, y G"}
+                }
+                GyMd{
+                    G{"d.M.y GGGGG – d.M.y GGGGG"}
+                    M{"d.M.y – d.M.y GGGGG"}
+                    d{"d.M.y – d.M.y GGGGG"}
+                    y{"d.M.y – d.M.y GGGGG"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -856,10 +941,10 @@ be{
         animal{"жывёліна"}
         animals_nature{"Жывёлы і прырода"}
         arrows{"Стрэлкі"}
-        body{"цела смак"}
+        body{"цела"}
         box_drawing{"Рысаванне квадратаў"}
         braille{"Брайль"}
-        building{"будынак прамысловасць вытворчасць"}
+        building{"будынак"}
         bullets_stars{"Маркеры/Зоркі"}
         consonantal_jamo{"Кансанантнае чамо"}
         currency_symbols{"Знакі валют"}
@@ -917,7 +1002,7 @@ be{
         plant{"расліна"}
         punctuation{"Пунктуацыя"}
         rightwards_arrows{"Стрэлкі ўправа"}
-        sign_standard_symbols{"Шыльды/Знакі/Стандартныя сімвалы"}
+        sign_standard_symbols{"Знакі і сімвалы"}
         small_form_variant{"Варыянты малых формаў"}
         smiley{"смайлік"}
         smileys_people{"Смайлікі і людзі"}
@@ -972,16 +1057,16 @@ be{
             dn{"д."}
             relativeTime{
                 future{
-                    few{"праз {0} д."}
-                    many{"праз {0} д."}
-                    one{"праз {0} д."}
-                    other{"праз {0} д."}
+                    few{"праз {0} дні"}
+                    many{"праз {0} дзён"}
+                    one{"праз {0} дзень"}
+                    other{"праз {0} дня"}
                 }
                 past{
-                    few{"{0} д. таму"}
-                    many{"{0} д. таму"}
-                    one{"{0} д. таму"}
-                    other{"{0} д. таму"}
+                    few{"{0} дні таму"}
+                    many{"{0} дзён таму"}
+                    one{"{0} дзень таму"}
+                    other{"{0} дня таму"}
                 }
             }
         }
@@ -1002,10 +1087,31 @@ be{
                 }
             }
         }
+        dayOfYear{
+            dn{"дзень года"}
+        }
+        dayOfYear-narrow{
+            dn{"дзень года"}
+        }
+        dayOfYear-short{
+            dn{"дзень года"}
+        }
         dayperiod{
             dn{"AM/PM"}
         }
+        dayperiod-narrow{
+            dn{"AM/PM"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
         era{
+            dn{"эра"}
+        }
+        era-narrow{
+            dn{"эра"}
+        }
+        era-short{
             dn{"эра"}
         }
         fri{
@@ -1039,14 +1145,14 @@ be{
                 future{
                     few{"праз {0} пятніцы"}
                     many{"праз {0} пятніц"}
-                    one{"праз {0} пятніцу"}
-                    other{"праз {0} пятніцы"}
+                    one{"праз {0} пт"}
+                    other{"праз {0} пт"}
                 }
                 past{
                     few{"{0} пятніцы таму"}
                     many{"{0} пятніц таму"}
-                    one{"{0} пятніцу таму"}
-                    other{"{0} пятніцы таму"}
+                    one{"{0} пт таму"}
+                    other{"{0} пт таму"}
                 }
             }
         }
@@ -1060,14 +1166,14 @@ be{
                 future{
                     few{"праз {0} пятніцы"}
                     many{"праз {0} пятніц"}
-                    one{"праз {0} пятніцу"}
-                    other{"праз {0} пятніцы"}
+                    one{"праз {0} пт"}
+                    other{"праз {0} пт"}
                 }
                 past{
                     few{"{0} пятніцы таму"}
                     many{"{0} пятніц таму"}
-                    one{"{0} пятніцу таму"}
-                    other{"{0} пятніцы таму"}
+                    one{"{0} пт таму"}
+                    other{"{0} пт таму"}
                 }
             }
         }
@@ -1210,14 +1316,14 @@ be{
                 future{
                     few{"праз {0} панядзелкі"}
                     many{"праз {0} панядзелкаў"}
-                    one{"праз {0} панядзелак"}
-                    other{"праз {0} панядзелка"}
+                    one{"праз {0} пн"}
+                    other{"праз {0} пн"}
                 }
                 past{
                     few{"{0} панядзелкі таму"}
                     many{"{0} панядзелкаў таму"}
-                    one{"{0} панядзелак таму"}
-                    other{"{0} панядзелка таму"}
+                    one{"{0} пн таму"}
+                    other{"{0} пн таму"}
                 }
             }
         }
@@ -1231,14 +1337,14 @@ be{
                 future{
                     few{"праз {0} панядзелкі"}
                     many{"праз {0} панядзелкаў"}
-                    one{"праз {0} панядзелак"}
-                    other{"праз {0} панядзелка"}
+                    one{"праз {0} пн"}
+                    other{"праз {0} пн"}
                 }
                 past{
                     few{"{0} панядзелкі таму"}
                     many{"{0} панядзелкаў таму"}
-                    one{"{0} панядзелак таму"}
-                    other{"{0} панядзелка таму"}
+                    one{"{0} пн таму"}
+                    other{"{0} пн таму"}
                 }
             }
         }
@@ -1385,14 +1491,14 @@ be{
                 future{
                     few{"праз {0} суботы"}
                     many{"праз {0} субот"}
-                    one{"праз {0} суботу"}
-                    other{"праз {0} суботы"}
+                    one{"праз {0} сб"}
+                    other{"праз {0} сб"}
                 }
                 past{
                     few{"{0} суботы таму"}
                     many{"{0} субот таму"}
-                    one{"{0} суботу таму"}
-                    other{"{0} суботы таму"}
+                    one{"{0} сб таму"}
+                    other{"{0} сб таму"}
                 }
             }
         }
@@ -1406,14 +1512,14 @@ be{
                 future{
                     few{"праз {0} суботы"}
                     many{"праз {0} субот"}
-                    one{"праз {0} суботу"}
-                    other{"праз {0} суботы"}
+                    one{"праз {0} сб"}
+                    other{"праз {0} сб"}
                 }
                 past{
                     few{"{0} суботы таму"}
                     many{"{0} субот таму"}
-                    one{"{0} суботу таму"}
-                    other{"{0} суботы таму"}
+                    one{"{0} сб таму"}
+                    other{"{0} сб таму"}
                 }
             }
         }
@@ -1502,14 +1608,14 @@ be{
                 future{
                     few{"праз {0} нядзелі"}
                     many{"праз {0} нядзель"}
-                    one{"праз {0} нядзелю"}
-                    other{"праз {0} нядзелі"}
+                    one{"праз {0} нд"}
+                    other{"праз {0} нд"}
                 }
                 past{
                     few{"{0} нядзелі таму"}
                     many{"{0} нядзель таму"}
-                    one{"{0} нядзелю таму"}
-                    other{"{0} нядзелі таму"}
+                    one{"{0} нд таму"}
+                    other{"{0} нд таму"}
                 }
             }
         }
@@ -1523,14 +1629,14 @@ be{
                 future{
                     few{"праз {0} нядзелі"}
                     many{"праз {0} нядзель"}
-                    one{"праз {0} нядзелю"}
-                    other{"праз {0} нядзелі"}
+                    one{"праз {0} нд"}
+                    other{"праз {0} нд"}
                 }
                 past{
                     few{"{0} нядзелі таму"}
                     many{"{0} нядзель таму"}
-                    one{"{0} нядзелю таму"}
-                    other{"{0} нядзелі таму"}
+                    one{"{0} нд таму"}
+                    other{"{0} нд таму"}
                 }
             }
         }
@@ -1565,14 +1671,14 @@ be{
                 future{
                     few{"праз {0} чацвяргі"}
                     many{"праз {0} чацвяргоў"}
-                    one{"праз {0} чацвер"}
-                    other{"праз {0} чацвярга"}
+                    one{"праз {0} чц"}
+                    other{"праз {0} чц"}
                 }
                 past{
                     few{"{0} чацвяргі таму"}
                     many{"{0} чацвяргоў таму"}
-                    one{"{0} чацвер таму"}
-                    other{"{0} чацвярга таму"}
+                    one{"{0} чц таму"}
+                    other{"{0} чц таму"}
                 }
             }
         }
@@ -1586,14 +1692,14 @@ be{
                 future{
                     few{"праз {0} чацвяргі"}
                     many{"праз {0} чацвяргоў"}
-                    one{"праз {0} чацвер"}
-                    other{"праз {0} чацвярга"}
+                    one{"праз {0} чц"}
+                    other{"праз {0} чц"}
                 }
                 past{
                     few{"{0} чацвяргі таму"}
                     many{"{0} чацвяргоў таму"}
-                    one{"{0} чацвер таму"}
-                    other{"{0} чацвярга таму"}
+                    one{"{0} чц таму"}
+                    other{"{0} чц таму"}
                 }
             }
         }
@@ -1628,14 +1734,14 @@ be{
                 future{
                     few{"праз {0} аўторкі"}
                     many{"праз {0} аўторкаў"}
-                    one{"праз {0} аўторак"}
-                    other{"праз {0} аўторка"}
+                    one{"праз {0} аў"}
+                    other{"праз {0} аў"}
                 }
                 past{
                     few{"{0} аўторкі таму"}
                     many{"{0} аўторкаў таму"}
-                    one{"{0} аўторак таму"}
-                    other{"{0} аўторка таму"}
+                    one{"{0} аў таму"}
+                    other{"{0} аў таму"}
                 }
             }
         }
@@ -1649,14 +1755,14 @@ be{
                 future{
                     few{"праз {0} аўторкі"}
                     many{"праз {0} аўторкаў"}
-                    one{"праз {0} аўторак"}
-                    other{"праз {0} аўторка"}
+                    one{"праз {0} аў"}
+                    other{"праз {0} аў"}
                 }
                 past{
                     few{"{0} аўторкі таму"}
                     many{"{0} аўторкаў таму"}
-                    one{"{0} аўторак таму"}
-                    other{"{0} аўторка таму"}
+                    one{"{0} аў таму"}
+                    other{"{0} аў таму"}
                 }
             }
         }
@@ -1691,14 +1797,14 @@ be{
                 future{
                     few{"праз {0} серады"}
                     many{"праз {0} серад"}
-                    one{"праз {0} сераду"}
-                    other{"праз {0} серады"}
+                    one{"праз {0} ср"}
+                    other{"праз {0} ср"}
                 }
                 past{
                     few{"{0} серады таму"}
                     many{"{0} серад таму"}
-                    one{"{0} сераду таму"}
-                    other{"{0} серады таму"}
+                    one{"{0} ср таму"}
+                    other{"{0} ср таму"}
                 }
             }
         }
@@ -1712,14 +1818,14 @@ be{
                 future{
                     few{"праз {0} серады"}
                     many{"праз {0} серад"}
-                    one{"праз {0} сераду"}
-                    other{"праз {0} серады"}
+                    one{"праз {0} ср"}
+                    other{"праз {0} ср"}
                 }
                 past{
                     few{"{0} серады таму"}
                     many{"{0} серад таму"}
-                    one{"{0} сераду таму"}
-                    other{"{0} серады таму"}
+                    one{"{0} ср таму"}
+                    other{"{0} ср таму"}
                 }
             }
         }
@@ -1782,8 +1888,32 @@ be{
                 }
             }
         }
+        weekOfMonth{
+            dn{"тыдзень месяца"}
+        }
+        weekOfMonth-narrow{
+            dn{"тыдзень месяца"}
+        }
+        weekOfMonth-short{
+            dn{"тыдзень месяца"}
+        }
         weekday{
             dn{"дзень тыдня"}
+        }
+        weekday-narrow{
+            dn{"дзень тыдня"}
+        }
+        weekday-short{
+            dn{"дзень тыдня"}
+        }
+        weekdayOfMonth{
+            dn{"дзень месяца"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"дзень месяца"}
+        }
+        weekdayOfMonth-short{
+            dn{"дзень месяца"}
         }
         year{
             dn{"год"}
@@ -1844,8 +1974,20 @@ be{
         zone{
             dn{"часавы пояс"}
         }
+        zone-narrow{
+            dn{"часавы пояс"}
+        }
+        zone-short{
+            dn{"часавы пояс"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ці {1}"}
+            end{"{0} ці {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} і {1}"}
             end{"{0} і {1}"}
@@ -1859,10 +2001,10 @@ be{
             start{"{0}, {1}"}
         }
         unit{
-            2{"{0}, {1}"}
-            end{"{0}, {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
         }
         unit-narrow{
             2{"{0} {1}"}
@@ -1871,10 +2013,10 @@ be{
             start{"{0} {1}"}
         }
         unit-short{
-            2{"{0}, {1}"}
-            end{"{0}, {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
         }
     }
     measurementSystemNames{

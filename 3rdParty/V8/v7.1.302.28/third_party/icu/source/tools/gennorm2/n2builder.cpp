@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  n2builder.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -25,22 +25,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if U_HAVE_STD_STRING
 #include <vector>
-#endif
 #include "unicode/errorcode.h"
 #include "unicode/localpointer.h"
 #include "unicode/putil.h"
+#include "unicode/ucptrie.h"
 #include "unicode/udata.h"
+#include "unicode/umutablecptrie.h"
 #include "unicode/uniset.h"
 #include "unicode/unistr.h"
+#include "unicode/usetiter.h"
 #include "unicode/ustring.h"
 #include "charstr.h"
+#include "extradata.h"
 #include "hash.h"
 #include "normalizer2impl.h"
+#include "norms.h"
 #include "toolutil.h"
 #include "unewdata.h"
-#include "utrie2.h"
 #include "uvectr32.h"
 #include "writesrc.h"
 
@@ -57,8 +59,8 @@ static UDataInfo dataInfo={
     0,
 
     { 0x4e, 0x72, 0x6d, 0x32 }, /* dataFormat="Nrm2" */
-    { 2, 0, 0, 0 },             /* formatVersion */
-    { 5, 2, 0, 0 }              /* dataVersion (Unicode version) */
+    { 4, 0, 0, 0 },             /* formatVersion */
+    { 11, 0, 0, 0 }             /* dataVersion (Unicode version) */
 };
 
 U_NAMESPACE_BEGIN
@@ -66,8 +68,7 @@ U_NAMESPACE_BEGIN
 class HangulIterator {
 public:
     struct Range {
-        UChar32 start, limit;
-        uint16_t norm16;
+        UChar32 start, end;
     };
 
     HangulIterator() : rangeIndex(0) {}
@@ -78,120 +79,30 @@ public:
             return NULL;
         }
     }
-    void reset() { rangeIndex=0; }
 private:
     static const Range ranges[4];
     int32_t rangeIndex;
 };
 
 const HangulIterator::Range HangulIterator::ranges[4]={
-    { Hangul::JAMO_L_BASE, Hangul::JAMO_L_BASE+Hangul::JAMO_L_COUNT, 1 },
-    { Hangul::JAMO_V_BASE, Hangul::JAMO_V_BASE+Hangul::JAMO_V_COUNT, Normalizer2Impl::JAMO_VT },
+    { Hangul::JAMO_L_BASE, Hangul::JAMO_L_END },
+    { Hangul::JAMO_V_BASE, Hangul::JAMO_V_END },
     // JAMO_T_BASE+1: not U+11A7
-    { Hangul::JAMO_T_BASE+1, Hangul::JAMO_T_BASE+Hangul::JAMO_T_COUNT, Normalizer2Impl::JAMO_VT },
-    { Hangul::HANGUL_BASE, Hangul::HANGUL_BASE+Hangul::HANGUL_COUNT, 0 },  // will become minYesNo
+    { Hangul::JAMO_T_BASE+1, Hangul::JAMO_T_END },
+    { Hangul::HANGUL_BASE, Hangul::HANGUL_END },
 };
-
-struct CompositionPair {
-    CompositionPair(UChar32 t, UChar32 c) : trail(t), composite(c) {}
-    UChar32 trail, composite;
-};
-
-struct Norm {
-    enum MappingType { NONE, REMOVED, ROUND_TRIP, ONE_WAY };
-
-    UBool hasMapping() const { return mappingType>REMOVED; }
-
-    // Requires hasMapping() and well-formed mapping.
-    void setMappingCP() {
-        UChar32 c;
-        if(!mapping->isEmpty() && mapping->length()==U16_LENGTH(c=mapping->char32At(0))) {
-            mappingCP=c;
-        } else {
-            mappingCP=U_SENTINEL;
-        }
-    }
-
-    const CompositionPair *getCompositionPairs(int32_t &length) const {
-        if(compositions==NULL) {
-            length=0;
-            return NULL;
-        } else {
-            length=compositions->size()/2;
-            return reinterpret_cast<const CompositionPair *>(compositions->getBuffer());
-        }
-    }
-
-    UnicodeString *mapping;
-    UnicodeString *rawMapping;  // non-NULL if the mapping is further decomposed
-    UChar32 mappingCP;  // >=0 if mapping to 1 code point
-    int32_t mappingPhase;
-    MappingType mappingType;
-
-    UVector32 *compositions;  // (trail, composite) pairs
-    uint8_t cc;
-    UBool combinesBack;
-    UBool hasNoCompBoundaryAfter;
-
-    enum OffsetType {
-        OFFSET_NONE,
-        // Composition for back-combining character. Allowed, but not normally used.
-        OFFSET_MAYBE_YES,
-        // Composition for a starter that does not have a decomposition mapping.
-        OFFSET_YES_YES,
-        // Round-trip mapping & composition for a starter.
-        OFFSET_YES_NO_MAPPING_AND_COMPOSITION,
-        // Round-trip mapping for a starter that itself does not combine-forward.
-        OFFSET_YES_NO_MAPPING_ONLY,
-        // One-way mapping.
-        OFFSET_NO_NO,
-        // Delta for an algorithmic one-way mapping.
-        OFFSET_DELTA
-    };
-    enum { OFFSET_SHIFT=4, OFFSET_MASK=(1<<OFFSET_SHIFT)-1 };
-    int32_t offset;
-};
-
-class Normalizer2DBEnumerator {
-public:
-    Normalizer2DBEnumerator(Normalizer2DataBuilder &b) : builder(b) {}
-    virtual ~Normalizer2DBEnumerator() {}
-    virtual UBool rangeHandler(UChar32 start, UChar32 end, uint32_t value) = 0;
-    Normalizer2DBEnumerator *ptr() { return this; }
-protected:
-    Normalizer2DataBuilder &builder;
-};
-
-U_CDECL_BEGIN
-
-static UBool U_CALLCONV
-enumRangeHandler(const void *context, UChar32 start, UChar32 end, uint32_t value) {
-    return ((Normalizer2DBEnumerator *)context)->rangeHandler(start, end, value);
-}
-
-U_CDECL_END
 
 Normalizer2DataBuilder::Normalizer2DataBuilder(UErrorCode &errorCode) :
+        norms(errorCode),
         phase(0), overrideHandling(OVERRIDE_PREVIOUS), optimization(OPTIMIZE_NORMAL),
-        norm16TrieLength(0) {
+        norm16TrieBytes(nullptr), norm16TrieLength(0) {
     memset(unicodeVersion, 0, sizeof(unicodeVersion));
-    normTrie=utrie2_open(0, 0, &errorCode);
-    normMem=utm_open("gennorm2 normalization structs", 10000, 0x110100, sizeof(Norm));
-    norms=allocNorm();  // unused Norm struct at index 0
     memset(indexes, 0, sizeof(indexes));
     memset(smallFCD, 0, sizeof(smallFCD));
 }
 
 Normalizer2DataBuilder::~Normalizer2DataBuilder() {
-    utrie2_close(normTrie);
-    int32_t normsLength=utm_countItems(normMem);
-    for(int32_t i=1; i<normsLength; ++i) {
-        delete norms[i].mapping;
-        delete norms[i].rawMapping;
-        delete norms[i].compositions;
-    }
-    utm_close(normMem);
-    utrie2_close(norm16Trie);
+    delete[] norm16TrieBytes;
 }
 
 void
@@ -209,42 +120,6 @@ Normalizer2DataBuilder::setUnicodeVersion(const char *v) {
         exit(U_ILLEGAL_ARGUMENT_ERROR);
     }
     memcpy(unicodeVersion, version, U_MAX_VERSION_LENGTH);
-}
-
-Norm *Normalizer2DataBuilder::allocNorm() {
-    Norm *p=(Norm *)utm_alloc(normMem);
-    norms=(Norm *)utm_getStart(normMem);  // in case it got reallocated
-    return p;
-}
-
-/* get an existing Norm unit */
-Norm *Normalizer2DataBuilder::getNorm(UChar32 c) {
-    uint32_t i=utrie2_get32(normTrie, c);
-    if(i==0) {
-        return NULL;
-    }
-    return norms+i;
-}
-
-const Norm &Normalizer2DataBuilder::getNormRef(UChar32 c) const {
-    return norms[utrie2_get32(normTrie, c)];
-}
-
-/*
- * get or create a Norm unit;
- * get or create the intermediate trie entries for it as well
- */
-Norm *Normalizer2DataBuilder::createNorm(UChar32 c) {
-    uint32_t i=utrie2_get32(normTrie, c);
-    if(i!=0) {
-        return norms+i;
-    } else {
-        /* allocate Norm */
-        Norm *p=allocNorm();
-        IcuToolErrorCode errorCode("gennorm2/createNorm()");
-        utrie2_set32(normTrie, c, (uint32_t)(p-norms), errorCode);
-        return p;
-    }
 }
 
 Norm *Normalizer2DataBuilder::checkNormForMapping(Norm *p, UChar32 c) {
@@ -273,16 +148,13 @@ void Normalizer2DataBuilder::setOverrideHandling(OverrideHandling oh) {
 }
 
 void Normalizer2DataBuilder::setCC(UChar32 c, uint8_t cc) {
-    createNorm(c)->cc=cc;
-}
-
-uint8_t Normalizer2DataBuilder::getCC(UChar32 c) const {
-    return getNormRef(c).cc;
+    norms.createNorm(c)->cc=cc;
+    norms.ccSet.add(c);
 }
 
 static UBool isWellFormed(const UnicodeString &s) {
     UErrorCode errorCode=U_ZERO_ERROR;
-    u_strToUTF8(NULL, 0, NULL, s.getBuffer(), s.length(), &errorCode);
+    u_strToUTF8(NULL, 0, NULL, toUCharPtr(s.getBuffer()), s.length(), &errorCode);
     return U_SUCCESS(errorCode) || errorCode==U_BUFFER_OVERFLOW_ERROR;
 }
 
@@ -294,10 +166,11 @@ void Normalizer2DataBuilder::setOneWayMapping(UChar32 c, const UnicodeString &m)
                 (int)phase, (long)c);
         exit(U_INVALID_FORMAT_ERROR);
     }
-    Norm *p=checkNormForMapping(createNorm(c), c);
+    Norm *p=checkNormForMapping(norms.createNorm(c), c);
     p->mapping=new UnicodeString(m);
     p->mappingType=Norm::ONE_WAY;
     p->setMappingCP();
+    norms.mappingSet.add(c);
 }
 
 void Normalizer2DataBuilder::setRoundTripMapping(UChar32 c, const UnicodeString &m) {
@@ -315,7 +188,7 @@ void Normalizer2DataBuilder::setRoundTripMapping(UChar32 c, const UnicodeString 
                 (int)phase, (long)c);
         exit(U_INVALID_FORMAT_ERROR);
     }
-    int32_t numCP=u_countChar32(m.getBuffer(), m.length());
+    int32_t numCP=u_countChar32(toUCharPtr(m.getBuffer()), m.length());
     if(numCP!=2) {
         fprintf(stderr,
                 "error in gennorm2 phase %d: "
@@ -323,680 +196,322 @@ void Normalizer2DataBuilder::setRoundTripMapping(UChar32 c, const UnicodeString 
                 (int)phase, (long)c, (int)numCP);
         exit(U_INVALID_FORMAT_ERROR);
     }
-    Norm *p=checkNormForMapping(createNorm(c), c);
+    Norm *p=checkNormForMapping(norms.createNorm(c), c);
     p->mapping=new UnicodeString(m);
     p->mappingType=Norm::ROUND_TRIP;
     p->mappingCP=U_SENTINEL;
+    norms.mappingSet.add(c);
 }
 
 void Normalizer2DataBuilder::removeMapping(UChar32 c) {
-    Norm *p=checkNormForMapping(getNorm(c), c);
-    if(p!=NULL) {
-        p->mappingType=Norm::REMOVED;
-    }
+    // createNorm(c), not getNorm(c), to record a non-mapping and detect conflicting data.
+    Norm *p=checkNormForMapping(norms.createNorm(c), c);
+    p->mappingType=Norm::REMOVED;
+    norms.mappingSet.add(c);
 }
 
-class CompositionBuilder : public Normalizer2DBEnumerator {
-public:
-    CompositionBuilder(Normalizer2DataBuilder &b) : Normalizer2DBEnumerator(b) {}
-    virtual UBool rangeHandler(UChar32 start, UChar32 end, uint32_t value) {
-        builder.addComposition(start, end, value);
-        return TRUE;
-    }
-};
-
-void
-Normalizer2DataBuilder::addComposition(UChar32 start, UChar32 end, uint32_t value) {
-    if(norms[value].mappingType==Norm::ROUND_TRIP) {
-        if(start!=end) {
-            fprintf(stderr,
-                    "gennorm2 error: same round-trip mapping for "
-                    "more than 1 code point U+%04lX..U+%04lX\n",
-                    (long)start, (long)end);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        if(norms[value].cc!=0) {
-            fprintf(stderr,
-                    "gennorm2 error: "
-                    "U+%04lX has a round-trip mapping and ccc!=0, "
-                    "not possible in Unicode normalization\n",
-                    (long)start);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        // setRoundTripMapping() ensured that there are exactly two code points.
-        const UnicodeString &m=*norms[value].mapping;
-        UChar32 lead=m.char32At(0);
-        UChar32 trail=m.char32At(m.length()-1);
-        if(getCC(lead)!=0) {
-            fprintf(stderr,
-                    "gennorm2 error: "
-                    "U+%04lX's round-trip mapping's starter U+%04lX has ccc!=0, "
-                    "not possible in Unicode normalization\n",
-                    (long)start, (long)lead);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        // Flag for trailing character.
-        createNorm(trail)->combinesBack=TRUE;
-        // Insert (trail, composite) pair into compositions list for the lead character.
-        IcuToolErrorCode errorCode("gennorm2/addComposition()");
-        Norm *leadNorm=createNorm(lead);
-        UVector32 *compositions=leadNorm->compositions;
-        int32_t i;
-        if(compositions==NULL) {
-            compositions=leadNorm->compositions=new UVector32(errorCode);
-            i=0;  // "insert" the first pair at index 0
-        } else {
-            // Insertion sort, and check for duplicate trail characters.
-            int32_t length;
-            const CompositionPair *pairs=leadNorm->getCompositionPairs(length);
-            for(i=0; i<length; ++i) {
-                if(trail==pairs[i].trail) {
-                    fprintf(stderr,
-                            "gennorm2 error: same round-trip mapping for "
-                            "more than 1 code point (e.g., U+%04lX) to U+%04lX + U+%04lX\n",
-                            (long)start, (long)lead, (long)trail);
-                    exit(U_INVALID_FORMAT_ERROR);
-                }
-                if(trail<pairs[i].trail) {
-                    break;
-                }
-            }
-        }
-        compositions->insertElementAt(trail, 2*i, errorCode);
-        compositions->insertElementAt(start, 2*i+1, errorCode);
-    }
-}
-
-UBool Normalizer2DataBuilder::combinesWithCCBetween(const Norm &norm,
-                                                    uint8_t lowCC, uint8_t highCC) const {
-    if((highCC-lowCC)>=2) {
-        int32_t length;
-        const CompositionPair *pairs=norm.getCompositionPairs(length);
-        for(int32_t i=0; i<length; ++i) {
-            uint8_t trailCC=getCC(pairs[i].trail);
-            if(lowCC<trailCC && trailCC<highCC) {
-                return TRUE;
-            }
-        }
-    }
-    return FALSE;
-}
-
-UChar32 Normalizer2DataBuilder::combine(const Norm &norm, UChar32 trail) const {
-    int32_t length;
-    const CompositionPair *pairs=norm.getCompositionPairs(length);
-    for(int32_t i=0; i<length; ++i) {
-        if(trail==pairs[i].trail) {
-            return pairs[i].composite;
-        }
-        if(trail<pairs[i].trail) {
-            break;
-        }
-    }
-    return U_SENTINEL;
-}
-
-class Decomposer : public Normalizer2DBEnumerator {
-public:
-    Decomposer(Normalizer2DataBuilder &b) : Normalizer2DBEnumerator(b), didDecompose(FALSE) {}
-    virtual UBool rangeHandler(UChar32 start, UChar32 end, uint32_t value) {
-        didDecompose|=builder.decompose(start, end, value);
-        return TRUE;
-    }
-    UBool didDecompose;
-};
-
-UBool
-Normalizer2DataBuilder::decompose(UChar32 start, UChar32 end, uint32_t value) {
-    if(norms[value].hasMapping()) {
-        Norm &norm=norms[value];
-        const UnicodeString &m=*norm.mapping;
-        UnicodeString *decomposed=NULL;
-        const UChar *s=m.getBuffer();
-        int32_t length=m.length();
-        int32_t prev, i=0;
-        UChar32 c;
-        while(i<length) {
-            prev=i;
-            U16_NEXT(s, i, length, c);
-            if(start<=c && c<=end) {
-                fprintf(stderr,
-                        "gennorm2 error: U+%04lX maps to itself directly or indirectly\n",
-                        (long)c);
-                exit(U_INVALID_FORMAT_ERROR);
-            }
-            const Norm &cNorm=getNormRef(c);
-            if(cNorm.hasMapping()) {
-                if(norm.mappingType==Norm::ROUND_TRIP) {
-                    if(prev==0) {
-                        if(cNorm.mappingType!=Norm::ROUND_TRIP) {
-                            fprintf(stderr,
-                                    "gennorm2 error: "
-                                    "U+%04lX's round-trip mapping's starter "
-                                    "U+%04lX one-way-decomposes, "
-                                    "not possible in Unicode normalization\n",
-                                    (long)start, (long)c);
-                            exit(U_INVALID_FORMAT_ERROR);
-                        }
-                        uint8_t myTrailCC=getCC(m.char32At(i));
-                        UChar32 cTrailChar=cNorm.mapping->char32At(cNorm.mapping->length()-1);
-                        uint8_t cTrailCC=getCC(cTrailChar);
-                        if(cTrailCC>myTrailCC) {
-                            fprintf(stderr,
-                                    "gennorm2 error: "
-                                    "U+%04lX's round-trip mapping's starter "
-                                    "U+%04lX decomposes and the "
-                                    "inner/earlier tccc=%hu > outer/following tccc=%hu, "
-                                    "not possible in Unicode normalization\n",
-                                    (long)start, (long)c,
-                                    (short)cTrailCC, (short)myTrailCC);
-                            exit(U_INVALID_FORMAT_ERROR);
-                        }
-                    } else {
-                        fprintf(stderr,
-                                "gennorm2 error: "
-                                "U+%04lX's round-trip mapping's non-starter "
-                                "U+%04lX decomposes, "
-                                "not possible in Unicode normalization\n",
-                                (long)start, (long)c);
-                        exit(U_INVALID_FORMAT_ERROR);
-                    }
-                }
-                if(decomposed==NULL) {
-                    decomposed=new UnicodeString(m, 0, prev);
-                }
-                decomposed->append(*cNorm.mapping);
-            } else if(Hangul::isHangul(c)) {
-                UChar buffer[3];
-                int32_t hangulLength=Hangul::decompose(c, buffer);
-                if(norm.mappingType==Norm::ROUND_TRIP && prev!=0) {
-                    fprintf(stderr,
-                            "gennorm2 error: "
-                            "U+%04lX's round-trip mapping's non-starter "
-                            "U+%04lX decomposes, "
-                            "not possible in Unicode normalization\n",
-                            (long)start, (long)c);
-                    exit(U_INVALID_FORMAT_ERROR);
-                }
-                if(decomposed==NULL) {
-                    decomposed=new UnicodeString(m, 0, prev);
-                }
-                decomposed->append(buffer, hangulLength);
-            } else if(decomposed!=NULL) {
-                decomposed->append(m, prev, i-prev);
-            }
-        }
-        if(decomposed!=NULL) {
-            if(norm.rawMapping==NULL) {
-                // Remember the original mapping when decomposing recursively.
-                norm.rawMapping=norm.mapping;
-            } else {
-                delete norm.mapping;
-            }
-            norm.mapping=decomposed;
-            // Not  norm.setMappingCP();  because the original mapping
-            // is most likely to be encodable as a delta.
-            return TRUE;
-        }
-    }
-    return FALSE;
-}
-
-class BuilderReorderingBuffer {
-public:
-    BuilderReorderingBuffer() : fLength(0), fLastStarterIndex(-1), fDidReorder(FALSE) {}
-    void reset() {
-        fLength=0;
-        fLastStarterIndex=-1;
-        fDidReorder=FALSE;
-    }
-    int32_t length() const { return fLength; }
-    UBool isEmpty() const { return fLength==0; }
-    int32_t lastStarterIndex() const { return fLastStarterIndex; }
-    UChar32 charAt(int32_t i) const { return fArray[i]>>8; }
-    uint8_t ccAt(int32_t i) const { return (uint8_t)fArray[i]; }
-    UBool didReorder() const { return fDidReorder; }
-    void append(UChar32 c, uint8_t cc) {
-        if(cc==0 || fLength==0 || ccAt(fLength-1)<=cc) {
-            if(cc==0) {
-                fLastStarterIndex=fLength;
-            }
-            fArray[fLength++]=(c<<8)|cc;
-            return;
-        }
-        // Let this character bubble back to its canonical order.
-        int32_t i=fLength-1;
-        while(i>fLastStarterIndex && ccAt(i)>cc) {
-            --i;
-        }
-        ++i;  // after the last starter or prevCC<=cc
-        // Move this and the following characters forward one to make space.
-        for(int32_t j=fLength; i<j; --j) {
-            fArray[j]=fArray[j-1];
-        }
-        fArray[i]=(c<<8)|cc;
-        ++fLength;
-        fDidReorder=TRUE;
-    }
-    void toString(UnicodeString &dest) {
-        dest.remove();
-        for(int32_t i=0; i<fLength; ++i) {
-            dest.append(charAt(i));
-        }
-    }
-    void setComposite(UChar32 composite, int32_t combMarkIndex) {
-        fArray[fLastStarterIndex]=composite<<8;
-        // Remove the combining mark that contributed to the composite.
-        --fLength;
-        while(combMarkIndex<fLength) {
-            fArray[combMarkIndex]=fArray[combMarkIndex+1];
-            ++combMarkIndex;
-        }
-    }
-private:
-    int32_t fArray[Normalizer2Impl::MAPPING_LENGTH_MASK];
-    int32_t fLength;
-    int32_t fLastStarterIndex;
-    UBool fDidReorder;
-};
-
-void
-Normalizer2DataBuilder::reorder(Norm *p, BuilderReorderingBuffer &buffer) {
-    UnicodeString &m=*p->mapping;
-    int32_t length=m.length();
-    if(length>Normalizer2Impl::MAPPING_LENGTH_MASK) {
-        return;  // writeMapping() will complain about it and print the code point.
-    }
-    const UChar *s=m.getBuffer();
-    int32_t i=0;
-    UChar32 c;
-    while(i<length) {
-        U16_NEXT(s, i, length, c);
-        buffer.append(c, getCC(c));
-    }
-    if(buffer.didReorder()) {
-        buffer.toString(m);
-    }
-}
-
-/*
- * Computes the flag for the last code branch in Normalizer2Impl::hasCompBoundaryAfter().
- * A starter character with a mapping does not have a composition boundary after it
- * if the character itself combines-forward (which is tested by the caller of this function),
- * or it is deleted (mapped to the empty string),
- * or its mapping contains no starter,
- * or the last starter combines-forward.
- */
-UBool Normalizer2DataBuilder::hasNoCompBoundaryAfter(BuilderReorderingBuffer &buffer) {
+UBool Normalizer2DataBuilder::mappingHasCompBoundaryAfter(const BuilderReorderingBuffer &buffer,
+                                                          Norm::MappingType mappingType) const {
     if(buffer.isEmpty()) {
-        return TRUE;  // maps-to-empty-string is no boundary of any kind
+        return FALSE;  // Maps-to-empty-string is no boundary of any kind.
     }
     int32_t lastStarterIndex=buffer.lastStarterIndex();
     if(lastStarterIndex<0) {
-        return TRUE;  // no starter
+        return FALSE;  // no starter
+    }
+    const int32_t lastIndex=buffer.length()-1;
+    if(mappingType==Norm::ONE_WAY && lastStarterIndex<lastIndex && buffer.ccAt(lastIndex)>1) {
+        // One-way mapping where after the last starter is at least one combining mark
+        // with a combining class greater than 1,
+        // which means that another combining mark can reorder before it.
+        // By contrast, in a round-trip mapping this does not prevent a boundary as long as
+        // the starter or composite does not combine-forward with a following combining mark.
+        return FALSE;
     }
     UChar32 starter=buffer.charAt(lastStarterIndex);
-    if( Hangul::isJamoL(starter) ||
-        (Hangul::isJamoV(starter) &&
-         0<lastStarterIndex && Hangul::isJamoL(buffer.charAt(lastStarterIndex-1)))
-    ) {
+    if(lastStarterIndex==0 && norms.combinesBack(starter)) {
+        // The last starter is at the beginning of the mapping and combines backward.
+        return FALSE;
+    }
+    if(Hangul::isJamoL(starter) ||
+            (Hangul::isJamoV(starter) &&
+            0<lastStarterIndex && Hangul::isJamoL(buffer.charAt(lastStarterIndex-1)))) {
         // A Jamo leading consonant or an LV pair combines-forward if it is at the end,
         // otherwise it is blocked.
-        return lastStarterIndex==buffer.length()-1;
+        return lastStarterIndex!=lastIndex;
     }
     // Note: There can be no Hangul syllable in the fully decomposed mapping.
-    const Norm *starterNorm=&getNormRef(starter);
-    if(starterNorm->compositions==NULL) {
-        return FALSE;  // the last starter does not combine forward
+
+    // Multiple starters can combine into one.
+    // Look for the first of the last sequence of starters, excluding Jamos.
+    int32_t i=lastStarterIndex;
+    UChar32 c;
+    while(0<i && buffer.ccAt(i-1)==0 && !Hangul::isJamo(c=buffer.charAt(i-1))) {
+        starter=c;
+        --i;
     }
-    // Compose as far as possible, and see if further compositions are possible.
+    // Compose as far as possible, and see if further compositions with
+    // characters following this mapping are possible.
+    const Norm *starterNorm=norms.getNorm(starter);
+    if(i==lastStarterIndex &&
+            (starterNorm==nullptr || starterNorm->compositions==nullptr)) {
+        return TRUE;  // The last starter does not combine forward.
+    }
     uint8_t prevCC=0;
-    for(int32_t combMarkIndex=lastStarterIndex+1; combMarkIndex<buffer.length();) {
-        uint8_t cc=buffer.ccAt(combMarkIndex);  // !=0 because after last starter
-        if(combinesWithCCBetween(*starterNorm, prevCC, cc)) {
-            return TRUE;
+    while(++i<buffer.length()) {
+        uint8_t cc=buffer.ccAt(i);  // !=0 if after last starter
+        if(i>lastStarterIndex && norms.combinesWithCCBetween(*starterNorm, prevCC, cc)) {
+            // The starter combines with a mark that reorders before the current one.
+            return FALSE;
         }
-        if( prevCC<cc &&
-            (starter=combine(*starterNorm, buffer.charAt(combMarkIndex)))>=0
-        ) {
-            buffer.setComposite(starter, combMarkIndex);
-            starterNorm=&getNormRef(starter);
-            if(starterNorm->compositions==NULL) {
-                return FALSE;  // the composite does not combine further
+        UChar32 c=buffer.charAt(i);
+        if(starterNorm!=nullptr && (prevCC<cc || prevCC==0) &&
+                norms.getNormRef(c).combinesBack && (starter=starterNorm->combine(c))>=0) {
+            // The starter combines with c into a composite replacement starter.
+            starterNorm=norms.getNorm(starter);
+            if(i>=lastStarterIndex &&
+                    (starterNorm==nullptr || starterNorm->compositions==nullptr)) {
+                return TRUE;  // The composite does not combine further.
             }
+            // Keep prevCC because we "removed" the combining mark.
+        } else if(cc==0) {
+            starterNorm=norms.getNorm(c);
+            if(i==lastStarterIndex &&
+                    (starterNorm==nullptr || starterNorm->compositions==nullptr)) {
+                return TRUE;  // The new starter does not combine forward.
+            }
+            prevCC=0;
         } else {
             prevCC=cc;
-            ++combMarkIndex;
         }
     }
-    // TRUE if the final, forward-combining starter is at the end.
-    return prevCC==0;
+    if(prevCC==0) {
+        return FALSE;  // forward-combining starter at the very end
+    }
+    if(norms.combinesWithCCBetween(*starterNorm, prevCC, 256)) {
+        // The starter combines with another mark.
+        return FALSE;
+    }
+    return TRUE;
 }
 
-// Requires p->hasMapping().
-// Returns the offset of the "first unit" from the beginning of the extraData for c.
-// That is the same as the length of the optional data for the raw mapping and the ccc/lccc word.
-int32_t Normalizer2DataBuilder::writeMapping(UChar32 c, const Norm *p, UnicodeString &dataString) {
-    UnicodeString &m=*p->mapping;
-    int32_t length=m.length();
-    if(length>Normalizer2Impl::MAPPING_LENGTH_MASK) {
-        fprintf(stderr,
-                "gennorm2 error: "
-                "mapping for U+%04lX longer than maximum of %d\n",
-                (long)c, Normalizer2Impl::MAPPING_LENGTH_MASK);
-        exit(U_INVALID_FORMAT_ERROR);
+UBool Normalizer2DataBuilder::mappingRecomposes(const BuilderReorderingBuffer &buffer) const {
+    if(buffer.lastStarterIndex()<0) {
+        return FALSE;  // no starter
     }
-    int32_t leadCC, trailCC;
-    if(length==0) {
-        leadCC=trailCC=0;
-    } else {
-        leadCC=getCC(m.char32At(0));
-        trailCC=getCC(m.char32At(length-1));
-    }
-    if(c<Normalizer2Impl::MIN_CCC_LCCC_CP && (p->cc!=0 || leadCC!=0)) {
-        fprintf(stderr,
-                "gennorm2 error: "
-                "U+%04lX below U+0300 has ccc!=0 or lccc!=0, not supported by ICU\n",
-                (long)c);
-        exit(U_INVALID_FORMAT_ERROR);
-    }
-    // Write small-FCD data.
-    if((leadCC|trailCC)!=0) {
-        UChar32 lead= c<=0xffff ? c : U16_LEAD(c);
-        smallFCD[lead>>8]|=(uint8_t)1<<((lead>>5)&7);
-    }
-    // Write the mapping & raw mapping extraData.
-    int32_t firstUnit=length|(trailCC<<8);
-    int32_t preMappingLength=0;
-    if(p->rawMapping!=NULL) {
-        UnicodeString &rm=*p->rawMapping;
-        int32_t rmLength=rm.length();
-        if(rmLength>Normalizer2Impl::MAPPING_LENGTH_MASK) {
-            fprintf(stderr,
-                    "gennorm2 error: "
-                    "raw mapping for U+%04lX longer than maximum of %d\n",
-                    (long)c, Normalizer2Impl::MAPPING_LENGTH_MASK);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        UChar rm0=rm.charAt(0);
-        if( rmLength==length-1 &&
-            // 99: overlong substring lengths get pinned to remainder lengths anyway
-            0==rm.compare(1, 99, m, 2, 99) &&
-            rm0>Normalizer2Impl::MAPPING_LENGTH_MASK
-        ) {
-            // Compression:
-            // rawMapping=rm0+mapping.substring(2) -> store only rm0
-            //
-            // The raw mapping is the same as the final mapping after replacing
-            // the final mapping's first two code units with the raw mapping's first one.
-            // In this case, we store only that first unit, rm0.
-            // This helps with a few hundred mappings.
-            dataString.append(rm0);
-            preMappingLength=1;
-        } else {
-            // Store the raw mapping with its length.
-            dataString.append(rm);
-            dataString.append((UChar)rmLength);
-            preMappingLength=rmLength+1;
-        }
-        firstUnit|=Normalizer2Impl::MAPPING_HAS_RAW_MAPPING;
-    }
-    int32_t cccLccc=p->cc|(leadCC<<8);
-    if(cccLccc!=0) {
-        dataString.append((UChar)cccLccc);
-        ++preMappingLength;
-        firstUnit|=Normalizer2Impl::MAPPING_HAS_CCC_LCCC_WORD;
-    }
-    if(p->hasNoCompBoundaryAfter) {
-        firstUnit|=Normalizer2Impl::MAPPING_NO_COMP_BOUNDARY_AFTER;
-    }
-    dataString.append((UChar)firstUnit);
-    dataString.append(m);
-    return preMappingLength;
-}
-
-// Requires p->compositions!=NULL.
-void Normalizer2DataBuilder::writeCompositions(UChar32 c, const Norm *p, UnicodeString &dataString) {
-    if(p->cc!=0) {
-        fprintf(stderr,
-                "gennorm2 error: "
-                "U+%04lX combines-forward and has ccc!=0, not possible in Unicode normalization\n",
-                (long)c);
-        exit(U_INVALID_FORMAT_ERROR);
-    }
-    int32_t length;
-    const CompositionPair *pairs=p->getCompositionPairs(length);
-    for(int32_t i=0; i<length; ++i) {
-        const CompositionPair &pair=pairs[i];
-        // 22 bits for the composite character and whether it combines forward.
-        UChar32 compositeAndFwd=pair.composite<<1;
-        if(getNormRef(pair.composite).compositions!=NULL) {
-            compositeAndFwd|=1;  // The composite character also combines-forward.
-        }
-        // Encode most pairs in two units and some in three.
-        int32_t firstUnit, secondUnit, thirdUnit;
-        if(pair.trail<Normalizer2Impl::COMP_1_TRAIL_LIMIT) {
-            if(compositeAndFwd<=0xffff) {
-                firstUnit=pair.trail<<1;
-                secondUnit=compositeAndFwd;
-                thirdUnit=-1;
-            } else {
-                firstUnit=(pair.trail<<1)|Normalizer2Impl::COMP_1_TRIPLE;
-                secondUnit=compositeAndFwd>>16;
-                thirdUnit=compositeAndFwd;
-            }
-        } else {
-            firstUnit=(Normalizer2Impl::COMP_1_TRAIL_LIMIT+
-                       (pair.trail>>Normalizer2Impl::COMP_1_TRAIL_SHIFT))|
-                      Normalizer2Impl::COMP_1_TRIPLE;
-            secondUnit=(pair.trail<<Normalizer2Impl::COMP_2_TRAIL_SHIFT)|
-                       (compositeAndFwd>>16);
-            thirdUnit=compositeAndFwd;
-        }
-        // Set the high bit of the first unit if this is the last composition pair.
-        if(i==(length-1)) {
-            firstUnit|=Normalizer2Impl::COMP_1_LAST_TUPLE;
-        }
-        dataString.append((UChar)firstUnit).append((UChar)secondUnit);
-        if(thirdUnit>=0) {
-            dataString.append((UChar)thirdUnit);
-        }
-    }
-}
-
-class ExtraDataWriter : public Normalizer2DBEnumerator {
-public:
-    ExtraDataWriter(Normalizer2DataBuilder &b) :
-        Normalizer2DBEnumerator(b),
-        yesYesCompositions(1000, (UChar32)0xffff, 2),  // 0=inert, 1=Jamo L, 2=start of compositions
-        yesNoMappingsAndCompositions(1000, (UChar32)0, 1) {}  // 0=Hangul, 1=start of normal data
-    virtual UBool rangeHandler(UChar32 start, UChar32 end, uint32_t value) {
-        if(value!=0) {
-            if(start!=end) {
-                fprintf(stderr,
-                        "gennorm2 error: unexpected shared data for "
-                        "multiple code points U+%04lX..U+%04lX\n",
-                        (long)start, (long)end);
-                exit(U_INTERNAL_PROGRAM_ERROR);
-            }
-            builder.writeExtraData(start, value, *this);
-        }
-        return TRUE;
-    }
-    UnicodeString maybeYesCompositions;
-    UnicodeString yesYesCompositions;
-    UnicodeString yesNoMappingsAndCompositions;
-    UnicodeString yesNoMappingsOnly;
-    UnicodeString noNoMappings;
-    Hashtable previousNoNoMappings;  // If constructed in runtime code, pass in UErrorCode.
-};
-
-void Normalizer2DataBuilder::writeExtraData(UChar32 c, uint32_t value, ExtraDataWriter &writer) {
-    Norm *p=norms+value;
-    if(!p->hasMapping()) {
-        // Write small-FCD data.
-        // There is similar code in writeMapping() for characters that do have a mapping.
-        if(c<Normalizer2Impl::MIN_CCC_LCCC_CP && p->cc!=0) {
-            fprintf(stderr,
-                    "gennorm2 error: "
-                    "U+%04lX below U+0300 has ccc!=0, not supported by ICU\n",
-                    (long)c);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        if(p->cc!=0) {
-            UChar32 lead= c<=0xffff ? c : U16_LEAD(c);
-            smallFCD[lead>>8]|=(uint8_t)1<<((lead>>5)&7);
-        }
-    }
-    if(p->combinesBack) {
-        if(p->hasMapping()) {
-            fprintf(stderr,
-                    "gennorm2 error: "
-                    "U+%04lX combines-back and decomposes, not possible in Unicode normalization\n",
-                    (long)c);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        if(p->compositions!=NULL) {
-            p->offset=
-                (writer.maybeYesCompositions.length()<<Norm::OFFSET_SHIFT)|
-                Norm::OFFSET_MAYBE_YES;
-            writeCompositions(c, p, writer.maybeYesCompositions);
-        }
-    } else if(!p->hasMapping()) {
-        if(p->compositions!=NULL) {
-            p->offset=
-                (writer.yesYesCompositions.length()<<Norm::OFFSET_SHIFT)|
-                Norm::OFFSET_YES_YES;
-            writeCompositions(c, p, writer.yesYesCompositions);
-        }
-    } else if(p->mappingType==Norm::ROUND_TRIP) {
-        if(p->compositions!=NULL) {
-            int32_t offset=writer.yesNoMappingsAndCompositions.length()+
-                           writeMapping(c, p, writer.yesNoMappingsAndCompositions);
-            p->offset=(offset<<Norm::OFFSET_SHIFT)|Norm::OFFSET_YES_NO_MAPPING_AND_COMPOSITION;
-            writeCompositions(c, p, writer.yesNoMappingsAndCompositions);
-        } else {
-            int32_t offset=writer.yesNoMappingsOnly.length()+
-                           writeMapping(c, p, writer.yesNoMappingsOnly);
-            p->offset=(offset<<Norm::OFFSET_SHIFT)|Norm::OFFSET_YES_NO_MAPPING_ONLY;
-        }
-    } else /* one-way */ {
-        if(p->compositions!=NULL) {
-            fprintf(stderr,
-                    "gennorm2 error: "
-                    "U+%04lX combines-forward and has a one-way mapping, "
-                    "not possible in Unicode normalization\n",
-                    (long)c);
-            exit(U_INVALID_FORMAT_ERROR);
-        }
-        if(p->cc==0 && optimization!=OPTIMIZE_FAST) {
-            // Try a compact, algorithmic encoding.
-            // Only for ccc=0, because we can't store additional information
-            // and we do not recursively follow an algorithmic encoding for access to the ccc.
-            //
-            // Also, if hasNoCompBoundaryAfter is set, we can only use the algorithmic encoding
-            // if the mappingCP decomposes further, to ensure that there is a place to store it.
-            // We want to see that the final mapping does not have exactly 1 code point,
-            // or else we would have to recursively ensure that the final mapping is stored
-            // in normal extraData.
-            if(p->mappingCP>=0 && (!p->hasNoCompBoundaryAfter || 1!=p->mapping->countChar32())) {
-                int32_t delta=p->mappingCP-c;
-                if(-Normalizer2Impl::MAX_DELTA<=delta && delta<=Normalizer2Impl::MAX_DELTA) {
-                    p->offset=(delta<<Norm::OFFSET_SHIFT)|Norm::OFFSET_DELTA;
+    const Norm *starterNorm=nullptr;
+    uint8_t prevCC=0;
+    for(int32_t i=0; i<buffer.length(); ++i) {
+        UChar32 c=buffer.charAt(i);
+        uint8_t cc=buffer.ccAt(i);
+        if(starterNorm!=nullptr && (prevCC<cc || prevCC==0) &&
+                norms.getNormRef(c).combinesBack && starterNorm->combine(c)>=0) {
+            return TRUE;  // normal composite
+        } else if(cc==0) {
+            if(Hangul::isJamoL(c)) {
+                if((i+1)<buffer.length() && Hangul::isJamoV(buffer.charAt(i+1))) {
+                    return TRUE;  // Hangul syllable
                 }
+                starterNorm=nullptr;
+            } else {
+                starterNorm=norms.getNorm(c);
             }
         }
-        if(p->offset==0) {
-            int32_t oldNoNoLength=writer.noNoMappings.length();
-            int32_t offset=oldNoNoLength+writeMapping(c, p, writer.noNoMappings);
-            UnicodeString newMapping=writer.noNoMappings.tempSubString(oldNoNoLength);
-            int32_t previousOffset=writer.previousNoNoMappings.geti(newMapping);
-            if(previousOffset!=0) {
-                // Duplicate, remove the new units and point to the old ones.
-                writer.noNoMappings.truncate(oldNoNoLength);
-                p->offset=((previousOffset-1)<<Norm::OFFSET_SHIFT)|Norm::OFFSET_NO_NO;
+        prevCC=cc;
+    }
+    return FALSE;
+}
+
+void Normalizer2DataBuilder::postProcess(Norm &norm) {
+    // Prerequisites: Compositions are built, mappings are recursively decomposed.
+    // Mappings are not yet in canonical order.
+    //
+    // This function works on a Norm struct. We do not know which code point(s) map(s) to it.
+    // Therefore, we cannot compute algorithmic mapping deltas here.
+    // Error conditions are checked, but printed later when we do know the offending code point.
+    if(norm.hasMapping()) {
+        if(norm.mapping->length()>Normalizer2Impl::MAPPING_LENGTH_MASK) {
+            norm.error="mapping longer than maximum of 31";
+            return;
+        }
+        // Ensure canonical order.
+        BuilderReorderingBuffer buffer;
+        if(norm.rawMapping!=nullptr) {
+            norms.reorder(*norm.rawMapping, buffer);
+            buffer.reset();
+        }
+        norms.reorder(*norm.mapping, buffer);
+        if(buffer.isEmpty()) {
+            // A character that is deleted (maps to an empty string) must
+            // get the worst-case lccc and tccc values because arbitrary
+            // characters on both sides will become adjacent.
+            norm.leadCC=1;
+            norm.trailCC=0xff;
+        } else {
+            norm.leadCC=buffer.ccAt(0);
+            norm.trailCC=buffer.ccAt(buffer.length()-1);
+        }
+
+        norm.hasCompBoundaryBefore=
+            !buffer.isEmpty() && norm.leadCC==0 && !norms.combinesBack(buffer.charAt(0));
+        norm.hasCompBoundaryAfter=
+            norm.compositions==nullptr && mappingHasCompBoundaryAfter(buffer, norm.mappingType);
+
+        if(norm.combinesBack) {
+            norm.error="combines-back and decomposes, not possible in Unicode normalization";
+        } else if(norm.mappingType==Norm::ROUND_TRIP) {
+            if(norm.compositions!=NULL) {
+                norm.type=Norm::YES_NO_COMBINES_FWD;
             } else {
-                // Enter this new mapping into the hashtable, avoiding value 0 which is "not found".
-                IcuToolErrorCode errorCode("gennorm2/writeExtraData()/Hashtable.puti()");
-                writer.previousNoNoMappings.puti(newMapping, offset+1, errorCode);
-                p->offset=(offset<<Norm::OFFSET_SHIFT)|Norm::OFFSET_NO_NO;
+                norm.type=Norm::YES_NO_MAPPING_ONLY;
             }
+        } else {  // one-way mapping
+            if(norm.compositions!=NULL) {
+                norm.error="combines-forward and has a one-way mapping, "
+                           "not possible in Unicode normalization";
+            } else if(buffer.isEmpty()) {
+                norm.type=Norm::NO_NO_EMPTY;
+            } else if(!norm.hasCompBoundaryBefore) {
+                norm.type=Norm::NO_NO_COMP_NO_MAYBE_CC;
+            } else if(mappingRecomposes(buffer)) {
+                norm.type=Norm::NO_NO_COMP_BOUNDARY_BEFORE;
+            } else {
+                // The mapping is comp-normalized.
+                norm.type=Norm::NO_NO_COMP_YES;
+            }
+        }
+    } else {  // no mapping
+        norm.leadCC=norm.trailCC=norm.cc;
+
+        norm.hasCompBoundaryBefore=
+            norm.cc==0 && !norm.combinesBack;
+        norm.hasCompBoundaryAfter=
+            norm.cc==0 && !norm.combinesBack && norm.compositions==nullptr;
+
+        if(norm.combinesBack) {
+            if(norm.compositions!=nullptr) {
+                // Earlier code checked ccc=0.
+                norm.type=Norm::MAYBE_YES_COMBINES_FWD;
+            } else {
+                norm.type=Norm::MAYBE_YES_SIMPLE;  // any ccc
+            }
+        } else if(norm.compositions!=nullptr) {
+            // Earlier code checked ccc=0.
+            norm.type=Norm::YES_YES_COMBINES_FWD;
+        } else if(norm.cc!=0) {
+            norm.type=Norm::YES_YES_WITH_CC;
+        } else {
+            norm.type=Norm::INERT;
         }
     }
 }
 
-class Norm16Writer : public Normalizer2DBEnumerator {
+class Norm16Writer : public Norms::Enumerator {
 public:
-    Norm16Writer(Normalizer2DataBuilder &b) : Normalizer2DBEnumerator(b) {}
-    virtual UBool rangeHandler(UChar32 start, UChar32 end, uint32_t value) {
-        builder.writeNorm16(start, end, value);
-        return TRUE;
+    Norm16Writer(UMutableCPTrie *trie, Norms &n, Normalizer2DataBuilder &b) :
+            Norms::Enumerator(n), builder(b), norm16Trie(trie) {}
+    void rangeHandler(UChar32 start, UChar32 end, Norm &norm) U_OVERRIDE {
+        builder.writeNorm16(norm16Trie, start, end, norm);
     }
+    Normalizer2DataBuilder &builder;
+    UMutableCPTrie *norm16Trie;
 };
 
-void Normalizer2DataBuilder::writeNorm16(UChar32 start, UChar32 end, uint32_t value) {
-    if(value!=0) {
-        const Norm *p=norms+value;
-        int32_t offset=p->offset>>Norm::OFFSET_SHIFT;
-        int32_t norm16=0;
-        UBool isDecompNo=FALSE;
-        UBool isCompNoMaybe=FALSE;
-        switch(p->offset&Norm::OFFSET_MASK) {
-        case Norm::OFFSET_NONE:
-            // No mapping, no compositions list.
-            if(p->combinesBack) {
-                norm16=Normalizer2Impl::MIN_NORMAL_MAYBE_YES+p->cc;
-                isDecompNo=(UBool)(p->cc!=0);
-                isCompNoMaybe=TRUE;
-            } else if(p->cc!=0) {
-                norm16=Normalizer2Impl::MIN_YES_YES_WITH_CC-1+p->cc;
-                isDecompNo=isCompNoMaybe=TRUE;
+void Normalizer2DataBuilder::setSmallFCD(UChar32 c) {
+    UChar32 lead= c<=0xffff ? c : U16_LEAD(c);
+    smallFCD[lead>>8]|=(uint8_t)1<<((lead>>5)&7);
+}
+
+void Normalizer2DataBuilder::writeNorm16(UMutableCPTrie *norm16Trie, UChar32 start, UChar32 end, Norm &norm) {
+    if((norm.leadCC|norm.trailCC)!=0) {
+        for(UChar32 c=start; c<=end; ++c) {
+            setSmallFCD(c);
+        }
+    }
+
+    int32_t norm16;
+    switch(norm.type) {
+    case Norm::INERT:
+        norm16=Normalizer2Impl::INERT;
+        break;
+    case Norm::YES_YES_COMBINES_FWD:
+        norm16=norm.offset*2;
+        break;
+    case Norm::YES_NO_COMBINES_FWD:
+        norm16=indexes[Normalizer2Impl::IX_MIN_YES_NO]+norm.offset*2;
+        break;
+    case Norm::YES_NO_MAPPING_ONLY:
+        norm16=indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]+norm.offset*2;
+        break;
+    case Norm::NO_NO_COMP_YES:
+        norm16=indexes[Normalizer2Impl::IX_MIN_NO_NO]+norm.offset*2;
+        break;
+    case Norm::NO_NO_COMP_BOUNDARY_BEFORE:
+        norm16=indexes[Normalizer2Impl::IX_MIN_NO_NO_COMP_BOUNDARY_BEFORE]+norm.offset*2;
+        break;
+    case Norm::NO_NO_COMP_NO_MAYBE_CC:
+        norm16=indexes[Normalizer2Impl::IX_MIN_NO_NO_COMP_NO_MAYBE_CC]+norm.offset*2;
+        break;
+    case Norm::NO_NO_EMPTY:
+        norm16=indexes[Normalizer2Impl::IX_MIN_NO_NO_EMPTY]+norm.offset*2;
+        break;
+    case Norm::NO_NO_DELTA:
+        {
+            // Positive offset from minNoNoDelta, shifted left for additional bits.
+            int32_t offset=(norm.offset+Normalizer2Impl::MAX_DELTA)<<Normalizer2Impl::DELTA_SHIFT;
+            if(norm.trailCC==0) {
+                // DELTA_TCCC_0==0
+            } else if(norm.trailCC==1) {
+                offset|=Normalizer2Impl::DELTA_TCCC_1;
+            } else {
+                offset|=Normalizer2Impl::DELTA_TCCC_GT_1;
             }
+            norm16=getMinNoNoDelta()+offset;
             break;
-        case Norm::OFFSET_MAYBE_YES:
-            norm16=indexes[Normalizer2Impl::IX_MIN_MAYBE_YES]+offset;
-            isCompNoMaybe=TRUE;
-            break;
-        case Norm::OFFSET_YES_YES:
-            norm16=offset;
-            break;
-        case Norm::OFFSET_YES_NO_MAPPING_AND_COMPOSITION:
-            norm16=indexes[Normalizer2Impl::IX_MIN_YES_NO]+offset;
-            isDecompNo=TRUE;
-            break;
-        case Norm::OFFSET_YES_NO_MAPPING_ONLY:
-            norm16=indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]+offset;
-            isDecompNo=TRUE;
-            break;
-        case Norm::OFFSET_NO_NO:
-            norm16=indexes[Normalizer2Impl::IX_MIN_NO_NO]+offset;
-            isDecompNo=isCompNoMaybe=TRUE;
-            break;
-        case Norm::OFFSET_DELTA:
-            norm16=getCenterNoNoDelta()+offset;
-            isDecompNo=isCompNoMaybe=TRUE;
-            break;
-        default:  // Should not occur.
-            exit(U_INTERNAL_PROGRAM_ERROR);
         }
-        IcuToolErrorCode errorCode("gennorm2/writeNorm16()");
-        utrie2_setRange32(norm16Trie, start, end, (uint32_t)norm16, TRUE, errorCode);
-        if(isDecompNo && start<indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]) {
-            indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]=start;
-        }
-        if(isCompNoMaybe && start<indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]) {
-            indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=start;
-        }
+    case Norm::MAYBE_YES_COMBINES_FWD:
+        norm16=indexes[Normalizer2Impl::IX_MIN_MAYBE_YES]+norm.offset*2;
+        break;
+    case Norm::MAYBE_YES_SIMPLE:
+        norm16=Normalizer2Impl::MIN_NORMAL_MAYBE_YES+norm.cc*2;  // ccc=0..255
+        break;
+    case Norm::YES_YES_WITH_CC:
+        U_ASSERT(norm.cc!=0);
+        norm16=Normalizer2Impl::MIN_YES_YES_WITH_CC-2+norm.cc*2;  // ccc=1..255
+        break;
+    default:  // Should not occur.
+        exit(U_INTERNAL_PROGRAM_ERROR);
+    }
+    U_ASSERT((norm16&1)==0);
+    if(norm.hasCompBoundaryAfter) {
+        norm16|=Normalizer2Impl::HAS_COMP_BOUNDARY_AFTER;
+    }
+    IcuToolErrorCode errorCode("gennorm2/writeNorm16()");
+    umutablecptrie_setRange(norm16Trie, start, end, (uint32_t)norm16, errorCode);
+
+    // Set the minimum code points for real data lookups in the quick check loops.
+    UBool isDecompNo=
+            (Norm::YES_NO_COMBINES_FWD<=norm.type && norm.type<=Norm::NO_NO_DELTA) ||
+            norm.cc!=0;
+    if(isDecompNo && start<indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]) {
+        indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]=start;
+    }
+    UBool isCompNoMaybe= norm.type>=Norm::NO_NO_COMP_YES;
+    if(isCompNoMaybe && start<indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]) {
+        indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=start;
+    }
+    if(norm.leadCC!=0 && start<indexes[Normalizer2Impl::IX_MIN_LCCC_CP]) {
+        indexes[Normalizer2Impl::IX_MIN_LCCC_CP]=start;
     }
 }
 
-void Normalizer2DataBuilder::setHangulData() {
+void Normalizer2DataBuilder::setHangulData(UMutableCPTrie *norm16Trie) {
     HangulIterator hi;
     const HangulIterator::Range *range;
     // Check that none of the Hangul/Jamo code points have data.
     while((range=hi.nextRange())!=NULL) {
-        for(UChar32 c=range->start; c<range->limit; ++c) {
-            if(utrie2_get32(norm16Trie, c)!=0) {
+        for(UChar32 c=range->start; c<=range->end; ++c) {
+            if(umutablecptrie_get(norm16Trie, c)>Normalizer2Impl::INERT) {
                 fprintf(stderr,
                         "gennorm2 error: "
                         "illegal mapping/composition/ccc data for Hangul or Jamo U+%04lX\n",
@@ -1007,100 +522,94 @@ void Normalizer2DataBuilder::setHangulData() {
     }
     // Set data for algorithmic runtime handling.
     IcuToolErrorCode errorCode("gennorm2/setHangulData()");
-    hi.reset();
-    while((range=hi.nextRange())!=NULL) {
-        uint16_t norm16=range->norm16;
-        if(norm16==0) {
-            norm16=(uint16_t)indexes[Normalizer2Impl::IX_MIN_YES_NO];  // Hangul LV/LVT encoded as minYesNo
-            if(range->start<indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]) {
-                indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]=range->start;
-            }
-        } else {
-            if(range->start<indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]) {  // Jamo V/T are maybeYes
-                indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=range->start;
-            }
-        }
-        utrie2_setRange32(norm16Trie, range->start, range->limit-1, norm16, TRUE, errorCode);
-        errorCode.assertSuccess();
+
+    // Jamo V/T are maybeYes
+    if(Hangul::JAMO_V_BASE<indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]) {
+        indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=Hangul::JAMO_V_BASE;
     }
-}
+    umutablecptrie_setRange(norm16Trie, Hangul::JAMO_L_BASE, Hangul::JAMO_L_END,
+                            Normalizer2Impl::JAMO_L, errorCode);
+    umutablecptrie_setRange(norm16Trie, Hangul::JAMO_V_BASE, Hangul::JAMO_V_END,
+                            Normalizer2Impl::JAMO_VT, errorCode);
+    // JAMO_T_BASE+1: not U+11A7
+    umutablecptrie_setRange(norm16Trie, Hangul::JAMO_T_BASE+1, Hangul::JAMO_T_END,
+                            Normalizer2Impl::JAMO_VT, errorCode);
 
-U_CDECL_BEGIN
-
-static UBool U_CALLCONV
-enumRangeMaxValue(const void *context, UChar32 /*start*/, UChar32 /*end*/, uint32_t value) {
-    uint32_t *pMaxValue=(uint32_t *)context;
-    if(value>*pMaxValue) {
-        *pMaxValue=value;
+    // Hangul LV encoded as minYesNo
+    uint32_t lv=indexes[Normalizer2Impl::IX_MIN_YES_NO];
+    // Hangul LVT encoded as minYesNoMappingsOnly|HAS_COMP_BOUNDARY_AFTER
+    uint32_t lvt=indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]|
+        Normalizer2Impl::HAS_COMP_BOUNDARY_AFTER;
+    if(Hangul::HANGUL_BASE<indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]) {
+        indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]=Hangul::HANGUL_BASE;
     }
-    return TRUE;
-}
-
-U_CDECL_END
-
-void Normalizer2DataBuilder::processData() {
-    IcuToolErrorCode errorCode("gennorm2/processData()");
-    norm16Trie=utrie2_open(0, 0, errorCode);
+    // Set the first LV, then write all other Hangul syllables as LVT,
+    // then overwrite the remaining LV.
+    umutablecptrie_set(norm16Trie, Hangul::HANGUL_BASE, lv, errorCode);
+    umutablecptrie_setRange(norm16Trie, Hangul::HANGUL_BASE+1, Hangul::HANGUL_END, lvt, errorCode);
+    UChar32 c=Hangul::HANGUL_BASE;
+    while((c+=Hangul::JAMO_T_COUNT)<=Hangul::HANGUL_END) {
+        umutablecptrie_set(norm16Trie, c, lv, errorCode);
+    }
     errorCode.assertSuccess();
+}
 
-    utrie2_enum(normTrie, NULL, enumRangeHandler, CompositionBuilder(*this).ptr());
+LocalUCPTriePointer Normalizer2DataBuilder::processData() {
+    // Build composition lists before recursive decomposition,
+    // so that we still have the raw, pair-wise mappings.
+    CompositionBuilder compBuilder(norms);
+    norms.enumRanges(compBuilder);
 
-    Decomposer decomposer(*this);
+    // Recursively decompose all mappings.
+    Decomposer decomposer(norms);
     do {
         decomposer.didDecompose=FALSE;
-        utrie2_enum(normTrie, NULL, enumRangeHandler, &decomposer);
+        norms.enumRanges(decomposer);
     } while(decomposer.didDecompose);
 
-    BuilderReorderingBuffer buffer;
-    int32_t normsLength=utm_countItems(normMem);
+    // Set the Norm::Type and other properties.
+    int32_t normsLength=norms.length();
     for(int32_t i=1; i<normsLength; ++i) {
-        // Set the hasNoCompBoundaryAfter flag for use by the last code branch
-        // in Normalizer2Impl::hasCompBoundaryAfter().
-        // For details see the comments on hasNoCompBoundaryAfter(buffer).
-        const Norm &norm=norms[i];
-        if(norm.hasMapping()) {
-            if(norm.compositions!=NULL) {
-                norms[i].hasNoCompBoundaryAfter=TRUE;
-            } else {
-                buffer.reset();
-                reorder(norms+i, buffer);
-                norms[i].hasNoCompBoundaryAfter=hasNoCompBoundaryAfter(buffer);
-            }
-        }
+        postProcess(norms.getNormRefByIndex(i));
     }
 
-    indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]=0x110000;
-    indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=0x110000;
+    // Write the properties, mappings and composition lists to
+    // appropriate parts of the "extra data" array.
+    ExtraData extra(norms, optimization==OPTIMIZE_FAST);
+    norms.enumRanges(extra);
 
-    ExtraDataWriter extraDataWriter(*this);
-    utrie2_enum(normTrie, NULL, enumRangeHandler, &extraDataWriter);
+    extraData=extra.yesYesCompositions;
+    indexes[Normalizer2Impl::IX_MIN_YES_NO]=extraData.length()*2;
+    extraData.append(extra.yesNoMappingsAndCompositions);
+    indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]=extraData.length()*2;
+    extraData.append(extra.yesNoMappingsOnly);
+    indexes[Normalizer2Impl::IX_MIN_NO_NO]=extraData.length()*2;
+    extraData.append(extra.noNoMappingsCompYes);
+    indexes[Normalizer2Impl::IX_MIN_NO_NO_COMP_BOUNDARY_BEFORE]=extraData.length()*2;
+    extraData.append(extra.noNoMappingsCompBoundaryBefore);
+    indexes[Normalizer2Impl::IX_MIN_NO_NO_COMP_NO_MAYBE_CC]=extraData.length()*2;
+    extraData.append(extra.noNoMappingsCompNoMaybeCC);
+    indexes[Normalizer2Impl::IX_MIN_NO_NO_EMPTY]=extraData.length()*2;
+    extraData.append(extra.noNoMappingsEmpty);
+    indexes[Normalizer2Impl::IX_LIMIT_NO_NO]=extraData.length()*2;
 
-    extraData=extraDataWriter.maybeYesCompositions;
-    extraData.append(extraDataWriter.yesYesCompositions).
-              append(extraDataWriter.yesNoMappingsAndCompositions).
-              append(extraDataWriter.yesNoMappingsOnly).
-              append(extraDataWriter.noNoMappings);
+    // Pad the maybeYesCompositions length to a multiple of 4,
+    // so that NO_NO_DELTA bits 2..1 can be used without subtracting the center.
+    while(extra.maybeYesCompositions.length()&3) {
+        extra.maybeYesCompositions.append((UChar)0);
+    }
+    extraData.insert(0, extra.maybeYesCompositions);
+    indexes[Normalizer2Impl::IX_MIN_MAYBE_YES]=
+        Normalizer2Impl::MIN_NORMAL_MAYBE_YES-
+        extra.maybeYesCompositions.length()*2;
+
     // Pad to even length for 4-byte alignment of following data.
     if(extraData.length()&1) {
         extraData.append((UChar)0);
     }
 
-    indexes[Normalizer2Impl::IX_MIN_YES_NO]=
-        extraDataWriter.yesYesCompositions.length();
-    indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]=
-        indexes[Normalizer2Impl::IX_MIN_YES_NO]+
-        extraDataWriter.yesNoMappingsAndCompositions.length();
-    indexes[Normalizer2Impl::IX_MIN_NO_NO]=
-        indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]+
-        extraDataWriter.yesNoMappingsOnly.length();
-    indexes[Normalizer2Impl::IX_LIMIT_NO_NO]=
-        indexes[Normalizer2Impl::IX_MIN_NO_NO]+
-        extraDataWriter.noNoMappings.length();
-    indexes[Normalizer2Impl::IX_MIN_MAYBE_YES]=
-        Normalizer2Impl::MIN_NORMAL_MAYBE_YES-
-        extraDataWriter.maybeYesCompositions.length();
-
-    int32_t minNoNoDelta=getCenterNoNoDelta()-Normalizer2Impl::MAX_DELTA;
+    int32_t minNoNoDelta=getMinNoNoDelta();
+    U_ASSERT((minNoNoDelta&7)==0);
     if(indexes[Normalizer2Impl::IX_LIMIT_NO_NO]>minNoNoDelta) {
         fprintf(stderr,
                 "gennorm2 error: "
@@ -1108,13 +617,28 @@ void Normalizer2DataBuilder::processData() {
         exit(U_BUFFER_OVERFLOW_ERROR);
     }
 
-    utrie2_enum(normTrie, NULL, enumRangeHandler, Norm16Writer(*this).ptr());
+    // writeNorm16() and setHangulData() reduce these as needed.
+    indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]=0x110000;
+    indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=0x110000;
+    indexes[Normalizer2Impl::IX_MIN_LCCC_CP]=0x110000;
 
-    setHangulData();
+    IcuToolErrorCode errorCode("gennorm2/processData()");
+    UMutableCPTrie *norm16Trie = umutablecptrie_open(
+        Normalizer2Impl::INERT, Normalizer2Impl::INERT, errorCode);
+    errorCode.assertSuccess();
+
+    // Map each code point to its norm16 value,
+    // including the properties that fit directly,
+    // and the offset to the "extra data" if necessary.
+    Norm16Writer norm16Writer(norm16Trie, norms, *this);
+    norms.enumRanges(norm16Writer);
+    // TODO: iterate via getRange() instead of callback?
+
+    setHangulData(norm16Trie);
 
     // Look for the "worst" norm16 value of any supplementary code point
     // corresponding to a lead surrogate, and set it as that surrogate's value.
-    // Enables quick check inner loops to look at only code units.
+    // Enables UTF-16 quick check inner loops to look at only code units.
     //
     // We could be more sophisticated:
     // We could collect a bit set for whether there are values in the different
@@ -1122,18 +646,63 @@ void Normalizer2DataBuilder::processData() {
     // and select the best value that only breaks the composition and/or decomposition
     // inner loops if necessary.
     // However, that seems like overkill for an optimization for supplementary characters.
-    for(UChar lead=0xd800; lead<0xdc00; ++lead) {
-        uint32_t maxValue=utrie2_get32(norm16Trie, lead);
-        utrie2_enumForLeadSurrogate(norm16Trie, lead, NULL, enumRangeMaxValue, &maxValue);
-        if( maxValue>=(uint32_t)indexes[Normalizer2Impl::IX_LIMIT_NO_NO] &&
-            maxValue>(uint32_t)indexes[Normalizer2Impl::IX_MIN_NO_NO]
-        ) {
-            // Set noNo ("worst" value) if it got into "less-bad" maybeYes or ccc!=0.
-            // Otherwise it might end up at something like JAMO_VT which stays in
-            // the inner decomposition quick check loop.
-            maxValue=(uint32_t)indexes[Normalizer2Impl::IX_LIMIT_NO_NO]-1;
+    //
+    // First check that surrogate code *points* are inert.
+    // The parser should have rejected values/mappings for them.
+    uint32_t value;
+    UChar32 end = umutablecptrie_getRange(norm16Trie, 0xd800, UCPMAP_RANGE_NORMAL, 0,
+                                          nullptr, nullptr, &value);
+    if (value != Normalizer2Impl::INERT || end < 0xdfff) {
+        fprintf(stderr,
+                "gennorm2 error: not all surrogate code points are inert: U+d800..U+%04x=%lx\n",
+                (int)end, (long)value);
+        exit(U_INTERNAL_PROGRAM_ERROR);
+    }
+    uint32_t maxNorm16 = 0;
+    // ANDing values yields 0 bits where any value has a 0.
+    // Used for worst-case HAS_COMP_BOUNDARY_AFTER.
+    uint32_t andedNorm16 = 0;
+    end = 0;
+    for (UChar32 start = 0x10000;;) {
+        if (start > end) {
+            end = umutablecptrie_getRange(norm16Trie, start, UCPMAP_RANGE_NORMAL, 0,
+                                          nullptr, nullptr, &value);
+            if (end < 0) { break; }
         }
-        utrie2_set32ForLeadSurrogateCodeUnit(norm16Trie, lead, maxValue, errorCode);
+        if ((start & 0x3ff) == 0) {
+            // Data for a new lead surrogate.
+            maxNorm16 = andedNorm16 = value;
+        } else {
+            if (value > maxNorm16) {
+                maxNorm16 = value;
+            }
+            andedNorm16 &= value;
+        }
+        // Intersect each range with the code points for one lead surrogate.
+        UChar32 leadEnd = start | 0x3ff;
+        if (leadEnd <= end) {
+            // End of the supplementary block for a lead surrogate.
+            if (maxNorm16 >= (uint32_t)indexes[Normalizer2Impl::IX_LIMIT_NO_NO]) {
+                // Set noNo ("worst" value) if it got into "less-bad" maybeYes or ccc!=0.
+                // Otherwise it might end up at something like JAMO_VT which stays in
+                // the inner decomposition quick check loop.
+                maxNorm16 = (uint32_t)indexes[Normalizer2Impl::IX_LIMIT_NO_NO];
+            }
+            maxNorm16 =
+                (maxNorm16 & ~Normalizer2Impl::HAS_COMP_BOUNDARY_AFTER)|
+                (andedNorm16 & Normalizer2Impl::HAS_COMP_BOUNDARY_AFTER);
+            if (maxNorm16 != Normalizer2Impl::INERT) {
+                umutablecptrie_set(norm16Trie, U16_LEAD(start), maxNorm16, errorCode);
+            }
+            if (value == Normalizer2Impl::INERT) {
+                // Potentially skip inert supplementary blocks for several lead surrogates.
+                start = (end + 1) & ~0x3ff;
+            } else {
+                start = leadEnd + 1;
+            }
+        } else {
+            start = end + 1;
+        }
     }
 
     // Adjust supplementary minimum code points to break quick check loops at their lead surrogates.
@@ -1148,15 +717,24 @@ void Normalizer2DataBuilder::processData() {
     if(minCP>=0x10000) {
         indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=U16_LEAD(minCP);
     }
+    minCP=indexes[Normalizer2Impl::IX_MIN_LCCC_CP];
+    if(minCP>=0x10000) {
+        indexes[Normalizer2Impl::IX_MIN_LCCC_CP]=U16_LEAD(minCP);
+    }
 
-    utrie2_freeze(norm16Trie, UTRIE2_16_VALUE_BITS, errorCode);
-    norm16TrieLength=utrie2_serialize(norm16Trie, NULL, 0, errorCode);
+    LocalUCPTriePointer builtTrie(
+        umutablecptrie_buildImmutable(norm16Trie, UCPTRIE_TYPE_FAST, UCPTRIE_VALUE_BITS_16, errorCode));
+    norm16TrieLength=ucptrie_toBinary(builtTrie.getAlias(), nullptr, 0, errorCode);
     if(errorCode.get()!=U_BUFFER_OVERFLOW_ERROR) {
-        fprintf(stderr, "gennorm2 error: unable to freeze/serialize the normalization trie - %s\n",
+        fprintf(stderr, "gennorm2 error: unable to build/serialize the normalization trie - %s\n",
                 errorCode.errorName());
         exit(errorCode.reset());
     }
+    umutablecptrie_close(norm16Trie);
     errorCode.reset();
+    norm16TrieBytes=new uint8_t[norm16TrieLength];
+    ucptrie_toBinary(builtTrie.getAlias(), norm16TrieBytes, norm16TrieLength, errorCode);
+    errorCode.assertSuccess();
 
     int32_t offset=(int32_t)sizeof(indexes);
     indexes[Normalizer2Impl::IX_NORM_TRIE_OFFSET]=offset;
@@ -1177,10 +755,15 @@ void Normalizer2DataBuilder::processData() {
         printf("size of binary data file contents:  %5ld bytes\n", (long)totalSize);
         printf("minDecompNoCodePoint:              U+%04lX\n", (long)indexes[Normalizer2Impl::IX_MIN_DECOMP_NO_CP]);
         printf("minCompNoMaybeCodePoint:           U+%04lX\n", (long)indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]);
-        printf("minYesNo:                          0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_YES_NO]);
+        printf("minLcccCodePoint:                  U+%04lX\n", (long)indexes[Normalizer2Impl::IX_MIN_LCCC_CP]);
+        printf("minYesNo: (with compositions)      0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_YES_NO]);
         printf("minYesNoMappingsOnly:              0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_YES_NO_MAPPINGS_ONLY]);
-        printf("minNoNo:                           0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_NO_NO]);
+        printf("minNoNo: (comp-normalized)         0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_NO_NO]);
+        printf("minNoNoCompBoundaryBefore:         0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_NO_NO_COMP_BOUNDARY_BEFORE]);
+        printf("minNoNoCompNoMaybeCC:              0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_NO_NO_COMP_NO_MAYBE_CC]);
+        printf("minNoNoEmpty:                      0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_NO_NO_EMPTY]);
         printf("limitNoNo:                         0x%04x\n", (int)indexes[Normalizer2Impl::IX_LIMIT_NO_NO]);
+        printf("minNoNoDelta:                      0x%04x\n", (int)minNoNoDelta);
         printf("minMaybeYes:                       0x%04x\n", (int)indexes[Normalizer2Impl::IX_MIN_MAYBE_YES]);
     }
 
@@ -1189,16 +772,13 @@ void Normalizer2DataBuilder::processData() {
         u_versionFromString(unicodeVersion, U_UNICODE_VERSION);
     }
     memcpy(dataInfo.dataVersion, unicodeVersion, 4);
+    return builtTrie;
 }
 
 void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
     processData();
 
     IcuToolErrorCode errorCode("gennorm2/writeBinaryFile()");
-    LocalArray<uint8_t> norm16TrieBytes(new uint8_t[norm16TrieLength]);
-    utrie2_serialize(norm16Trie, norm16TrieBytes.getAlias(), norm16TrieLength, errorCode);
-    errorCode.assertSuccess();
-
     UNewDataMemory *pData=
         udata_create(NULL, NULL, filename, &dataInfo,
                      haveCopyright ? U_COPYRIGHT_STRING : NULL, errorCode);
@@ -1208,8 +788,8 @@ void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
         exit(errorCode.reset());
     }
     udata_writeBlock(pData, indexes, sizeof(indexes));
-    udata_writeBlock(pData, norm16TrieBytes.getAlias(), norm16TrieLength);
-    udata_writeUString(pData, extraData.getBuffer(), extraData.length());
+    udata_writeBlock(pData, norm16TrieBytes, norm16TrieLength);
+    udata_writeUString(pData, toUCharPtr(extraData.getBuffer()), extraData.length());
     udata_writeBlock(pData, smallFCD, sizeof(smallFCD));
     int32_t writtenSize=udata_finish(pData, errorCode);
     if(errorCode.isFailure()) {
@@ -1226,7 +806,7 @@ void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
 
 void
 Normalizer2DataBuilder::writeCSourceFile(const char *filename) {
-    processData();
+    LocalUCPTriePointer norm16Trie = processData();
 
     IcuToolErrorCode errorCode("gennorm2/writeCSourceFile()");
     const char *basename=findBasename(filename);
@@ -1236,62 +816,226 @@ Normalizer2DataBuilder::writeCSourceFile(const char *filename) {
     if(extension!=NULL) {
         dataName.truncate((int32_t)(extension-basename));
     }
+    const char *name=dataName.data();
     errorCode.assertSuccess();
 
-    LocalArray<uint8_t> norm16TrieBytes(new uint8_t[norm16TrieLength]);
-    utrie2_serialize(norm16Trie, norm16TrieBytes.getAlias(), norm16TrieLength, errorCode);
-    errorCode.assertSuccess();
-
-    FILE *f=usrc_create(path.data(), basename, "icu/source/tools/gennorm2/n2builder.cpp");
+    FILE *f=usrc_create(path.data(), basename, 2016, "icu/source/tools/gennorm2/n2builder.cpp");
     if(f==NULL) {
         fprintf(stderr, "gennorm2/writeCSourceFile() error: unable to create the output file %s\n",
                 filename);
         exit(U_FILE_ACCESS_ERROR);
-        return;
     }
     fputs("#ifdef INCLUDED_FROM_NORMALIZER2_CPP\n\n", f);
+
     char line[100];
-    sprintf(line, "static const UVersionInfo %s_formatVersion={", dataName.data());
+    sprintf(line, "static const UVersionInfo %s_formatVersion={", name);
     usrc_writeArray(f, line, dataInfo.formatVersion, 8, 4, "};\n");
-    sprintf(line, "static const UVersionInfo %s_dataVersion={", dataName.data());
+    sprintf(line, "static const UVersionInfo %s_dataVersion={", name);
     usrc_writeArray(f, line, dataInfo.dataVersion, 8, 4, "};\n\n");
-    sprintf(line, "static const int32_t %s_indexes[Normalizer2Impl::IX_COUNT]={\n",
-            dataName.data());
-    usrc_writeArray(f,
-        line,
-        indexes, 32, Normalizer2Impl::IX_COUNT,
-        "\n};\n\n");
-    sprintf(line, "static const uint16_t %s_trieIndex[%%ld]={\n", dataName.data());
-    usrc_writeUTrie2Arrays(f,
-        line, NULL,
-        norm16Trie,
-        "\n};\n\n");
-    sprintf(line, "static const uint16_t %s_extraData[%%ld]={\n", dataName.data());
-    usrc_writeArray(f,
-        line,
-        extraData.getBuffer(), 16, extraData.length(),
-        "\n};\n\n");
-    sprintf(line, "static const uint8_t %s_smallFCD[%%ld]={\n", dataName.data());
-    usrc_writeArray(f,
-        line,
-        smallFCD, 8, sizeof(smallFCD),
-        "\n};\n\n");
-    /*fputs(  // TODO
-        "static const UCaseProps %s_singleton={\n"
-        "  NULL,\n"
-        "  %s_indexes,\n"
-        "  %s_extraData,\n"
-        "  %s_smallFCD,\n",
-        f);*/
-    sprintf(line, "static const UTrie2 %s_trie={\n", dataName.data());
-    char line2[100];
-    sprintf(line2, "%s_trieIndex", dataName.data());
-    usrc_writeUTrie2Struct(f,
-        line,
-        norm16Trie, line2, NULL,
-        "};\n");
-    fputs("\n#endif  // INCLUDED_FROM_NORMALIZER2_CPP\n", f);
+    sprintf(line, "static const int32_t %s_indexes[Normalizer2Impl::IX_COUNT]={\n", name);
+    usrc_writeArray(f, line, indexes, 32, Normalizer2Impl::IX_COUNT, "\n};\n\n");
+
+    usrc_writeUCPTrie(f, name, norm16Trie.getAlias());
+
+    sprintf(line, "static const uint16_t %s_extraData[%%ld]={\n", name);
+    usrc_writeArray(f, line, extraData.getBuffer(), 16, extraData.length(), "\n};\n\n");
+    sprintf(line, "static const uint8_t %s_smallFCD[%%ld]={\n", name);
+    usrc_writeArray(f, line, smallFCD, 8, sizeof(smallFCD), "\n};\n\n");
+
+    fputs("#endif  // INCLUDED_FROM_NORMALIZER2_CPP\n", f);
     fclose(f);
+}
+
+namespace {
+
+bool equalStrings(const UnicodeString *s1, const UnicodeString *s2) {
+    if(s1 == nullptr) {
+        return s2 == nullptr;
+    } else if(s2 == nullptr) {
+        return false;
+    } else {
+        return *s1 == *s2;
+    }
+}
+
+const char *typeChars = "?-=>";
+
+void writeMapping(FILE *f, const UnicodeString *m) {
+    if(m != nullptr && !m->isEmpty()) {
+        int32_t i = 0;
+        UChar32 c = m->char32At(i);
+        fprintf(f, "%04lX", (long)c);
+        while((i += U16_LENGTH(c)) < m->length()) {
+            c = m->char32At(i);
+            fprintf(f, " %04lX", (long)c);
+        }
+    }
+    fputs("\n", f);
+}
+
+}  // namespace
+
+void
+Normalizer2DataBuilder::writeDataFile(const char *filename, bool writeRemoved) const {
+    // Do not processData() before writing the input-syntax data file.
+    FILE *f = fopen(filename, "w");
+    if(f == nullptr) {
+        fprintf(stderr, "gennorm2/writeDataFile() error: unable to create the output file %s\n",
+                filename);
+        exit(U_FILE_ACCESS_ERROR);
+        return;
+    }
+
+    if(unicodeVersion[0] != 0 || unicodeVersion[1] != 0 ||
+            unicodeVersion[2] != 0 || unicodeVersion[3] != 0) {
+        char uv[U_MAX_VERSION_STRING_LENGTH];
+        u_versionToString(unicodeVersion, uv);
+        fprintf(f, "* Unicode %s\n\n", uv);
+    }
+
+    UnicodeSetIterator ccIter(norms.ccSet);
+    UChar32 start = U_SENTINEL;
+    UChar32 end = U_SENTINEL;
+    uint8_t prevCC = 0;
+    bool done = false;
+    bool didWrite = false;
+    do {
+        UChar32 c;
+        uint8_t cc;
+        if(ccIter.next() && !ccIter.isString()) {
+            c = ccIter.getCodepoint();
+            cc = norms.getCC(c);
+        } else {
+            c = 0x110000;
+            cc = 0;
+            done = true;
+        }
+        if(cc == prevCC && c == (end + 1)) {
+            end = c;
+        } else {
+            if(prevCC != 0) {
+                if(start == end) {
+                    fprintf(f, "%04lX:%d\n", (long)start, (int)prevCC);
+                } else {
+                    fprintf(f, "%04lX..%04lX:%d\n", (long)start, (long)end, (int)prevCC);
+                }
+                didWrite = true;
+            }
+            start = end = c;
+            prevCC = cc;
+        }
+    } while(!done);
+    if(didWrite) {
+        fputs("\n", f);
+    }
+
+    UnicodeSetIterator mIter(norms.mappingSet);
+    start = U_SENTINEL;
+    end = U_SENTINEL;
+    const UnicodeString *prevMapping = nullptr;
+    Norm::MappingType prevType = Norm::NONE;
+    done = false;
+    do {
+        UChar32 c;
+        const Norm *norm;
+        if(mIter.next() && !mIter.isString()) {
+            c = mIter.getCodepoint();
+            norm = norms.getNorm(c);
+        } else {
+            c = 0x110000;
+            norm = nullptr;
+            done = true;
+        }
+        const UnicodeString *mapping;
+        Norm::MappingType type;
+        if(norm == nullptr) {
+            mapping = nullptr;
+            type = Norm::NONE;
+        } else {
+            type = norm->mappingType;
+            if(type == Norm::NONE) {
+                mapping = nullptr;
+            } else {
+                mapping = norm->mapping;
+            }
+        }
+        if(type == prevType && equalStrings(mapping, prevMapping) && c == (end + 1)) {
+            end = c;
+        } else {
+            if(writeRemoved ? prevType != Norm::NONE : prevType > Norm::REMOVED) {
+                if(start == end) {
+                    fprintf(f, "%04lX%c", (long)start, typeChars[prevType]);
+                } else {
+                    fprintf(f, "%04lX..%04lX%c", (long)start, (long)end, typeChars[prevType]);
+                }
+                writeMapping(f, prevMapping);
+            }
+            start = end = c;
+            prevMapping = mapping;
+            prevType = type;
+        }
+    } while(!done);
+
+    fclose(f);
+}
+
+void
+Normalizer2DataBuilder::computeDiff(const Normalizer2DataBuilder &b1,
+                                    const Normalizer2DataBuilder &b2,
+                                    Normalizer2DataBuilder &diff) {
+    // Compute diff = b1 - b2
+    // so that we should be able to get b1 = b2 + diff.
+    if(0 != memcmp(b1.unicodeVersion, b2.unicodeVersion, U_MAX_VERSION_LENGTH)) {
+        memcpy(diff.unicodeVersion, b1.unicodeVersion, U_MAX_VERSION_LENGTH);
+    }
+
+    UnicodeSet ccSet(b1.norms.ccSet);
+    ccSet.addAll(b2.norms.ccSet);
+    UnicodeSetIterator ccIter(ccSet);
+    while(ccIter.next() && !ccIter.isString()) {
+        UChar32 c = ccIter.getCodepoint();
+        uint8_t cc1 = b1.norms.getCC(c);
+        uint8_t cc2 = b2.norms.getCC(c);
+        if(cc1 != cc2) {
+            diff.setCC(c, cc1);
+        }
+    }
+
+    UnicodeSet mSet(b1.norms.mappingSet);
+    mSet.addAll(b2.norms.mappingSet);
+    UnicodeSetIterator mIter(mSet);
+    while(mIter.next() && !mIter.isString()) {
+        UChar32 c = mIter.getCodepoint();
+        const Norm *norm1 = b1.norms.getNorm(c);
+        const Norm *norm2 = b2.norms.getNorm(c);
+        const UnicodeString *mapping1;
+        Norm::MappingType type1;
+        if(norm1 == nullptr || !norm1->hasMapping()) {
+            mapping1 = nullptr;
+            type1 = Norm::NONE;
+        } else {
+            mapping1 = norm1->mapping;
+            type1 = norm1->mappingType;
+        }
+        const UnicodeString *mapping2;
+        Norm::MappingType type2;
+        if(norm2 == nullptr || !norm2->hasMapping()) {
+            mapping2 = nullptr;
+            type2 = Norm::NONE;
+        } else {
+            mapping2 = norm2->mapping;
+            type2 = norm2->mappingType;
+        }
+        if(type1 == type2 && equalStrings(mapping1, mapping2)) {
+            // Nothing to do.
+        } else if(type1 == Norm::NONE) {
+            diff.removeMapping(c);
+        } else if(type1 == Norm::ROUND_TRIP) {
+            diff.setRoundTripMapping(c, *mapping1);
+        } else if(type1 == Norm::ONE_WAY) {
+            diff.setOneWayMapping(c, *mapping1);
+        }
+    }
 }
 
 U_NAMESPACE_END

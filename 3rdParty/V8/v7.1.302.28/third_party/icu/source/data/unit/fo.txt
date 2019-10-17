@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 fo{
-    Version{"2.1.28.76"}
+    Version{"2.1.48.9"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -147,10 +147,10 @@ fo{
             }
         }
         coordinate{
-            east{"{0}E"}
-            north{"{0}N"}
-            south{"{0}S"}
-            west{"{0}V"}
+            east{"{0} eystur"}
+            north{"{0} norður"}
+            south{"{0} suður"}
+            west{"{0} vestur"}
         }
         digital{
             bit{
@@ -429,6 +429,11 @@ fo{
                 dnam{"picometrar"}
                 one{"{0} picometur"}
                 other{"{0} picometrar"}
+            }
+            point{
+                dnam{"punkt"}
+                one{"{0} punkt"}
+                other{"{0} punkt"}
             }
             yard{
                 dnam{"yards"}
@@ -1055,10 +1060,10 @@ fo{
             }
         }
         coordinate{
-            east{"{0}E"}
-            north{"{0}N"}
-            south{"{0}S"}
-            west{"{0}V"}
+            east{"{0} E"}
+            north{"{0} N"}
+            south{"{0} S"}
+            west{"{0} V"}
         }
         digital{
             bit{
@@ -1087,9 +1092,9 @@ fo{
                 other{"{0} kb"}
             }
             kilobyte{
-                dnam{"KB"}
-                one{"{0} KB"}
-                other{"{0} KB"}
+                dnam{"kB"}
+                one{"{0} kB"}
+                other{"{0} kB"}
             }
             megabit{
                 dnam{"Mb"}
@@ -1337,6 +1342,11 @@ fo{
                 dnam{"pm"}
                 one{"{0} pm"}
                 other{"{0} pm"}
+            }
+            point{
+                dnam{"pkt"}
+                one{"{0} pkt"}
+                other{"{0} pkt"}
             }
             yard{
                 dnam{"yd"}

@@ -5,12 +5,12 @@
 #include "src/compiler/frame-states.h"
 
 #include "src/base/functional.h"
-#include "src/callable.h"
+#include "src/codegen/callable.h"
 #include "src/compiler/graph.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/node.h"
-#include "src/handles-inl.h"
-#include "src/objects-inl.h"
+#include "src/handles/handles-inl.h"
+#include "src/objects/objects-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -143,8 +143,8 @@ Node* CreateStubBuiltinContinuationFrameState(
   std::vector<Node*> actual_parameters;
   // Stack parameters first. Depending on {mode}, final parameters are added
   // by the deoptimizer and aren't explicitly passed in the frame state.
-  int stack_parameter_count = descriptor.GetRegisterParameterCount() -
-                              DeoptimizerParameterCountFor(mode);
+  int stack_parameter_count =
+      descriptor.GetParameterCount() - DeoptimizerParameterCountFor(mode);
   // Reserving space in the vector, except for the case where
   // stack_parameter_count is -1.
   actual_parameters.reserve(stack_parameter_count >= 0
@@ -168,7 +168,7 @@ Node* CreateStubBuiltinContinuationFrameState(
 }
 
 Node* CreateJavaScriptBuiltinContinuationFrameState(
-    JSGraph* jsgraph, Handle<SharedFunctionInfo> shared, Builtins::Name name,
+    JSGraph* jsgraph, const SharedFunctionInfoRef& shared, Builtins::Name name,
     Node* target, Node* context, Node* const* stack_parameters,
     int stack_parameter_count, Node* outer_frame_state,
     ContinuationFrameStateMode mode) {
@@ -202,7 +202,19 @@ Node* CreateJavaScriptBuiltinContinuationFrameState(
           ? FrameStateType::kJavaScriptBuiltinContinuationWithCatch
           : FrameStateType::kJavaScriptBuiltinContinuation,
       name, target, context, &actual_parameters[0],
-      static_cast<int>(actual_parameters.size()), outer_frame_state, shared);
+      static_cast<int>(actual_parameters.size()), outer_frame_state,
+      shared.object());
+}
+
+Node* CreateGenericLazyDeoptContinuationFrameState(
+    JSGraph* graph, const SharedFunctionInfoRef& shared, Node* target,
+    Node* context, Node* receiver, Node* outer_frame_state) {
+  Node* stack_parameters[]{receiver};
+  const int stack_parameter_count = arraysize(stack_parameters);
+  return CreateJavaScriptBuiltinContinuationFrameState(
+      graph, shared, Builtins::kGenericLazyDeoptContinuation, target, context,
+      stack_parameters, stack_parameter_count, outer_frame_state,
+      ContinuationFrameStateMode::LAZY);
 }
 
 }  // namespace compiler

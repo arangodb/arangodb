@@ -31,12 +31,13 @@ fil{
         151{"Silangang Europe"}
         154{"Hilagang Europe"}
         155{"Kanlurang Europe"}
+        202{"Sub-Saharan Africa"}
         419{"Latin America"}
         AC{"Acsencion island"}
         AD{"Andorra"}
         AE{"United Arab Emirates"}
         AF{"Afghanistan"}
-        AG{"Antigua and Barbuda"}
+        AG{"Antigua & Barbuda"}
         AI{"Anguilla"}
         AL{"Albania"}
         AM{"Armenia"}
@@ -58,7 +59,7 @@ fil{
         BH{"Bahrain"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Saint Barthélemy"}
+        BL{"St. Barthélemy"}
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
@@ -89,7 +90,7 @@ fil{
         CW{"Curaçao"}
         CX{"Christmas Island"}
         CY{"Cyprus"}
-        CZ{"Czech Republic"}
+        CZ{"Czechia"}
         DE{"Germany"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -97,7 +98,7 @@ fil{
         DM{"Dominica"}
         DO{"Dominican Republic"}
         DZ{"Algeria"}
-        EA{"Ceuta and Melilla"}
+        EA{"Ceuta & Melilla"}
         EC{"Ecuador"}
         EE{"Estonia"}
         EG{"Egypt"}
@@ -106,9 +107,10 @@ fil{
         ES{"Spain"}
         ET{"Ethiopia"}
         EU{"European Union"}
+        EZ{"Eurozone"}
         FI{"Finland"}
         FJ{"Fiji"}
-        FK{"Falkland Islands"}
+        FK{"Falkland Islands (Islas Malvinas)"}
         FM{"Micronesia"}
         FO{"Faroe Islands"}
         FR{"France"}
@@ -126,13 +128,13 @@ fil{
         GP{"Guadeloupe"}
         GQ{"Equatorial Guinea"}
         GR{"Greece"}
-        GS{"South Georgia and the South Sandwich Islands"}
+        GS{"South Georgia & South Sandwich Islands"}
         GT{"Guatemala"}
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
         HK{"Hong Kong"}
-        HM{"Heard Island and McDonald Islands"}
+        HM{"Heard & McDonald Islands"}
         HN{"Honduras"}
         HR{"Croatia"}
         HT{"Haiti"}
@@ -157,7 +159,7 @@ fil{
         KH{"Cambodia"}
         KI{"Kiribati"}
         KM{"Comoros"}
-        KN{"Saint Kitts and Nevis"}
+        KN{"St. Kitts & Nevis"}
         KP{"Hilagang Korea"}
         KR{"Timog Korea"}
         KW{"Kuwait"}
@@ -181,7 +183,7 @@ fil{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Marshall Islands"}
-        MK{"Macedonia"}
+        MK{"North Macedonia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -217,7 +219,7 @@ fil{
         PH{"Pilipinas"}
         PK{"Pakistan"}
         PL{"Poland"}
-        PM{"Saint Pierre and Miquelon"}
+        PM{"St. Pierre & Miquelon"}
         PN{"Pitcairn Islands"}
         PR{"Puerto Rico"}
         PS{"Palestine"}
@@ -237,9 +239,9 @@ fil{
         SD{"Sudan"}
         SE{"Sweden"}
         SG{"Singapore"}
-        SH{"Saint Helena"}
+        SH{"St. Helena"}
         SI{"Slovenia"}
-        SJ{"Svalbard and Jan Mayen"}
+        SJ{"Svalbard & Jan Mayen"}
         SK{"Slovakia"}
         SL{"Sierra Leone"}
         SM{"San Marino"}
@@ -247,13 +249,13 @@ fil{
         SO{"Somalia"}
         SR{"Suriname"}
         SS{"Timog Sudan"}
-        ST{"São Tomé and Príncipe"}
+        ST{"São Tomé & Príncipe"}
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
         SZ{"Swaziland"}
         TA{"Tristan de Cunha"}
-        TC{"Turks and Caicos Islands"}
+        TC{"Turks & Caicos Islands"}
         TD{"Chad"}
         TF{"French Southern Territories"}
         TG{"Togo"}
@@ -265,26 +267,28 @@ fil{
         TN{"Tunisia"}
         TO{"Tonga"}
         TR{"Turkey"}
-        TT{"Trinidad and Tobago"}
+        TT{"Trinidad & Tobago"}
         TV{"Tuvalu"}
         TW{"Taiwan"}
         TZ{"Tanzania"}
         UA{"Ukraine"}
         UG{"Uganda"}
         UM{"U.S. Outlying Islands"}
-        UN{"Nagkakaisang Bansa"}
+        UN{"United Nations"}
         US{"Estados Unidos"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
         VA{"Vatican City"}
-        VC{"Saint Vincent and the Grenadines"}
+        VC{"St. Vincent & Grenadines"}
         VE{"Venezuela"}
         VG{"British Virgin Islands"}
         VI{"U.S. Virgin Islands"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
-        WF{"Wallis and Futuna"}
+        WF{"Wallis & Futuna"}
         WS{"Samoa"}
+        XA{"Mga Pseudo-Accent"}
+        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -302,10 +306,8 @@ fil{
         CD{"Congo (DRC)"}
         CG{"Congo (Republika)"}
         CI{"Ivory Coast"}
-        CZ{"Czechia"}
-        FK{"Falkland Islands (Islas Malvinas)"}
-        MK{"Macedonia (FYROM)"}
+        CZ{"Czech Republic"}
         TL{"East Timor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

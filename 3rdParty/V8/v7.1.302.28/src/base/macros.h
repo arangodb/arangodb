@@ -5,11 +5,9 @@
 #ifndef V8_BASE_MACROS_H_
 #define V8_BASE_MACROS_H_
 
-
 #include <limits>
 
 #include "src/base/compiler-specific.h"
-#include "src/base/format-macros.h"
 #include "src/base/logging.h"
 
 // No-op macro which is used to work around MSVC's funky VA_ARGS support.
@@ -110,18 +108,14 @@ V8_INLINE Dest bit_cast(Source const& source) {
 }
 
 // Explicitly declare the assignment operator as deleted.
-#define DISALLOW_ASSIGN(TypeName) TypeName& operator=(const TypeName&) = delete;
+#define DISALLOW_ASSIGN(TypeName) TypeName& operator=(const TypeName&) = delete
 
 // Explicitly declare the copy constructor and assignment operator as deleted.
+// This also deletes the implicit move constructor and implicit move assignment
+// operator, but still allows to manually define them.
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
   TypeName(const TypeName&) = delete;      \
   DISALLOW_ASSIGN(TypeName)
-
-// Explicitly declare all copy/move constructors and assignments as deleted.
-#define DISALLOW_COPY_AND_MOVE_AND_ASSIGN(TypeName) \
-  TypeName(TypeName&&) = delete;                    \
-  TypeName& operator=(TypeName&&) = delete;         \
-  DISALLOW_COPY_AND_ASSIGN(TypeName)
 
 // Explicitly declare all implicit constructors as deleted, namely the
 // default constructor, copy constructor and operator= functions.
@@ -151,7 +145,7 @@ V8_INLINE Dest bit_cast(Source const& source) {
 //  odr-used by the definition of the destructor of that class, [...]
 #define DISALLOW_NEW_AND_DELETE()                            \
   void* operator new(size_t) { base::OS::Abort(); }          \
-  void* operator new[](size_t) { base::OS::Abort(); };       \
+  void* operator new[](size_t) { base::OS::Abort(); }        \
   void operator delete(void*, size_t) { base::OS::Abort(); } \
   void operator delete[](void*, size_t) { base::OS::Abort(); }
 
@@ -323,7 +317,7 @@ V8_INLINE A implicit_cast(A x) {
 #define V8PRIdPTR V8_PTR_PREFIX "d"
 #define V8PRIuPTR V8_PTR_PREFIX "u"
 
-#ifdef V8_TARGET_ARCH_64_BIT
+#if V8_TARGET_ARCH_64_BIT
 #define V8_PTR_HEX_DIGITS 12
 #define V8PRIxPTR_FMT "0x%012" V8PRIxPTR
 #else
@@ -386,7 +380,7 @@ constexpr inline T RoundUp(T x) {
 }
 
 template <typename T, typename U>
-inline bool IsAligned(T value, U alignment) {
+constexpr inline bool IsAligned(T value, U alignment) {
   return (value & (alignment - 1)) == 0;
 }
 
@@ -404,15 +398,15 @@ bool is_inbounds(float_t v) {
   static_assert(sizeof(int_t) < sizeof(biggest_int_t),
                 "int_t can't be bounds checked by the compiler");
   constexpr float_t kLowerBound =
-    static_cast<float_t>((std::numeric_limits<int_t>::min)()) - 1;
+      static_cast<float_t>(std::numeric_limits<int_t>::min()) - 1;
   constexpr float_t kUpperBound =
-    static_cast<float_t>((std::numeric_limits<int_t>::max)()) + 1;
+      static_cast<float_t>(std::numeric_limits<int_t>::max()) + 1;
   constexpr bool kLowerBoundIsMin =
       static_cast<biggest_int_t>(kLowerBound) ==
-    static_cast<biggest_int_t>((std::numeric_limits<int_t>::min)());
+      static_cast<biggest_int_t>(std::numeric_limits<int_t>::min());
   constexpr bool kUpperBoundIsMax =
       static_cast<biggest_int_t>(kUpperBound) ==
-    static_cast<biggest_int_t>((std::numeric_limits<int_t>::max)());
+      static_cast<biggest_int_t>(std::numeric_limits<int_t>::max());
   return (kLowerBoundIsMin ? (kLowerBound <= v) : (kLowerBound < v)) &&
          (kUpperBoundIsMax ? (v <= kUpperBound) : (v < kUpperBound));
 }

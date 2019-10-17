@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 mzn{
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     zoneStrings{
         fallbackFormat{"{1} ({0})"}
         gmtFormat{"GMT{0}"}

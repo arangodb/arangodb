@@ -14,9 +14,9 @@ top_builddir = ../..
 ## All the flags and other definitions are included here.
 include $(top_builddir)/icudefs.mk
 
-MIDDLE_SO_TARGET=
-
 OUTPUTFILE=pkgdata.inc
+MIDDLE_SO_TARGET=
+PKGDATA_TRAILING_SPACE=" "
 
 all : clean 
 	@echo GENCCODE_ASSEMBLY_TYPE=$(GENCCODE_ASSEMBLY) >> $(OUTPUTFILE)

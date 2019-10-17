@@ -6,8 +6,8 @@
 #define V8_COMPILER_COMMON_OPERATOR_REDUCER_H_
 
 #include "src/base/compiler-specific.h"
+#include "src/common/globals.h"
 #include "src/compiler/graph-reducer.h"
-#include "src/globals.h"
 
 namespace v8 {
 namespace internal {
@@ -24,8 +24,7 @@ class Operator;
 class V8_EXPORT_PRIVATE CommonOperatorReducer final
     : public NON_EXPORTED_BASE(AdvancedReducer) {
  public:
-  CommonOperatorReducer(Editor* editor, Graph* graph,
-                        JSHeapBroker* js_heap_broker,
+  CommonOperatorReducer(Editor* editor, Graph* graph, JSHeapBroker* broker,
                         CommonOperatorBuilder* common,
                         MachineOperatorBuilder* machine, Zone* temp_zone);
   ~CommonOperatorReducer() final = default;
@@ -43,18 +42,19 @@ class V8_EXPORT_PRIVATE CommonOperatorReducer final
   Reduction ReduceReturn(Node* node);
   Reduction ReduceSelect(Node* node);
   Reduction ReduceSwitch(Node* node);
+  Reduction ReduceStaticAssert(Node* node);
 
   Reduction Change(Node* node, Operator const* op, Node* a);
   Reduction Change(Node* node, Operator const* op, Node* a, Node* b);
 
   Graph* graph() const { return graph_; }
-  JSHeapBroker* js_heap_broker() const { return js_heap_broker_; }
+  JSHeapBroker* broker() const { return broker_; }
   CommonOperatorBuilder* common() const { return common_; }
   MachineOperatorBuilder* machine() const { return machine_; }
   Node* dead() const { return dead_; }
 
   Graph* const graph_;
-  JSHeapBroker* const js_heap_broker_;
+  JSHeapBroker* const broker_;
   CommonOperatorBuilder* const common_;
   MachineOperatorBuilder* const machine_;
   Node* const dead_;

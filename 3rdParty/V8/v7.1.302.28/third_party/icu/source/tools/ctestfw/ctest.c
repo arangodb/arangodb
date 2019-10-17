@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ********************************************************************************
@@ -420,7 +420,7 @@ static void iterateTestsWithLevel ( const TestNode* root,
             }
           } else {
             /* put -- out at 30 sp. */
-            int spaces = FLAG_INDENT-(strlen(root->name)+depth);
+            int spaces = FLAG_INDENT - ((int)strlen(root->name) + depth);
             if(spaces<0) spaces=0;
             log_testinfo(" %*s[OK] ", spaces,"---");
           }

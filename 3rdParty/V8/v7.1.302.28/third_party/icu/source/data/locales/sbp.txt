@@ -4,6 +4,7 @@ sbp{
     AuxExemplarCharacters{"[q r x z]"}
     ExemplarCharacters{"[a b c d e f g h i j k l m n o p s t u v w y]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P S T U V W Y]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -17,7 +18,7 @@ sbp{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

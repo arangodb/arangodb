@@ -1,13 +1,18 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ks{
-    AuxExemplarCharacters{"[\u200E\u200F]"}
+    AuxExemplarCharacters{"[\u200E\u200F \u064E \u064F \u0650 \u0654 \u0655 \u065F \u0656 \u0657]"}
     ExemplarCharacters{
-        "[\u06EA\u06ED \u064E \u064F \u0650 \u0654 \u0655 \u0656 \u0657 \u065A \u065B"
-        " ء آ أ ٲ ؤ ا ٮ ب پ ت ث ٹ ج چ ح خ د ذ ڈ ر ز ڑ ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن"
-        " ں ھ ہ و ۄ ی ۍ ے]"
+        "[ء آ أ ٲ ؤ ا ب پ ت ث ٹ ج چ ح خ د ذ ڈ ر ز ڑ ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں"
+        " ھ ہ و ۄ ۆ ی ۍ ؠ ے]"
     }
+    ExemplarCharactersNumbers{"[\u200E \\- , . % ‰ + 0۰ 1۱ 2۲ 3۳ 4۴ 5۵ 6۶ 7۷ 8۸ 9۹]"}
     NumberElements{
+        arabext{
+            symbols{
+                timeSeparator{":"}
+            }
+        }
         default{"arabext"}
         latn{
             patterns{
@@ -31,7 +36,7 @@ ks{
         }
         native{"arabext"}
     }
-    Version{"2.1.30.6"}
+    Version{"2.1.47.83"}
     calendar{
         generic{
             DateTimePatterns{
@@ -126,19 +131,19 @@ ks{
                 format{
                     abbreviated{
                         "آتھوار",
-                        "ژٔنٛدٕروار",
-                        "بوٚموار",
+                        "ژٔندٕروار",
+                        "بۆموار",
                         "بودوار",
-                        "برٛٮ۪سوار",
+                        "برؠسوار",
                         "جُمہ",
                         "بٹوار",
                     }
                     wide{
                         "اَتھوار",
-                        "ژٔنٛدرٕروار",
-                        "بوٚموار",
+                        "ژٔندرٕروار",
+                        "بۆموار",
                         "بودوار",
-                        "برٛٮ۪سوار",
+                        "برؠسوار",
                         "جُمہ",
                         "بٹوار",
                     }
@@ -203,14 +208,14 @@ ks{
                 format{
                     abbreviated{
                         "ژۄباگ",
-                        "دوٚیِم ژۄباگ",
-                        "ترٛیِم ژۄباگ",
+                        "دۆیِم ژۄباگ",
+                        "تریِم ژۄباگ",
                         "ژوٗرِم ژۄباگ",
                     }
                     wide{
                         "گۄڑنیُک ژۄباگ",
-                        "دوٚیِم ژۄباگ",
-                        "ترٛیِم ژۄباگ",
+                        "دۆیِم ژۄباگ",
+                        "تریِم ژۄباگ",
                         "ژوٗرِم ژۄباگ",
                     }
                 }
@@ -253,16 +258,16 @@ ks{
             dn{"دور"}
         }
         hour{
-            dn{"گٲنٛٹہٕ"}
+            dn{"گٲنٹہٕ"}
         }
         minute{
             dn{"مِنَٹ"}
         }
         month{
-            dn{"رٮ۪تھ"}
+            dn{"رؠتھ"}
         }
         second{
-            dn{"سٮ۪کَنڑ"}
+            dn{"سؠکَنڑ"}
         }
         week{
             dn{"ہفتہٕ"}

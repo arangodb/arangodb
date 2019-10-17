@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 br{
-    Version{"2.1.28.76"}
+    Version{"2.1.48.86"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -85,6 +85,7 @@ br{
                 many{"{0} a gilometroù karrez"}
                 one{"{0} c'hilometr karrez"}
                 other{"{0} kilometr karrez"}
+                per{"{0} dre gilometr karrez"}
                 two{"{0} gilometr karrez"}
             }
             square-meter{
@@ -102,6 +103,7 @@ br{
                 many{"{0} a viltirioù karrez"}
                 one{"{0} miltir karrez"}
                 other{"{0} miltir karrez"}
+                per{"{0} dre viltir karrez"}
                 two{"{0} viltir karrez"}
             }
         }
@@ -116,6 +118,22 @@ br{
                 one{"{0} c'harat"}
                 other{"{0} karat"}
                 two{"{0} garat"}
+            }
+            milligram-per-deciliter{
+                dnam{"milligramm dre zekilitr"}
+                few{"{0} milligramm dre zekilitr"}
+                many{"{0} a villigrammoù dre zekilitr"}
+                one{"{0} milligramm dre zekilitr"}
+                other{"{0} milligramm dre zekilitr"}
+                two{"{0} villigramm dre zekilitr"}
+            }
+            millimole-per-liter{
+                dnam{"millimol dre litr"}
+                few{"{0} millimol dre litr"}
+                many{"{0} a villimoloù dre litr"}
+                one{"{0} millimol dre litr"}
+                other{"{0} millimol dre litr"}
+                two{"{0} villimol dre litr"}
             }
         }
         consumption{
@@ -565,15 +583,23 @@ br{
                 other{"{0} pikometr"}
                 two{"{0} bikometr"}
             }
+            point{
+                dnam{"poent"}
+                few{"{0} foent"}
+                many{"{0} a boentoù"}
+                one{"{0} poent"}
+                other{"{0} poent"}
+                two{"{0} boent"}
+            }
         }
         light{
             lux{
                 dnam{"luksoù"}
-                few{"{0} lx"}
+                few{"{0} luks"}
                 many{"{0} a luksoù"}
                 one{"{0} luks"}
-                other{"{0} lx"}
-                two{"{0} lx"}
+                other{"{0} luks"}
+                two{"{0} luks"}
             }
         }
         mass{
@@ -953,6 +979,20 @@ br{
             }
         }
         angle{
+            arc-minute{
+                few{"{0}′"}
+                many{"{0}′"}
+                one{"{0}′"}
+                other{"{0}′"}
+                two{"{0}′"}
+            }
+            arc-second{
+                few{"{0}″"}
+                many{"{0}″"}
+                one{"{0}″"}
+                other{"{0}″"}
+                two{"{0}″"}
+            }
             degree{
                 dnam{"°"}
                 few{"{0}°"}
@@ -1019,6 +1059,7 @@ br{
                 many{"{0} km²"}
                 one{"{0} km²"}
                 other{"{0} km²"}
+                per{"{0}/km²"}
                 two{"{0} km²"}
             }
             square-meter{
@@ -1036,6 +1077,7 @@ br{
                 many{"{0} mi²"}
                 one{"{0} mi²"}
                 other{"{0} mi²"}
+                per{"{0}/mi²"}
                 two{"{0} mi²"}
             }
         }
@@ -1050,6 +1092,22 @@ br{
                 one{"{0} kt"}
                 other{"{0} kt"}
                 two{"{0} kt"}
+            }
+            milligram-per-deciliter{
+                dnam{"mg/dl"}
+                few{"{0} mg/dl"}
+                many{"{0} mg/dl"}
+                one{"{0} mg/dl"}
+                other{"{0} mg/dl"}
+                two{"{0} mg/dl"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/l"}
+                few{"{0} mmol/l"}
+                many{"{0} mmol/l"}
+                one{"{0} mmol/l"}
+                other{"{0} mmol/l"}
+                two{"{0} mmol/l"}
             }
         }
         consumption{
@@ -1167,6 +1225,15 @@ br{
             minute{
                 per{"{0}/min"}
             }
+            month{
+                dnam{"mizioù"}
+                few{"{0} miz"}
+                many{"{0} a vizioù"}
+                one{"{0} miz"}
+                other{"{0} miz"}
+                per{"{0}/miz"}
+                two{"{0} m"}
+            }
             year{
                 dnam{"b"}
                 few{"{0} b"}
@@ -1215,11 +1282,11 @@ br{
             }
             fathom{
                 dnam{"fm"}
-                few{"{0} fm"}
-                many{"{0} fm"}
-                one{"{0} fm"}
-                other{"{0} fm"}
-                two{"{0} fm"}
+                few{"{0} fth"}
+                many{"{0} fth"}
+                one{"{0} fth"}
+                other{"{0} fth"}
+                two{"{0} fth"}
             }
             foot{
                 dnam{"′"}
@@ -1320,6 +1387,14 @@ br{
                 one{"{0} pm"}
                 other{"{0} pm"}
                 two{"{0} pm"}
+            }
+            point{
+                dnam{"pt"}
+                few{"{0} pt"}
+                many{"{0} pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
+                two{"{0} pt"}
             }
         }
         light{
@@ -1665,6 +1740,20 @@ br{
             }
         }
         angle{
+            arc-minute{
+                few{"{0}′"}
+                many{"{0}′"}
+                one{"{0}′"}
+                other{"{0}′"}
+                two{"{0}′"}
+            }
+            arc-second{
+                few{"{0}″"}
+                many{"{0}″"}
+                one{"{0}″"}
+                other{"{0}″"}
+                two{"{0}″"}
+            }
             degree{
                 dnam{"deg"}
                 few{"{0} deg"}
@@ -1731,6 +1820,7 @@ br{
                 many{"{0} km²"}
                 one{"{0} km²"}
                 other{"{0} km²"}
+                per{"{0}/km²"}
                 two{"{0} km²"}
             }
             square-meter{
@@ -1748,6 +1838,7 @@ br{
                 many{"{0} mi²"}
                 one{"{0} mi²"}
                 other{"{0} mi²"}
+                per{"{0}/mi²"}
                 two{"{0} mi²"}
             }
         }
@@ -1762,6 +1853,22 @@ br{
                 one{"{0} kt"}
                 other{"{0} kt"}
                 two{"{0} kt"}
+            }
+            milligram-per-deciliter{
+                dnam{"mg/dl"}
+                few{"{0} mg/dl"}
+                many{"{0} mg/dl"}
+                one{"{0} mg/dl"}
+                other{"{0} mg/dl"}
+                two{"{0} mg/dl"}
+            }
+            millimole-per-liter{
+                dnam{"millimol/litr"}
+                few{"{0} mmol/l"}
+                many{"{0} mmol/l"}
+                one{"{0} mmol/l"}
+                other{"{0} mmol/l"}
+                two{"{0} mmol/l"}
             }
         }
         consumption{
@@ -1897,13 +2004,13 @@ br{
                 two{"{0} d"}
             }
             hour{
-                dnam{"h"}
-                few{"{0} h"}
-                many{"{0} h"}
-                one{"{0} h"}
-                other{"{0} h"}
-                per{"{0}/h"}
-                two{"{0} h"}
+                dnam{"e"}
+                few{"{0} e"}
+                many{"{0} e"}
+                one{"{0} e"}
+                other{"{0} e"}
+                per{"{0}/e"}
+                two{"{0} e"}
             }
             microsecond{
                 dnam{"μs"}
@@ -1929,6 +2036,15 @@ br{
                 other{"{0} min"}
                 per{"{0}/min"}
                 two{"{0} min"}
+            }
+            month{
+                dnam{"mizioù"}
+                few{"{0} miz"}
+                many{"{0} a vizioù"}
+                one{"{0} miz"}
+                other{"{0} miz"}
+                per{"{0}/miz"}
+                two{"{0} viz"}
             }
             nanosecond{
                 dnam{"ns"}
@@ -1999,6 +2115,14 @@ br{
                 one{"{0} cal"}
                 other{"{0} cal"}
                 two{"{0} cal"}
+            }
+            foodcalorie{
+                dnam{"Cal"}
+                few{"{0} Cal"}
+                many{"{0} Cal"}
+                one{"{0} Cal"}
+                other{"{0} Cal"}
+                two{"{0} Cal"}
             }
             joule{
                 dnam{"J"}
@@ -2095,11 +2219,11 @@ br{
             }
             fathom{
                 dnam{"fm"}
-                few{"{0} fm"}
-                many{"{0} fm"}
-                one{"{0} fm"}
-                other{"{0} fm"}
-                two{"{0} fm"}
+                few{"{0} fth"}
+                many{"{0} fth"}
+                one{"{0} fth"}
+                other{"{0} fth"}
+                two{"{0} fth"}
             }
             foot{
                 dnam{"ft"}
@@ -2203,6 +2327,14 @@ br{
                 one{"{0} pm"}
                 other{"{0} pm"}
                 two{"{0} pm"}
+            }
+            point{
+                dnam{"pt"}
+                few{"{0} pt"}
+                many{"{0} pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
+                two{"{0} pt"}
             }
         }
         light{

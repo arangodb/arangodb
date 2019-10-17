@@ -124,6 +124,10 @@ tzm{
         }
         MRO{
             "MRO",
+            "Uqiyya Umuritani (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Uqiyya Umuritani",
         }
         MUR{
@@ -180,6 +184,10 @@ tzm{
         }
         STD{
             "STD",
+            "Dubra Usawṭumi (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dubra Usawṭumi",
         }
         SZL{
@@ -227,5 +235,5 @@ tzm{
             "Ḍular Uzimbabwi",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

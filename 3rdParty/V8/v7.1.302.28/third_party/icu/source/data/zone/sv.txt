@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sv{
-    Version{"2.1.30.7"}
+    Version{"2.1.48.90"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -507,6 +507,9 @@ sv{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -657,6 +660,9 @@ sv{
         "Asia:Ashgabat"{
             ec{"Asjchabad"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -707,6 +713,9 @@ sv{
         }
         "Asia:Dushanbe"{
             ec{"Dusjanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -800,6 +809,9 @@ sv{
         }
         "Asia:Qatar"{
             ec{"Qatar"}
+        }
+        "Asia:Qostanay"{
+            ec{"Kostanaj"}
         }
         "Asia:Qyzylorda"{
             ec{"Qyzylorda"}
@@ -942,6 +954,10 @@ sv{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Koordinerad universell tid"}
+            ss{"UTC"}
+        }
         "Etc:Unknown"{
             ec{"okänd stad"}
         }
@@ -1072,6 +1088,9 @@ sv{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1669,9 +1688,9 @@ sv{
             ls{"Lord Howe, normaltid"}
         }
         "meta:Macau"{
-            ld{"Macausommartid"}
-            lg{"Macautid"}
-            ls{"Macaunormaltid"}
+            ld{"Macaosommartid"}
+            lg{"Macaotid"}
+            ls{"Macaonormaltid"}
         }
         "meta:Macquarie"{
             ls{"Macquarietid"}

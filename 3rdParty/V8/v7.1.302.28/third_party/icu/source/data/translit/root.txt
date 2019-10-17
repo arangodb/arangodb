@@ -522,9 +522,22 @@ root {
         ka-Latn-t-ka-m0-bgn {
             alias {"ka-ka_Latn/BGN"}
         }
+        ka-Latn-t-ka-m0-bgn-2009 {
+            alias {"ka-ka_Latn/BGN"}
+        }
         ka-ka_Latn/BGN {
             file {
                 resource:process(transliterator) {"ka_ka_Latn_BGN.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
+        ka-Latn-t-ka-m0-bgn-1981 {
+            alias {"ka-ka_Latn/BGN_1981"}
+        }
+        ka-ka_Latn/BGN_1981 {
+            file {
+                resource:process(transliterator) {"ka_ka_Latn_BGN_1981.txt"}
                 direction {"FORWARD"}
             }
         }
@@ -2570,6 +2583,16 @@ root {
             }
         }
 
+        blt-fonipa-t-blt {
+            alias {"blt-blt_FONIPA"}
+        }
+        blt-blt_FONIPA {
+            file {
+                resource:process(transliterator) {"blt_blt_FONIPA.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
         am-t-ch {
             alias {"ch-am"}
         }
@@ -2716,6 +2739,26 @@ root {
         cs_FONIPA-ko {
             file {
                 resource:process(transliterator) {"cs_FONIPA_ko.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
+        cy-fonipa-t-cy {
+            alias {"cy-cy_FONIPA"}
+        }
+        cy-cy_FONIPA {
+            file {
+                resource:process(transliterator) {"cy_cy_FONIPA.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
+        de-t-de-d0-ascii {
+            alias {"de-ASCII"}
+        }
+        de-ASCII {
+            file {
+                resource:process(transliterator) {"de_ASCII.txt"}
                 direction {"FORWARD"}
             }
         }
@@ -2976,6 +3019,26 @@ root {
         es_FONIPA-zh {
             file {
                 resource:process(transliterator) {"es_FONIPA_zh.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
+        fa-fonipa-t-fa {
+            alias {"fa-fa_FONIPA"}
+        }
+        fa-fa_FONIPA {
+            file {
+                resource:process(transliterator) {"fa_fa_FONIPA.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
+        ha-NE-t-ha {
+            alias {"ha-ha_NE"}
+        }
+        ha-ha_NE {
+            file {
+                resource:process(transliterator) {"ha_ha_NE.txt"}
                 direction {"FORWARD"}
             }
         }
@@ -3370,6 +3433,16 @@ root {
             }
         }
 
+        my-t-my-d0-zawgyi {
+            alias {"my-Zawgyi"}
+        }
+        my-Zawgyi {
+            file {
+                resource:process(transliterator) {"my_Zawgyi.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
         my-t-my-s0-zawgyi {
             alias {"Zawgyi-my"}
         }
@@ -3386,6 +3459,16 @@ root {
         nl-Title {
             file {
                 resource:process(transliterator) {"nl_Title.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
+        nv-fonipa-t-nv {
+            alias {"nv-nv_FONIPA"}
+        }
+        nv-nv_FONIPA {
+            file {
+                resource:process(transliterator) {"nv_nv_FONIPA.txt"}
                 direction {"FORWARD"}
             }
         }
@@ -3793,6 +3876,16 @@ root {
             }
         }
 
+        ta-fonipa-t-ta {
+            alias {"ta-ta_FONIPA"}
+        }
+        ta-ta_FONIPA {
+            file {
+                resource:process(transliterator) {"ta_ta_FONIPA.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
         am-t-tlh {
             alias {"tlh-am"}
         }
@@ -3873,6 +3966,16 @@ root {
             }
         }
 
+        ug-fonipa-t-ug {
+            alias {"ug-ug_FONIPA"}
+        }
+        ug-ug_FONIPA {
+            file {
+                resource:process(transliterator) {"ug_ug_FONIPA.txt"}
+                direction {"FORWARD"}
+            }
+        }
+
         ar-t-und-fonipa {
             alias {"und_FONIPA-ar"}
         }
@@ -3919,6 +4022,16 @@ root {
             file {
                 resource:process(transliterator) {"uz_Cyrl_uz_Latn.txt"}
                 direction {"REVERSE"}
+            }
+        }
+
+        vec-fonipa-t-vec {
+            alias {"vec-vec_FONIPA"}
+        }
+        vec-vec_FONIPA {
+            file {
+                resource:process(transliterator) {"vec_vec_FONIPA.txt"}
+                direction {"FORWARD"}
             }
         }
 

@@ -36,19 +36,16 @@ class JSRegExpStringIterator : public JSObject {
   DECL_PRINTER(JSRegExpStringIterator)
   DECL_VERIFIER(JSRegExpStringIterator)
 
-  static const int kIteratingRegExpOffset = JSObject::kHeaderSize;
-  static const int kIteratedStringOffset =
-      kIteratingRegExpOffset + kPointerSize;
-  static const int kFlagsOffset = kIteratedStringOffset + kPointerSize;
-
-  static const int kSize = kFlagsOffset + kPointerSize;
+  // Layout description.
+  DEFINE_FIELD_OFFSET_CONSTANTS(
+    JSObject::kHeaderSize,
+    TORQUE_GENERATED_JSREG_EXP_STRING_ITERATOR_FIELDS)
 
   static const int kDoneBit = 0;
   static const int kGlobalBit = 1;
   static const int kUnicodeBit = 2;
 
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSRegExpStringIterator);
+  OBJECT_CONSTRUCTORS(JSRegExpStringIterator, JSObject);
 };
 
 }  // namespace internal

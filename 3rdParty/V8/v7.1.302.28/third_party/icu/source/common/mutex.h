@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ******************************************************************************
@@ -34,9 +34,9 @@ U_NAMESPACE_BEGIN
 // private mutex where possible.
 
 // For example:
-// 
-// UMutex myMutex;
-// 
+//
+// UMutex myMutex = U_MUTEX_INITIALIZER;
+//
 // void Function(int arg1, int arg2)
 // {
 //    static Object* foo;     // Shared read-write object

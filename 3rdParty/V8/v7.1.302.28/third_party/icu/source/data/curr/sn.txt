@@ -124,6 +124,10 @@ sn{
         }
         MRO{
             "MRO",
+            "Ugwiya ye Moritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ugwiya ye Moritania",
         }
         MUR{
@@ -180,6 +184,10 @@ sn{
         }
         STD{
             "STD",
+            "Dobra re Sao Tome ne Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra re Sao Tome ne Principe",
         }
         SZL{
@@ -231,5 +239,5 @@ sn{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.48.4"}
 }

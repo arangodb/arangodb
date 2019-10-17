@@ -124,6 +124,10 @@ rn{
         }
         MRO{
             "MRO",
+            "Ugwiya ryo muri Moritaniya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ugwiya ryo muri Moritaniya",
         }
         MUR{
@@ -176,6 +180,10 @@ rn{
         }
         STD{
             "STD",
+            "Idobura ryo muri Sawotome na Perensipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Idobura ryo muri Sawotome na Perensipe",
         }
         SZL{
@@ -215,5 +223,5 @@ rn{
             "Idolari ryo muri Zimbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

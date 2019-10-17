@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 lv{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.43"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidžana"}
@@ -232,7 +232,7 @@ lv{
             ec{"Buenosairesa"}
         }
         "America:Cambridge_Bay"{
-            ec{"Keimbridžbeja"}
+            ec{"Kembridžbeja"}
         }
         "America:Campo_Grande"{
             ec{"Kampugrandi"}
@@ -507,6 +507,9 @@ lv{
         "America:Puerto_Rico"{
             ec{"Puertoriko"}
         }
+        "America:Punta_Arenas"{
+            ec{"Puntaarenasa"}
+        }
         "America:Rainy_River"{
             ec{"Reinirivera"}
         }
@@ -657,6 +660,9 @@ lv{
         "Asia:Ashgabat"{
             ec{"Ašgabata"}
         }
+        "Asia:Atyrau"{
+            ec{"Atirau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdāde"}
         }
@@ -707,6 +713,9 @@ lv{
         }
         "Asia:Dushanbe"{
             ec{"Dušanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -942,6 +951,9 @@ lv{
         "Australia:Sydney"{
             ec{"Sidneja"}
         }
+        "Etc:UTC"{
+            ls{"Universālais koordinētais laiks"}
+        }
         "Etc:Unknown"{
             ec{"nezināma pilsēta"}
         }
@@ -1072,6 +1084,9 @@ lv{
         }
         "Europe:Sarajevo"{
             ec{"Sarajeva"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratova"}
         }
         "Europe:Simferopol"{
             ec{"Simferopole"}
@@ -1509,7 +1524,7 @@ lv{
             ls{"Fidži ziemas laiks"}
         }
         "meta:French_Guiana"{
-            ls{"Franču Gviānas laiks"}
+            ls{"Francijas Gviānas laiks"}
         }
         "meta:French_Southern"{
             ls{"Francijas Dienvidjūru un Antarktikas teritorijas laiks"}
@@ -1708,7 +1723,7 @@ lv{
             ls{"Ņūfaundlendas ziemas laiks"}
         }
         "meta:Niue"{
-            ls{"Niue laiks"}
+            ls{"Niues laiks"}
         }
         "meta:Norfolk"{
             ls{"Norfolkas salas laiks"}

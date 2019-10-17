@@ -8,7 +8,7 @@ en_US_POSIX{
                 "&A<*'\u0020'-'/'<*0-'@'<*ABCDEFGHIJKLMNOPQRSTUVWXYZ<*'['-'`'<*abcdefghijklmnopqrstuvwxyz"
                 "<*'{'-'\u007F'"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

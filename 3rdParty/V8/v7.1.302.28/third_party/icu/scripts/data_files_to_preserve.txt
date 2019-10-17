@@ -14,8 +14,12 @@ region/reslocal.mk
 locales/reslocal.mk
 unit/reslocal.mk
 sprep/spreplocal.mk
-brkitr/khmerdict.txt
-brkitr/word_ja.txt
+brkitr/dictionaries/khmerdict.txt
+brkitr/rules/word_ja.txt
+brkitr/root.txt
+brkitr/ja.txt
+brkitr/zh.txt
+brkitr/zh_Hant.txt
 locales/an.txt
 locales/ku.txt
 locales/tg.txt
@@ -24,4 +28,4 @@ lang/an.txt
 lang/ku.txt
 lang/tg.txt
 lang/wa.txt
-translit/css3transform.txt
+translit/root_subset.txt

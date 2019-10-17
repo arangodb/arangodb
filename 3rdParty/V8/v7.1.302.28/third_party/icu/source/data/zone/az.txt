@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 az{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abican"}
@@ -507,6 +507,9 @@ az{
         "America:Puerto_Rico"{
             ec{"Puerto Riko"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Reyni Çayı"}
         }
@@ -547,7 +550,7 @@ az{
             ec{"Sitka"}
         }
         "America:St_Barthelemy"{
-            ec{"San Bartolomey"}
+            ec{"Sent-Bartelemi"}
         }
         "America:St_Johns"{
             ec{"Sent Cons"}
@@ -598,7 +601,7 @@ az{
             ec{"Yakutat"}
         }
         "America:Yellowknife"{
-            ec{"Yelounayf"}
+            ec{"Yellounayf"}
         }
         "Antarctica:Casey"{
             ec{"Keysi"}
@@ -657,6 +660,9 @@ az{
         "Asia:Ashgabat"{
             ec{"Aşqabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atırau"}
+        }
         "Asia:Baghdad"{
             ec{"Bağdad"}
         }
@@ -707,6 +713,9 @@ az{
         }
         "Asia:Dushanbe"{
             ec{"Düşənbə"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famaqusta"}
         }
         "Asia:Gaza"{
             ec{"Qəza"}
@@ -880,7 +889,7 @@ az{
             ec{"Azor"}
         }
         "Atlantic:Bermuda"{
-            ec{"Bermuda"}
+            ec{"Bermud adaları"}
         }
         "Atlantic:Canary"{
             ec{"Kanar"}
@@ -942,6 +951,9 @@ az{
         "Australia:Sydney"{
             ec{"Sidney"}
         }
+        "Etc:UTC"{
+            ls{"Koordinasiya edilmiş ümumdünya vaxtı"}
+        }
         "Etc:Unknown"{
             ec{"Naməlum Şəhər"}
         }
@@ -1001,7 +1013,7 @@ az{
             ec{"Men Adası"}
         }
         "Europe:Istanbul"{
-            ec{"Istanbul"}
+            ec{"İstanbul"}
         }
         "Europe:Jersey"{
             ec{"Cersi"}
@@ -1073,6 +1085,9 @@ az{
         "Europe:Sarajevo"{
             ec{"Sarayevo"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopol"}
         }
@@ -1095,7 +1110,7 @@ az{
             ec{"Ulyanovsk"}
         }
         "Europe:Uzhgorod"{
-            ec{"Ujgorod"}
+            ec{"Ujqorod"}
         }
         "Europe:Vaduz"{
             ec{"Vaduts"}
@@ -1739,9 +1754,9 @@ az{
             ls{"Feniks Adaları Vaxtı"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"San Pier və Mikelon Yay Vaxtı"}
-            lg{"San Pier və Mikelon Vaxtı"}
-            ls{"San Pier və Mikelon Standart Vaxtı"}
+            ld{"Müqəddəs Pyer və Mikelon Yay Vaxtı"}
+            lg{"Müqəddəs Pyer və Mikelon Vaxtı"}
+            ls{"Müqəddəs Pyer və Mikelon Standart Vaxtı"}
         }
         "meta:Pitcairn"{
             ls{"Pitkern Vaxtı"}

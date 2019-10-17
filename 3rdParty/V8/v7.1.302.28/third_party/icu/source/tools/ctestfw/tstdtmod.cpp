@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /********************************************************************
  * COPYRIGHT: 
@@ -13,25 +13,21 @@
 #include "unicode/tstdtmod.h"
 #include "cmemory.h"
 #include <stdio.h>
+#include "cstr.h"
+#include "cstring.h"
 
 TestLog::~TestLog() {}
 
 IcuTestErrorCode::~IcuTestErrorCode() {
-    // Safe because our handleFailure() does not throw exceptions.
-    if(isFailure()) { handleFailure(); }
+    // Safe because our errlog() does not throw exceptions.
+    if(isFailure()) {
+        errlog(FALSE, u"destructor: expected success", nullptr);
+    }
 }
 
-UBool IcuTestErrorCode::logIfFailureAndReset(const char *fmt, ...) {
+UBool IcuTestErrorCode::errIfFailureAndReset() {
     if(isFailure()) {
-        char buffer[4000];
-        va_list ap;
-        va_start(ap, fmt);
-        vsprintf(buffer, fmt, ap);
-        va_end(ap);
-        UnicodeString msg(testName, -1, US_INV);
-        msg.append(UNICODE_STRING_SIMPLE(" failure: ")).append(UnicodeString(errorName(), -1, US_INV));
-        msg.append(UNICODE_STRING_SIMPLE(" - ")).append(UnicodeString(buffer, -1, US_INV));
-        testClass.errln(msg);
+        errlog(FALSE, u"expected success", nullptr);
         reset();
         return TRUE;
     } else {
@@ -40,31 +36,98 @@ UBool IcuTestErrorCode::logIfFailureAndReset(const char *fmt, ...) {
     }
 }
 
-UBool IcuTestErrorCode::logDataIfFailureAndReset(const char *fmt, ...) {
+UBool IcuTestErrorCode::errIfFailureAndReset(const char *fmt, ...) {
     if(isFailure()) {
         char buffer[4000];
         va_list ap;
         va_start(ap, fmt);
         vsprintf(buffer, fmt, ap);
         va_end(ap);
-        UnicodeString msg(testName, -1, US_INV);
-        msg.append(UNICODE_STRING_SIMPLE(" failure: ")).append(UnicodeString(errorName(), -1, US_INV));
-        msg.append(UNICODE_STRING_SIMPLE(" - ")).append(UnicodeString(buffer, -1, US_INV));
-        testClass.dataerrln(msg);
+        errlog(FALSE, u"expected success", buffer);
         reset();
         return TRUE;
     } else {
         reset();
         return FALSE;
     }
+}
+
+UBool IcuTestErrorCode::errDataIfFailureAndReset() {
+    if(isFailure()) {
+        errlog(TRUE, u"data: expected success", nullptr);
+        reset();
+        return TRUE;
+    } else {
+        reset();
+        return FALSE;
+    }
+}
+
+UBool IcuTestErrorCode::errDataIfFailureAndReset(const char *fmt, ...) {
+    if(isFailure()) {
+        char buffer[4000];
+        va_list ap;
+        va_start(ap, fmt);
+        vsprintf(buffer, fmt, ap);
+        va_end(ap);
+        errlog(TRUE, u"data: expected success", buffer);
+        reset();
+        return TRUE;
+    } else {
+        reset();
+        return FALSE;
+    }
+}
+
+UBool IcuTestErrorCode::expectErrorAndReset(UErrorCode expectedError) {
+    if(get() != expectedError) {
+        errlog(FALSE, UnicodeString(u"expected: ") + u_errorName(expectedError), nullptr);
+    }
+    UBool retval = isFailure();
+    reset();
+    return retval;
+}
+
+UBool IcuTestErrorCode::expectErrorAndReset(UErrorCode expectedError, const char *fmt, ...) {
+    if(get() != expectedError) {
+        char buffer[4000];
+        va_list ap;
+        va_start(ap, fmt);
+        vsprintf(buffer, fmt, ap);
+        va_end(ap);
+        errlog(FALSE, UnicodeString(u"expected: ") + u_errorName(expectedError), buffer);
+    }
+    UBool retval = isFailure();
+    reset();
+    return retval;
+}
+
+void IcuTestErrorCode::setScope(const char* message) {
+    scopeMessage.remove().append({ message, -1, US_INV });
+}
+
+void IcuTestErrorCode::setScope(const UnicodeString& message) {
+    scopeMessage = message;
 }
 
 void IcuTestErrorCode::handleFailure() const {
-    // testClass.errln("%s failure - %s", testName, errorName());
-    UnicodeString msg(testName, -1, US_INV);
-    msg.append(UNICODE_STRING_SIMPLE(" failure: ")).append(UnicodeString(errorName(), -1, US_INV));
+    errlog(FALSE, u"(handleFailure)", nullptr);
+}
 
-    if (get() == U_MISSING_RESOURCE_ERROR || get() == U_FILE_ACCESS_ERROR) {
+void IcuTestErrorCode::errlog(UBool dataErr, const UnicodeString& mainMessage, const char* extraMessage) const {
+    UnicodeString msg(testName, -1, US_INV);
+    msg.append(u' ').append(mainMessage);
+    msg.append(u" but got error: ").append(UnicodeString(errorName(), -1, US_INV));
+
+    if (!scopeMessage.isEmpty()) {
+        msg.append(u" scope: ").append(scopeMessage);
+    }
+
+    if (extraMessage != nullptr) {
+        msg.append(u" - ").append(UnicodeString(extraMessage, -1, US_INV));
+    }
+
+    if (dataErr || get() == U_MISSING_RESOURCE_ERROR || get() == U_FILE_ACCESS_ERROR) {
         testClass.dataerrln(msg);
     } else {
         testClass.errln(msg);

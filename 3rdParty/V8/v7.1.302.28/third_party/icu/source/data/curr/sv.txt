@@ -262,6 +262,10 @@ sv{
             "CLP",
             "chilensk peso",
         }
+        CNH{
+            "CNH",
+            "CNH",
+        }
         CNX{
             "CNX",
             "kinesisk dollar",
@@ -680,6 +684,10 @@ sv{
         }
         MRO{
             "MRO",
+            "mauretansk ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "mauretansk ouguiya",
         }
         MTL{
@@ -780,7 +788,7 @@ sv{
         }
         PEN{
             "PEN",
-            "peruansk nuevo sol",
+            "peruansk sol",
         }
         PES{
             "PES",
@@ -912,6 +920,10 @@ sv{
         }
         STD{
             "STD",
+            "saotomeansk dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "saotomeansk dobra",
         }
         SUR{
@@ -1032,6 +1044,10 @@ sv{
         }
         VEF{
             "VEF",
+            "venezuelansk bolívar (2008–2018)",
+        }
+        VES{
+            "VES",
             "venezuelansk bolívar",
         }
         VND{
@@ -1131,7 +1147,7 @@ sv{
             "afrikansk kontoenhet",
         }
         XXX{
-            "XXX",
+            "¤",
             "okänd valuta",
         }
         YDD{
@@ -1235,7 +1251,6 @@ sv{
         HNL{"L"}
         HRK{"kn"}
         HUF{"Ft"}
-        IDR{"Rp"}
         ILS{"₪"}
         INR{"₹"}
         ISK{"kr"}
@@ -1276,7 +1291,6 @@ sv{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1556,6 +1570,10 @@ sv{
         CLP{
             one{"chilensk peso"}
             other{"chilenska pesos"}
+        }
+        CNH{
+            one{"CNH"}
+            other{"CNH"}
         }
         CNX{
             one{"kinesisk dollar"}
@@ -1974,6 +1992,10 @@ sv{
             other{"makanesiska pataca"}
         }
         MRO{
+            one{"mauretansk ouguiya (1973–2017)"}
+            other{"mauretanska ouguiya (1973–2017)"}
+        }
+        MRU{
             one{"mauretansk ouguiya"}
             other{"mauretanska ouguiya"}
         }
@@ -2074,8 +2096,8 @@ sv{
             other{"peruanska intier"}
         }
         PEN{
-            one{"peruansk nuevo sol"}
-            other{"peruanska nuevo sol"}
+            one{"peruansk sol"}
+            other{"peruanska sol"}
         }
         PES{
             one{"peruansk sol (1863–1965)"}
@@ -2206,6 +2228,10 @@ sv{
             other{"sydsudanesiska pund"}
         }
         STD{
+            one{"saotomeansk dobra (1977–2017)"}
+            other{"saotomeanska dobra (1977–2017)"}
+        }
+        STN{
             one{"saotomeansk dobra"}
             other{"saotomeanska dobra"}
         }
@@ -2326,6 +2352,10 @@ sv{
             other{"venezuelanska bolivar (1871–2008)"}
         }
         VEF{
+            one{"venezuelansk bolívar (2008–2018)"}
+            other{"venezuelanska bolívar (2008–2018)"}
+        }
+        VES{
             one{"venezuelansk bolívar"}
             other{"venezuelanska bolívar"}
         }
@@ -2494,5 +2524,5 @@ sv{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.30.7"}
+    Version{"2.1.48.90"}
 }

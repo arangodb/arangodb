@@ -7,9 +7,9 @@
 
 #include <memory>
 
-#include "src/globals.h"
-#include "src/handles.h"
-#include "src/vector.h"
+#include "src/common/globals.h"
+#include "src/handles/handles.h"
+#include "src/utils/vector.h"
 #include "src/wasm/signature-map.h"
 #include "src/wasm/wasm-constants.h"
 #include "src/wasm/wasm-opcodes.h"
@@ -72,7 +72,7 @@ struct WasmGlobal {
 
 // Note: An exception signature only uses the params portion of a
 // function signature.
-typedef FunctionSig WasmExceptionSig;
+using WasmExceptionSig = FunctionSig;
 
 // Static representation of a wasm exception type.
 struct WasmException {
@@ -84,8 +84,16 @@ struct WasmException {
 
 // Static representation of a wasm data segment.
 struct WasmDataSegment {
+  // Construct an active segment.
+  explicit WasmDataSegment(WasmInitExpr dest_addr)
+      : dest_addr(dest_addr), active(true) {}
+
+  // Construct a passive segment, which has no dest_addr.
+  WasmDataSegment() : active(false) {}
+
   WasmInitExpr dest_addr;  // destination memory address of the data.
   WireBytesRef source;     // start offset in the module bytes.
+  bool active = true;      // true if copied automatically during instantiation.
 };
 
 // Static representation of a wasm indirect call table.
@@ -95,40 +103,72 @@ struct WasmTable {
   uint32_t initial_size = 0;      // initial table size.
   uint32_t maximum_size = 0;      // maximum table size.
   bool has_maximum_size = false;  // true if there is a maximum size.
-  // TODO(titzer): Move this to WasmInstance. Needed by interpreter only.
-  std::vector<int32_t> values;  // function table, -1 indicating invalid.
   bool imported = false;        // true if imported.
   bool exported = false;        // true if exported.
 };
 
-// Static representation of how to initialize a table.
-struct WasmTableInit {
-  MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(WasmTableInit);
+// Static representation of wasm element segment (table initializer).
+struct WasmElemSegment {
+  MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(WasmElemSegment);
 
-  WasmTableInit(uint32_t table_index, WasmInitExpr offset)
-      : table_index(table_index), offset(offset) {}
+  // Construct an active segment.
+  WasmElemSegment(uint32_t table_index, WasmInitExpr offset)
+      : table_index(table_index), offset(offset), active(true) {}
+
+  // Construct a passive segment, which has no table index or offset.
+  WasmElemSegment() : table_index(0), active(false) {}
+
+  // Used in the {entries} vector to represent a `ref.null` entry in a passive
+  // segment.
+  V8_EXPORT_PRIVATE static const uint32_t kNullIndex = ~0u;
 
   uint32_t table_index;
   WasmInitExpr offset;
   std::vector<uint32_t> entries;
+  bool active;  // true if copied automatically during instantiation.
 };
 
 // Static representation of a wasm import.
 struct WasmImport {
-  WireBytesRef module_name;  // module name.
-  WireBytesRef field_name;   // import name.
+  WireBytesRef module_name;   // module name.
+  WireBytesRef field_name;    // import name.
   ImportExportKindCode kind;  // kind of the import.
-  uint32_t index;            // index into the respective space.
+  uint32_t index;             // index into the respective space.
 };
 
 // Static representation of a wasm export.
 struct WasmExport {
-  WireBytesRef name;      // exported name.
+  WireBytesRef name;          // exported name.
   ImportExportKindCode kind;  // kind of the export.
-  uint32_t index;         // index into the respective space.
+  uint32_t index;             // index into the respective space.
 };
 
-enum ModuleOrigin : uint8_t { kWasmOrigin, kAsmJsOrigin };
+enum class WasmCompilationHintStrategy : uint8_t {
+  kDefault = 0,
+  kLazy = 1,
+  kEager = 2,
+  kLazyBaselineEagerTopTier = 3,
+};
+
+enum class WasmCompilationHintTier : uint8_t {
+  kDefault = 0,
+  kInterpreter = 1,
+  kBaseline = 2,
+  kOptimized = 3,
+};
+
+// Static representation of a wasm compilation hint
+struct WasmCompilationHint {
+  WasmCompilationHintStrategy strategy;
+  WasmCompilationHintTier baseline_tier;
+  WasmCompilationHintTier top_tier;
+};
+
+enum ModuleOrigin : uint8_t {
+  kWasmOrigin,
+  kAsmJsSloppyOrigin,
+  kAsmJsStrictOrigin
+};
 
 #define SELECT_WASM_COUNTER(counters, origin, prefix, suffix)     \
   ((origin) == kWasmOrigin ? (counters)->prefix##_wasm_##suffix() \
@@ -152,11 +192,14 @@ struct V8_EXPORT_PRIVATE WasmModule {
   std::vector<WasmGlobal> globals;
   // Size of the buffer required for all globals that are not imported and
   // mutable.
-  uint32_t globals_buffer_size = 0;
+  uint32_t untagged_globals_buffer_size = 0;
+  uint32_t tagged_globals_buffer_size = 0;
   uint32_t num_imported_mutable_globals = 0;
   uint32_t num_imported_functions = 0;
+  uint32_t num_imported_tables = 0;
   uint32_t num_declared_functions = 0;  // excluding imported
   uint32_t num_exported_functions = 0;
+  uint32_t num_declared_data_segments = 0;  // From the DataCount section.
   WireBytesRef name = {0, 0};
   std::vector<FunctionSig*> signatures;  // by signature index
   std::vector<uint32_t> signature_ids;   // by signature index
@@ -166,7 +209,8 @@ struct V8_EXPORT_PRIVATE WasmModule {
   std::vector<WasmImport> import_table;
   std::vector<WasmExport> export_table;
   std::vector<WasmException> exceptions;
-  std::vector<WasmTableInit> table_inits;
+  std::vector<WasmElemSegment> elem_segments;
+  std::vector<WasmCompilationHint> compilation_hints;
   SignatureMap signature_map;  // canonicalizing map for signature indexes.
 
   ModuleOrigin origin = kWasmOrigin;  // origin of the module
@@ -174,21 +218,33 @@ struct V8_EXPORT_PRIVATE WasmModule {
       function_names;
   std::string source_map_url;
 
-  explicit WasmModule(std::unique_ptr<Zone> owned = nullptr);
+  explicit WasmModule(std::unique_ptr<Zone> signature_zone = nullptr);
 
   WireBytesRef LookupFunctionName(const ModuleWireBytes& wire_bytes,
                                   uint32_t function_index) const;
   void AddFunctionNameForTesting(int function_index, WireBytesRef name);
 };
 
-size_t EstimateWasmModuleSize(const WasmModule* module);
+inline bool is_asmjs_module(const WasmModule* module) {
+  return module->origin != kWasmOrigin;
+}
+
+size_t EstimateStoredSize(const WasmModule* module);
+
+// Returns the number of possible export wrappers for a given module.
+V8_EXPORT_PRIVATE int MaxNumExportWrappers(const WasmModule* module);
+
+// Returns the wrapper index for a function in {module} with signature {sig}
+// and origin defined by {is_import}.
+int GetExportWrapperIndex(const WasmModule* module, const FunctionSig* sig,
+                          bool is_import);
 
 // Interface to the storage (wire bytes) of a wasm module.
 // It is illegal for anyone receiving a ModuleWireBytes to store pointers based
 // on module_bytes, as this storage is only guaranteed to be alive as long as
 // this struct is alive.
 struct V8_EXPORT_PRIVATE ModuleWireBytes {
-  ModuleWireBytes(Vector<const byte> module_bytes)
+  explicit ModuleWireBytes(Vector<const byte> module_bytes)
       : module_bytes_(module_bytes) {}
   ModuleWireBytes(const byte* start, const byte* end)
       : module_bytes_(start, static_cast<int>(end - start)) {
@@ -214,7 +270,7 @@ struct V8_EXPORT_PRIVATE ModuleWireBytes {
   }
 
   Vector<const byte> module_bytes() const { return module_bytes_; }
-  const byte* start() const { return module_bytes_.start(); }
+  const byte* start() const { return module_bytes_.begin(); }
   const byte* end() const { return module_bytes_.end(); }
   size_t length() const { return module_bytes_.length(); }
 
@@ -270,7 +326,7 @@ class TruncatedUserString {
  public:
   template <typename T>
   explicit TruncatedUserString(Vector<T> name)
-      : TruncatedUserString(name.start(), name.length()) {}
+      : TruncatedUserString(name.begin(), name.length()) {}
 
   TruncatedUserString(const byte* start, size_t len)
       : TruncatedUserString(reinterpret_cast<const char*>(start), len) {}

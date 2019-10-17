@@ -8,7 +8,8 @@
 #include "src/base/flags.h"
 #include "src/compiler/frame-states.h"
 #include "src/compiler/graph-reducer.h"
-#include "src/deoptimize-reason.h"
+#include "src/compiler/node-properties.h"
+#include "src/deoptimizer/deoptimize-reason.h"
 
 namespace v8 {
 namespace internal {
@@ -28,6 +29,8 @@ struct FieldAccess;
 class JSGraph;
 class JSHeapBroker;
 class JSOperatorBuilder;
+class MapInference;
+class NodeProperties;
 class SimplifiedOperatorBuilder;
 
 // Performs strength reduction on {JSConstruct} and {JSCall} nodes,
@@ -36,16 +39,14 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
  public:
   // Flags that control the mode of operation.
   enum Flag { kNoFlags = 0u, kBailoutOnUninitialized = 1u << 0 };
-  typedef base::Flags<Flag> Flags;
+  using Flags = base::Flags<Flag>;
 
-  JSCallReducer(Editor* editor, JSGraph* jsgraph, JSHeapBroker* js_heap_broker,
-                Flags flags, Handle<Context> native_context,
-                CompilationDependencies* dependencies)
+  JSCallReducer(Editor* editor, JSGraph* jsgraph, JSHeapBroker* broker,
+                Flags flags, CompilationDependencies* dependencies)
       : AdvancedReducer(editor),
         jsgraph_(jsgraph),
-        js_heap_broker_(js_heap_broker),
+        broker_(broker),
         flags_(flags),
-        native_context_(native_context),
         dependencies_(dependencies) {}
 
   const char* reducer_name() const override { return "JSCallReducer"; }
@@ -60,7 +61,7 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceArrayConstructor(Node* node);
   Reduction ReduceBooleanConstructor(Node* node);
   Reduction ReduceCallApiFunction(Node* node,
-                                  Handle<SharedFunctionInfo> shared);
+                                  const SharedFunctionInfoRef& shared);
   Reduction ReduceFunctionPrototypeApply(Node* node);
   Reduction ReduceFunctionPrototypeBind(Node* node);
   Reduction ReduceFunctionPrototypeCall(Node* node);
@@ -78,20 +79,20 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceReflectGet(Node* node);
   Reduction ReduceReflectGetPrototypeOf(Node* node);
   Reduction ReduceReflectHas(Node* node);
-  Reduction ReduceArrayForEach(Node* node, Handle<SharedFunctionInfo> shared);
+  Reduction ReduceArrayForEach(Node* node, const SharedFunctionInfoRef& shared);
   enum class ArrayReduceDirection { kLeft, kRight };
   Reduction ReduceArrayReduce(Node* node, ArrayReduceDirection direction,
-                              Handle<SharedFunctionInfo> shared);
-  Reduction ReduceArrayMap(Node* node, Handle<SharedFunctionInfo> shared);
-  Reduction ReduceArrayFilter(Node* node, Handle<SharedFunctionInfo> shared);
+                              const SharedFunctionInfoRef& shared);
+  Reduction ReduceArrayMap(Node* node, const SharedFunctionInfoRef& shared);
+  Reduction ReduceArrayFilter(Node* node, const SharedFunctionInfoRef& shared);
   enum class ArrayFindVariant { kFind, kFindIndex };
   Reduction ReduceArrayFind(Node* node, ArrayFindVariant variant,
-                            Handle<SharedFunctionInfo> shared);
-  Reduction ReduceArrayEvery(Node* node, Handle<SharedFunctionInfo> shared);
+                            const SharedFunctionInfoRef& shared);
+  Reduction ReduceArrayEvery(Node* node, const SharedFunctionInfoRef& shared);
   enum class SearchVariant { kIncludes, kIndexOf };
   Reduction ReduceArrayIndexOfIncludes(SearchVariant search_variant,
                                        Node* node);
-  Reduction ReduceArraySome(Node* node, Handle<SharedFunctionInfo> shared);
+  Reduction ReduceArraySome(Node* node, const SharedFunctionInfoRef& shared);
   Reduction ReduceArrayPrototypePush(Node* node);
   Reduction ReduceArrayPrototypePop(Node* node);
   Reduction ReduceArrayPrototypeShift(Node* node);
@@ -110,7 +111,7 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceJSConstructWithArrayLike(Node* node);
   Reduction ReduceJSConstructWithSpread(Node* node);
   Reduction ReduceJSCall(Node* node);
-  Reduction ReduceJSCall(Node* node, Handle<SharedFunctionInfo> shared);
+  Reduction ReduceJSCall(Node* node, const SharedFunctionInfoRef& shared);
   Reduction ReduceJSCallWithArrayLike(Node* node);
   Reduction ReduceJSCallWithSpread(Node* node);
   Reduction ReduceRegExpPrototypeTest(Node* node);
@@ -122,6 +123,7 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceStringPrototypeStringAt(
       const Operator* string_access_operator, Node* node);
   Reduction ReduceStringPrototypeCharAt(Node* node);
+  Reduction ReduceStringPrototypeStartsWith(Node* node);
 
 #ifdef V8_INTL_SUPPORT
   Reduction ReduceStringPrototypeToLowerCaseIntl(Node* node);
@@ -132,11 +134,8 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceStringFromCodePoint(Node* node);
   Reduction ReduceStringPrototypeIterator(Node* node);
   Reduction ReduceStringIteratorPrototypeNext(Node* node);
-  Reduction ReduceStringPrototypeConcat(Node* node,
-                                        Handle<SharedFunctionInfo> shared);
+  Reduction ReduceStringPrototypeConcat(Node* node);
 
-  Reduction ReduceAsyncFunctionPromiseCreate(Node* node);
-  Reduction ReduceAsyncFunctionPromiseRelease(Node* node);
   Reduction ReducePromiseConstructor(Node* node);
   Reduction ReducePromiseInternalConstructor(Node* node);
   Reduction ReducePromiseInternalReject(Node* node);
@@ -147,7 +146,7 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReducePromiseResolveTrampoline(Node* node);
 
   Reduction ReduceTypedArrayConstructor(Node* node,
-                                        Handle<SharedFunctionInfo> shared);
+                                        const SharedFunctionInfoRef& shared);
   Reduction ReduceTypedArrayPrototypeToStringTag(Node* node);
 
   Reduction ReduceSoftDeoptimize(Node* node, DeoptimizeReason reason);
@@ -157,6 +156,7 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceMathImul(Node* node);
   Reduction ReduceMathClz32(Node* node);
   Reduction ReduceMathMinMax(Node* node, const Operator* op, Node* empty_value);
+  Reduction ReduceMathHypot(Node* node);
 
   Reduction ReduceNumberIsFinite(Node* node);
   Reduction ReduceNumberIsInteger(Node* node);
@@ -192,6 +192,15 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Reduction ReduceNumberParseInt(Node* node);
 
   Reduction ReduceNumberConstructor(Node* node);
+  Reduction ReduceBigIntAsUintN(Node* node);
+
+  // Helper to verify promise receiver maps are as expected.
+  // On bailout from a reduction, be sure to return inference.NoChange().
+  bool DoPromiseChecks(MapInference* inference);
+
+  Node* CreateClosureFromBuiltinSharedFunctionInfo(SharedFunctionInfoRef shared,
+                                                   Node* context, Node* effect,
+                                                   Node* control);
 
   // Returns the updated {to} node, and updates control and effect along the
   // way.
@@ -230,16 +239,19 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   Node* CreateArtificialFrameState(Node* node, Node* outer_frame_state,
                                    int parameter_count, BailoutId bailout_id,
                                    FrameStateType frame_state_type,
-                                   Handle<SharedFunctionInfo> shared,
+                                   const SharedFunctionInfoRef& shared,
                                    Node* context = nullptr);
+
+  void CheckIfElementsKind(Node* receiver_elements_kind, ElementsKind kind,
+                           Node* control, Node** if_true, Node** if_false);
+  Node* LoadReceiverElementsKind(Node* receiver, Node** effect, Node** control);
 
   Graph* graph() const;
   JSGraph* jsgraph() const { return jsgraph_; }
-  JSHeapBroker* js_heap_broker() const { return js_heap_broker_; }
+  JSHeapBroker* broker() const { return broker_; }
   Isolate* isolate() const;
   Factory* factory() const;
-  Handle<Context> native_context() const { return native_context_; }
-  Handle<JSGlobalProxy> global_proxy() const;
+  NativeContextRef native_context() const;
   CommonOperatorBuilder* common() const;
   JSOperatorBuilder* javascript() const;
   SimplifiedOperatorBuilder* simplified() const;
@@ -247,9 +259,8 @@ class V8_EXPORT_PRIVATE JSCallReducer final : public AdvancedReducer {
   CompilationDependencies* dependencies() const { return dependencies_; }
 
   JSGraph* const jsgraph_;
-  JSHeapBroker* const js_heap_broker_;
+  JSHeapBroker* const broker_;
   Flags const flags_;
-  Handle<Context> const native_context_;
   CompilationDependencies* const dependencies_;
   std::set<Node*> waitlist_;
 };

@@ -122,6 +122,10 @@ uz{
             "CLP",
             "Chili pesosi",
         }
+        CNH{
+            "CNH",
+            "CNH",
+        }
         CNY{
             "CN¥",
             "Xitoy yuani",
@@ -372,6 +376,10 @@ uz{
         }
         MRO{
             "MRO",
+            "Mavritaniya uqiyasi (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mavritaniya uqiyasi",
         }
         MUR{
@@ -432,7 +440,7 @@ uz{
         }
         PEN{
             "PEN",
-            "Peru yangi soli",
+            "Peru soli",
         }
         PGK{
             "PGK",
@@ -520,6 +528,10 @@ uz{
         }
         STD{
             "STD",
+            "San-Tome va Prinsipi dobrasi (1977–2017)",
+        }
+        STN{
+            "STN",
             "San-Tome va Prinsipi dobrasi",
         }
         SYP{
@@ -588,6 +600,10 @@ uz{
         }
         VEF{
             "VEF",
+            "Venesuela bolivari (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venesuela bolivari",
         }
         VND{
@@ -619,7 +635,7 @@ uz{
             "Fransuz Polineziyasi franki",
         }
         XXX{
-            "XXX",
+            "¤",
             "Noma’lum valyuta",
         }
         YER{
@@ -636,103 +652,10 @@ uz{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
-        RUB{"₽"}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
-        TWD{"$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
+        STN{"Db"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
@@ -854,6 +777,10 @@ uz{
         CLP{
             one{"Chili pesosi"}
             other{"Chili pesosi"}
+        }
+        CNH{
+            one{"CNH"}
+            other{"CNH"}
         }
         CNY{
             one{"Xitoy yuani"}
@@ -1104,6 +1031,10 @@ uz{
             other{"Makao patakasi"}
         }
         MRO{
+            one{"Mavritaniya uqiyasi (1973–2017)"}
+            other{"Mavritaniya uqiyasi (1973–2017)"}
+        }
+        MRU{
             one{"Mavritaniya uqiyasi"}
             other{"Mavritaniya uqiyasi"}
         }
@@ -1164,8 +1095,8 @@ uz{
             other{"Panama balboasi"}
         }
         PEN{
-            one{"Peru yangi soli"}
-            other{"Peru yangi soli"}
+            one{"Peru soli"}
+            other{"Peru soli"}
         }
         PGK{
             one{"Papua – Yangi Gvineya kinasi"}
@@ -1252,6 +1183,10 @@ uz{
             other{"Janubiy Sudan funti"}
         }
         STD{
+            one{"San-Tome va Prinsipi dobrasi (1977–2017)"}
+            other{"San-Tome va Prinsipi dobrasi (1977–2017)"}
+        }
+        STN{
             one{"San-Tome va Prinsipi dobrasi"}
             other{"San-Tome va Prinsipi dobrasi"}
         }
@@ -1320,6 +1255,10 @@ uz{
             other{"O‘zbekiston so‘mi"}
         }
         VEF{
+            one{"Venesuela bolivari (2008–2018)"}
+            other{"Venesuela bolivari (2008–2018)"}
+        }
+        VES{
             one{"Venesuela bolivari"}
             other{"Venesuela bolivari"}
         }
@@ -1372,5 +1311,5 @@ uz{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.49.82"}
 }

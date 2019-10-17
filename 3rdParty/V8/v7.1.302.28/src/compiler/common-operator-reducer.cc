@@ -38,13 +38,13 @@ Decision DecideCondition(JSHeapBroker* broker, Node* const cond) {
 }  // namespace
 
 CommonOperatorReducer::CommonOperatorReducer(Editor* editor, Graph* graph,
-                                             JSHeapBroker* js_heap_broker,
+                                             JSHeapBroker* broker,
                                              CommonOperatorBuilder* common,
                                              MachineOperatorBuilder* machine,
                                              Zone* temp_zone)
     : AdvancedReducer(editor),
       graph_(graph),
-      js_heap_broker_(js_heap_broker),
+      broker_(broker),
       common_(common),
       machine_(machine),
       dead_(graph->NewNode(common->Dead())),
@@ -72,6 +72,8 @@ Reduction CommonOperatorReducer::Reduce(Node* node) {
       return ReduceSelect(node);
     case IrOpcode::kSwitch:
       return ReduceSwitch(node);
+    case IrOpcode::kStaticAssert:
+      return ReduceStaticAssert(node);
     default:
       break;
   }
@@ -89,10 +91,8 @@ Reduction CommonOperatorReducer::ReduceBranch(Node* node) {
   // not (i.e. true being returned in the false case and vice versa).
   if (cond->opcode() == IrOpcode::kBooleanNot ||
       (cond->opcode() == IrOpcode::kSelect &&
-       DecideCondition(js_heap_broker(), cond->InputAt(1)) ==
-           Decision::kFalse &&
-       DecideCondition(js_heap_broker(), cond->InputAt(2)) ==
-           Decision::kTrue)) {
+       DecideCondition(broker(), cond->InputAt(1)) == Decision::kFalse &&
+       DecideCondition(broker(), cond->InputAt(2)) == Decision::kTrue)) {
     for (Node* const use : node->uses()) {
       switch (use->opcode()) {
         case IrOpcode::kIfTrue:
@@ -114,7 +114,7 @@ Reduction CommonOperatorReducer::ReduceBranch(Node* node) {
         node, common()->Branch(NegateBranchHint(BranchHintOf(node->op()))));
     return Changed(node);
   }
-  Decision const decision = DecideCondition(js_heap_broker(), cond);
+  Decision const decision = DecideCondition(broker(), cond);
   if (decision == Decision::kUnknown) return NoChange();
   Node* const control = node->InputAt(1);
   for (Node* const use : node->uses()) {
@@ -154,7 +154,7 @@ Reduction CommonOperatorReducer::ReduceDeoptimizeConditional(Node* node) {
             : common()->DeoptimizeUnless(p.kind(), p.reason(), p.feedback()));
     return Changed(node);
   }
-  Decision const decision = DecideCondition(js_heap_broker(), condition);
+  Decision const decision = DecideCondition(broker(), condition);
   if (decision == Decision::kUnknown) return NoChange();
   if (condition_is_true == (decision == Decision::kTrue)) {
     ReplaceWithValue(node, dead(), effect, control);
@@ -337,9 +337,9 @@ Reduction CommonOperatorReducer::ReduceReturn(Node* node) {
     //        End
 
     // Now the effect input to the {Return} node can be either an {EffectPhi}
-    // hanging off the same {Merge}, or the {Merge} node is only connected to
-    // the {Return} and the {Phi}, in which case we know that the effect input
-    // must somehow dominate all merged branches.
+    // hanging off the same {Merge}, or the effect chain doesn't depend on the
+    // {Phi} or the {Merge}, in which case we know that the effect input must
+    // somehow dominate all merged branches.
 
     Node::Inputs control_inputs = control->inputs();
     Node::Inputs value_inputs = value->inputs();
@@ -347,7 +347,7 @@ Reduction CommonOperatorReducer::ReduceReturn(Node* node) {
     DCHECK_EQ(control_inputs.count(), value_inputs.count() - 1);
     DCHECK_EQ(IrOpcode::kEnd, graph()->end()->opcode());
     DCHECK_NE(0, graph()->end()->InputCount());
-    if (control->OwnedBy(node, value)) {
+    if (control->OwnedBy(node, value) && value->OwnedBy(node)) {
       for (int i = 0; i < control_inputs.count(); ++i) {
         // Create a new {Return} and connect it to {end}. We don't need to mark
         // {end} as revisit, because we mark {node} as {Dead} below, which was
@@ -387,7 +387,7 @@ Reduction CommonOperatorReducer::ReduceSelect(Node* node) {
   Node* const vtrue = node->InputAt(1);
   Node* const vfalse = node->InputAt(2);
   if (vtrue == vfalse) return Replace(vtrue);
-  switch (DecideCondition(js_heap_broker(), cond)) {
+  switch (DecideCondition(broker(), cond)) {
     case Decision::kTrue:
       return Replace(vtrue);
     case Decision::kFalse:
@@ -459,6 +459,18 @@ Reduction CommonOperatorReducer::ReduceSwitch(Node* node) {
     return Replace(dead());
   }
   return NoChange();
+}
+
+Reduction CommonOperatorReducer::ReduceStaticAssert(Node* node) {
+  DCHECK_EQ(IrOpcode::kStaticAssert, node->opcode());
+  Node* const cond = node->InputAt(0);
+  Decision decision = DecideCondition(broker(), cond);
+  if (decision == Decision::kTrue) {
+    RelaxEffectsAndControls(node);
+    return Changed(node);
+  } else {
+    return NoChange();
+  }
 }
 
 Reduction CommonOperatorReducer::Change(Node* node, Operator const* op,

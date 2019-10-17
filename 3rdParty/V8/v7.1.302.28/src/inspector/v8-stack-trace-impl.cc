@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "src/base/template-utils.h"
 #include "src/inspector/v8-debugger.h"
 #include "src/inspector/v8-inspector-impl.h"
 #include "src/inspector/wasm-translation.h"
@@ -72,13 +73,13 @@ std::unique_ptr<protocol::Runtime::StackTrace> buildInspectorObjectCommon(
     return asyncParent->buildInspectorObject(debugger, maxAsyncDepth);
   }
 
-  std::unique_ptr<protocol::Array<protocol::Runtime::CallFrame>>
-      inspectorFrames = protocol::Array<protocol::Runtime::CallFrame>::create();
-  for (size_t i = 0; i < frames.size(); i++) {
+  auto inspectorFrames =
+      v8::base::make_unique<protocol::Array<protocol::Runtime::CallFrame>>();
+  for (const std::shared_ptr<StackFrame>& frame : frames) {
     V8InspectorClient* client = nullptr;
     if (debugger && debugger->inspector())
       client = debugger->inspector()->client();
-    inspectorFrames->addItem(frames[i]->buildInspectorObject(client));
+    inspectorFrames->emplace_back(frame->buildInspectorObject(client));
   }
   std::unique_ptr<protocol::Runtime::StackTrace> stackTrace =
       protocol::Runtime::StackTrace::create()
@@ -268,14 +269,26 @@ StringView V8StackTraceImpl::topFunctionName() const {
 
 std::unique_ptr<protocol::Runtime::StackTrace>
 V8StackTraceImpl::buildInspectorObjectImpl(V8Debugger* debugger) const {
+  return buildInspectorObjectImpl(debugger, m_maxAsyncDepth);
+}
+
+std::unique_ptr<protocol::Runtime::StackTrace>
+V8StackTraceImpl::buildInspectorObjectImpl(V8Debugger* debugger,
+                                           int maxAsyncDepth) const {
   return buildInspectorObjectCommon(debugger, m_frames, String16(),
                                     m_asyncParent.lock(), m_externalParent,
-                                    m_maxAsyncDepth);
+                                    maxAsyncDepth);
 }
 
 std::unique_ptr<protocol::Runtime::API::StackTrace>
 V8StackTraceImpl::buildInspectorObject() const {
   return buildInspectorObjectImpl(nullptr);
+}
+
+std::unique_ptr<protocol::Runtime::API::StackTrace>
+V8StackTraceImpl::buildInspectorObject(int maxAsyncDepth) const {
+  return buildInspectorObjectImpl(nullptr,
+                                  std::min(maxAsyncDepth, m_maxAsyncDepth));
 }
 
 std::unique_ptr<StringBuffer> V8StackTraceImpl::toString() const {

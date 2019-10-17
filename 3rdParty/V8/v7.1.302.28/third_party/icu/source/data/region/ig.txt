@@ -4,12 +4,22 @@ ig{
     Countries{
         BJ{"Binin"}
         BM{"Bemuda"}
-        CN{"Chaina"}
+        BR{"Mba Brazil"}
+        CN{"Mba China"}
+        DE{"Mba Germany"}
+        FR{"Mba France"}
+        GB{"Mba United Kingdom"}
         HT{"Hati"}
+        IN{"Mba India"}
+        IT{"Mba Italy"}
+        JP{"Mba Japan"}
         KM{"Comorosu"}
         LY{"Libyia"}
         MV{"Maldivesa"}
-        NG{"Nigeria"}
+        NG{"Naịjịrịa"}
+        RU{"Mba Russia"}
+        US{"Mba United States"}
+        ZZ{"Mpaghara Amaghị"}
     }
-    Version{"2.1.27.84"}
+    Version{"2.1.48.45"}
 }

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 yue{
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比讓"}
@@ -507,6 +507,9 @@ yue{
         "America:Puerto_Rico"{
             ec{"波多黎各"}
         }
+        "America:Punta_Arenas"{
+            ec{"蓬塔阿雷納斯"}
+        }
         "America:Rainy_River"{
             ec{"雨河鎮"}
         }
@@ -657,6 +660,9 @@ yue{
         "Asia:Ashgabat"{
             ec{"阿什哈巴特"}
         }
+        "Asia:Atyrau"{
+            ec{"阿特勞"}
+        }
         "Asia:Baghdad"{
             ec{"巴格達"}
         }
@@ -707,6 +713,9 @@ yue{
         }
         "Asia:Dushanbe"{
             ec{"杜桑貝"}
+        }
+        "Asia:Famagusta"{
+            ec{"法馬古斯塔"}
         }
         "Asia:Gaza"{
             ec{"加薩"}
@@ -942,6 +951,9 @@ yue{
         "Australia:Sydney"{
             ec{"雪梨"}
         }
+        "Etc:UTC"{
+            ls{"協調世界時間"}
+        }
         "Etc:Unknown"{
             ec{"未知城市"}
         }
@@ -1072,6 +1084,9 @@ yue{
         }
         "Europe:Sarajevo"{
             ec{"塞拉耶佛"}
+        }
+        "Europe:Saratov"{
+            ec{"薩拉托夫"}
         }
         "Europe:Simferopol"{
             ec{"辛非洛浦"}
@@ -1796,6 +1811,9 @@ yue{
         "meta:Ponape"{
             ls{"波納佩時間"}
         }
+        "meta:Pyongyang"{
+            ls{"平壤時間"}
+        }
         "meta:Qyzylorda"{
             ld{"克孜勒奧爾達夏令時間"}
             lg{"克孜勒奧爾達時間"}
@@ -1922,7 +1940,7 @@ yue{
         gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0}時間"}
-        regionFormatDaylight{"{0} (+1)"}
-        regionFormatStandard{"{0} (+0)"}
+        regionFormatDaylight{"{0}夏令時間"}
+        regionFormatStandard{"{0}標準時間"}
     }
 }

@@ -8,7 +8,7 @@ tr{
                 "[import und-u-co-search]"
                 "[import tr-u-co-standard]"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -20,7 +20,7 @@ tr{
                 "&S<ş<<<Ş"
                 "&U<ü<<<Ü"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

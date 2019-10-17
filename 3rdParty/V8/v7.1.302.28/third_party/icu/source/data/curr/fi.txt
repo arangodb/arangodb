@@ -262,6 +262,10 @@ fi{
             "CLP",
             "Chilen peso",
         }
+        CNH{
+            "CNH",
+            "Kiinan juan (offshore)",
+        }
         CNX{
             "CNX",
             "Kiinan kansanpankin dollari",
@@ -280,7 +284,7 @@ fi{
         }
         CRC{
             "CRC",
-            "Costa Rican colon",
+            "Costa Rican colón",
         }
         CSD{
             "CSD",
@@ -356,7 +360,7 @@ fi{
         }
         ESA{
             "ESA",
-            "Espanjan peseta (A–tili)",
+            "Espanjan peseta (A-tili)",
         }
         ESB{
             "ESB",
@@ -680,6 +684,10 @@ fi{
         }
         MRO{
             "MRO",
+            "Mauritanian ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritanian ouguiya",
         }
         MTL{
@@ -780,7 +788,7 @@ fi{
         }
         PEN{
             "PEN",
-            "Perun uusi sol",
+            "Perun sol",
         }
         PES{
             "PES",
@@ -800,11 +808,11 @@ fi{
         }
         PLN{
             "PLN",
-            "Puolan zloty",
+            "Puolan złoty",
         }
         PLZ{
             "PLZ",
-            "Puolan zloty (1950–1995)",
+            "Puolan złoty (1950–1995)",
         }
         PTE{
             "PTE",
@@ -912,6 +920,10 @@ fi{
         }
         STD{
             "STD",
+            "São Tomén ja Príncipen dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "São Tomén ja Príncipen dobra",
         }
         SUR{
@@ -920,7 +932,7 @@ fi{
         }
         SVC{
             "SVC",
-            "El Salvadorin colon",
+            "El Salvadorin colón",
         }
         SYP{
             "SYP",
@@ -1028,11 +1040,15 @@ fi{
         }
         VEB{
             "VEB",
-            "Venezuelan bolivar (1871–2008)",
+            "Venezuelan bolívar (1871–2008)",
         }
         VEF{
             "VEF",
-            "Venezuelan bolivar",
+            "Venezuelan bolívar (2008–2018)",
+        }
+        VES{
+            "VES",
+            "Venezuelan suvereeni bolívar",
         }
         VND{
             "VND",
@@ -1128,7 +1144,7 @@ fi{
         }
         XUA{
             "XUA",
-            "afrikkalainen ADB-laskentayksikkö",
+            "afrikkalainen AfDB-laskentayksikkö",
         }
         XXX{
             "XXX",
@@ -1199,7 +1215,7 @@ fi{
         AOA{"AOA"}
         ARS{"ARS"}
         AUD{"AUD"}
-        BAM{"KM"}
+        BAM{"BAM"}
         BBD{"BBD"}
         BDT{"BDT"}
         BMD{"BMD"}
@@ -1222,10 +1238,8 @@ fi{
         DOP{"DOP"}
         EGP{"EGP"}
         ESP{"ESP"}
-        EUR{"€"}
         FJD{"FJD"}
         FKP{"FKP"}
-        GBP{"£"}
         GEL{"GEL"}
         GIP{"GIP"}
         GNF{"GNF"}
@@ -1240,7 +1254,6 @@ fi{
         INR{"INR"}
         ISK{"ISK"}
         JMD{"JMD"}
-        JPY{"¥"}
         KHR{"KHR"}
         KMF{"KMF"}
         KPW{"KPW"}
@@ -1270,7 +1283,6 @@ fi{
         PLN{"PLN"}
         PYG{"PYG"}
         RON{"RON"}
-        RUB{"₽"}
         RUR{"RUR"}
         RWF{"RWF"}
         SBD{"SBD"}
@@ -1279,7 +1291,7 @@ fi{
         SHP{"SHP"}
         SRD{"SRD"}
         SSP{"SSP"}
-        STD{"STD"}
+        STN{"STD"}
         SYP{"SYP"}
         THB{"THB"}
         TOP{"TOP"}
@@ -1287,13 +1299,15 @@ fi{
         TTD{"TTD"}
         TWD{"TWD"}
         UAH{"UAH"}
-        USD{"$"}
         UYU{"UYU"}
         VEF{"VEF"}
         VND{"VND"}
         XCD{"XCD"}
         ZAR{"ZAR"}
         ZMW{"ZMW"}
+    }
+    Currencies%variant{
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1556,6 +1570,10 @@ fi{
             one{"Chilen peso"}
             other{"Chilen pesoa"}
         }
+        CNH{
+            one{"Kiinan juan (offshore)"}
+            other{"Kiinan juania (offshore)"}
+        }
         CNX{
             one{"Kiinan kansanpankin dollari"}
             other{"Kiinan kansanpankin dollaria"}
@@ -1573,8 +1591,8 @@ fi{
             other{"Kolumbian unidad de valor realia"}
         }
         CRC{
-            one{"Costa Rican colon"}
-            other{"Costa Rican colonia"}
+            one{"Costa Rican colón"}
+            other{"Costa Rican colónia"}
         }
         CSD{
             one{"Serbian dinaari (2002–2006)"}
@@ -1649,8 +1667,8 @@ fi{
             other{"Eritrean nakfaa"}
         }
         ESA{
-            one{"Espanjan peseta (A–tili)"}
-            other{"Espanjan pesetaa (A–tili)"}
+            one{"Espanjan peseta (A-tili)"}
+            other{"Espanjan pesetaa (A-tili)"}
         }
         ESB{
             one{"Espanjan peseta (vaihdettava tili)"}
@@ -1973,6 +1991,10 @@ fi{
             other{"Macaon patacaa"}
         }
         MRO{
+            one{"Mauritanian ouguiya (1973–2017)"}
+            other{"Mauritanian ouguiyaa (1973–2017)"}
+        }
+        MRU{
             one{"Mauritanian ouguiya"}
             other{"Mauritanian ouguiyaa"}
         }
@@ -2073,8 +2095,8 @@ fi{
             other{"Perun intiä"}
         }
         PEN{
-            one{"Perun uusi sol"}
-            other{"Perun uutta solia"}
+            one{"Perun sol"}
+            other{"Perun solia"}
         }
         PES{
             one{"Perun sol (1863–1965)"}
@@ -2093,12 +2115,12 @@ fi{
             other{"Pakistanin rupiaa"}
         }
         PLN{
-            one{"Puolan zloty"}
-            other{"Puolan zlotya"}
+            one{"Puolan złoty"}
+            other{"Puolan złotya"}
         }
         PLZ{
-            one{"Puolan zloty (1950–1995)"}
-            other{"Puolan zlotya (1950–1995)"}
+            one{"Puolan złoty (1950–1995)"}
+            other{"Puolan złotya (1950–1995)"}
         }
         PTE{
             one{"Portugalin escudo"}
@@ -2205,6 +2227,10 @@ fi{
             other{"Etelä-Sudanin puntaa"}
         }
         STD{
+            one{"São Tomén ja Príncipen dobra (1977–2017)"}
+            other{"São Tomén ja Príncipen dobraa (1977–2017)"}
+        }
+        STN{
             one{"São Tomén ja Príncipen dobra"}
             other{"São Tomén ja Príncipen dobraa"}
         }
@@ -2213,8 +2239,8 @@ fi{
             other{"Neuvostoliiton ruplaa"}
         }
         SVC{
-            one{"El Salvadorin colon"}
-            other{"El Salvadorin colonia"}
+            one{"El Salvadorin colón"}
+            other{"El Salvadorin colónia"}
         }
         SYP{
             one{"Syyrian punta"}
@@ -2325,8 +2351,12 @@ fi{
             other{"Venezuelan bolivaria (1871–2008)"}
         }
         VEF{
-            one{"Venezuelan bolivar"}
-            other{"Venezuelan bolivaria"}
+            one{"Venezuelan bolívar (2008–2018)"}
+            other{"Venezuelan bolívaria (2008–2018)"}
+        }
+        VES{
+            one{"Venezuelan suvereeni bolívar"}
+            other{"Venezuelan suvereenia bolívaria"}
         }
         VND{
             one{"Vietnamin dong"}
@@ -2421,8 +2451,8 @@ fi{
             other{"testaustarkoitukseen varattua valuuttakoodia"}
         }
         XUA{
-            one{"ADB-laskentayksikkö"}
-            other{"ADB-laskentayksikköä"}
+            one{"AfDB-laskentayksikkö"}
+            other{"AfDB-laskentayksikköä"}
         }
         XXX{
             one{"tuntematon rahayksikkö"}
@@ -2493,5 +2523,5 @@ fi{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.88"}
+    Version{"2.1.48.42"}
 }

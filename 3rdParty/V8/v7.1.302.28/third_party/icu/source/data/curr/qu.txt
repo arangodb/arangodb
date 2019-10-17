@@ -10,5 +10,5 @@ qu{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.49.82"}
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 //
 //  rbbitblb.h
@@ -15,8 +15,12 @@
 #define RBBITBLB_H
 
 #include "unicode/utypes.h"
+
+#if !UCONFIG_NO_BREAK_ITERATION
+
 #include "unicode/uobject.h"
 #include "unicode/rbbi.h"
+#include "rbbirb.h"
 #include "rbbinode.h"
 
 
@@ -24,6 +28,7 @@ U_NAMESPACE_BEGIN
 
 class RBBIRuleScanner;
 class RBBIRuleBuilder;
+class UVector32;
 
 //
 //  class RBBITableBuilder is part of the RBBI rule compiler.
@@ -36,15 +41,49 @@ class RBBIRuleBuilder;
 
 class RBBITableBuilder : public UMemory {
 public:
-    RBBITableBuilder(RBBIRuleBuilder *rb, RBBINode **rootNode);
+    RBBITableBuilder(RBBIRuleBuilder *rb, RBBINode **rootNode, UErrorCode &status);
     ~RBBITableBuilder();
 
-    void     build();
-    int32_t  getTableSize() const;      // Return the runtime size in bytes of
-                                        //     the built state table
-    void     exportTable(void *where);  // fill in the runtime state table.
-                                        //     Sufficient memory must exist at
-                                        //     the specified location.
+    void     buildForwardTable();
+
+    /** Return the runtime size in bytes of the built state table.  */
+    int32_t  getTableSize() const;
+
+    /** Fill in the runtime state table. Sufficient memory must exist at the specified location.
+     */
+    void     exportTable(void *where);
+
+    /**
+     *  Find duplicate (redundant) character classes. Begin looking with categories.first.
+     *  Duplicate, if found are returned in the categories parameter.
+     *  This is an iterator-like function, used to identify character classes
+     *  (state table columns) that can be eliminated.
+     *  @param categories in/out parameter, specifies where to start looking for duplicates,
+     *                and returns the first pair of duplicates found, if any.
+     *  @return true if duplicate char classes were found, false otherwise.
+     */
+    bool     findDuplCharClassFrom(IntPair *categories);
+
+    /** Remove a column from the state table. Used when two character categories
+     *  have been found equivalent, and merged together, to eliminate the uneeded table column.
+     */
+    void     removeColumn(int32_t column);
+
+    /**
+     * Check for, and remove dupicate states (table rows).
+     * @return the number of states removed.
+     */
+    int32_t  removeDuplicateStates();
+
+    /** Build the safe reverse table from the already-constructed forward table. */
+    void     buildSafeReverseTable(UErrorCode &status);
+
+    /** Return the runtime size in bytes of the built safe reverse state table. */
+    int32_t  getSafeTableSize() const;
+
+    /** Fill in the runtime safe state table. Sufficient memory must exist at the specified location.
+     */
+    void     exportSafeTable(void *where);
 
 
 private:
@@ -60,7 +99,44 @@ private:
     void     flagTaggedStates();
     void     mergeRuleStatusVals();
 
+    /**
+     * Merge redundant state table columns, eliminating character classes with identical behavior.
+     * Done after the state tables are generated, just before converting to their run-time format.
+     */
+    int32_t  mergeColumns();
+
     void     addRuleRootNodes(UVector *dest, RBBINode *node);
+
+    /**
+     *  Find duplicate (redundant) states, beginning at the specified pair,
+     *  within this state table. This is an iterator-like function, used to
+     *  identify states (state table rows) that can be eliminated.
+     *  @param states in/out parameter, specifies where to start looking for duplicates,
+     *                and returns the first pair of duplicates found, if any.
+     *  @return true if duplicate states were found, false otherwise.
+     */
+    bool findDuplicateState(IntPair *states);
+
+    /** Remove a duplicate state.
+     * @param duplStates The duplicate states. The first is kept, the second is removed.
+     *                   All references to the second in the state table are retargeted
+     *                   to the first.
+     */
+    void removeState(IntPair duplStates);
+
+    /** Find the next duplicate state in the safe reverse table. An iterator function.
+     *  @param states in/out parameter, specifies where to start looking for duplicates,
+     *                and returns the first pair of duplicates found, if any.
+     *  @return true if a duplicate pair of states was found.
+     */
+    bool findDuplicateSafeState(IntPair *states);
+
+    /** Remove a duplicate state from the safe table.
+     * @param duplStates The duplicate states. The first is kept, the second is removed.
+     *                   All references to the second in the state table are retargeted
+     *                   to the first.
+     */
+    void removeSafeState(IntPair duplStates);
 
     // Set functions for UVector.
     //   TODO:  make a USet subclass of UVector
@@ -76,11 +152,13 @@ public:
     void     printPosSets(RBBINode *n /* = NULL*/);
     void     printStates();
     void     printRuleStatusTable();
+    void     printReverseTable();
 #else
     #define  printSet(s)
     #define  printPosSets(n)
     #define  printStates()
     #define  printRuleStatusTable()
+    #define  printReverseTable()
 #endif
 
 private:
@@ -89,9 +167,13 @@ private:
                                            //   table for.
     UErrorCode       *fStatus;
 
+    /** State Descriptors, UVector<RBBIStateDescriptor> */
     UVector          *fDStates;            //  D states (Aho's terminology)
                                            //  Index is state number
                                            //  Contents are RBBIStateDescriptor pointers.
+
+    /** Synthesized safe table, UVector of UnicodeString, one string per table row.   */
+    UVector          *fSafeTable;
 
 
     RBBITableBuilder(const RBBITableBuilder &other); // forbid copying of this class
@@ -112,7 +194,7 @@ public:
                                            //   with this state.  Unordered (it's a set).
                                            //   UVector contents are RBBINode *
 
-    UVector          *fDtran;              // Transitions out of this state.
+    UVector32        *fDtran;              // Transitions out of this state.
                                            //   indexed by input character
                                            //   contents is int index of dest state
                                            //   in RBBITableBuilder.fDStates
@@ -128,4 +210,7 @@ private:
 
 
 U_NAMESPACE_END
+
+#endif /* #if !UCONFIG_NO_BREAK_ITERATION */
+
 #endif

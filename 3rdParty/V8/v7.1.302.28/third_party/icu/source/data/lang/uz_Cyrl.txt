@@ -407,7 +407,7 @@ uz_Cyrl{
             tibt{"Тибет рақамлари"}
         }
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.49.82"}
     codePatterns{
         language{"Тил: {0}"}
         script{"{0}"}

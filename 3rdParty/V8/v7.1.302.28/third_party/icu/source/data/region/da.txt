@@ -13,7 +13,7 @@ da{
         015{"Nordafrika"}
         017{"Centralafrika"}
         018{"Det sydlige Afrika"}
-        019{"Amerika"}
+        019{"Nord-, Mellem- og Sydamerika"}
         021{"Det nordlige Amerika"}
         029{"Caribien"}
         030{"Østasien"}
@@ -22,7 +22,7 @@ da{
         039{"Sydeuropa"}
         053{"Australasien"}
         054{"Melanesien"}
-        057{"Mikronesien"}
+        057{"Mikronesiske område"}
         061{"Polynesien"}
         142{"Asien"}
         143{"Centralasien"}
@@ -31,6 +31,7 @@ da{
         151{"Østeuropa"}
         154{"Nordeuropa"}
         155{"Vesteuropa"}
+        202{"Subsaharisk Afrika"}
         419{"Latinamerika"}
         AC{"Ascensionøen"}
         AD{"Andorra"}
@@ -106,10 +107,11 @@ da{
         ES{"Spanien"}
         ET{"Etiopien"}
         EU{"Den Europæiske Union"}
+        EZ{"eurozonen"}
         FI{"Finland"}
         FJ{"Fiji"}
-        FK{"Falklandsøerne"}
-        FM{"Mikronesiens Forenede Stater"}
+        FK{"Falklandsøerne (Islas Malvinas)"}
+        FM{"Mikronesien"}
         FO{"Færøerne"}
         FR{"Frankrig"}
         GA{"Gabon"}
@@ -181,7 +183,7 @@ da{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Marshalløerne"}
-        MK{"Makedonien"}
+        MK{"Nordmakedonien"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongoliet"}
@@ -251,11 +253,11 @@ da{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syrien"}
-        SZ{"Swaziland"}
+        SZ{"Eswatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks- og Caicosøerne"}
         TD{"Tchad"}
-        TF{"De franske besiddelser i Det Sydlige Indiske Ocean"}
+        TF{"De Franske Besiddelser i Det Sydlige Indiske Ocean"}
         TG{"Togo"}
         TH{"Thailand"}
         TJ{"Tadsjikistan"}
@@ -272,7 +274,7 @@ da{
         UA{"Ukraine"}
         UG{"Uganda"}
         UM{"Amerikanske oversøiske øer"}
-        UN{"Forenede Nationer"}
+        UN{"De Forenede Nationer"}
         US{"USA"}
         UY{"Uruguay"}
         UZ{"Usbekistan"}
@@ -301,9 +303,9 @@ da{
     Countries%variant{
         CD{"Den Demokratiske Republik Congo (DRC)"}
         CG{"Republikken Congo"}
-        FK{"Falklandsøerne (Islas Malvinas)"}
-        MK{"Den tidligere jugoslaviske republik Makedonien"}
+        CZ{"Den Tjekkiske Republik"}
+        SZ{"Swaziland"}
         TL{"Østtimor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

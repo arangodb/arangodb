@@ -5,5 +5,5 @@ fr_BE{
         BN{"Brunei"}
         GS{"Îles Géorgie du Sud et Sandwich du Sud"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
 }

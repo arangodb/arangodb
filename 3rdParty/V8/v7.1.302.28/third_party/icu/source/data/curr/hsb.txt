@@ -464,6 +464,10 @@ hsb{
         }
         MRO{
             "MRO",
+            "mawretanska ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "mawretanska ouguiya",
         }
         MUR{
@@ -532,7 +536,7 @@ hsb{
         }
         PEN{
             "PEN",
-            "peruski nowy sol",
+            "peruski sol",
         }
         PGK{
             "PGK",
@@ -620,6 +624,10 @@ hsb{
         }
         STD{
             "STD",
+            "são tomeski dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "são tomeski dobra",
         }
         SVC{
@@ -692,6 +700,10 @@ hsb{
         }
         VEF{
             "VEF",
+            "venezuelski bolívar (2008–2018)",
+        }
+        VES{
+            "VES",
             "venezuelski bolívar",
         }
         VND{
@@ -723,7 +735,7 @@ hsb{
             "CFP-frank",
         }
         XXX{
-            "XXX",
+            "¤",
             "njeznata měna",
         }
         YER{
@@ -1434,6 +1446,12 @@ hsb{
             two{"macaoskej patace"}
         }
         MRO{
+            few{"mawretanske ouguije (1973–2017)"}
+            one{"mawretanska ouguiya (1973–2017)"}
+            other{"mawretanskich ouguijow (1973–2017)"}
+            two{"mawretanskej ouguiji (1973–2017)"}
+        }
+        MRU{
             few{"mawretanske ouguije"}
             one{"mawretanska ouguiya"}
             other{"mawretanskich ouguijow"}
@@ -1536,10 +1554,10 @@ hsb{
             two{"panamaskej balbowaj"}
         }
         PEN{
-            few{"peruske nowe sole"}
-            one{"peruski nowy sol"}
-            other{"peruskich nowych solow"}
-            two{"peruskej nowej solej"}
+            few{"peruske sole"}
+            one{"peruski sol"}
+            other{"peruskich solow"}
+            two{"peruskej solej"}
         }
         PGK{
             few{"papua-nowoginejske kiny"}
@@ -1668,6 +1686,12 @@ hsb{
             two{"južnosudanskej puntaj"}
         }
         STD{
+            few{"são tomeske dobry (1977–2017)"}
+            one{"são tomeski dobra (1977–2017)"}
+            other{"são tomeskich dobrow (1977–2017)"}
+            two{"são tomeskej dobraj (1977–2017)"}
+        }
+        STN{
             few{"são tomeske dobry"}
             one{"são tomeski dobra"}
             other{"são tomeskich dobrow"}
@@ -1776,6 +1800,12 @@ hsb{
             two{"uzbekskej sumaj"}
         }
         VEF{
+            few{"venezuelske bolívary (2008–2018)"}
+            one{"venezuelski bolívar (2008–2018)"}
+            other{"venezuelskich bolívarow (2008–2018)"}
+            two{"venezuelskej bolívaraj (2008–2018)"}
+        }
+        VES{
             few{"venezuelske bolívary"}
             one{"venezuelski bolívar"}
             other{"venezuelskich bolívarow"}
@@ -1854,5 +1884,5 @@ hsb{
         other{"{0} {1}"}
         two{"{0} {1}"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

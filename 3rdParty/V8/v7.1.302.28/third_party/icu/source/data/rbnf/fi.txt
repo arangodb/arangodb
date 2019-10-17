@@ -583,7 +583,7 @@ fi{
             "%spellout-ordinal:",
             "-x: miinus >>;",
             "x.x: =#,##0.#=;",
-            "0: nolla;",
+            "0: nollas;",
             "1: ensimm\u00E4inen;",
             "2: toinen;",
             "3: kolmas;",
@@ -616,7 +616,7 @@ fi{
             "%spellout-ordinal-genitive:",
             "-x: miinus >>;",
             "x.x: =#,##0.#=;",
-            "0: nollan;",
+            "0: nollannen;",
             "1: ensimm\u00E4isen;",
             "2: toisen;",
             "3: kolmannen;",
@@ -649,7 +649,7 @@ fi{
             "%spellout-ordinal-partitive:",
             "-x: miinus >>;",
             "x.x: =#,##0.#=;",
-            "0: nollaa;",
+            "0: nollatta;",
             "1: ensimm\u00E4ist\u00E4;",
             "2: toista;",
             "3: kolmatta;",
@@ -682,7 +682,7 @@ fi{
             "%spellout-ordinal-essive:",
             "-x: miinus >>;",
             "x.x: =#,##0.#=;",
-            "0: nollana;",
+            "0: nollantena;",
             "1: ensimm\u00E4isen\u00E4;",
             "2: toisena;",
             "3: kolmantena;",
@@ -1271,5 +1271,5 @@ fi{
             "1000000000000000000: =#,##0=;",
         }
     }
-    Version{"2.1.27.22"}
+    Version{"2.1.45.51"}
 }

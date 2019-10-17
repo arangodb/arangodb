@@ -2,14 +2,6 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ta{
     AuxExemplarCharacters{"[\u200C\u200D]"}
-    Ellipsis{
-        final{"{0}…"}
-        initial{"…{0}"}
-        medial{"{0}…{1}"}
-        word-final{"{0} …"}
-        word-initial{"… {0}"}
-        word-medial{"{0} … {1}"}
-    }
     ExemplarCharacters{
         "[அ ஆ இ ஈ உ ஊ எ ஏ ஐ ஒ ஓ ஔ ஃ க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ ள ற ன ஜ ஷ ஸ ஹ ா ி "
         "\u0BC0 ு ூ ெ ே ை ொ ோ ௌ \u0BCD]"
@@ -18,12 +10,13 @@ ta{
         "[அ ஆ இ ஈ உ ஊ எ ஏ ஐ ஒ ஓ ஔ க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ ள ற ன ஜ ஶ ஷ ஸ ஹ {க"
         "\u0BCDஷ}]"
     }
-    MoreInformation{"?"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0௦ 1௧ 2௨ 3௩ 4௪ 5௫ 6௬ 7௭ 8௮ 9௯]"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -188,18 +181,22 @@ ta{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"{0}வது வலது திருப்பத்தை எடு."}
+            }
+            plural{
+                one{"{0} நாள்"}
+                other{"{0} நாட்கள்"}
             }
         }
         minimumGroupingDigits{"1"}
@@ -207,25 +204,22 @@ ta{
         tamldec{
             patterns{
                 currencyFormat{"¤ #,##,##0.00"}
+                decimalFormat{"#,##,##0.###"}
                 percentFormat{"#,##,##0%"}
                 scientificFormat{"#E0"}
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
             }
         }
         traditional{"taml"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     calendar{
         chinese{
             DateTimePatterns{
@@ -259,20 +253,6 @@ ta{
                         "மா11",
                         "மா12",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "மாதம்1",
                         "மாதம்2",
@@ -303,20 +283,6 @@ ta{
                         "மா11",
                         "மா12",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "மாதம்1",
                         "மாதம்2",
@@ -330,6 +296,142 @@ ta{
                         "மாதம்10",
                         "மாதம்11",
                         "மாதம்12",
+                    }
+                }
+            }
+        }
+        coptic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "டட்",
+                        "பாபா",
+                        "ஹடு.",
+                        "கியா.",
+                        "டுபா",
+                        "அம்.",
+                        "பரம்.",
+                        "பரமு.",
+                        "பாஷ.",
+                        "பவு.",
+                        "அபீ.",
+                        "மஸ்.",
+                        "நசி",
+                    }
+                    wide{
+                        "டட்",
+                        "பாபா",
+                        "ஹடுர்",
+                        "கியாக்",
+                        "டுபா",
+                        "அம்ஷீர்",
+                        "பரம்ஹாட்",
+                        "பரமுதா",
+                        "பாஷன்ஸ்",
+                        "பவுனா",
+                        "அபீப்",
+                        "மஸ்ரா",
+                        "நசி",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "டட்",
+                        "பாபா",
+                        "ஹடு.",
+                        "கியா.",
+                        "டுபா",
+                        "அம்.",
+                        "பரம்.",
+                        "பரமு.",
+                        "பாஷ.",
+                        "பவு.",
+                        "அபீ.",
+                        "மஸ்ரா",
+                        "நசி",
+                    }
+                    wide{
+                        "டட்",
+                        "பாபா",
+                        "ஹடுர்",
+                        "கியாக்",
+                        "டுபா",
+                        "அம்ஷீர்",
+                        "பரம்ஹாட்",
+                        "பரமுதா",
+                        "பாஷன்ஸ்",
+                        "பவுனா",
+                        "அபீப்",
+                        "மஸ்ரா",
+                        "நசி",
+                    }
+                }
+            }
+        }
+        ethiopic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "மஸ்.",
+                        "தெகெ.",
+                        "ஹெத.",
+                        "தஹ்.",
+                        "தெர்",
+                        "யாகா.",
+                        "மகா.",
+                        "மியா.",
+                        "கென்.",
+                        "சனே",
+                        "ஹமே.",
+                        "நஹா.",
+                        "பாகு.",
+                    }
+                    wide{
+                        "மஸ்கரம்",
+                        "தெகெம்ப்த்",
+                        "ஹெதர்",
+                        "தஹ்சாஸ்",
+                        "தெர்",
+                        "யாகாடிட்",
+                        "மகாபிட்",
+                        "மியாஸ்யா",
+                        "கென்போ",
+                        "சனே",
+                        "ஹமேல்",
+                        "நஹாசே",
+                        "பாகுமே",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "மஸ்.",
+                        "தெகெ.",
+                        "ஹெத.",
+                        "தஹ்.",
+                        "தெர்",
+                        "யாகா.",
+                        "மகா.",
+                        "மியா.",
+                        "கென்.",
+                        "சனே",
+                        "ஹமே.",
+                        "நஹா.",
+                        "பாகு.",
+                    }
+                    wide{
+                        "மஸ்கரம்",
+                        "தெகெம்ப்த்",
+                        "ஹெதர்",
+                        "தஹ்சாஸ்",
+                        "தெர்",
+                        "யாகாடிட்",
+                        "மகாபிட்",
+                        "மியாஸ்யா",
+                        "கென்போ",
+                        "சனே",
+                        "ஹமேல்",
+                        "நஹாசே",
+                        "பாகுமே",
                     }
                 }
             }
@@ -351,8 +453,17 @@ ta{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E a h:mm"}
+                Ehms{"E a h:mm:ss"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d MMM, y G"}
@@ -387,6 +498,53 @@ ta{
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -514,7 +672,12 @@ ta{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -534,8 +697,8 @@ ta{
                 MMM{"LLL"}
                 MMMEd{"MMM d, E"}
                 MMMMW{
-                    one{"MMM W -ஆம் வாரம்"}
-                    other{"MMM W -ஆம் வாரம்"}
+                    one{"MMMM W -ஆம் வாரம்"}
+                    other{"MMMM W -ஆம் வாரம்"}
                 }
                 MMMMd{"d MMMM"}
                 MMMd{"MMM d"}
@@ -560,8 +723,8 @@ ta{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    one{"y ஆம் ஆண்டின் w -ஆம் வாரம்"}
-                    other{"y ஆம் ஆண்டின் w -ஆம் வாரம்"}
+                    one{"Y ஆம் ஆண்டின் w -ஆம் வாரம்"}
+                    other{"Y ஆம் ஆண்டின் w -ஆம் வாரம்"}
                 }
             }
             dayNames{
@@ -739,6 +902,53 @@ ta{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH – HH"}
                 }
@@ -966,6 +1176,297 @@ ta{
                 }
             }
         }
+        hebrew{
+            monthNames{
+                format{
+                    abbreviated{
+                        "டிஷ்.",
+                        "ஹெஷ்.",
+                        "கிஸ்.",
+                        "டெவெ.",
+                        "ஷெவா.",
+                        "அடா. 1",
+                        "அடா.",
+                        "நிசா.",
+                        "ஐயா.",
+                        "சிவா.",
+                        "தமு.",
+                        "அவ்",
+                        "எலு.",
+                        "அடா. 2",
+                    }
+                    wide{
+                        "டிஷ்ரி",
+                        "ஹெஷ்வான்",
+                        "கிஸ்லெவ்",
+                        "டெவெட்",
+                        "ஷெவாட்",
+                        "அடார் 1",
+                        "அடார்",
+                        "நிசான்",
+                        "ஐயார்",
+                        "சிவான்",
+                        "தமுஸ்",
+                        "அவ்",
+                        "எலுல்",
+                        "அடார் 2",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "டிஷ்.",
+                        "ஹெஷ்.",
+                        "கிஸ்.",
+                        "டெவெ.",
+                        "ஷெவா.",
+                        "அடா. 1",
+                        "அடா.",
+                        "நிசா.",
+                        "ஐயா.",
+                        "சிவா.",
+                        "தமு.",
+                        "அவ்",
+                        "எலு.",
+                        "அடா. 2",
+                    }
+                    wide{
+                        "டிஷ்ரி",
+                        "ஹெஷ்வான்",
+                        "கிஸ்லெவ்",
+                        "டெவெட்",
+                        "ஷெவாட்",
+                        "அடார் 1",
+                        "அடார்",
+                        "நிசான்",
+                        "ஐயார்",
+                        "சிவான்",
+                        "தமுஸ்",
+                        "அவ்",
+                        "எலுல்",
+                        "அடார் 2",
+                    }
+                }
+            }
+        }
+        indian{
+            eras{
+                abbreviated{
+                    "சாகா",
+                }
+                narrow{
+                    "சாகா",
+                }
+                wide{
+                    "சாகா",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "சித்.",
+                        "வைகா.",
+                        "ஆனி",
+                        "ஆடி",
+                        "ஆவ.",
+                        "புர.",
+                        "ஐப்.",
+                        "கார்.",
+                        "மார்.",
+                        "தை",
+                        "மாசி",
+                        "பங்.",
+                    }
+                    wide{
+                        "சித்திரை",
+                        "வைகாசி",
+                        "ஆனி",
+                        "ஆடி",
+                        "ஆவணி",
+                        "புரட்டாசி",
+                        "ஐப்பசி",
+                        "கார்த்திகை",
+                        "மார்கழி",
+                        "தை",
+                        "மாசி",
+                        "பங்குனி",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "சித்.",
+                        "வைகா.",
+                        "ஆனி",
+                        "ஆடி",
+                        "ஆவ.",
+                        "புர.",
+                        "ஐப்.",
+                        "கார்.",
+                        "மார்.",
+                        "தை",
+                        "மாசி",
+                        "பங்.",
+                    }
+                    wide{
+                        "சித்திரை",
+                        "வைகாசி",
+                        "ஆனி",
+                        "ஆடி",
+                        "ஆவணி",
+                        "புரட்டாசி",
+                        "ஐப்பசி",
+                        "கார்த்திகை",
+                        "மார்கழி",
+                        "தை",
+                        "மாசி",
+                        "பங்குனி",
+                    }
+                }
+            }
+        }
+        islamic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "முஹ.",
+                        "சஃப.",
+                        "ரபி 1",
+                        "ரபி 2",
+                        "ஜும. 1",
+                        "ஜும. 2",
+                        "ரஜ.",
+                        "ஷஃ.",
+                        "ரம.",
+                        "ஷவ்.",
+                        "துல் கஃ.",
+                        "துல் ஹிஜ்.",
+                    }
+                    wide{
+                        "முஹர்ரம்",
+                        "சஃபர்",
+                        "ரபி 1",
+                        "ரபி 2",
+                        "ஜுமதா 1",
+                        "ஜுமதா 2",
+                        "ரஜப்",
+                        "ஷஃபான்",
+                        "ரமலான்",
+                        "ஷவ்வால்",
+                        "துல் கஃதா",
+                        "துல் ஹிஜ்ஜா",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "முஹ.",
+                        "சஃப.",
+                        "ரபி 1",
+                        "ரபி 2",
+                        "ஜும. 1",
+                        "ஜும. 2",
+                        "ரஜ.",
+                        "ஷஃ.",
+                        "ரம.",
+                        "ஷவ்.",
+                        "துல் கஃ.",
+                        "துல் ஹிஜ்.",
+                    }
+                    wide{
+                        "முஹர்ரம்",
+                        "சஃபர்",
+                        "ரபி 1",
+                        "ரபி 2",
+                        "ஜுமதா 1",
+                        "ஜுமதா 2",
+                        "ரஜப்",
+                        "ஷஃபான்",
+                        "ரமலான்",
+                        "ஷவ்வால்",
+                        "துல் கஃதா",
+                        "துல் ஹிஜ்ஜா",
+                    }
+                }
+            }
+        }
+        persian{
+            monthNames{
+                format{
+                    abbreviated{
+                        "ஃபர்.",
+                        "ஆர்டி.",
+                        "கொர்.",
+                        "திர்",
+                        "மொர்.",
+                        "ஷாரி.",
+                        "மெஹ்.",
+                        "அபா.",
+                        "அசா.",
+                        "தே",
+                        "பஹ்.",
+                        "எஃ.",
+                    }
+                    wide{
+                        "ஃபர்வாதின்",
+                        "ஆர்டிபெஹெஷ்த்",
+                        "கொர்தாத்",
+                        "திர்",
+                        "மொர்தாத்",
+                        "ஷாரிவார்",
+                        "மெஹ்ர்",
+                        "அபான்",
+                        "அசார்",
+                        "தே",
+                        "பஹ்மான்",
+                        "எஃபான்",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ஃபர்.",
+                        "ஆர்டி.",
+                        "கொர்.",
+                        "திர்",
+                        "மொர்.",
+                        "ஷாரி.",
+                        "மெஹ்.",
+                        "அபா.",
+                        "அசா.",
+                        "தே",
+                        "பஹ்.",
+                        "எஃ.",
+                    }
+                    wide{
+                        "ஃபர்வாதின்",
+                        "ஆர்டிபெஹெஷ்த்",
+                        "கொர்தாத்",
+                        "திர்",
+                        "மொர்தாத்",
+                        "ஷாரிவார்",
+                        "மெஹ்ர்",
+                        "அபான்",
+                        "அசார்",
+                        "தே",
+                        "பஹ்மான்",
+                        "எஃபான்",
+                    }
+                }
+            }
+        }
+        roc{
+            eras{
+                abbreviated{
+                    "ROCக்கு முன்",
+                    "R.O.C.",
+                }
+                narrow{
+                    "ROCக்கு முன்",
+                    "R.O.C.",
+                }
+                wide{
+                    "R.O.C. -க்கு முன்பு",
+                    "R.O.C.",
+                }
+            }
+        }
     }
     characterLabel{
         activities{"செயல்பாடுகள்"}
@@ -1055,12 +1556,6 @@ ta{
         western_asian_scripts{"மேற்காசிய ஸ்கிரிப்டுகள்"}
         whitespace{"வெள்ளை இடைவெளி"}
     }
-    delimiters{
-        alternateQuotationEnd{"’"}
-        alternateQuotationStart{"‘"}
-        quotationEnd{"”"}
-        quotationStart{"“"}
-    }
     fields{
         day{
             dn{"நாள்"}
@@ -1122,10 +1617,31 @@ ta{
                 }
             }
         }
+        dayOfYear{
+            dn{"வருடத்தின் நாள்"}
+        }
+        dayOfYear-narrow{
+            dn{"வருட. நாள்"}
+        }
+        dayOfYear-short{
+            dn{"வருட. நாள்"}
+        }
         dayperiod{
             dn{"முற்பகல்/பிற்பகல்"}
         }
+        dayperiod-narrow{
+            dn{"முற்./பிற்."}
+        }
+        dayperiod-short{
+            dn{"முற்./பிற்."}
+        }
         era{
+            dn{"காலம்"}
+        }
+        era-narrow{
+            dn{"காலம்"}
+        }
+        era-short{
             dn{"காலம்"}
         }
         fri{
@@ -1733,7 +2249,7 @@ ta{
                     other{"{0} வாரங்களில்"}
                 }
                 past{
-                    one{"{0} வாரத்திற்கு முன்பு"}
+                    one{"{0} வாரத்திற்கு முன்"}
                     other{"{0} வாரங்களுக்கு முன்"}
                 }
             }
@@ -1776,8 +2292,32 @@ ta{
                 }
             }
         }
+        weekOfMonth{
+            dn{"மாதத்தின் வாரம்"}
+        }
+        weekOfMonth-narrow{
+            dn{"மாத. வாரம்"}
+        }
+        weekOfMonth-short{
+            dn{"மாத. வாரம்"}
+        }
         weekday{
             dn{"வாரத்தின் நாள்"}
+        }
+        weekday-narrow{
+            dn{"வார. நாள்"}
+        }
+        weekday-short{
+            dn{"வார. நாள்"}
+        }
+        weekdayOfMonth{
+            dn{"மாதத்தின் வாரநாள்"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"மாத. வாரநாள்"}
+        }
+        weekdayOfMonth-short{
+            dn{"மாத. வாரநாள்"}
         }
         year{
             dn{"ஆண்டு"}
@@ -1836,9 +2376,23 @@ ta{
         zone{
             dn{"நேர மண்டலம்"}
         }
+        zone-narrow{
+            dn{"மண்டலம்"}
+        }
+        zone-short{
+            dn{"மண்டலம்"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} அல்லது {1}"}
+            end{"{0} அல்லது {1}"}
+        }
         standard{
+            2{"{0} மற்றும் {1}"}
+            end{"{0} மற்றும் {1}"}
+        }
+        standard-narrow{
             2{"{0} மற்றும் {1}"}
             end{"{0} மற்றும் {1}"}
             middle{"{0}, {1}"}
@@ -1850,28 +2404,44 @@ ta{
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
-        unit{
-            2{"{0}, {1}"}
-            end{"{0}, {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
-        }
         unit-narrow{
             2{"{0} {1}"}
             end{"{0} {1}"}
             middle{"{0} {1}"}
             start{"{0} {1}"}
         }
-        unit-short{
-            2{"{0}, {1}"}
-            end{"{0}, {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
-        }
     }
     measurementSystemNames{
         UK{"யூகே"}
         US{"யூஎஸ்"}
         metric{"மெட்ரிக்"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+        }
     }
 }

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 mn{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Абижан"}
@@ -148,7 +148,7 @@ mn{
             ec{"Порто-Ново"}
         }
         "Africa:Sao_Tome"{
-            ec{"Сан-Том"}
+            ec{"Сан-Томе"}
         }
         "Africa:Tripoli"{
             ec{"Триполи"}
@@ -166,13 +166,13 @@ mn{
             ec{"Анкораж"}
         }
         "America:Anguilla"{
-            ec{"Ангилла"}
+            ec{"Ангилья"}
         }
         "America:Antigua"{
             ec{"Антигуа"}
         }
         "America:Araguaina"{
-            ec{"Арагуана"}
+            ec{"Арагуаяна"}
         }
         "America:Argentina:La_Rioja"{
             ec{"Ла-Риоха"}
@@ -265,7 +265,7 @@ mn{
             ec{"Кордова"}
         }
         "America:Costa_Rica"{
-            ec{"Коста Рика"}
+            ec{"Коста-Рика"}
         }
         "America:Creston"{
             ec{"Крестон"}
@@ -274,7 +274,7 @@ mn{
             ec{"Куяба"}
         }
         "America:Curacao"{
-            ec{"Куракао"}
+            ec{"Кюрасао"}
         }
         "America:Danmarkshavn"{
             ec{"Данмаркшавн"}
@@ -334,7 +334,7 @@ mn{
             ec{"Гуаякиль"}
         }
         "America:Guyana"{
-            ec{"Гуяана"}
+            ec{"Гайана"}
         }
         "America:Halifax"{
             ec{"Халифакс"}
@@ -439,7 +439,7 @@ mn{
             ec{"Метлакатла"}
         }
         "America:Mexico_City"{
-            ec{"Мехико хот"}
+            ec{"Мехико"}
         }
         "America:Miquelon"{
             ec{"Микелон"}
@@ -505,7 +505,10 @@ mn{
             ec{"Порто-Велью"}
         }
         "America:Puerto_Rico"{
-            ec{"Пуэрто Рико"}
+            ec{"Пуэрто-Рико"}
+        }
+        "America:Punta_Arenas"{
+            ec{"Пунта Арена"}
         }
         "America:Rainy_River"{
             ec{"Рейни Ривер"}
@@ -547,10 +550,10 @@ mn{
             ec{"Ситка"}
         }
         "America:St_Barthelemy"{
-            ec{"Сент Бартельми"}
+            ec{"Сент-Бартельми"}
         }
         "America:St_Johns"{
-            ec{"Сент Жонс"}
+            ec{"Сент-Жонс"}
         }
         "America:St_Kitts"{
             ec{"Сент-Киттс"}
@@ -657,6 +660,9 @@ mn{
         "Asia:Ashgabat"{
             ec{"Ашхабад"}
         }
+        "Asia:Atyrau"{
+            ec{"Атырау"}
+        }
         "Asia:Baghdad"{
             ec{"Багдад"}
         }
@@ -707,6 +713,9 @@ mn{
         }
         "Asia:Dushanbe"{
             ec{"Душанбе"}
+        }
+        "Asia:Famagusta"{
+            ec{"Фамагуста"}
         }
         "Asia:Gaza"{
             ec{"Газа"}
@@ -796,7 +805,7 @@ mn{
             ec{"Понтианак"}
         }
         "Asia:Pyongyang"{
-            ec{"Пхеньян"}
+            ec{"Пёньян"}
         }
         "Asia:Qatar"{
             ec{"Катар"}
@@ -880,13 +889,13 @@ mn{
             ec{"Азор"}
         }
         "Atlantic:Bermuda"{
-            ec{"Бермуд"}
+            ec{"Бермуда"}
         }
         "Atlantic:Canary"{
             ec{"Канари"}
         }
         "Atlantic:Cape_Verde"{
-            ec{"Кейп Верде"}
+            ec{"Кабо Верде"}
         }
         "Atlantic:Faeroe"{
             ec{"Фароэ"}
@@ -895,7 +904,7 @@ mn{
             ec{"Мадейра"}
         }
         "Atlantic:Reykjavik"{
-            ec{"Рекьявик"}
+            ec{"Рейкьявик"}
         }
         "Atlantic:South_Georgia"{
             ec{"Өмнөд Жоржиа"}
@@ -907,10 +916,10 @@ mn{
             ec{"Стэнли"}
         }
         "Australia:Adelaide"{
-            ec{"Аделэйд"}
+            ec{"Аделаида"}
         }
         "Australia:Brisbane"{
-            ec{"Брисбэн"}
+            ec{"Брисбен"}
         }
         "Australia:Broken_Hill"{
             ec{"Брокен Хилл"}
@@ -942,8 +951,11 @@ mn{
         "Australia:Sydney"{
             ec{"Сидней"}
         }
+        "Etc:UTC"{
+            ls{"Олон улсын зохицуулалттай цаг"}
+        }
         "Etc:Unknown"{
-            ec{"Тодорхойгүй хот"}
+            ec{"Үл мэдэгдэх хот"}
         }
         "Europe:Amsterdam"{
             ec{"Амстердам"}
@@ -1073,6 +1085,9 @@ mn{
         "Europe:Sarajevo"{
             ec{"Сараево"}
         }
+        "Europe:Saratov"{
+            ec{"Саратов"}
+        }
         "Europe:Simferopol"{
             ec{"Симферополь"}
         }
@@ -1149,19 +1164,19 @@ mn{
             ec{"Мальдив"}
         }
         "Indian:Mauritius"{
-            ec{"Мавриту"}
+            ec{"Маврикий"}
         }
         "Indian:Mayotte"{
             ec{"Майотта"}
         }
         "Indian:Reunion"{
-            ec{"Реюньон"}
+            ec{"Реюнион"}
         }
         "Pacific:Apia"{
             ec{"Апиа"}
         }
         "Pacific:Auckland"{
-            ec{"Оуклэнд"}
+            ec{"Оукленд"}
         }
         "Pacific:Bougainville"{
             ec{"Бугенвиль"}
@@ -1242,7 +1257,7 @@ mn{
             ec{"Палау"}
         }
         "Pacific:Pitcairn"{
-            ec{"Питкейрн"}
+            ec{"Питкэрн"}
         }
         "Pacific:Ponape"{
             ec{"Понпей"}
@@ -1398,12 +1413,12 @@ mn{
             ls{"Бразилийн стандарт цаг"}
         }
         "meta:Brunei"{
-            ls{"Бруней Дарассаламын цаг"}
+            ls{"Бруней Даруссаламын цаг"}
         }
         "meta:Cape_Verde"{
-            ld{"Кэйп Вердийн зуны цаг"}
-            lg{"Кэйп Вердийн цаг"}
-            ls{"Кэйп Вердийн стандарт цаг"}
+            ld{"Кабо Вердийн зуны цаг"}
+            lg{"Кабо Вердийн цаг"}
+            ls{"Кабо Вердийн стандарт цаг"}
         }
         "meta:Chamorro"{
             ls{"Чаморрогийн цаг"}
@@ -1485,9 +1500,9 @@ mn{
             ls{"Баруун Европын стандарт цаг"}
         }
         "meta:Falkland"{
-            ld{"Фолькландын Арлуудын зуны цаг"}
-            lg{"Фолькландын Арлуудын цаг"}
-            ls{"Фолькландын Арлуудын стандарт цаг"}
+            ld{"Фолклендийн арлуудын зуны цаг"}
+            lg{"Фолклендийн арлуудын цаг"}
+            ls{"Фолклендийн арлуудын стандарт цаг"}
         }
         "meta:Fiji"{
             ld{"Фижигийн зуны цаг"}
@@ -1495,13 +1510,13 @@ mn{
             ls{"Фижигийн стандарт цаг"}
         }
         "meta:French_Guiana"{
-            ls{"Францын Гияанагийн цаг"}
+            ls{"Францын Гвианагийн цаг"}
         }
         "meta:French_Southern"{
-            ls{"Францын Өмнөд ба Антарктик цаг"}
+            ls{"Францын Өмнөд ба Антарктидийн цаг"}
         }
         "meta:GMT"{
-            ls{"Гринвичийн үндсэн цаг"}
+            ls{"Гринвичийн цаг"}
         }
         "meta:Galapagos"{
             ls{"Галапагосын цаг"}
@@ -1528,10 +1543,10 @@ mn{
             ls{"Баруун Гринландын стандарт цаг"}
         }
         "meta:Gulf"{
-            ls{"Гольфийн стандарт цаг"}
+            ls{"Галфийн стандарт цаг"}
         }
         "meta:Guyana"{
-            ls{"Гуяанагийн цаг"}
+            ls{"Гайанагийн цаг"}
         }
         "meta:Hawaii_Aleutian"{
             ld{"Хавай-Алеутын зуны цаг"}
@@ -1606,7 +1621,7 @@ mn{
             ls{"Красноярскийн стандарт цаг"}
         }
         "meta:Kyrgystan"{
-            ls{"Кыргызстаны цаг"}
+            ls{"Киргизийн цаг"}
         }
         "meta:Line_Islands"{
             ls{"Лайн арлын цаг"}
@@ -1637,9 +1652,9 @@ mn{
             ls{"Маршаллын арлын цаг"}
         }
         "meta:Mauritius"{
-            ld{"Мавритусын зуны цаг"}
-            lg{"Мавритусын цаг"}
-            ls{"Мавритусын стандарт цаг"}
+            ld{"Маврикийн зуны цаг"}
+            lg{"Маврикийн цаг"}
+            ls{"Маврикийн стандарт цаг"}
         }
         "meta:Mawson"{
             ls{"Моусоны цаг"}
@@ -1650,9 +1665,9 @@ mn{
             ls{"Баруун хойд Мексикийн стандарт цаг"}
         }
         "meta:Mexico_Pacific"{
-            ld{"Мексикийн номхон далайн зуны цаг"}
-            lg{"Мексикийн номхон далайн цаг"}
-            ls{"Мексикийн номхон далайн стандарт цаг"}
+            ld{"Мексик-Номхон далайн зуны цаг"}
+            lg{"Мексик-Номхон далайн цаг"}
+            ls{"Мексик-Номхон далайн стандарт цаг"}
         }
         "meta:Mongolia"{
             ld{"Улаанбаатарын зуны цаг"}
@@ -1731,17 +1746,17 @@ mn{
             ls{"Перугийн стандарт цаг"}
         }
         "meta:Philippines"{
-            ld{"Филиппины зуны цаг"}
-            lg{"Филиппины цаг"}
-            ls{"Филиппины стандарт цаг"}
+            ld{"Филиппиний зуны цаг"}
+            lg{"Филиппиний цаг"}
+            ls{"Филиппиний стандарт цаг"}
         }
         "meta:Phoenix_Islands"{
             ls{"Феникс арлын цаг"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"Сент-Пьер ба Микелоны зуны цаг"}
-            lg{"Сент-Пьер ба Микелоны цаг"}
-            ls{"Сент-Пьерре ба Микелоны стандарт цаг"}
+            ld{"Сен-Пьер ба Микелоны зуны цаг"}
+            lg{"Сен-Пьер ба Микелоны цаг"}
+            ls{"Сент-Пьер ба Микелоны стандарт цаг"}
         }
         "meta:Pitcairn"{
             ls{"Питкернийн цаг"}
@@ -1750,10 +1765,10 @@ mn{
             ls{"Понапегийн цаг"}
         }
         "meta:Pyongyang"{
-            ls{"Пхеньяны цаг"}
+            ls{"Пёньяны цаг"}
         }
         "meta:Reunion"{
-            ls{"Реюньоны цаг"}
+            ls{"Реюнионы цаг"}
         }
         "meta:Rothera"{
             ls{"Ротерагийн цаг"}
@@ -1769,7 +1784,7 @@ mn{
             ls{"Самоагийн стандарт цаг"}
         }
         "meta:Seychelles"{
-            ls{"Сейшелийн цаг"}
+            ls{"Сейшелийн арлуудын цаг"}
         }
         "meta:Singapore"{
             ls{"Сингапурын цаг"}
@@ -1867,8 +1882,8 @@ mn{
         gmtFormat{"GMT{0}"}
         gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
-        regionFormat{"{0}-н цагаар"}
-        regionFormatDaylight{"{0} (+1)"}
-        regionFormatStandard{"{0} (+0)"}
+        regionFormat{"{0}-н цаг"}
+        regionFormatDaylight{"{0}-н зуны цаг"}
+        regionFormatStandard{"{0}-н стандарт цаг"}
     }
 }

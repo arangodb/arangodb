@@ -124,6 +124,10 @@ ff{
         }
         MRO{
             "MRO",
+            "Ugiyya Muritani (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ugiyya Muritani",
         }
         MUR{
@@ -176,6 +180,10 @@ ff{
         }
         STD{
             "STD",
+            "Dobra Sawo Tome e Prensipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra Sawo Tome e Prensipe",
         }
         SZL{
@@ -223,5 +231,5 @@ ff{
             "Dolaar Simbaabuwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

@@ -262,8 +262,12 @@ ca{
             "CLP",
             "peso xilè",
         }
+        CNH{
+            "CNH",
+            "iuan xinès extracontinental",
+        }
         CNY{
-            "¥",
+            "CNY",
             "iuan xinès",
         }
         COP{
@@ -276,7 +280,7 @@ ca{
         }
         CRC{
             "CRC",
-            "colón costa-riqueny",
+            "colon costa-riqueny",
         }
         CSD{
             "CSD",
@@ -681,6 +685,10 @@ ca{
         }
         MRO{
             "MRO",
+            "ouguiya maurità (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ouguiya maurità",
         }
         MTL{
@@ -745,7 +753,7 @@ ca{
         }
         NIO{
             "NIO",
-            "córdoba oro nicaragüenca",
+            "córdoba nicaragüenc",
         }
         NLG{
             "NLG",
@@ -777,11 +785,11 @@ ca{
         }
         PEN{
             "PEN",
-            "nou sol peruà",
+            "sol peruà",
         }
         PES{
             "PES",
-            "sol peruà",
+            "sol peruà (1863–1965)",
         }
         PGK{
             "PGK",
@@ -909,6 +917,10 @@ ca{
         }
         STD{
             "STD",
+            "dobra de São Tomé i Príncipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra de São Tomé i Príncipe",
         }
         SUR{
@@ -917,7 +929,7 @@ ca{
         }
         SVC{
             "SVC",
-            "colón salvadorenc",
+            "colon salvadorenc",
         }
         SYP{
             "SYP",
@@ -1029,6 +1041,10 @@ ca{
         }
         VEF{
             "VEF",
+            "bolívar veneçolà (2008–2018)",
+        }
+        VES{
+            "VES",
             "bolívar veneçolà",
         }
         VND{
@@ -1191,7 +1207,6 @@ ca{
         BAM{"KM"}
         BBD{"$"}
         BDT{"৳"}
-        BMD{"$"}
         BND{"$"}
         BOB{"Bs"}
         BRL{"R$"}
@@ -1199,7 +1214,6 @@ ca{
         BWP{"P"}
         BYN{"р."}
         BZD{"$"}
-        CAD{"$"}
         CLP{"$"}
         CNY{"¥"}
         COP{"$"}
@@ -1255,6 +1269,7 @@ ca{
         PKR{"Rs"}
         PLN{"zł"}
         PYG{"₲"}
+        RON{"lei"}
         RUB{"₽"}
         RWF{"RF"}
         SBD{"$"}
@@ -1263,7 +1278,6 @@ ca{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1273,7 +1287,7 @@ ca{
         UAH{"₴"}
         USD{"$"}
         UYU{"$"}
-        VEF{"VEF"}
+        VEF{"Bs F"}
         VND{"₫"}
         XCD{"$"}
         ZAR{"R"}
@@ -1544,13 +1558,17 @@ ca{
             one{"peso xilè"}
             other{"pesos xilens"}
         }
+        CNH{
+            one{"iuan xinès extracontinental"}
+            other{"iuans xinesos extracontinentals"}
+        }
         CNX{
             one{"dòlar del Banc Popular Xinès"}
             other{"dòlars del Banc Popular Xinès"}
         }
         CNY{
             one{"iuan xinès"}
-            other{"iuan xinesos"}
+            other{"iuans xinesos"}
         }
         COP{
             one{"peso colombià"}
@@ -1561,8 +1579,8 @@ ca{
             other{"unidades de valor real colombianes"}
         }
         CRC{
-            one{"colón costa-riqueny"}
-            other{"colones costa-riquenys"}
+            one{"colon costa-riqueny"}
+            other{"colons costa-riquenys"}
         }
         CSD{
             one{"dinar serbi antic"}
@@ -1961,6 +1979,10 @@ ca{
             other{"pataques de Macau"}
         }
         MRO{
+            one{"ouguiya maurità (1973–2017)"}
+            other{"ouguiyas mauritans (1973–2017)"}
+        }
+        MRU{
             one{"ouguiya maurità"}
             other{"ouguiyas mauritans"}
         }
@@ -1982,7 +2004,7 @@ ca{
         }
         MWK{
             one{"kwacha malawià"}
-            other{"kwachas malawians"}
+            other{"kwacha malawians"}
         }
         MXN{
             one{"peso mexicà"}
@@ -2025,8 +2047,8 @@ ca{
             other{"córdobas nicaragüenques"}
         }
         NIO{
-            one{"córdoba oro nicaragüenca"}
-            other{"córdobas oro nicaragüenques"}
+            one{"córdoba nicaragüenc"}
+            other{"córdobas nicaragüencs"}
         }
         NLG{
             one{"florí neerlandès"}
@@ -2057,12 +2079,12 @@ ca{
             other{"intis peruans"}
         }
         PEN{
-            one{"nou sol peruà"}
-            other{"nous sols peruans"}
-        }
-        PES{
             one{"sol peruà"}
             other{"sols peruans"}
+        }
+        PES{
+            one{"sol peruà (1863–1965)"}
+            other{"sols peruans (1863–1965)"}
         }
         PGK{
             one{"kina de Papua Nova Guinea"}
@@ -2094,7 +2116,7 @@ ca{
         }
         QAR{
             one{"rial de Qatar"}
-            other{"rials qatarians"}
+            other{"rials de Qatar"}
         }
         RHD{
             one{"dòlar rhodesià"}
@@ -2189,6 +2211,10 @@ ca{
             other{"lliures del Sudan del Sud"}
         }
         STD{
+            one{"dobra de São Tomé i Príncipe (1977–2017)"}
+            other{"dobras de São Tomé i Príncipe (1977–2017)"}
+        }
+        STN{
             one{"dobra de São Tomé i Príncipe"}
             other{"dobras de São Tomé i Príncipe"}
         }
@@ -2309,6 +2335,10 @@ ca{
             other{"bolívars veneçolans (1871–2008)"}
         }
         VEF{
+            one{"bolívar veneçolà (2008–2018)"}
+            other{"bolívars veneçolans (2008–2018)"}
+        }
+        VES{
             one{"bolívar veneçolà"}
             other{"bolívars veneçolans"}
         }
@@ -2469,5 +2499,5 @@ ca{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

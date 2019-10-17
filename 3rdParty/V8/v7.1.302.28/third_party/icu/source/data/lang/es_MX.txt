@@ -10,10 +10,12 @@ es_MX{
     Languages{
         ace{"acehnés"}
         arp{"arapaho"}
-        ba{"bashkir"}
         bas{"basa"}
         bax{"bamun"}
-        bho{"bhojpuri"}
+        bho{"bhoshpuri"}
+        bla{"siksika"}
+        bua{"buriat"}
+        de_AT{"alemán austriaco"}
         dum{"neerlandés medieval"}
         enm{"inglés medieval"}
         eu{"euskera"}
@@ -22,18 +24,33 @@ es_MX{
         gmh{"alemán de la alta edad media"}
         grc{"griego antiguo"}
         hak{"kejia (China)"}
+        hil{"hiligainón"}
         hsn{"xiang (China)"}
+        inh{"ingusetio"}
+        kbd{"kabardiano"}
+        krc{"karachái bálkaro"}
+        kum{"cumuco"}
         lo{"lao"}
+        lus{"lushai"}
         mga{"irlandés medieval"}
         nan{"min nan (Chino)"}
+        nr{"ndebele meridional"}
         nso{"sotho septentrional"}
         pa{"punyabí"}
+        pcm{"pcm"}
         rn{"kiroundi"}
         shu{"árabe chadiano"}
         ss{"siswati"}
+        st{"sesotho meridional"}
         sw{"suajili"}
         sw_CD{"suajili del Congo"}
+        syr{"siriaco"}
+        tet{"tetún"}
+        tn{"setswana"}
+        tyv{"tuviniano"}
         wo{"wolof"}
+        wuu{"wuu"}
+        xal{"kalmyk"}
         zgh{"tamazight marroquí estándar"}
     }
     Languages%short{
@@ -43,7 +60,9 @@ es_MX{
         ug{"uyghur"}
     }
     Scripts{
-        Telu{"telugú"}
+        Hanb{"hanb"}
+        Mlym{"malayálam"}
+        Telu{"telegu"}
     }
     Types{
         calendar{
@@ -55,11 +74,21 @@ es_MX{
             standard{"Orden estándar"}
             traditional{"Orden tradicional"}
         }
+        d0{
+            fwidth{"Ancho completo"}
+            hwidth{"Ancho medio"}
+        }
         lb{
             normal{"salto de línea normal"}
         }
+        m0{
+            bgn{"BGN"}
+            ungegn{"UNGEGN"}
+        }
         ms{
+            metric{"sistema métrico"}
             uksystem{"sistema imperial"}
+            ussystem{"sistema estadounidense"}
         }
         numbers{
             arab{"Dígitos en arábigo-índico"}
@@ -70,6 +99,7 @@ es_MX{
             geor{"Números en georgiano"}
             grek{"Números en griego"}
             greklow{"Números en griego en minúscula"}
+            gujr{"dígitos en gujarati"}
             guru{"Dígitos en gurmuji"}
             hanidec{"Numeros decimales en chino"}
             hans{"Números en chino simplificado"}
@@ -87,5 +117,9 @@ es_MX{
             tibt{"Dígitos en tibetano"}
         }
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.96"}
+    characterLabelPattern{
+        historic{"{0} — Históricos"}
+        miscellaneous{"{0} — Varios"}
+    }
 }

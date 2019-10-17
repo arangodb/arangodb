@@ -1,7 +1,7 @@
-﻿// © 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ja{
-    Version{"2.1.29.25"}
+    Version{"2.1.44.56"}
     boundaries{
         line:process(dependency){"line_normal.brk"}
         line_loose:process(dependency){"line_loose_cj.brk"}

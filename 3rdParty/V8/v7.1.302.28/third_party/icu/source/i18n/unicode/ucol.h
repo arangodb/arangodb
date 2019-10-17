@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -131,7 +131,7 @@ typedef enum {
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
      */
   UCOL_ATTRIBUTE_VALUE_COUNT
-#endif  // U_HIDE_DEPRECATED_API
+#endif  /* U_HIDE_DEPRECATED_API */
 } UColAttributeValue;
 
 /**
@@ -204,7 +204,7 @@ typedef enum {
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
      */
     UCOL_REORDER_CODE_LIMIT         = 0x1005
-#endif  // U_HIDE_DEPRECATED_API
+#endif  /* U_HIDE_DEPRECATED_API */
 } UColReorderCode;
 
 /**
@@ -342,8 +342,8 @@ typedef enum {
       */
      UCOL_NUMERIC_COLLATION = UCOL_STRENGTH + 2, 
 
-    // Do not conditionalize the following with #ifndef U_HIDE_DEPRECATED_API,
-    // it is needed for layout of RuleBasedCollator object.
+    /* Do not conditionalize the following with #ifndef U_HIDE_DEPRECATED_API,
+     * it is needed for layout of RuleBasedCollator object. */
     /**
      * One more than the highest normal UColAttribute value.
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
@@ -1067,7 +1067,7 @@ typedef enum {
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
      */
     UCOL_BOUND_VALUE_COUNT
-#endif  // U_HIDE_DEPRECATED_API
+#endif  /* U_HIDE_DEPRECATED_API */
 } UColBoundMode;
 
 /**
@@ -1149,7 +1149,7 @@ ucol_getUCAVersion(const UCollator* coll, UVersionInfo info);
  * The recommended way to achieve "merged" sorting is by
  * concatenating strings with U+FFFE between them.
  * The concatenation has the same sort order as the merged sort keys,
- * but merge(getSortKey(str1), getSortKey(str2)) may differ from getSortKey(str1 + '\uFFFE' + str2).
+ * but merge(getSortKey(str1), getSortKey(str2)) may differ from getSortKey(str1 + '\\uFFFE' + str2).
  * Using strings with U+FFFE may yield shorter sort keys.
  *
  * For details about Sort Key Features see
@@ -1294,6 +1294,7 @@ U_STABLE uint32_t U_EXPORT2 ucol_getVariableTop(const UCollator *coll, UErrorCod
  * the top of one of the supported reordering groups,
  * and it must not be beyond the last of those groups.
  * See ucol_setMaxVariable().
+ * @param coll collator to be set
  * @param varTop primary weight, as returned by ucol_setVariableTop or ucol_getVariableTop
  * @param status error code
  * @see ucol_getVariableTop

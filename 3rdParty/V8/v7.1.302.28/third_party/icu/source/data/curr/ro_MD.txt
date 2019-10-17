@@ -7,5 +7,5 @@ ro_MD{
             "leu moldovenesc",
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.48.43"}
 }

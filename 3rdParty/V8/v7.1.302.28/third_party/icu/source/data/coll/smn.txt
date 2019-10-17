@@ -8,7 +8,7 @@ smn{
                 "[import und-u-co-search]"
                 "[import smn-u-co-standard]"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -19,7 +19,7 @@ smn{
                 "&S<š<<<Š"
                 "&Z<ž<<<Ž<æ<<<Æ<ø<<<Ø<å<<<Å<ã<<<Ã<ä<<<Ä<á<<<Á<ö<<<Ö"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

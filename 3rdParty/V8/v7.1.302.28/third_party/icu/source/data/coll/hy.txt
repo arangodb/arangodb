@@ -8,7 +8,7 @@ hy{
                 "[reorder Armn]"
                 "&ք<և<<<Եւ"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

@@ -6,6 +6,7 @@
 #
 
 $nonword = [^\uE000-\uE0FF];
+$wordBoundary = [^[:L:][:M:][:N:]];
 \uE015\uE03F\uE02F\uE03E } $nonword→كيا; # किया
 \uE026\uE03F\uE02F\uE03E } $nonword→ديا; # दिया
 \uE015\uE03F } $nonword→كي; # कि at word end
@@ -28,6 +29,7 @@ $nonword = [^\uE000-\uE0FF];
 \uE00C→ل; # ऌ
 \uE00D→ا ي; # ऍ
 \uE00E→ي; # ऎ
+$wordBoundary {\uE00F} → إي; # word-initial ए
 \uE00F  } $nonword→ي; # ए use ي when at end
 \uE00F→ي; # ए use ي when not at end
 \uE010  } $nonword→ا ي; # ऐ use ي when at end

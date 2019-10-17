@@ -1,10 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 tr{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
-            ec{"Abican"}
+            ec{"Abidjan"}
         }
         "Africa:Accra"{
             ec{"Akra"}
@@ -148,7 +148,7 @@ tr{
             ec{"Porto-Novo"}
         }
         "Africa:Sao_Tome"{
-            ec{"São Tomé"}
+            ec{"Sao Tome"}
         }
         "Africa:Tripoli"{
             ec{"Trablus"}
@@ -241,7 +241,7 @@ tr{
             ec{"Cancun"}
         }
         "America:Caracas"{
-            ec{"Karakas"}
+            ec{"Caracas"}
         }
         "America:Catamarca"{
             ec{"Catamarca"}
@@ -439,7 +439,7 @@ tr{
             ec{"Metlakatla"}
         }
         "America:Mexico_City"{
-            ec{"Meksiko City"}
+            ec{"Mexico City"}
         }
         "America:Miquelon"{
             ec{"Miquelon"}
@@ -506,6 +506,9 @@ tr{
         }
         "America:Puerto_Rico"{
             ec{"Porto Riko"}
+        }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
         }
         "America:Rainy_River"{
             ec{"Rainy River"}
@@ -657,6 +660,9 @@ tr{
         "Asia:Ashgabat"{
             ec{"Aşkabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atırav"}
+        }
         "Asia:Baghdad"{
             ec{"Bağdat"}
         }
@@ -685,7 +691,7 @@ tr{
             ec{"Kalküta"}
         }
         "Asia:Chita"{
-            ec{"Chita"}
+            ec{"Çita"}
         }
         "Asia:Choibalsan"{
             ec{"Çoybalsan"}
@@ -707,6 +713,9 @@ tr{
         }
         "Asia:Dushanbe"{
             ec{"Duşanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Gazimağusa"}
         }
         "Asia:Gaza"{
             ec{"Gazze"}
@@ -942,6 +951,9 @@ tr{
         "Australia:Sydney"{
             ec{"Sidney"}
         }
+        "Etc:UTC"{
+            ls{"Eş Güdümlü Evrensel Zaman"}
+        }
         "Etc:Unknown"{
             ec{"Bilinmeyen Şehir"}
         }
@@ -952,7 +964,7 @@ tr{
             ec{"Andorra"}
         }
         "Europe:Astrakhan"{
-            ec{"Astrakhan"}
+            ec{"Astrahan"}
         }
         "Europe:Athens"{
             ec{"Atina"}
@@ -1073,8 +1085,11 @@ tr{
         "Europe:Sarajevo"{
             ec{"Saraybosna"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
-            ec{"Akmescit"}
+            ec{"Simferopol"}
         }
         "Europe:Skopje"{
             ec{"Üsküp"}
@@ -1155,7 +1170,7 @@ tr{
             ec{"Mayotte"}
         }
         "Indian:Reunion"{
-            ec{"Réunion"}
+            ec{"Reunion"}
         }
         "Pacific:Apia"{
             ec{"Apia"}
@@ -1382,9 +1397,9 @@ tr{
             ls{"Orta Avustralya Standart Saati"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"İçbatı Avustralya Yaz Saati"}
-            lg{"İçbatı Avustralya Saati"}
-            ls{"İçbatı Avustralya Standart Saati"}
+            ld{"İç Batı Avustralya Yaz Saati"}
+            lg{"İç Batı Avustralya Saati"}
+            ls{"İç Batı Avustralya Standart Saati"}
         }
         "meta:Australia_Eastern"{
             ld{"Doğu Avustralya Yaz Saati"}
@@ -1412,7 +1427,7 @@ tr{
             ls{"Bangladeş Standart Saati"}
         }
         "meta:Bhutan"{
-            ls{"Bhutan Saati"}
+            ls{"Butan Saati"}
         }
         "meta:Bolivia"{
             ls{"Bolivya Saati"}
@@ -1505,7 +1520,7 @@ tr{
             ls{"Doğu Avrupa Standart Saati"}
         }
         "meta:Europe_Further_Eastern"{
-            ls{"Daha Doğu Avrupa Saati"}
+            ls{"İleri Doğu Avrupa Saati"}
         }
         "meta:Europe_Western"{
             ld{"Batı Avrupa Yaz Saati"}

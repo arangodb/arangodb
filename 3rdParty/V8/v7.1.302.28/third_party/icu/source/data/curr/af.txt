@@ -122,6 +122,10 @@ af{
             "CLP",
             "Chileense peso",
         }
+        CNH{
+            "CNH",
+            "Chinese joean",
+        }
         CNY{
             "CN¥",
             "Sjinese joean renminbi",
@@ -180,7 +184,7 @@ af{
         }
         EUR{
             "€",
-            "Euro",
+            "euro",
         }
         FJD{
             "FJD",
@@ -388,6 +392,10 @@ af{
         }
         MRO{
             "MRO",
+            "Mauritaniese ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritaniese ouguiya",
         }
         MUR{
@@ -452,7 +460,7 @@ af{
         }
         PEN{
             "PEN",
-            "Peruaanse nuwe sol",
+            "Peruaanse sol",
         }
         PGK{
             "PGK",
@@ -544,6 +552,10 @@ af{
         }
         STD{
             "STD",
+            "São Tomé en Príncipe dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "São Tomé en Príncipe dobra",
         }
         SYP{
@@ -618,6 +630,10 @@ af{
             "VEF",
             "Venezolaanse bolivar",
         }
+        VES{
+            "VES",
+            "Venezolaanse Bolívar",
+        }
         VND{
             "₫",
             "Viëtnamese dong",
@@ -647,8 +663,8 @@ af{
             "CFP-frank",
         }
         XXX{
-            "XXX",
-            "Onbekende geldeenheid",
+            "¤",
+            "onbekende geldeenheid",
         }
         YER{
             "YER",
@@ -672,104 +688,14 @@ af{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
         EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
-        RUB{"₽"}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
+        RON{"leu"}
+        STN{"Db"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
         RUB{"₽"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
@@ -891,6 +817,10 @@ af{
         CLP{
             one{"Chileense peso"}
             other{"Chileense peso"}
+        }
+        CNH{
+            one{"Chinese joean (buiteland)"}
+            other{"Chinese joean (buiteland)"}
         }
         CNY{
             one{"Sjinese joean renminbi"}
@@ -1137,6 +1067,10 @@ af{
             other{"Macaose pataca"}
         }
         MRO{
+            one{"Mauritaniese ouguiya (1973–2017)"}
+            other{"Mauritaniese ouguiya (1973–2017)"}
+        }
+        MRU{
             one{"Mauritaniese ouguiya"}
             other{"Mauritaniese ouguiya"}
         }
@@ -1197,8 +1131,8 @@ af{
             other{"Panamese balboa"}
         }
         PEN{
-            one{"Peruaanse nuwe sol"}
-            other{"Peruaanse nuwe sol"}
+            one{"Peruaanse sol"}
+            other{"Peruaanse sol"}
         }
         PGK{
             one{"Papoea-Nieu-Guinese kina"}
@@ -1285,6 +1219,10 @@ af{
             other{"Suid-Soedanese pond"}
         }
         STD{
+            one{"São Tomé en Príncipe dobra (1977–2017)"}
+            other{"São Tomé en Príncipe dobra (1977–2017)"}
+        }
+        STN{
             one{"São Tomé en Príncipe dobra"}
             other{"São Tomé en Príncipe dobra"}
         }
@@ -1353,8 +1291,12 @@ af{
             other{"Oezbekiese som"}
         }
         VEF{
-            one{"Venezolaanse bolivar"}
-            other{"Venezolaanse bolivar"}
+            one{"Venezolaanse bolívar (2008–2018)"}
+            other{"Venezolaanse bolívare (2008–2018)"}
+        }
+        VES{
+            one{"Venezolaanse bolívar"}
+            other{"Venezolaanse bolívare"}
         }
         VND{
             one{"Viëtnamese dong"}
@@ -1405,5 +1347,5 @@ af{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.48.17"}
 }

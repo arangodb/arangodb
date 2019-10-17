@@ -5,7 +5,7 @@ pt_CV{
     Currencies{
         CVE{
             "​",
-            "Escudo cabo-verdiano",
+            "escudo cabo-verdiano",
             {
                 "#,##0.00 ¤",
                 "$",
@@ -17,5 +17,5 @@ pt_CV{
             "Escudo português",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.71"}
 }

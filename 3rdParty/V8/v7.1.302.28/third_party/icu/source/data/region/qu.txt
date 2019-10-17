@@ -106,7 +106,7 @@ qu{
         MF{"San Martín"}
         MG{"Madagascar"}
         MH{"Islas Marshall"}
-        MK{"ERY Macedonia"}
+        MK{"Macedonia del Norte"}
         ML{"Malí"}
         MM{"Myanmar"}
         MO{"Macao RAE"}
@@ -193,5 +193,5 @@ qu{
         ZM{"Zambia"}
         ZW{"Zimbabue"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.49.82"}
 }

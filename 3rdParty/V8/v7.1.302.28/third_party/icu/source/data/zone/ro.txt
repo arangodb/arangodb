@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ro{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -475,7 +475,7 @@ ro{
             ec{"Beulah, Dakota de Nord"}
         }
         "America:North_Dakota:Center"{
-            ec{"Centru, Dakota de Nord"}
+            ec{"Center, Dakota de Nord"}
         }
         "America:North_Dakota:New_Salem"{
             ec{"New Salem, Dakota de Nord"}
@@ -506,6 +506,9 @@ ro{
         }
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
+        }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
         }
         "America:Rainy_River"{
             ec{"Rainy River"}
@@ -657,6 +660,9 @@ ro{
         "Asia:Ashgabat"{
             ec{"Așgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atîrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -707,6 +713,9 @@ ro{
         }
         "Asia:Dushanbe"{
             ec{"Dușanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -801,6 +810,9 @@ ro{
         "Asia:Qatar"{
             ec{"Qatar"}
         }
+        "Asia:Qostanay"{
+            ec{"Kostanay"}
+        }
         "Asia:Qyzylorda"{
             ec{"Kyzylorda"}
         }
@@ -868,7 +880,7 @@ ro{
             ec{"Vladivostok"}
         }
         "Asia:Yakutsk"{
-            ec{"Yakuțk"}
+            ec{"Iakuțk"}
         }
         "Asia:Yekaterinburg"{
             ec{"Ekaterinburg"}
@@ -941,6 +953,9 @@ ro{
         }
         "Australia:Sydney"{
             ec{"Sydney"}
+        }
+        "Etc:UTC"{
+            ls{"Timpul universal coordonat"}
         }
         "Etc:Unknown"{
             ec{"Oraș necunoscut"}
@@ -1072,6 +1087,9 @@ ro{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1884,9 +1902,9 @@ ro{
             ls{"Ora din Wallis și Futuna"}
         }
         "meta:Yakutsk"{
-            ld{"Ora de vară din Yakuțk"}
-            lg{"Ora din Yakuțk"}
-            ls{"Ora standard din Yakuțk"}
+            ld{"Ora de vară din Iakuțk"}
+            lg{"Ora din Iakuțk"}
+            ls{"Ora standard din Iakuțk"}
         }
         "meta:Yekaterinburg"{
             ld{"Ora de vară din Ekaterinburg"}

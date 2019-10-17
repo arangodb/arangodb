@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 kea{
-    Version{"2.1.27.46"}
+    Version{"2.1.48.9"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -612,12 +612,12 @@ kea{
                 other{"{0} GB"}
             }
             kilobit{
-                dnam{"Kb"}
-                other{"{0} Kb"}
+                dnam{"kb"}
+                other{"{0} kb"}
             }
             kilobyte{
-                dnam{"KB"}
-                other{"{0} KB"}
+                dnam{"kB"}
+                other{"{0} kB"}
             }
             megabit{
                 dnam{"Mb"}

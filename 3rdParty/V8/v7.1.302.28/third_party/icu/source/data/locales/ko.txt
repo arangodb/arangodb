@@ -24,33 +24,31 @@ ko{
         " 頸 顆 顧 飢 餃 館 饉 饋 饑 駒 駕 駱 騎 騏 騫 驅 驕 驚 驥 骨 高 鬼 魁 鮫 鯤 鯨 鱇 鳩 鵑 鵠 鷄 鷗 鸞 麒 麴 黔 鼓 龕"
         " 龜]"
     }
-    Ellipsis{
-        final{"{0}…"}
-        initial{"…{0}"}
-        medial{"{0}…{1}"}
-        word-final{"{0} …"}
-        word-initial{"… {0}"}
-        word-medial{"{0} … {1}"}
-    }
     ExemplarCharacters{"[가-힣]"}
     ExemplarCharactersIndex{"[ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[‾ _ ＿ \\- － ‐ — ― 〜 ・ , ， 、 ; ； \\: ： ! ！ ¡ ? ？ ¿ . ． ‥ … 。 · ＇ ‘ ’ \u0022 "
         "＂ “ ” ( （ ) ） \\[ ［ \\] ］ \\{ ｛ \\} ｝ 〈 〉 《 》 「 」 『 』 【 】 〔 〕 § ¶ @ ＠ * ＊ / "
         "／ \\\\ ＼ \\& ＆ # ＃ % ％ ‰ † ‡ ′ ″ 〃 ※]"
     }
-    MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
+        arab{
+            symbols{
+                minusSign{"‏-"}
+                plusSign{"‏+"}
+            }
+        }
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}~{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -173,28 +171,49 @@ ko{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                other{"{0}번째 길목에서 우회전하세요."}
+            }
+            plural{
+                other{"{0}일"}
+            }
+        }
         minimumGroupingDigits{"1"}
-        native{"latn"}
     }
-    Version{"2.1.29.22"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
+            availableFormats{
+                GyMMM{"G y년 MMM"}
+                GyMMMEEEEd{"G y년 MMM d일 EEEE"}
+                GyMMMEd{"G y년 MMM d일 (E)"}
+                GyMMMd{"G y년 MMM d일"}
+                MMMEEEEd{"MMM d일 EEEE"}
+                MMMEd{"MMM d일 (E)"}
+                MMMMd{"MMMM d일"}
+                MMMd{"MMM d일"}
+                yyyyMMM{"G y년 MMM"}
+                yyyyMMMEEEEd{"G y년 MMM d일 EEEE"}
+                yyyyMMMEd{"G y년 MMM d일 (E)"}
+                yyyyMMMM{"G y년 MMMM"}
+                yyyyMMMd{"G y년 MMM d일"}
+            }
             eras{
                 abbreviated{
+                    "불기",
+                }
+                wide{
                     "불기",
                 }
             }
@@ -216,15 +235,22 @@ ko{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"B h시"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
+                E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
                 EEEEd{"d일 EEEE"}
                 Ed{"d일 (E)"}
-                Gy{"U년"}
-                GyMMM{"U년 MMM"}
-                GyMMMEEEEd{"U년 MMM d일 EEEE"}
-                GyMMMEd{"U년 MMM d일 (E)"}
-                GyMMMd{"U년 MMM d일"}
+                Gy{"r년(U년)"}
+                GyMMM{"r년(U년) MMM"}
+                GyMMMEEEEd{"r년(U년) MMM d일 EEEE"}
+                GyMMMEd{"r년(U년) MMM d일 (E)"}
+                GyMMMd{"r년 MMM d일"}
                 H{"H시"}
-                Hms{"H시 m분 s초"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
                 M{"MMM"}
                 MEEEEd{"M. d. EEEE"}
                 MEd{"M. d. (E)"}
@@ -234,24 +260,29 @@ ko{
                 MMMMd{"MMMM d일"}
                 MMMd{"MMM d일"}
                 Md{"M. d."}
+                UM{"U년 MMM"}
+                UMMM{"U년 MMM"}
+                UMMMd{"U년 MMM d일"}
+                UMd{"U년 M. d."}
                 d{"d일"}
                 h{"a h시"}
                 hm{"a h:mm"}
                 hms{"a h:mm:ss"}
-                y{"U년"}
-                yMd{"U. M. d."}
-                yyyy{"U년"}
-                yyyyM{"U. M."}
-                yyyyMEEEEd{"U. M. d. EEEE"}
-                yyyyMEd{"U. M. d. (E)"}
-                yyyyMMM{"U년 MMM"}
-                yyyyMMMEEEEd{"U년 MMM d일 EEEE"}
-                yyyyMMMEd{"U년 MMM d일 (E)"}
-                yyyyMMMM{"U년 MMMM"}
-                yyyyMMMd{"U년 MMM d일"}
-                yyyyMd{"U. M. d."}
-                yyyyQQQ{"U년 QQQ"}
-                yyyyQQQQ{"U년 QQQQ"}
+                ms{"mm:ss"}
+                y{"r년(U년)"}
+                yMd{"r. M. d."}
+                yyyy{"r년(U년)"}
+                yyyyM{"r. M."}
+                yyyyMEEEEd{"r. M. d. EEEE"}
+                yyyyMEd{"r. M. d. (E)"}
+                yyyyMMM{"r년(U년) MMM"}
+                yyyyMMMEEEEd{"r년(U년) MMM d일 EEEE"}
+                yyyyMMMEd{"r년(U년) MMM d일 (E)"}
+                yyyyMMMM{"r년(U년) MMMM"}
+                yyyyMMMd{"r년 MMM d일"}
+                yyyyMd{"r. M. d."}
+                yyyyQQQ{"r년(U년) QQQ"}
+                yyyyQQQQ{"r년(U년) QQQQ"}
             }
             cyclicNameSets{
                 solarTerms{
@@ -856,9 +887,18 @@ ko{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"B h시"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
                 EEEEd{"d일 EEEE"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d일 (E)"}
+                Ehm{"E a h:mm"}
+                Ehms{"E a h:mm:ss"}
                 Gy{"G y년"}
                 GyMMM{"G y년 MMM월"}
                 GyMMMEEEEd{"G y년 MMM월 d일 EEEE"}
@@ -867,7 +907,7 @@ ko{
                 H{"H시"}
                 HHmmss{"HH:mm:ss"}
                 Hm{"HH:mm"}
-                Hms{"H시 m분 s초"}
+                Hms{"HH:mm:ss"}
                 M{"M월"}
                 MEEEEd{"M. d. EEEE"}
                 MEd{"M. d. (E)"}
@@ -897,6 +937,53 @@ ko{
                 yyyyQQQQ{"G y년 QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"B h시 ~ B h시"}
+                    h{"B h시 ~ h시"}
+                }
+                Bhm{
+                    B{"B h:mm ~ B h:mm"}
+                    h{"B h:mm ~ h:mm"}
+                    m{"B h:mm ~ h:mm"}
+                }
+                Gy{
+                    G{"G y년 ~ G y년"}
+                    y{"G y년~y년"}
+                }
+                GyM{
+                    G{"GGGGG y년 M월 ~ GGGGG y년 M월"}
+                    M{"GGGGG y년 M월 ~ y년 M월"}
+                    y{"GGGGG y년 M월 ~ y년 M월"}
+                }
+                GyMEd{
+                    G{"GGGGG y년 M월 d일 E요일 ~ GGGGG y년 M월 d일 E요일"}
+                    M{"GGGGG y년 M월 d일 E요일 ~ y년 M월 d일 E요일"}
+                    d{"GGGGG y년 M월 d일 E요일 ~ y년 M월 d일 E요일"}
+                    y{"GGGGG y년 M월 d일 E요일 ~ y년 M월 d일 E요일"}
+                }
+                GyMMM{
+                    G{"G y년 MMM ~ G y년 MMM"}
+                    M{"G y년 MMM ~ y년 MMM"}
+                    y{"G y년 MMM ~ y년 MMM"}
+                }
+                GyMMMEd{
+                    G{"G y년 MMM d일 E요일 ~ G y년 MMM d일 E요일"}
+                    M{"G y년 MMM d일 E요일 ~ MMM d일 E요일"}
+                    d{"G y년 MMM d일 e요일 – MMM d일 e요일"}
+                    y{"G y년 MMM d일 E요일 ~ y년 MMM d일 E요일"}
+                }
+                GyMMMd{
+                    G{"G y년 MMM d일 ~ y년 MMM d일"}
+                    M{"G y년 MMM d일 ~ MMM d일"}
+                    d{"G y년 MMM d일 ~ d일"}
+                    y{"G y년 MMM d일 ~ MMM y년 d일"}
+                }
+                GyMd{
+                    G{"GGGGG y년 M월 d일 ~ GGGGG y년 M월 d일"}
+                    M{"GGGGG y년 M월 d일 ~ y년 M월 d일"}
+                    d{"GGGGG y년 M월 d일 ~ y년 M월 d일"}
+                    y{"GGGGG y년 M월 d일 ~ y년 M월 d일"}
+                }
                 H{
                     H{"HH ~ HH시"}
                 }
@@ -1036,7 +1123,12 @@ ko{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"B h시"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"(E) B h:mm"}
+                EBhms{"(E) B h:mm:ss"}
                 EEEEd{"d일 EEEE"}
                 EHm{"(E) HH:mm"}
                 EHms{"(E) HH:mm:ss"}
@@ -1061,7 +1153,7 @@ ko{
                 MMMEEEEd{"MMM d일 EEEE"}
                 MMMEd{"MMM d일 (E)"}
                 MMMMW{
-                    other{"MMM W번째 주"}
+                    other{"MMMM W번째 주"}
                 }
                 MMMMd{"MMMM d일"}
                 MMMd{"MMM d일"}
@@ -1088,7 +1180,7 @@ ko{
                 yQQQ{"y년 QQQ"}
                 yQQQQ{"y년 QQQQ"}
                 yw{
-                    other{"y년 w번째 주"}
+                    other{"Y년 w번째 주"}
                 }
             }
             dayNames{
@@ -1254,6 +1346,53 @@ ko{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"B h시 ~ B h시"}
+                    h{"B h시~h시"}
+                }
+                Bhm{
+                    B{"B h:mm~B h:mm"}
+                    h{"B h:mm ~ h:mm"}
+                    m{"B h:mm ~ h:mm"}
+                }
+                Gy{
+                    G{"G y년 ~ G y년"}
+                    y{"G y년~y년"}
+                }
+                GyM{
+                    G{"GGGGG y년 M월 ~ GGGGG y년 M월"}
+                    M{"GGGGG y년 M월 ~ GGGGG y년 M월"}
+                    y{"GGGGG y년 M월 ~ y년 M월"}
+                }
+                GyMEd{
+                    G{"GGGGG y년 M월 d일 E요일 ~ GGGGG y년 M월 d일 E요일"}
+                    M{"GGGGG y년 M월 d일 E요일 ~ y년 M월 d일 E요일"}
+                    d{"GGGGG y년 M월 d일 E요일 ~ y년 M월 d일 E요일"}
+                    y{"GGGGG y년 M월 d일 E요일 ~ y년 M월 d일 E요일"}
+                }
+                GyMMM{
+                    G{"G y년 MMM ~ G y년 MMM"}
+                    M{"G y년 MMM ~ MMM"}
+                    y{"G y년 MMM ~ y년 MMM"}
+                }
+                GyMMMEd{
+                    G{"G y년 MMM d일 E요일 ~ G y년 MMM d일 E요일"}
+                    M{"G y년 MMM d일 E요일 ~ MMM d일 E요일"}
+                    d{"G y년 MMM d일 E요일 ~ MMM d일 E요일"}
+                    y{"G y년 MMM d일 E요일 ~ y년 MMM d일 E요일"}
+                }
+                GyMMMd{
+                    G{"G y년 MMM d일 ~ G y년 MMM d일"}
+                    M{"G y년 MMM d일 ~ MMM d일"}
+                    d{"G y년 MMM d일 ~ d일"}
+                    y{"G y년 MMM d일 ~ y년 MMM d일"}
+                }
+                GyMd{
+                    G{"GGGGG y년 M월 d일 ~ GGGGG y년 M월 d일"}
+                    M{"GGGGG y년 M월 d일 ~ y년 M월 d일"}
+                    d{"GGGGG y년 M월 d일 ~ y년 M월 d일"}
+                    y{"GGGGG y년 M월 d일 ~ y년 M월 d일"}
+                }
                 H{
                     H{"H ~ H시"}
                 }
@@ -1491,43 +1630,43 @@ ko{
         }
         hebrew{
             eras{
-                abbreviated{
-                    "AM",
+                wide{
+                    "유대력",
                 }
             }
             monthNames{
                 format{
                     abbreviated{
-                        "디스리월",
-                        "말케스월",
-                        "기슬르월",
-                        "데벳월",
-                        "스밧월",
-                        "아달월 1",
-                        "아달월",
-                        "닛산월",
-                        "이야르월",
-                        "시완월",
-                        "담무르월",
-                        "압월",
-                        "엘룰월",
-                        "아달월 2",
+                        "디스리",
+                        "말케스",
+                        "기슬르",
+                        "데벳",
+                        "스밧",
+                        "아달 1",
+                        "아달",
+                        "닛산",
+                        "이야르",
+                        "시완",
+                        "담무르",
+                        "압",
+                        "엘룰",
+                        "아달 2",
                     }
                     wide{
-                        "디스리월",
-                        "말케스월",
-                        "기슬르월",
-                        "데벳월",
-                        "스밧월",
-                        "아달월 1",
-                        "아달월",
-                        "닛산월",
-                        "이야르월",
-                        "시완월",
-                        "담무르월",
-                        "압월",
-                        "엘룰월",
-                        "아달월 2",
+                        "디스리",
+                        "말케스",
+                        "기슬르",
+                        "데벳",
+                        "스밧",
+                        "아달 1",
+                        "아달",
+                        "닛산",
+                        "이야르",
+                        "시완",
+                        "담무르",
+                        "압",
+                        "엘룰",
+                        "아달 2",
                     }
                 }
                 stand-alone{
@@ -1567,9 +1706,13 @@ ko{
             }
         }
         islamic{
+            availableFormats{
+                MMMMd{"MMMM d일"}
+                yyyyMMMM{"G y년 MMMM"}
+            }
             eras{
-                abbreviated{
-                    "AH",
+                wide{
+                    "히즈라력",
                 }
             }
             monthNames{
@@ -1608,6 +1751,21 @@ ko{
             }
         }
         japanese{
+            availableFormats{
+                GyMMM{"G y년 MMM"}
+                GyMMMEEEEd{"G y년 MMM d일 EEEE"}
+                GyMMMEd{"G y년 MMM d일 (E)"}
+                GyMMMd{"G y년 MMM d일"}
+                MMMEEEEd{"MMM d일 EEEE"}
+                MMMEd{"MMM d일 (E)"}
+                MMMMd{"MMMM d일"}
+                MMMd{"MMM d일"}
+                yyyyMMM{"G y년 MMM"}
+                yyyyMMMEEEEd{"G y년 MMM d일 EEEE"}
+                yyyyMMMEd{"G y년 MMM d일 (E)"}
+                yyyyMMMM{"G y년 MMMM"}
+                yyyyMMMd{"G y년 MMM d일"}
+            }
             eras{
                 abbreviated{
                     "다이카 (645 ~ 650)",
@@ -1846,6 +2004,7 @@ ko{
                     "다이쇼",
                     "쇼와",
                     "헤이세이",
+                    "레이와",
                 }
             }
         }
@@ -1914,6 +2073,21 @@ ko{
             }
         }
         roc{
+            availableFormats{
+                GyMMM{"G y년 MMM"}
+                GyMMMEEEEd{"G y년 MMM d일 EEEE"}
+                GyMMMEd{"G y년 MMM d일 (E)"}
+                GyMMMd{"G y년 MMM d일"}
+                MMMEEEEd{"MMM d일 EEEE"}
+                MMMEd{"MMM d일 (E)"}
+                MMMMd{"MMMM d일"}
+                MMMd{"MMM d일"}
+                yyyyMMM{"G y년 MMM"}
+                yyyyMMMEEEEd{"G y년 MMM d일 EEEE"}
+                yyyyMMMEd{"G y년 MMM d일 (E)"}
+                yyyyMMMM{"G y년 MMMM"}
+                yyyyMMMd{"G y년 MMM d일"}
+            }
             eras{
                 abbreviated{
                     "중화민국전",
@@ -1927,27 +2101,28 @@ ko{
         african_scripts{"아프리카 문자"}
         american_scripts{"아메리카 문자"}
         animal{"동물"}
+        animals_nature{"동물 및 자연"}
         arrows{"화살표"}
-        body{"몸"}
+        body{"신체"}
         box_drawing{"상자 그림"}
         braille{"점자"}
         building{"건물"}
         bullets_stars{"구분점/별"}
-        consonantal_jamo{"닿소리 자모"}
+        consonantal_jamo{"자음 자모"}
         currency_symbols{"통화 기호"}
         dash_connector{"대시/연결어"}
         digits{"숫자"}
-        dingbats{"딩뱃"}
+        dingbats{"딩벳"}
         divination_symbols{"점성 기호"}
         downwards_arrows{"아래쪽 방향 화살표"}
         downwards_upwards_arrows{"상하 양방향 화살표"}
         east_asian_scripts{"동아시아 문자"}
         emoji{"이모티콘"}
         european_scripts{"유럽 문자"}
-        female{"여"}
+        female{"여성"}
         flag{"깃발"}
         flags{"깃발"}
-        food_drink{"음식 및 음료"}
+        food_drink{"식음료"}
         format{"포맷"}
         format_whitespace{"포맷 및 공백"}
         full_width_form_variant{"전각 형식 변형"}
@@ -1961,14 +2136,15 @@ ko{
         heart{"하트"}
         historic_scripts{"고전 문자"}
         ideographic_desc_characters{"상형 설명 문자"}
+        japanese_kana{"일본어 가나"}
         kanbun{"간분"}
-        kanji{"칸지"}
-        keycap{"키캡"}
+        kanji{"간지"}
+        keycap{"키 캡"}
         leftwards_arrows{"왼쪽 방향 화살표"}
-        leftwards_rightwards_arrows{"좌우 양방향 화살표"}
+        leftwards_rightwards_arrows{"양방향 화살표"}
         letterlike_symbols{"문자형 기호"}
         limited_use{"제한적 사용"}
-        male{"남"}
+        male{"남성"}
         math_symbols{"수학 기호"}
         middle_eastern_scripts{"중동 문자"}
         miscellaneous{"기타"}
@@ -1980,7 +2156,8 @@ ko{
         numbers{"숫자"}
         objects{"사물"}
         other{"기타"}
-        person{"사람"}
+        paired{"쌍 기호"}
+        person{"인물"}
         phonetic_alphabet{"음성 기호 알파벳"}
         pictographs{"그림 문자"}
         place{"장소"}
@@ -2002,16 +2179,10 @@ ko{
         travel_places{"여행 및 장소"}
         upwards_arrows{"위쪽 방향 화살표"}
         variant_forms{"부호 변형"}
-        vocalic_jamo{"홀소리 자모"}
+        vocalic_jamo{"모음 자모"}
         weather{"날씨"}
         western_asian_scripts{"동서양 문자"}
         whitespace{"공백"}
-    }
-    delimiters{
-        alternateQuotationEnd{"’"}
-        alternateQuotationStart{"‘"}
-        quotationEnd{"”"}
-        quotationStart{"“"}
     }
     fields{
         day{
@@ -2054,10 +2225,31 @@ ko{
                 }
             }
         }
+        dayOfYear{
+            dn{"년의 일"}
+        }
+        dayOfYear-narrow{
+            dn{"년의 일"}
+        }
+        dayOfYear-short{
+            dn{"년의 일"}
+        }
         dayperiod{
             dn{"오전/오후"}
         }
+        dayperiod-narrow{
+            dn{"오전/오후"}
+        }
+        dayperiod-short{
+            dn{"오전/오후"}
+        }
         era{
+            dn{"연호"}
+        }
+        era-narrow{
+            dn{"연호"}
+        }
+        era-short{
             dn{"연호"}
         }
         fri{
@@ -2600,8 +2792,32 @@ ko{
                 }
             }
         }
+        weekOfMonth{
+            dn{"월의 주"}
+        }
+        weekOfMonth-narrow{
+            dn{"월의 주"}
+        }
+        weekOfMonth-short{
+            dn{"월의 주"}
+        }
         weekday{
             dn{"요일"}
+        }
+        weekday-narrow{
+            dn{"요일"}
+        }
+        weekday-short{
+            dn{"요일"}
+        }
+        weekdayOfMonth{
+            dn{"월의 평일"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"월의 평일"}
+        }
+        weekdayOfMonth-short{
+            dn{"월의 평일"}
         }
         year{
             dn{"년"}
@@ -2644,9 +2860,25 @@ ko{
         zone{
             dn{"시간대"}
         }
+        zone-narrow{
+            dn{"시간대"}
+        }
+        zone-short{
+            dn{"시간대"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} 또는 {1}"}
+            end{"{0} 또는 {1}"}
+        }
         standard{
+            2{"{0} 및 {1}"}
+            end{"{0} 및 {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} 및 {1}"}
             end{"{0} 및 {1}"}
             middle{"{0}, {1}"}
@@ -2681,5 +2913,33 @@ ko{
         UK{"영국식"}
         US{"미국식"}
         metric{"미터법"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+        }
     }
 }

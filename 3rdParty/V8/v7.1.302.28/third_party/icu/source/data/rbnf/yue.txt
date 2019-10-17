@@ -2,6 +2,11 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 yue{
     RBNFRules{
+        OrdinalRules{
+            "%digits-ordinal:",
+            "-x: \u7B2C\u2212>#,##0>;",
+            "0: \u7B2C=#,##0=;",
+        }
         SpelloutRules{
             "%spellout-numbering-year:",
             "x.x: =0.0=;",
@@ -169,5 +174,5 @@ yue{
             "0: \u7B2C=%spellout-numbering=;",
         }
     }
-    Version{"2.1.27.22"}
+    Version{"2.1.46.24"}
 }

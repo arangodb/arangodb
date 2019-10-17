@@ -31,6 +31,7 @@ it{
         151{"Europa orientale"}
         154{"Europa settentrionale"}
         155{"Europa occidentale"}
+        202{"Africa subsahariana"}
         419{"America Latina"}
         AC{"Isola Ascensione"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ it{
         CW{"Curaçao"}
         CX{"Isola Christmas"}
         CY{"Cipro"}
-        CZ{"Repubblica Ceca"}
+        CZ{"Cechia"}
         DE{"Germania"}
         DG{"Diego Garcia"}
         DJ{"Gibuti"}
@@ -106,9 +107,10 @@ it{
         ES{"Spagna"}
         ET{"Etiopia"}
         EU{"Unione Europea"}
+        EZ{"Eurozona"}
         FI{"Finlandia"}
         FJ{"Figi"}
-        FK{"Isole Falkland"}
+        FK{"Isole Falkland (Isole Malvine)"}
         FM{"Micronesia"}
         FO{"Isole Fær Øer"}
         FR{"Francia"}
@@ -181,7 +183,7 @@ it{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Isole Marshall"}
-        MK{"Repubblica di Macedonia"}
+        MK{"Macedonia del Nord"}
         ML{"Mali"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
@@ -217,7 +219,7 @@ it{
         PH{"Filippine"}
         PK{"Pakistan"}
         PL{"Polonia"}
-        PM{"Saint Pierre e Miquelon"}
+        PM{"Saint-Pierre e Miquelon"}
         PN{"Isole Pitcairn"}
         PR{"Portorico"}
         PS{"Palestina"}
@@ -260,7 +262,7 @@ it{
         TH{"Thailandia"}
         TJ{"Tagikistan"}
         TK{"Tokelau"}
-        TL{"Timor Leste"}
+        TL{"Timor Est"}
         TM{"Turkmenistan"}
         TN{"Tunisia"}
         TO{"Tonga"}
@@ -272,12 +274,12 @@ it{
         UA{"Ucraina"}
         UG{"Uganda"}
         UM{"Altre isole americane del Pacifico"}
-        UN{"nazioni unite"}
+        UN{"Nazioni Unite"}
         US{"Stati Uniti"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
         VA{"Città del Vaticano"}
-        VC{"Saint Vincent e Grenadines"}
+        VC{"Saint Vincent e Grenadine"}
         VE{"Venezuela"}
         VG{"Isole Vergini Britanniche"}
         VI{"Isole Vergini Americane"}
@@ -285,6 +287,8 @@ it{
         VU{"Vanuatu"}
         WF{"Wallis e Futuna"}
         WS{"Samoa"}
+        XA{"pseudo-accenti"}
+        XB{"pseudo-bidi"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -295,17 +299,15 @@ it{
     }
     Countries%short{
         GB{"UK"}
-        UN{"nazioni unite"}
+        UN{"ONU"}
         US{"USA"}
     }
     Countries%variant{
         CD{"Congo (RDC)"}
         CG{"Congo (Repubblica)"}
         CI{"Côte d’Ivoire"}
-        CZ{"Cèchia"}
-        FK{"Isole Falkland (Isole Malvine)"}
-        MK{"Ex Repubblica Jugoslava di Macedonia"}
-        TL{"Timor Est"}
+        CZ{"Repubblica Ceca"}
+        SZ{"Regno di eSwatini"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

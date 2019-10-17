@@ -122,6 +122,10 @@ eu{
             "CLP",
             "Txileko pesoa",
         }
+        CNH{
+            "CNH",
+            "yuan txinatar (itsasoz haraindikoa)",
+        }
         CNY{
             "CN¥",
             "Txinako yuana",
@@ -385,6 +389,10 @@ eu{
         }
         MRO{
             "MRO",
+            "Mauritaniako ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritaniako ouguiya",
         }
         MUR{
@@ -445,7 +453,7 @@ eu{
         }
         PEN{
             "PEN",
-            "Peruko sol berria",
+            "Peruko sol",
         }
         PGK{
             "PGK",
@@ -533,7 +541,11 @@ eu{
         }
         STD{
             "STD",
-            "Sao Tomeko eta Principeko dobra",
+            "Sao Tomeko eta Principeko dobra (1977–2017)",
+        }
+        STN{
+            "STN",
+            "Sao Tome eta Principeko dobra",
         }
         SYP{
             "SYP",
@@ -601,6 +613,10 @@ eu{
         }
         VEF{
             "VEF",
+            "Venezuelako bolivarra (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venezuelako bolivarra",
         }
         VND{
@@ -632,7 +648,7 @@ eu{
             "CFP frankoa",
         }
         XXX{
-            "XXX",
+            "¤",
             "Moneta ezezaguna",
         }
         YER{
@@ -731,7 +747,7 @@ eu{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -870,6 +886,10 @@ eu{
         CLP{
             one{"Txileko peso"}
             other{"Txileko peso"}
+        }
+        CNH{
+            one{"yuan txinatar (itsasoz haraindikoa)"}
+            other{"yuan txinatar (itsasoz haraindikoa)"}
         }
         CNY{
             one{"Txinako yuan"}
@@ -1120,6 +1140,10 @@ eu{
             other{"Macanako pataca"}
         }
         MRO{
+            one{"Mauritaniako ouguiya (1973–2017)"}
+            other{"Mauritaniako ouguiya (1973–2017)"}
+        }
+        MRU{
             one{"Mauritaniako ouguiya"}
             other{"Mauritaniako ouguiya"}
         }
@@ -1180,8 +1204,8 @@ eu{
             other{"Panamako balboa"}
         }
         PEN{
-            one{"Peruko sol berri"}
-            other{"Peruko sol berri"}
+            one{"Peruko sol"}
+            other{"Peruko sol"}
         }
         PGK{
             one{"Papua Ginea Berriko kina"}
@@ -1268,8 +1292,12 @@ eu{
             other{"Hego Sudango libera"}
         }
         STD{
-            one{"Sao Tomeko eta Principeko dobra"}
-            other{"Sao Tomeko eta Principeko dobra"}
+            one{"Sao Tomeko eta Principeko dobra (1977–2017)"}
+            other{"Sao Tomeko eta Principeko dobra (1977–2017)"}
+        }
+        STN{
+            one{"Sao Tome eta Principeko dobra"}
+            other{"Sao Tome eta Principeko dobra"}
         }
         SYP{
             one{"Siriako libera"}
@@ -1336,6 +1364,10 @@ eu{
             other{"Uzbekistango som"}
         }
         VEF{
+            one{"Venezuelako bolivar (2008–2018)"}
+            other{"Venezuelako bolivar (2008–2018)"}
+        }
+        VES{
             one{"Venezuelako bolivar"}
             other{"Venezuelako bolivar"}
         }
@@ -1388,5 +1420,5 @@ eu{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.20"}
+    Version{"2.1.49.82"}
 }

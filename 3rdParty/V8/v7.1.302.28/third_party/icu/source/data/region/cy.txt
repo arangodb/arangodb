@@ -31,6 +31,7 @@ cy{
         151{"Dwyrain Ewrop"}
         154{"Gogledd Ewrop"}
         155{"Gorllewin Ewrop"}
+        202{"Affrica Is-Sahara"}
         419{"America Ladin"}
         AC{"Ynys Ascension"}
         AD{"Andorra"}
@@ -49,7 +50,7 @@ cy{
         AW{"Aruba"}
         AX{"Ynysoedd Åland"}
         AZ{"Azerbaijan"}
-        BA{"Bosnia a Hercegovina"}
+        BA{"Bosnia & Herzegovina"}
         BB{"Barbados"}
         BD{"Bangladesh"}
         BE{"Gwlad Belg"}
@@ -89,7 +90,7 @@ cy{
         CW{"Curaçao"}
         CX{"Ynys y Nadolig"}
         CY{"Cyprus"}
-        CZ{"Gweriniaeth Tsiec"}
+        CZ{"Tsiecia"}
         DE{"Yr Almaen"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -106,9 +107,10 @@ cy{
         ES{"Sbaen"}
         ET{"Ethiopia"}
         EU{"Yr Undeb Ewropeaidd"}
+        EZ{"Ardal yr Ewro"}
         FI{"Y Ffindir"}
         FJ{"Fiji"}
-        FK{"Ynysoedd y Falkland/Malvinas"}
+        FK{"Ynysoedd y Falkland (Ynysoedd y Malfinas)"}
         FM{"Micronesia"}
         FO{"Ynysoedd Ffaro"}
         FR{"Ffrainc"}
@@ -181,7 +183,7 @@ cy{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Ynysoedd Marshall"}
-        MK{"Macedonia"}
+        MK{"Gogledd Macedonia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -251,7 +253,7 @@ cy{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
-        SZ{"Gwlad Swazi"}
+        SZ{"Eswatini"}
         TA{"Tristan da Cunha"}
         TC{"Ynysoedd Turks a Caicos"}
         TD{"Tchad"}
@@ -272,7 +274,7 @@ cy{
         UA{"Wcráin"}
         UG{"Uganda"}
         UM{"Ynysoedd Pellennig UDA"}
-        UN{"Cenhedloedd Unedig"}
+        UN{"y Cenhedloedd Unedig"}
         US{"Yr Unol Daleithiau"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
@@ -285,6 +287,8 @@ cy{
         VU{"Vanuatu"}
         WF{"Wallis a Futuna"}
         WS{"Samoa"}
+        XA{"Acenion Ffug"}
+        XB{"Bidi Ffug"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -302,10 +306,9 @@ cy{
         CD{"Y Congo (G.Dd.C.)"}
         CG{"Y Congo (Gweriniaeth)"}
         CI{"Arfordir Ifori"}
-        CZ{"Tsiecia"}
-        FK{"Ynysoedd y Falkland (Ynysoedd y Malfinas)"}
-        MK{"Macedonia (CWIM)"}
+        CZ{"Gweriniaeth Tsiec"}
+        SZ{"Gwlad Swazi"}
         TL{"Dwyrain Timor"}
     }
-    Version{"2.1.30.6"}
+    Version{"2.1.49.82"}
 }

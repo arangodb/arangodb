@@ -168,7 +168,7 @@ fy{
         frr{"Noard-Frysk"}
         frs{"East-Frysk"}
         fur{"Friulysk"}
-        fy{"West-Frysk"}
+        fy{"Frysk"}
         ga{"Iersk"}
         gaa{"Ga"}
         gay{"Gayo"}
@@ -886,7 +886,7 @@ fy{
         VALLADER{"Vallader"}
         WADEGILE{"Wade-Giles-romanisering"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Taal: {0}"}
         script{"Skrift: {0}"}

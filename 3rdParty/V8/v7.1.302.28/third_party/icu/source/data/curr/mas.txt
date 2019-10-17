@@ -124,6 +124,10 @@ mas{
         }
         MRO{
             "MRO",
+            "Iropiyianí e Moritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Iropiyianí e Moritania",
         }
         MUR{
@@ -176,6 +180,10 @@ mas{
         }
         STD{
             "STD",
+            "Iropiyianí e Saotome (1977–2017)",
+        }
+        STN{
+            "STN",
             "Iropiyianí e Saotome",
         }
         SZL{
@@ -223,5 +231,5 @@ mas{
             "Iropiyianí e Simbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

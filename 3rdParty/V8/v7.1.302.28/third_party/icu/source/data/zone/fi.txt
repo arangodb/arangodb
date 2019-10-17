@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 fi{
-    Version{"2.1.29.88"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -508,6 +508,9 @@ fi{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -660,6 +663,9 @@ fi{
         "Asia:Ashgabat"{
             ec{"Ašgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atıraw"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -710,6 +716,9 @@ fi{
         }
         "Asia:Dushanbe"{
             ec{"Dušanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -775,7 +784,7 @@ fi{
             ec{"Manila"}
         }
         "Asia:Muscat"{
-            ec{"Muscat"}
+            ec{"Masqat"}
         }
         "Asia:Nicosia"{
             ec{"Nikosia"}
@@ -945,6 +954,9 @@ fi{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"UTC-yleisaika"}
+        }
         "Etc:Unknown"{
             ec{"tuntematon"}
         }
@@ -1076,6 +1088,9 @@ fi{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1225,7 +1240,7 @@ fi{
             ec{"Marquesassaaret"}
         }
         "Pacific:Midway"{
-            ec{"Midway"}
+            ec{"Midwaysaaret"}
         }
         "Pacific:Nauru"{
             ec{"Nauru"}
@@ -1485,7 +1500,7 @@ fi{
             ls{"Davisin aika"}
         }
         "meta:DumontDUrville"{
-            ls{"Dumont-d’Urvillen aika"}
+            ls{"Dumont d’Urvillen aika"}
         }
         "meta:East_Timor"{
             ls{"Itä-Timorin aika"}
@@ -1539,7 +1554,7 @@ fi{
             ls{"Galápagossaarten aika"}
         }
         "meta:Gambier"{
-            ls{"Gambierin aika"}
+            ls{"Gambiersaarten aika"}
         }
         "meta:Georgia"{
             ld{"Georgian kesäaika"}
@@ -1679,7 +1694,7 @@ fi{
             ls{"Malediivien aika"}
         }
         "meta:Marquesas"{
-            ls{"Marquesasin aika"}
+            ls{"Marquesassaarten aika"}
         }
         "meta:Marshall_Islands"{
             ls{"Marshallinsaarten aika"}
@@ -1740,7 +1755,7 @@ fi{
             ls{"Niuen aika"}
         }
         "meta:Norfolk"{
-            ls{"Norfolkinsaarten aika"}
+            ls{"Norfolkinsaaren aika"}
         }
         "meta:Noronha"{
             ld{"Fernando de Noronhan kesäaika"}

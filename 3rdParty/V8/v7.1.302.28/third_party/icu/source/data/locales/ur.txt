@@ -21,41 +21,35 @@ ur{
         "[ا ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن و ہ ھ ء ی ے"
         "]"
     }
+    ExemplarCharactersNumbers{"[\u200E \\- , ٫ ٬ . % ‰ + 0۰ 1۱ 2۲ 3۳ 4۴ 5۵ 6۶ 7۷ 8۸ 9۹]"}
     ExemplarCharactersPunctuation{"[، ؍ ٫ ٬ ؛ \\: ؟ . ۔ ( ) \\[ \\]]"}
     MoreInformation{"؟"}
     NumberElements{
         arabext{
             patterns{
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             symbols{
-                decimal{"."}
                 exponential{"×۱۰^"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"‎-‎"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"‎+‎"}
                 superscriptingExponent{"×"}
             }
         }
-        default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
-                accountingFormat{"¤ #,##,##0.00"}
-                currencyFormat{"¤ #,##,##0.00"}
-                decimalFormat{"#,##0.###"}
-                percentFormat{"#,##,##0%"}
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                currencyFormat{"¤ #,##0.00"}
+                percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             patternsLong{
@@ -213,11 +207,8 @@ ur{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
-                list{";"}
                 minusSign{"‎-"}
                 nan{"NaN"}
                 perMille{"‰"}
@@ -227,11 +218,184 @@ ur{
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                other{"دایاں موڑ نمبر {0} مڑیں۔"}
+            }
+            plural{
+                one{"{0} گھنٹہ"}
+                other{"{0} گھنٹے"}
+            }
+        }
         minimumGroupingDigits{"1"}
         native{"arabext"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     calendar{
+        coptic{
+            eras{
+                abbreviated{
+                    "دور0",
+                    "دور1",
+                }
+                narrow{
+                    "دور0",
+                    "دور1",
+                }
+                wide{
+                    "دور0",
+                    "دور1",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ٹاؤٹ",
+                        "بابا",
+                        "ہیٹر",
+                        "کیاہک",
+                        "توبا",
+                        "امشیر",
+                        "برمہات",
+                        "برموڈا",
+                        "بشانس",
+                        "پاؤنا",
+                        "ایپپ",
+                        "میسرا",
+                        "ناسی",
+                    }
+                    wide{
+                        "ٹاؤٹ",
+                        "بابا",
+                        "ہیٹر",
+                        "کیاہک",
+                        "توبا",
+                        "امشیر",
+                        "برمہات",
+                        "برموڈا",
+                        "بشانس",
+                        "پاؤنا",
+                        "ایپپ",
+                        "میسرا",
+                        "ناسی",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ٹاؤٹ",
+                        "بابا",
+                        "ہیٹر",
+                        "کیاہک",
+                        "توبا",
+                        "امشیر",
+                        "برمہات",
+                        "برموڈا",
+                        "بشانس",
+                        "پاؤنا",
+                        "ایپپ",
+                        "میسرا",
+                        "ناسی",
+                    }
+                    wide{
+                        "ٹاؤٹ",
+                        "بابا",
+                        "ہیٹر",
+                        "کیاہک",
+                        "توبا",
+                        "امشیر",
+                        "برمہات",
+                        "برموڈا",
+                        "بشانس",
+                        "پاؤنا",
+                        "ایپپ",
+                        "میسرا",
+                        "ناسی",
+                    }
+                }
+            }
+        }
+        ethiopic{
+            eras{
+                abbreviated{
+                    "دور0",
+                    "دور1",
+                }
+                narrow{
+                    "دور0",
+                    "دور1",
+                }
+                wide{
+                    "دور0",
+                    "دور1",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "مسکرم",
+                        "تیکیمت",
+                        "ہیدر",
+                        "تہساس",
+                        "تیر",
+                        "یکاتیت",
+                        "میگابت",
+                        "میازیا",
+                        "گیمبوٹ",
+                        "سینے",
+                        "ہیملے",
+                        "نیہاسے",
+                        "پیگیومین",
+                    }
+                    wide{
+                        "مسکرم",
+                        "تیکیمت",
+                        "ہیدر",
+                        "تہساس",
+                        "تیر",
+                        "یکاتیت",
+                        "میگابت",
+                        "میازیا",
+                        "گیمبوٹ",
+                        "سینے",
+                        "ہیملے",
+                        "نیہاسے",
+                        "پیگیومین",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "مسکرم",
+                        "تیکیمت",
+                        "ہیدر",
+                        "تہساس",
+                        "تیر",
+                        "یکاتیت",
+                        "میگابت",
+                        "میازیا",
+                        "گیمبوٹ",
+                        "سینے",
+                        "ہیملے",
+                        "نیہاسے",
+                        "پیگیومین",
+                    }
+                    wide{
+                        "مسکرم",
+                        "تیکیمت",
+                        "ہیدر",
+                        "تہساس",
+                        "تیر",
+                        "یکاتیت",
+                        "میگابت",
+                        "میازیا",
+                        "گیمبوٹ",
+                        "سینے",
+                        "ہیملے",
+                        "نیہاسے",
+                        "پیگیومین",
+                    }
+                }
+            }
+        }
         generic{
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -249,8 +413,17 @@ ur{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E، d MMM، y G"}
@@ -262,7 +435,7 @@ ur{
                 MEd{"E، d/M"}
                 MMM{"LLL"}
                 MMMEd{"E، d MMM"}
-                MMMMd{"MMMM d"}
+                MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
                 d{"d"}
@@ -276,13 +449,60 @@ ur{
                 yyyyMEd{"E، d/M/y G"}
                 yyyyMMM{"MMM y G"}
                 yyyyMMMEd{"E، d MMM، y G"}
-                yyyyMMMM{"G y MMMM"}
+                yyyyMMMM{"MMMM y G"}
                 yyyyMMMd{"d MMM، y G"}
                 yyyyMd{"d/M/y G"}
                 yyyyQQQ{"QQQ y G"}
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    G{"y G – y G"}
+                    y{"y – y G"}
+                }
+                GyM{
+                    G{"M/y GGGGG – M/y GGGGG"}
+                    M{"M/y – M/y GGGGG"}
+                    y{"M/y – M/y GGGGG"}
+                }
+                GyMEd{
+                    G{"E, M/d/y GGGGG – E, M/d/y GGGGG"}
+                    M{"E, M/d/y – E, M/d/y GGGGG"}
+                    d{"E, M/d/y – E, M/d/y GGGGG"}
+                    y{"E, M/d/y – E, M/d/y GGGGG"}
+                }
+                GyMMM{
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM – MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                GyMMMEd{
+                    G{"E, MMM d, y G – E, MMM d, y G"}
+                    M{"E, MMM d – E, MMM d, y G"}
+                    d{"E, MMM d – E, MMM d, y G"}
+                    y{"E, MMM d, y – E, MMM d, y G"}
+                }
+                GyMMMd{
+                    G{"MMM d, y G – MMM d, y G"}
+                    M{"MMM d – MMM d, y G"}
+                    d{"MMM d – d, y G"}
+                    y{"MMM d, y – MMM d, y G"}
+                }
+                GyMd{
+                    G{"M/d/y GGGGG – M/d/y GGGGG"}
+                    M{"M/d/y – M/d/y GGGGG"}
+                    d{"M/d/y – M/d/y GGGGG"}
+                    y{"M/d/y – M/d/y GGGGG"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -398,7 +618,7 @@ ur{
                 "h:mm a",
                 "EEEE، d MMMM، y",
                 "d MMMM، y",
-                "y MMM d",
+                "d MMM، y",
                 "d/M/yy",
                 "{1} {0}",
                 "{1} {0}",
@@ -410,7 +630,12 @@ ur{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -430,10 +655,10 @@ ur{
                 MMM{"LLL"}
                 MMMEd{"E، d MMM"}
                 MMMMW{
-                    one{"MMM کے W ہفتے"}
-                    other{"MMM کے W ہفتے"}
+                    one{"MMMM کا ہفتہ W"}
+                    other{"MMMM کا ہفتہ W"}
                 }
-                MMMMd{"MMMM d"}
+                MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
                 d{"d"}
@@ -448,21 +673,21 @@ ur{
                 yMEd{"E، d/M/y"}
                 yMMM{"MMM y"}
                 yMMMEd{"E، d MMM، y"}
-                yMMMM{"y MMMM"}
+                yMMMM{"MMMM y"}
                 yMMMd{"d MMM، y"}
                 yMd{"d/M/y"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    one{"y کا w ہفتہ"}
-                    other{"y کا w ہفتہ"}
+                    one{"Y کا w ہفتہ"}
+                    other{"Y کا w ہفتہ"}
                 }
             }
             dayNames{
                 format{
                     abbreviated{
                         "اتوار",
-                        "سوموار",
+                        "پیر",
                         "منگل",
                         "بدھ",
                         "جمعرات",
@@ -480,7 +705,7 @@ ur{
                     }
                     short{
                         "اتوار",
-                        "سوموار",
+                        "پیر",
                         "منگل",
                         "بدھ",
                         "جمعرات",
@@ -489,7 +714,7 @@ ur{
                     }
                     wide{
                         "اتوار",
-                        "سوموار",
+                        "پیر",
                         "منگل",
                         "بدھ",
                         "جمعرات",
@@ -500,7 +725,7 @@ ur{
                 stand-alone{
                     abbreviated{
                         "اتوار",
-                        "سوموار",
+                        "پیر",
                         "منگل",
                         "بدھ",
                         "جمعرات",
@@ -518,7 +743,7 @@ ur{
                     }
                     short{
                         "اتوار",
-                        "سوموار",
+                        "پیر",
                         "منگل",
                         "بدھ",
                         "جمعرات",
@@ -527,7 +752,7 @@ ur{
                     }
                     wide{
                         "اتوار",
-                        "سوموار",
+                        "پیر",
                         "منگل",
                         "بدھ",
                         "جمعرات",
@@ -555,12 +780,12 @@ ur{
                         night1{"رات"}
                     }
                     wide{
-                        afternoon1{"دوپہر"}
+                        afternoon1{"دوپہر میں"}
                         afternoon2{"سہ پہر"}
-                        evening1{"شام"}
+                        evening1{"شام میں"}
                         midnight{"آدھی رات"}
-                        morning1{"صبح"}
-                        night1{"رات"}
+                        morning1{"صبح میں"}
+                        night1{"رات میں"}
                     }
                 }
                 stand-alone{
@@ -615,6 +840,53 @@ ur{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    G{"y G – y G"}
+                    y{"y – y G"}
+                }
+                GyM{
+                    G{"M/y GGGGG – M/y GGGGG"}
+                    M{"M/y – M/y GGGGG"}
+                    y{"M/y – M/y GGGGG"}
+                }
+                GyMEd{
+                    G{"E, M/d/y GGGGG – E, M/d/y GGGGG"}
+                    M{"E, M/d/y – E, M/d/y GGGGG"}
+                    d{"E, M/d/y – E, M/d/y GGGGG"}
+                    y{"E, M/d/y – E, M/d/y GGGGG"}
+                }
+                GyMMM{
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM – MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                GyMMMEd{
+                    G{"E, MMM d, y G – E, MMM d, y G"}
+                    M{"E, MMM d – E, MMM d, y G"}
+                    d{"E, MMM d – E, MMM d, y G"}
+                    y{"E, MMM d, y – E, MMM d, y G"}
+                }
+                GyMMMd{
+                    G{"MMM d, y G – MMM d, y G"}
+                    M{"MMM d – MMM d, y G"}
+                    d{"MMM d – d, y G"}
+                    y{"MMM d, y – MMM d, y G"}
+                }
+                GyMd{
+                    G{"M/d/y GGGGG – M/d/y GGGGG"}
+                    M{"M/d/y – M/d/y GGGGG"}
+                    d{"M/d/y – M/d/y GGGGG"}
+                    y{"M/d/y – M/d/y GGGGG"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -700,7 +972,7 @@ ur{
                 }
                 yMMMd{
                     M{"d MMM – d MMM، y"}
-                    d{"y MMM d–d"}
+                    d{"d–d MMM y"}
                     y{"d MMM، y – d MMM، y"}
                 }
                 yMd{
@@ -842,9 +1114,211 @@ ur{
                 }
             }
         }
-        islamic{
+        hebrew{
             monthNames{
                 format{
+                    abbreviated{
+                        "ٹشری",
+                        "هےشوان",
+                        "کسلیو",
+                        "تیویت",
+                        "شیوت",
+                        "آدر اوّل",
+                        "آدر",
+                        "نسان",
+                        "ایئر",
+                        "سیون",
+                        "تموز",
+                        "او",
+                        "ای لول",
+                        "آدر دوّم",
+                    }
+                    wide{
+                        "ٹشری",
+                        "هےشوان",
+                        "کسلیو",
+                        "تیویت",
+                        "شیوت",
+                        "آدر اوّل",
+                        "آدر",
+                        "نسان",
+                        "ایئر",
+                        "سیون",
+                        "تموز",
+                        "او",
+                        "ای لول",
+                        "آدر دوّم",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ٹشری",
+                        "هےشوان",
+                        "کسلیو",
+                        "تیویت",
+                        "شیوت",
+                        "آدر اوّل",
+                        "آدر",
+                        "نسان",
+                        "ایئر",
+                        "سیون",
+                        "تموز",
+                        "او",
+                        "ای لول",
+                        "آدر دوّم",
+                    }
+                    wide{
+                        "ٹشری",
+                        "هےشوان",
+                        "کسلیو",
+                        "تیویت",
+                        "شیوت",
+                        "آدر اوّل",
+                        "آدر",
+                        "نسان",
+                        "ایئر",
+                        "سیون",
+                        "تموز",
+                        "او",
+                        "ای لول",
+                        "آدر دوّم",
+                    }
+                }
+            }
+        }
+        indian{
+            eras{
+                abbreviated{
+                    "ساکا",
+                }
+                narrow{
+                    "ساکا",
+                }
+                wide{
+                    "ساکا",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "چتررا",
+                        "ویساکھا",
+                        "جیہائشہ",
+                        "اسدھا",
+                        "سراؤنا",
+                        "بھدرا",
+                        "اسوینا",
+                        "کارتیکا",
+                        "اگراہانا",
+                        "پوسا",
+                        "میگا",
+                        "پھالگنا",
+                    }
+                    wide{
+                        "چتررا",
+                        "ویساکھا",
+                        "جیہائشہ",
+                        "اسدھا",
+                        "سراؤنا",
+                        "بھدرا",
+                        "اسوینا",
+                        "کارتیکا",
+                        "اگراہانا",
+                        "پوسا",
+                        "میگا",
+                        "پھالگنا",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "چتررا",
+                        "ویساکھا",
+                        "جیہائشہ",
+                        "اسدھا",
+                        "سراؤنا",
+                        "بھدرا",
+                        "اسوینا",
+                        "کارتیکا",
+                        "اگراہانا",
+                        "پوسا",
+                        "میگا",
+                        "پھالگنا",
+                    }
+                    wide{
+                        "چتررا",
+                        "ویساکھا",
+                        "جیہائشہ",
+                        "اسدھا",
+                        "سراؤنا",
+                        "بھدرا",
+                        "اسوینا",
+                        "کارتیکا",
+                        "اگراہانا",
+                        "پوسا",
+                        "میگا",
+                        "پھالگنا",
+                    }
+                }
+            }
+        }
+        islamic{
+            eras{
+                abbreviated{
+                    "ہجری",
+                }
+                narrow{
+                    "ہجری",
+                }
+                wide{
+                    "ہجری",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "محرم",
+                        "صفر",
+                        "ربیع الاوّل",
+                        "ربیع الثّانی",
+                        "جمادی الاوّل",
+                        "جمادی الثّانی",
+                        "رجب",
+                        "شعبان",
+                        "رمضان",
+                        "شوال",
+                        "ذوالقعدۃ",
+                        "ذوالحجۃ",
+                    }
+                    wide{
+                        "محرم",
+                        "صفر",
+                        "ر بیع الاول",
+                        "ر بیع الثانی",
+                        "جمادی الاول",
+                        "جمادی الثانی",
+                        "رجب",
+                        "شعبان",
+                        "رمضان",
+                        "شوال",
+                        "ذوالقعدۃ",
+                        "ذوالحجۃ",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "محرم",
+                        "صفر",
+                        "ربیع الاوّل",
+                        "ربیع الثّانی",
+                        "جمادی الاوّل",
+                        "جمادی الثّانی",
+                        "رجب",
+                        "شعبان",
+                        "رمضان",
+                        "شوال",
+                        "ذوالقعدۃ",
+                        "ذوالحجۃ",
+                    }
                     wide{
                         "محرم",
                         "صفر",
@@ -862,10 +1336,90 @@ ur{
                 }
             }
         }
+        persian{
+            monthNames{
+                format{
+                    abbreviated{
+                        "فروردن",
+                        "آرڈبائش",
+                        "خداداد",
+                        "تیر",
+                        "مرداد",
+                        "شہریوار",
+                        "مہر",
+                        "ابان",
+                        "آزر",
+                        "ڈے",
+                        "بہمن",
+                        "اسفند",
+                    }
+                    wide{
+                        "فروردن",
+                        "آرڈبائش",
+                        "خداداد",
+                        "تیر",
+                        "مرداد",
+                        "شہریوار",
+                        "مہر",
+                        "ابان",
+                        "آزر",
+                        "ڈے",
+                        "بہمن",
+                        "اسفند",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "فروردن",
+                        "آرڈبائش",
+                        "خداداد",
+                        "تیر",
+                        "مرداد",
+                        "شہریوار",
+                        "مہر",
+                        "ابان",
+                        "آزر",
+                        "ڈے",
+                        "بہمن",
+                        "اسفند",
+                    }
+                    wide{
+                        "فروردن",
+                        "آرڈبائش",
+                        "خداداد",
+                        "تیر",
+                        "مرداد",
+                        "شہریوار",
+                        "مہر",
+                        "ابان",
+                        "آزر",
+                        "ڈے",
+                        "بہمن",
+                        "اسفند",
+                    }
+                }
+            }
+        }
+        roc{
+            eras{
+                abbreviated{
+                    "قبل از جمہوریہ چین",
+                    "جمہوریہ چین",
+                }
+                narrow{
+                    "قبل از جمہوریہ چین",
+                    "جمہوریہ چین",
+                }
+                wide{
+                    "قبل از جمہوریہ چین",
+                    "جمہوریہ چین",
+                }
+            }
+        }
     }
     characterLabel{
-        activities{"سرگرمیاں"}
-        african_scripts{"افریقی سکرپٹس"}
+        activities{"سرگرمی"}
+        african_scripts{"افریقی اسکرپٹس"}
         american_scripts{"امریکی سکرپٹس"}
         animal{"جانور"}
         animals_nature{"حیوانات و فطرت"}
@@ -874,12 +1428,12 @@ ur{
         box_drawing{"ڈرائنگ باکس"}
         braille{"بریل"}
         building{"عمارت"}
-        bullets_stars{"بلیٹس/اسٹار"}
+        bullets_stars{"بلیٹ یا اسٹار"}
         consonantal_jamo{"کونسونینٹل جامو"}
         currency_symbols{"کرنسی کی علامات"}
-        dash_connector{"ڈیش/کنکٹر"}
-        digits{"اعداد"}
-        dingbats{"ڈنگ بیٹس"}
+        dash_connector{"ڈیش یا کنکٹر"}
+        digits{"عدد"}
+        dingbats{"ڈنگ بیٹ"}
         divination_symbols{"غیب دانی کی علامات"}
         downwards_arrows{"نیچے کی جانب تیر کا نشان"}
         downwards_upwards_arrows{"نیچے اوپر کی جانب تیر کا نشان"}
@@ -931,7 +1485,7 @@ ur{
         plant{"پلانٹ"}
         punctuation{"رموز اوقاف"}
         rightwards_arrows{"دائیں جانب تیر کا نشان"}
-        sign_standard_symbols{"نشان/معیاری علامات"}
+        sign_standard_symbols{"نشان یا علامت"}
         small_form_variant{"چھوٹی صورت کے متغیرات"}
         smiley{"مُسکراتا ہوا"}
         smileys_people{"اسمالیز اور لوگ"}
@@ -940,6 +1494,7 @@ ur{
         spacing{"فاصلہ بندی"}
         sport{"کھیل"}
         symbols{"علامات"}
+        technical_symbols{"تکنیکی علامات"}
         tone_marks{"ٹون مارکس"}
         travel{"سفر"}
         travel_places{"سفر اور مقامات"}
@@ -988,7 +1543,7 @@ ur{
             }
             relativeTime{
                 future{
-                    one{"{0} دنوں میں"}
+                    one{"{0} دن میں"}
                     other{"{0} دنوں میں"}
                 }
                 past{
@@ -1017,10 +1572,31 @@ ur{
                 }
             }
         }
+        dayOfYear{
+            dn{"یوم سال"}
+        }
+        dayOfYear-narrow{
+            dn{"یوم سال"}
+        }
+        dayOfYear-short{
+            dn{"یوم سال"}
+        }
         dayperiod{
             dn{"قبل دوپہر/بعد دوپہر"}
         }
+        dayperiod-narrow{
+            dn{"قبل دوپہر/بعد دوپہر"}
+        }
+        dayperiod-short{
+            dn{"قبل دوپہر/بعد دوپہر"}
+        }
         era{
+            dn{"عہد"}
+        }
+        era-narrow{
+            dn{"عہد"}
+        }
+        era-short{
             dn{"عہد"}
         }
         fri{
@@ -1081,7 +1657,7 @@ ur{
             }
             relativeTime{
                 future{
-                    one{"{0} گھنٹہ میں"}
+                    one{"{0} گھنٹے میں"}
                     other{"{0} گھنٹے میں"}
                 }
                 past{
@@ -1094,7 +1670,7 @@ ur{
             dn{"گھنٹہ"}
             relativeTime{
                 future{
-                    one{"{0} گھنٹہ میں"}
+                    one{"{0} گھنٹے میں"}
                     other{"{0} گھنٹوں میں"}
                 }
                 past{
@@ -1160,9 +1736,9 @@ ur{
         }
         mon{
             relative{
-                "-1"{"گزشتہ سوموار"}
-                "0"{"اس سوموار"}
-                "1"{"اگلے سوموار"}
+                "-1"{"گزشتہ پیر"}
+                "0"{"اس پیر"}
+                "1"{"اگلے پیر"}
             }
             relativeTime{
                 future{
@@ -1177,9 +1753,9 @@ ur{
         }
         mon-narrow{
             relative{
-                "-1"{"گزشتہ سوموار"}
-                "0"{"اس سوموار"}
-                "1"{"اگلے سوموار"}
+                "-1"{"گزشتہ پیر"}
+                "0"{"اس پیر"}
+                "1"{"اگلے پیر"}
             }
             relativeTime{
                 future{
@@ -1194,13 +1770,13 @@ ur{
         }
         mon-short{
             relative{
-                "-1"{"گزشتہ سوموار"}
-                "0"{"اس سوموار"}
-                "1"{"اگلے سوموار"}
+                "-1"{"گزشتہ پیر"}
+                "0"{"اس پیر"}
+                "1"{"اگلے پیر"}
             }
             relativeTime{
                 future{
-                    one{"{0} سوموار میں"}
+                    one{"{0} پیر میں"}
                     other{"{0} پیر میں"}
                 }
                 past{
@@ -1212,9 +1788,9 @@ ur{
         month{
             dn{"مہینہ"}
             relative{
-                "-1"{"پچھلے مہینہ"}
+                "-1"{"پچھلا مہینہ"}
                 "0"{"اس مہینہ"}
-                "1"{"اگلے مہینہ"}
+                "1"{"اگلا مہینہ"}
             }
             relativeTime{
                 future{
@@ -1231,7 +1807,7 @@ ur{
             dn{"ماہ"}
             relativeTime{
                 future{
-                    one{"+{0} ماہ میں"}
+                    one{"{0} ماہ میں"}
                     other{"{0} ماہ میں"}
                 }
                 past{
@@ -1267,12 +1843,12 @@ ur{
             }
             relativeTime{
                 future{
-                    one{"+{0} سہ ماہی"}
-                    other{"+{0} سہ ماہی"}
+                    one{"{0} سہ ماہی میں"}
+                    other{"{0} سہ ماہی میں"}
                 }
                 past{
-                    one{"-{0} سہ ماہی"}
-                    other{"-{0} سہ ماہی"}
+                    one{"{0} سہ ماہی پہلے"}
+                    other{"{0} سہ ماہی پہلے"}
                 }
             }
         }
@@ -1656,8 +2232,32 @@ ur{
                 }
             }
         }
+        weekOfMonth{
+            dn{"مہینے کا ہفتہ"}
+        }
+        weekOfMonth-narrow{
+            dn{"مہینے کا ہفتہ"}
+        }
+        weekOfMonth-short{
+            dn{"مہینے کا ہفتہ"}
+        }
         weekday{
             dn{"ہفتے کا دن"}
+        }
+        weekday-narrow{
+            dn{"ہفتے کا دن"}
+        }
+        weekday-short{
+            dn{"ہفتے کا دن"}
+        }
+        weekdayOfMonth{
+            dn{"مہینے کا یوم ہفتہ"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"مہینے کا یوم ہفتہ"}
+        }
+        weekdayOfMonth-short{
+            dn{"مہینے کا یوم ہفتہ"}
         }
         year{
             dn{"سال"}
@@ -1716,11 +2316,23 @@ ur{
         zone{
             dn{"منطقۂ وقت"}
         }
+        zone-narrow{
+            dn{"منطقۂ وقت"}
+        }
+        zone-short{
+            dn{"منطقۂ وقت"}
+        }
     }
     layout{
         characters{"right-to-left"}
     }
     listPattern{
+        or{
+            2{"{0} یا {1}"}
+            end{"{0}، یا {1}"}
+            middle{"{0}، {1}"}
+            start{"{0}، {1}"}
+        }
         standard{
             2{"{0} اور {1}"}
             end{"{0}، اور {1}"}
@@ -1756,5 +2368,37 @@ ur{
         UK{"سلطنت متحدہ"}
         US{"ریاستہائے متحدہ"}
         metric{"میٹرک"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

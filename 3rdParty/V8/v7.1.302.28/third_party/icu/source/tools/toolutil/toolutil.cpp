@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  toolutil.c
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -143,7 +143,7 @@ findDirname(const char *path, char *buffer, int32_t bufLen, UErrorCode* status) 
     resultLen = 0;
   } else {
     resultPtr = path;
-    resultLen = basename - path;
+    resultLen = static_cast<int32_t>(basename - path);
     if(resultLen<1) {
       resultLen = 1; /* '/' or '/a' -> '/' */
     }

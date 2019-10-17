@@ -4,5 +4,5 @@ ko_KP{
     Countries{
         KP{"조선민주주의인민공화국"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.71"}
 }

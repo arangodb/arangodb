@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 fa{
-    Version{"2.1.29.44"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"آبیجان"}
@@ -507,6 +507,9 @@ fa{
         "America:Puerto_Rico"{
             ec{"پورتوریکو"}
         }
+        "America:Punta_Arenas"{
+            ec{"پونتا آرناس"}
+        }
         "America:Rainy_River"{
             ec{"رینی‌ریور"}
         }
@@ -631,7 +634,7 @@ fa{
             ec{"ترول"}
         }
         "Antarctica:Vostok"{
-            ec{"ووستوک"}
+            ec{"وستوک"}
         }
         "Arctic:Longyearbyen"{
             ec{"لانگ‌یربین"}
@@ -656,6 +659,9 @@ fa{
         }
         "Asia:Ashgabat"{
             ec{"عشق‌آباد"}
+        }
+        "Asia:Atyrau"{
+            ec{"آتیراو"}
         }
         "Asia:Baghdad"{
             ec{"بغداد"}
@@ -707,6 +713,9 @@ fa{
         }
         "Asia:Dushanbe"{
             ec{"دوشنبه"}
+        }
+        "Asia:Famagusta"{
+            ec{"فاماگوستا"}
         }
         "Asia:Gaza"{
             ec{"غزه"}
@@ -800,6 +809,9 @@ fa{
         }
         "Asia:Qatar"{
             ec{"قطر"}
+        }
+        "Asia:Qostanay"{
+            ec{"قوستانای"}
         }
         "Asia:Qyzylorda"{
             ec{"قیزیل‌اوردا"}
@@ -942,6 +954,9 @@ fa{
         "Australia:Sydney"{
             ec{"سیدنی"}
         }
+        "Etc:UTC"{
+            ls{"زمان هماهنگ جهانی"}
+        }
         "Etc:Unknown"{
             ec{"شهر نامشخص"}
         }
@@ -1072,6 +1087,9 @@ fa{
         }
         "Europe:Sarajevo"{
             ec{"سارایوو"}
+        }
+        "Europe:Saratov"{
+            ec{"ساراتوف"}
         }
         "Europe:Simferopol"{
             ec{"سیمفروپل"}
@@ -1905,7 +1923,7 @@ fa{
         fallbackFormat{"{1} ({0})"}
         gmtFormat{"{0} گرینویچ"}
         gmtZeroFormat{"گرینویچ"}
-        hourFormat{"+HH:mm;−HH:mm"}
+        hourFormat{"‎+HH:mm;‎−HH:mm"}
         regionFormat{"وقت {0}"}
         regionFormatDaylight{"وقت تابستانی {0}"}
         regionFormatStandard{"وقت عادی {0}"}

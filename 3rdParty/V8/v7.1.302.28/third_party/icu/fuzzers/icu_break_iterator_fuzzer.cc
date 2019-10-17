@@ -35,10 +35,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       bi.reset(icu::BreakIterator::createTitleInstance(locale, status));
       break;
   }
-  if (U_FAILURE(status)) return 0;
+  if (U_FAILURE(status))
+    return 0;
+  bi->setText(str);
 
   for (int32_t p = bi->first(); p != icu::BreakIterator::DONE; p = bi->next())
-    if (U_FAILURE(status)) return 0;
+    if (U_FAILURE(status))
+      return 0;
 
   return 0;
 }

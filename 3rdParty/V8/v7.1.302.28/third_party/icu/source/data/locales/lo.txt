@@ -12,12 +12,17 @@ lo{
     }
     ExemplarCharacters{
         "[\u0EC8 \u0EC9 \u0ECA \u0ECB \u0ECC \u0ECD ໆ ກ ຂ ຄ ງ ຈ ສ ຊ ຍ ດ ຕ ຖ ທ ນ ບ ປ ຜ"
-        " ຝ ພ ຟ ມ ຢ ຣ ລ ວ ຫ ໜ ໝ ອ ຮ ຯ ະ \u0EB1 າ ຳ \u0EB4 \u0EB5 \u0EB6 \u0EB7 \u0EB8"
-        " \u0EB9 \u0EBB \u0EBC ຽ ເ ແ ໂ ໃ ໄ]"
+        " ຝ ພ ຟ ມ ຢ ຣ ລ ວ ຫ ໜ ໝ ອ ຮ ຯ ະ \u0EB1 າ ຳ \u0EB4 \u0EB5 \u0EB6 \u0EB7 "
+        "\u0EB8 \u0EB9 \u0EBB \u0EBC ຽ ເ ແ ໂ ໃ ໄ]"
     }
     ExemplarCharactersIndex{
         "[ກ ຂ ຄ ງ ຈ ສ ຊ ຍ ດ ຕ ຖ ທ ນ ບ ປ ຜ ຝ ພ ຟ ມ ຢ ຣ ລ ວ ຫ {ຫງ} {ຫຍ} {ຫນ} {ຫມ} {ຫລ} "
         "{ຫວ} ອ ຮ]"
+    }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{
+        "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
+        "″]"
     }
     MoreInformation{"?"}
     NumberElements{
@@ -106,13 +111,14 @@ lo{
         }
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;¤-#,##0.00"}
                 currencyFormat{"¤#,##0.00;¤-#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#"}
             }
@@ -240,19 +246,24 @@ lo{
                 group{"."}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"ບໍ່​ແມ່ນ​ໂຕ​ເລກ"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
             }
         }
-        minimumGroupingDigits{"1"}
+        minimalPairs{
+            ordinal{
+                one{"ລ້ຽວຂວາທຳອິດ."}
+                other{"ລ້ຽວຂວາທີ {0}."}
+            }
+            plural{
+                other{"{0} ມື້"}
+            }
+        }
         native{"laoo"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     calendar{
         chinese{
             DateTimePatterns{
@@ -678,8 +689,17 @@ lo{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"G y"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, MMM d, y G"}
@@ -705,13 +725,37 @@ lo{
                 yyyyMEd{"E, G d/M/y"}
                 yyyyMMM{"G MMM y"}
                 yyyyMMMEd{"E, G d MMM y"}
-                yyyyMMMM{"G y MMMM"}
+                yyyyMMMM{"G MMMM y"}
                 yyyyMMMd{"G d MMM y"}
                 yyyyMd{"G d/M/y"}
                 yyyyQQQ{"G QQQ y"}
                 yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG M/y – GGGGG M/y"}
+                    M{"GGGGG M/y – M/y"}
+                    y{"GGGGG M/y – M/y"}
+                }
+                GyMd{
+                    G{"GGGGG d/M/y – GGGGG d/M/y"}
+                    M{"GGGGG d/M/y – d/M/y"}
+                    d{"GGGGG d/M/y – d/M/y"}
+                    y{"GGGGG d/M/y – d/M/y"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -839,7 +883,12 @@ lo{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E, d"}
@@ -876,13 +925,13 @@ lo{
                 yMEd{"E, d/M/y"}
                 yMMM{"MMM y"}
                 yMMMEd{"E, d MMM y"}
-                yMMMM{"y MMMM"}
+                yMMMM{"MMMM y"}
                 yMMMd{"d MMM y"}
                 yMd{"d/M/y"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    other{"ອາທິດທີ່ w ຂອງປີ y"}
+                    other{"ອາທິດທີ່ w ຂອງປີ Y"}
                 }
             }
             dayNames{
@@ -978,7 +1027,7 @@ lo{
                         evening1{"ຕອນແລງ"}
                         midnight{"ທຄ"}
                         morning1{"ຕອນເຊົ້າ"}
-                        night1{"ກາງຄືນ1"}
+                        night1{"ກາງຄືນ"}
                         noon{"ທ"}
                     }
                     wide{
@@ -1042,6 +1091,53 @@ lo{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG MM/y – GGGGG MM/y"}
+                    M{"GGGGG MM/y – MM/y"}
+                    y{"GGGGG MM/y – MM/y"}
+                }
+                GyMEd{
+                    G{"GGGGG E, dd/MM/y – GGGGG E, dd/MM/y"}
+                    M{"GGGGG E, dd/MM/y – E, dd/MM/y"}
+                    d{"GGGGG E, dd/MM/y – E, dd/MM/y"}
+                    y{"GGGGG E, dd/MM/y – E, dd/MM/y"}
+                }
+                GyMMM{
+                    G{"G MM/y – G MM/y"}
+                    M{"G MM/y – MM"}
+                    y{"G MM/y – MM/y"}
+                }
+                GyMMMEd{
+                    G{"G E, dd/MM/y – G E, dd/MM/y"}
+                    M{"G E, dd/MM/y – E, dd/MM/y"}
+                    d{"G E, dd/MM/y – E, dd/MM/y"}
+                    y{"G E, dd/MM/y – E, dd/MM/y"}
+                }
+                GyMMMd{
+                    G{"G dd/MM/y– G dd/MM/y"}
+                    M{"G dd/MM/y – dd/MM"}
+                    d{"G d–d/MM/y"}
+                    y{"G dd/MM/y – dd/MM/y"}
+                }
+                GyMd{
+                    G{"GGGGG dd/MM/y – GGGGG dd/MM/y"}
+                    M{"GGGGG dd/MM/y – dd/MM/y"}
+                    d{"GGGGG dd/MM/y – dd/MM/y"}
+                    y{"GGGGG dd/MM/y – dd/MM/y"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -1817,6 +1913,7 @@ lo{
                     "ໄຕໂຊ",
                     "ໂຊວາ",
                     "ຮີຊີ",
+                    "Reiwa",
                 }
             }
         }
@@ -2075,10 +2172,31 @@ lo{
                 }
             }
         }
+        dayOfYear{
+            dn{"ມື້ຂອງປີ"}
+        }
+        dayOfYear-narrow{
+            dn{"ມື້ຂອງປີ"}
+        }
+        dayOfYear-short{
+            dn{"ມື້ຂອງປີ"}
+        }
         dayperiod{
             dn{"ກ່ອນທ່ຽງ/ຫຼັງທ່ຽງ"}
         }
+        dayperiod-narrow{
+            dn{"ກ່ອນທ່ຽງ/ຫຼັງທ່ຽງ"}
+        }
+        dayperiod-short{
+            dn{"ກ່ອນທ່ຽງ/ຫຼັງທ່ຽງ"}
+        }
         era{
+            dn{"ສະໄໝ"}
+        }
+        era-narrow{
+            dn{"ສະໄໝ"}
+        }
+        era-short{
             dn{"ສະໄໝ"}
         }
         fri{
@@ -2621,8 +2739,32 @@ lo{
                 }
             }
         }
+        weekOfMonth{
+            dn{"ອາທິດຂອງເດືອນ"}
+        }
+        weekOfMonth-narrow{
+            dn{"ອທ ຂອງ ດ"}
+        }
+        weekOfMonth-short{
+            dn{"ອທ ຂອງ ດ"}
+        }
         weekday{
             dn{"ມື້ຂອງອາທິດ"}
+        }
+        weekday-narrow{
+            dn{"ມື້ຂອງອາທິດ"}
+        }
+        weekday-short{
+            dn{"ມື້ຂອງອາທິດ"}
+        }
+        weekdayOfMonth{
+            dn{"ມື້ເຮັດວຽກຂອງເດືອນ"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ມຮວ ຂອງ ດ"}
+        }
+        weekdayOfMonth-short{
+            dn{"ມຮວ ຂອງ ດ"}
         }
         year{
             dn{"ປີ"}
@@ -2665,8 +2807,20 @@ lo{
         zone{
             dn{"ເຂດເວລາ"}
         }
+        zone-narrow{
+            dn{"ເຂດເວລາ"}
+        }
+        zone-short{
+            dn{"ເຂດເວລາ"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ຫຼື {1}"}
+            end{"{0} ຫຼື {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} ແລະ {1}"}
             end{"{0}, {1}"}

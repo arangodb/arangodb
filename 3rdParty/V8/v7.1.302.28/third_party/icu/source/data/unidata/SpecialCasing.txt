@@ -1,6 +1,6 @@
-# SpecialCasing-9.0.0.txt
-# Date: 2016-03-02, 18:55:13 GMT
-# © 2016 Unicode®, Inc.
+# SpecialCasing-12.1.0.txt
+# Date: 2019-03-10, 10:53:28 GMT
+# © 2019 Unicode®, Inc.
 # Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 #
@@ -121,7 +121,7 @@ FB17; FB17; 0544 056D; 0544 053D; # ARMENIAN SMALL LIGATURE MEN XEH
 
 # The following cases are already in the UnicodeData.txt file, so are only commented here.
 
-# 0345; 0345; 0345; 0399; # COMBINING GREEK YPOGEGRAMMENI
+# 0345; 0345; 0399; 0399; # COMBINING GREEK YPOGEGRAMMENI
 
 # All letters with YPOGEGRAMMENI (iota-subscript) or PROSGEGRAMMENI (iota adscript)
 # have special uppercases.
@@ -197,7 +197,7 @@ FB17; FB17; 0544 056D; 0544 053D; # ARMENIAN SMALL LIGATURE MEN XEH
 
 # ================================================================================
 # Conditional Mappings
-# The remainder of this file provides conditional casing data used to produce 
+# The remainder of this file provides conditional casing data used to produce
 # full case mappings.
 # ================================================================================
 # Language-Insensitive Mappings

@@ -7,5 +7,5 @@ fr_HT{
             "gourde haïtienne",
         }
     }
-    Version{"2.1.27.63"}
+    Version{"2.1.47.70"}
 }

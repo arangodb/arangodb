@@ -124,6 +124,10 @@ ak{
         }
         MRO{
             "MRO",
+            "Mɔretenia Ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mɔretenia Ouguiya",
         }
         MUR{
@@ -180,6 +184,10 @@ ak{
         }
         STD{
             "STD",
+            "Sao Tome ne Principe Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Sao Tome ne Principe Dobra",
         }
         SZL{
@@ -223,5 +231,5 @@ ak{
             "Zimbabwe Dɔla",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

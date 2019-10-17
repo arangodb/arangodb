@@ -2,5 +2,5 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en_AU{
     %%Parent{"en_001"}
-    Version{"2.1.30.50"}
+    Version{"2.1.48.43"}
 }

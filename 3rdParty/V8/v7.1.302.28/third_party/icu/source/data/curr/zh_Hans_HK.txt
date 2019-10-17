@@ -16,9 +16,6 @@ zh_Hans_HK{
         }
     }
     CurrencyPlurals{
-        AWG{
-            other{"阿鲁巴弗罗林"}
-        }
         KYD{
             other{"开曼群岛元"}
         }
@@ -29,5 +26,5 @@ zh_Hans_HK{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
 }

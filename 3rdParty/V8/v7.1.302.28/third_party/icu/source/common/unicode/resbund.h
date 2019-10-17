@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ******************************************************************************
@@ -132,7 +132,7 @@ public:
     ResourceBundle(UErrorCode &err);
 
     /**
-     * Standard constructor, onstructs a resource bundle for the locale-specific
+     * Standard constructor, constructs a resource bundle for the locale-specific
      * bundle in the specified package.
      *
      * @param packageName   The packageName and locale together point to an ICU udata object, 
@@ -216,7 +216,7 @@ public:
      *                could be <TT>U_MISSING_RESOURCE_ERROR</TT> if the key is not found
      *                could be a warning
      *                e.g.: <TT>U_USING_FALLBACK_WARNING</TT>,<TT>U_USING_DEFAULT_WARNING </TT>
-     * @return a pointer to a zero-terminated UChar array which lives in a memory mapped/DLL file.
+     * @return a pointer to a zero-terminated char16_t array which lives in a memory mapped/DLL file.
      * @stable ICU 2.0
      */
     UnicodeString

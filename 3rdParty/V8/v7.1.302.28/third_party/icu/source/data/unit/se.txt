@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 se{
-    Version{"2.1.27.98"}
+    Version{"2.1.48.4"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}

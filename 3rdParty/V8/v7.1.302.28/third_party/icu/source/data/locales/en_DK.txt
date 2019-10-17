@@ -8,11 +8,14 @@ en_DK{
                 percentFormat{"#,##0 %"}
             }
             symbols{
+                decimal{","}
+                group{"."}
+                superscriptingExponent{"·"}
                 timeSeparator{"."}
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.69"}
     calendar{
         generic{
             availableFormats{

@@ -8,6 +8,7 @@
 #include "src/objects/script.h"
 
 #include "src/objects/shared-function-info.h"
+#include "src/objects/smi-inl.h"
 #include "src/objects/string-inl.h"
 
 // Has to be the last include (doesn't have include guards):
@@ -15,6 +16,10 @@
 
 namespace v8 {
 namespace internal {
+
+OBJECT_CONSTRUCTORS_IMPL(Script, Struct)
+
+NEVER_READ_ONLY_SPACE_IMPL(Script)
 
 CAST_ACCESSOR(Script)
 
@@ -24,7 +29,7 @@ SMI_ACCESSORS(Script, id, kIdOffset)
 SMI_ACCESSORS(Script, line_offset, kLineOffsetOffset)
 SMI_ACCESSORS(Script, column_offset, kColumnOffsetOffset)
 ACCESSORS(Script, context_data, Object, kContextOffset)
-SMI_ACCESSORS(Script, type, kTypeOffset)
+SMI_ACCESSORS(Script, type, kScriptTypeOffset)
 ACCESSORS(Script, line_ends, Object, kLineEndsOffset)
 ACCESSORS_CHECKED(Script, eval_from_shared_or_wrapped_arguments, Object,
                   kEvalFromSharedOrWrappedArgumentsOffset,
@@ -42,30 +47,30 @@ ACCESSORS_CHECKED(Script, wasm_module_object, Object,
                   this->type() == TYPE_WASM)
 
 bool Script::is_wrapped() const {
-  return eval_from_shared_or_wrapped_arguments()->IsFixedArray();
+  return eval_from_shared_or_wrapped_arguments().IsFixedArray();
 }
 
 bool Script::has_eval_from_shared() const {
-  return eval_from_shared_or_wrapped_arguments()->IsSharedFunctionInfo();
+  return eval_from_shared_or_wrapped_arguments().IsSharedFunctionInfo();
 }
 
-void Script::set_eval_from_shared(SharedFunctionInfo* shared,
+void Script::set_eval_from_shared(SharedFunctionInfo shared,
                                   WriteBarrierMode mode) {
   DCHECK(!is_wrapped());
   set_eval_from_shared_or_wrapped_arguments(shared, mode);
 }
 
-SharedFunctionInfo* Script::eval_from_shared() const {
+SharedFunctionInfo Script::eval_from_shared() const {
   DCHECK(has_eval_from_shared());
   return SharedFunctionInfo::cast(eval_from_shared_or_wrapped_arguments());
 }
 
-void Script::set_wrapped_arguments(FixedArray* value, WriteBarrierMode mode) {
+void Script::set_wrapped_arguments(FixedArray value, WriteBarrierMode mode) {
   DCHECK(!has_eval_from_shared());
   set_eval_from_shared_or_wrapped_arguments(value, mode);
 }
 
-FixedArray* Script::wrapped_arguments() const {
+FixedArray Script::wrapped_arguments() const {
   DCHECK(is_wrapped());
   return FixedArray::cast(eval_from_shared_or_wrapped_arguments());
 }
@@ -98,14 +103,14 @@ void Script::set_origin_options(ScriptOriginOptions origin_options) {
 }
 
 bool Script::HasValidSource() {
-  Object* src = this->source();
-  if (!src->IsString()) return true;
-  String* src_str = String::cast(src);
+  Object src = this->source();
+  if (!src.IsString()) return true;
+  String src_str = String::cast(src);
   if (!StringShape(src_str).IsExternal()) return true;
-  if (src_str->IsOneByteRepresentation()) {
-    return ExternalOneByteString::cast(src)->resource() != nullptr;
-  } else if (src_str->IsTwoByteRepresentation()) {
-    return ExternalTwoByteString::cast(src)->resource() != nullptr;
+  if (src_str.IsOneByteRepresentation()) {
+    return ExternalOneByteString::cast(src).resource() != nullptr;
+  } else if (src_str.IsTwoByteRepresentation()) {
+    return ExternalTwoByteString::cast(src).resource() != nullptr;
   }
   return true;
 }

@@ -31,6 +31,7 @@ et{
         151{"Ida-Euroopa"}
         154{"Põhja-Euroopa"}
         155{"Lääne-Euroopa"}
+        202{"Sahara-tagune Aafrika"}
         419{"Ladina-Ameerika"}
         AC{"Ascensioni saar"}
         AD{"Andorra"}
@@ -58,7 +59,7 @@ et{
         BH{"Bahrein"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Saint Barthélemy"}
+        BL{"Saint-Barthélemy"}
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Boliivia"}
@@ -106,9 +107,10 @@ et{
         ES{"Hispaania"}
         ET{"Etioopia"}
         EU{"Euroopa Liit"}
+        EZ{"euroala"}
         FI{"Soome"}
         FJ{"Fidži"}
-        FK{"Falklandi saared"}
+        FK{"Malviini saared"}
         FM{"Mikroneesia"}
         FO{"Fääri saared"}
         FR{"Prantsusmaa"}
@@ -181,7 +183,7 @@ et{
         MF{"Saint-Martin"}
         MG{"Madagaskar"}
         MH{"Marshalli Saared"}
-        MK{"Makedoonia"}
+        MK{"Põhja-Makedoonia"}
         ML{"Mali"}
         MM{"Myanmar (Birma)"}
         MN{"Mongoolia"}
@@ -217,7 +219,7 @@ et{
         PH{"Filipiinid"}
         PK{"Pakistan"}
         PL{"Poola"}
-        PM{"Saint Pierre ja Miquelon"}
+        PM{"Saint-Pierre ja Miquelon"}
         PN{"Pitcairni saared"}
         PR{"Puerto Rico"}
         PS{"Palestiina"}
@@ -285,6 +287,8 @@ et{
         VU{"Vanuatu"}
         WF{"Wallis ja Futuna"}
         WS{"Samoa"}
+        XA{"pseudo-aktsent"}
+        XB{"pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Jeemen"}
         YT{"Mayotte"}
@@ -303,9 +307,8 @@ et{
         CG{"Kongo-Brazzaville"}
         CI{"Elevandiluurannik"}
         CZ{"Tšehhia"}
-        FK{"Malviini saared"}
-        MK{"Makedoonia Vabariik"}
+        SZ{"eSwatini"}
         TL{"Timor-Leste"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

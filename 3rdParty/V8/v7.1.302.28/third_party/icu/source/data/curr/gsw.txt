@@ -608,6 +608,10 @@ gsw{
         }
         MRO{
             "MRO",
+            "Ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ouguiya",
         }
         MTL{
@@ -704,11 +708,11 @@ gsw{
         }
         PEN{
             "PEN",
-            "Nöie Sol",
+            "Sol",
         }
         PES{
             "PES",
-            "Sol",
+            "Sol (1863–1965)",
         }
         PGK{
             "PGK",
@@ -836,6 +840,10 @@ gsw{
         }
         STD{
             "STD",
+            "Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra",
         }
         SUR{
@@ -948,6 +956,10 @@ gsw{
         }
         VEF{
             "VEF",
+            "Bolivar (2008–2018)",
+        }
+        VES{
+            "VES",
             "Bolivar",
         }
         VND{
@@ -1035,7 +1047,7 @@ gsw{
             "Teschtwährig",
         }
         XXX{
-            "XXX",
+            "¤",
             "Unbekannti Währig",
         }
         YDD{
@@ -1661,6 +1673,10 @@ gsw{
             other{"Pataca"}
         }
         MRO{
+            one{"Ouguiya (1973–2017)"}
+            other{"Ouguiya (1973–2017)"}
+        }
+        MRU{
             one{"Ouguiya"}
             other{"Ouguiya"}
         }
@@ -1757,12 +1773,12 @@ gsw{
             other{"Peruanischi Inti"}
         }
         PEN{
-            one{"Nöie Sol"}
-            other{"Nöii Sol"}
-        }
-        PES{
             one{"Sol"}
             other{"Sol"}
+        }
+        PES{
+            one{"Sol (1863–1965)"}
+            other{"Sol (1863–1965)"}
         }
         PGK{
             one{"Kina"}
@@ -1889,6 +1905,10 @@ gsw{
             other{"Süüdsudaneesischi Pfund"}
         }
         STD{
+            one{"Dobra (1977–2017)"}
+            other{"Dobra (1977–2017)"}
+        }
+        STN{
             one{"Dobra"}
             other{"Dobra"}
         }
@@ -2001,6 +2021,10 @@ gsw{
             other{"Bolivar (1871–2008)"}
         }
         VEF{
+            one{"Bolivar (2008–2018)"}
+            other{"Bolivar (2008–2018)"}
+        }
+        VES{
             one{"Bolivar"}
             other{"Bolivar"}
         }
@@ -2137,5 +2161,5 @@ gsw{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

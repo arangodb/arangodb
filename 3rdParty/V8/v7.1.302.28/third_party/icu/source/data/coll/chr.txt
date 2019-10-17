@@ -5,7 +5,7 @@ chr{
     collations{
         standard{
             Sequence{"[reorder Cher]"}
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

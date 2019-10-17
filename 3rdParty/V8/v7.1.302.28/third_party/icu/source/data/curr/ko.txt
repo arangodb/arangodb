@@ -258,6 +258,10 @@ ko{
             "CLP",
             "칠레 페소",
         }
+        CNH{
+            "CNH",
+            "중국 위안화(역외)",
+        }
         CNY{
             "CN¥",
             "중국 위안화",
@@ -656,6 +660,10 @@ ko{
         }
         MRO{
             "MRO",
+            "모리타니 우기야 (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "모리타니 우기야",
         }
         MTL{
@@ -752,11 +760,11 @@ ko{
         }
         PEN{
             "PEN",
-            "페루 누에보 솔",
+            "페루 솔",
         }
         PES{
             "PES",
-            "페루 솔",
+            "페루 솔 (1863–1965)",
         }
         PGK{
             "PGK",
@@ -884,6 +892,10 @@ ko{
         }
         STD{
             "STD",
+            "상투메 프린시페 도브라 (1977–2017)",
+        }
+        STN{
+            "STN",
             "상투메 프린시페 도브라",
         }
         SUR{
@@ -1004,6 +1016,10 @@ ko{
         }
         VEF{
             "VEF",
+            "베네수엘라 볼리바르 (2008–2018)",
+        }
+        VES{
+            "VES",
             "베네수엘라 볼리바르",
         }
         VND{
@@ -1095,8 +1111,8 @@ ko{
             "테스트 통화 코드",
         }
         XXX{
-            "XXX",
-            "알 수 없는 통화단위",
+            "¤",
+            "알 수 없는 통화 단위",
         }
         YDD{
             "YDD",
@@ -1156,104 +1172,11 @@ ko{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
         RON{"L"}
-        RUB{"₽"}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
@@ -1346,8 +1269,11 @@ ko{
         CLP{
             other{"칠레 페소"}
         }
+        CNH{
+            other{"중국 위안화(역외)"}
+        }
         CNY{
-            other{"중국 위안 인민폐"}
+            other{"중국 위안화"}
         }
         COP{
             other{"콜롬비아 페소"}
@@ -1533,6 +1459,9 @@ ko{
             other{"마카오 파타카"}
         }
         MRO{
+            other{"모리타니 우기야 (1973–2017)"}
+        }
+        MRU{
             other{"모리타니 우기야"}
         }
         MUR{
@@ -1578,7 +1507,7 @@ ko{
             other{"파나마 발보아"}
         }
         PEN{
-            other{"페루 누에보 솔"}
+            other{"페루 솔"}
         }
         PGK{
             other{"파푸아뉴기니 키나"}
@@ -1644,6 +1573,9 @@ ko{
             other{"남수단 파운드"}
         }
         STD{
+            other{"상투메 프린시페 도브라 (1977–2017)"}
+        }
+        STN{
             other{"상투메 프린시페 도브라"}
         }
         SYP{
@@ -1695,6 +1627,9 @@ ko{
             other{"우즈베키스탄 숨"}
         }
         VEF{
+            other{"베네수엘라 볼리바르 (2008–2018)"}
+        }
+        VES{
             other{"베네수엘라 볼리바르"}
         }
         VND{
@@ -1719,7 +1654,7 @@ ko{
             other{"CFP 프랑"}
         }
         XXX{
-            other{"(알 수 없는 통화단위)"}
+            other{"(알 수 없는 통화 단위)"}
         }
         YER{
             other{"예멘 리알"}
@@ -1734,5 +1669,5 @@ ko{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.29.22"}
+    Version{"2.1.49.82"}
 }

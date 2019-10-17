@@ -7,19 +7,10 @@ sv{
             "0: =%digits-ordinal-feminine=;",
             "%digits-ordinal-masculine:",
             "-x: \u2212>>;",
-            "0: =#,##0==%%dord-mascabbrev=;",
-            "%%dord-mascabbrev:",
-            "0: :e;",
+            "0: =#,##0=:e;",
             "%digits-ordinal-feminine:",
             "-x: \u2212>>;",
-            "0: =#,##0==%%dord-femabbrev=;",
-            "%%dord-femabbrev:",
-            "0: :e;",
-            "1: :a;",
-            "2: :a;",
-            "3: :e;",
-            "20: >>;",
-            "100: >>;",
+            "0: =#,##0=$(ordinal,one{:a}other{:e})$;",
             "%digits-ordinal-reale:",
             "0: =%digits-ordinal-feminine=;",
             "%digits-ordinal:",
@@ -230,5 +221,5 @@ sv{
             "0: =%spellout-ordinal-neuter=;",
         }
     }
-    Version{"2.1.27.22"}
+    Version{"2.1.34.81"}
 }

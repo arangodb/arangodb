@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2016 and later: Unicode, Inc. and others.
+*   © 2016 and later: Unicode, Inc. and others.
 *   License & terms of use: http://www.unicode.org/copyright.html#License
 *
 *******************************************************************************
@@ -12,7 +12,7 @@
 *
 *******************************************************************************
 *   file name:  uciter8.c
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -29,6 +29,10 @@
 #include "unicode/utypes.h"
 #include "unicode/uiter.h"
 #include "uit_len8.h"
+
+#ifndef UPRV_LENGTHOF
+#define UPRV_LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+#endif
 
 #define log_err printf
 

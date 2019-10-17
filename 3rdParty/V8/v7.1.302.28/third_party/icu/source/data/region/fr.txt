@@ -16,21 +16,22 @@ fr{
         019{"Amériques"}
         021{"Amérique septentrionale"}
         029{"Caraïbes"}
-        030{"Asie orientale"}
+        030{"Asie de l’Est"}
         034{"Asie du Sud"}
         035{"Asie du Sud-Est"}
-        039{"Europe méridionale"}
+        039{"Europe du Sud"}
         053{"Australasie"}
         054{"Mélanésie"}
         057{"région micronésienne"}
         061{"Polynésie"}
         142{"Asie"}
         143{"Asie centrale"}
-        145{"Asie occidentale"}
+        145{"Asie de l’Ouest"}
         150{"Europe"}
         151{"Europe de l’Est"}
-        154{"Europe septentrionale"}
-        155{"Europe occidentale"}
+        154{"Europe du Nord"}
+        155{"Europe de l’Ouest"}
+        202{"Afrique subsaharienne"}
         419{"Amérique latine"}
         AC{"Île de l’Ascension"}
         AD{"Andorre"}
@@ -89,7 +90,7 @@ fr{
         CW{"Curaçao"}
         CX{"Île Christmas"}
         CY{"Chypre"}
-        CZ{"République tchèque"}
+        CZ{"Tchéquie"}
         DE{"Allemagne"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -106,9 +107,10 @@ fr{
         ES{"Espagne"}
         ET{"Éthiopie"}
         EU{"Union européenne"}
+        EZ{"zone euro"}
         FI{"Finlande"}
         FJ{"Fidji"}
-        FK{"Îles Malouines"}
+        FK{"Îles Falkland"}
         FM{"États fédérés de Micronésie"}
         FO{"Îles Féroé"}
         FR{"France"}
@@ -181,7 +183,7 @@ fr{
         MF{"Saint-Martin"}
         MG{"Madagascar"}
         MH{"Îles Marshall"}
-        MK{"Macédoine"}
+        MK{"Macédoine du Nord"}
         ML{"Mali"}
         MM{"Myanmar (Birmanie)"}
         MN{"Mongolie"}
@@ -248,10 +250,10 @@ fr{
         SR{"Suriname"}
         SS{"Soudan du Sud"}
         ST{"Sao Tomé-et-Principe"}
-        SV{"El Salvador"}
+        SV{"Salvador"}
         SX{"Saint-Martin (partie néerlandaise)"}
         SY{"Syrie"}
-        SZ{"Swaziland"}
+        SZ{"Eswatini"}
         TA{"Tristan da Cunha"}
         TC{"Îles Turques-et-Caïques"}
         TD{"Tchad"}
@@ -259,7 +261,7 @@ fr{
         TG{"Togo"}
         TH{"Thaïlande"}
         TJ{"Tadjikistan"}
-        TK{"Tokélaou"}
+        TK{"Tokelau"}
         TL{"Timor oriental"}
         TM{"Turkménistan"}
         TN{"Tunisie"}
@@ -285,6 +287,8 @@ fr{
         VU{"Vanuatu"}
         WF{"Wallis-et-Futuna"}
         WS{"Samoa"}
+        XA{"pseudo-accents"}
+        XB{"pseudo-bidi"}
         XK{"Kosovo"}
         YE{"Yémen"}
         YT{"Mayotte"}
@@ -301,10 +305,10 @@ fr{
     Countries%variant{
         CD{"Congo (RDC)"}
         CG{"République du Congo"}
-        CZ{"Tchéquie"}
-        FK{"Îles Falkland"}
-        MK{"Macédoine (ARYM)"}
+        CI{"​​République de Côte d’Ivoire"}
+        CZ{"République tchèque"}
+        SZ{"Swaziland"}
         TL{"Timor-Oriental"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

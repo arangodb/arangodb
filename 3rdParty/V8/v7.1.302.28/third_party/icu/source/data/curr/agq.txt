@@ -124,6 +124,10 @@ agq{
         }
         MRO{
             "MRO",
+            "Ùgueya è Mùlètenyìa (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ùgueya è Mùlètenyìa",
         }
         MUR{
@@ -176,6 +180,10 @@ agq{
         }
         STD{
             "STD",
+            "Dɔbàlà è Sàwu Tɔ̀me à Pèlènsipè (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dɔbàlà è Sàwu Tɔ̀me à Pèlènsipè",
         }
         SZL{
@@ -223,5 +231,5 @@ agq{
             "Dɔlà è Zìmbagbɛ̀",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

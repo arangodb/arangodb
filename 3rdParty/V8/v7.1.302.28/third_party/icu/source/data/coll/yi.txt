@@ -11,7 +11,7 @@ yi{
                 "‎&״"
                 "<<'\u0022'"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -28,7 +28,7 @@ yi{
                 "&ש<שׂ"
                 "&[before 1]ת<תּ"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

@@ -124,6 +124,10 @@ bez{
         }
         MRO{
             "MRO",
+            "Lupila lwa Humolitania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Lupila lwa Humolitania",
         }
         MUR{
@@ -176,6 +180,10 @@ bez{
         }
         STD{
             "STD",
+            "Lupila lwa Husaotome na Huprinisipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Lupila lwa Husaotome na Huprinisipe",
         }
         SZL{
@@ -223,5 +231,5 @@ bez{
             "Lupila lwa Huzimbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

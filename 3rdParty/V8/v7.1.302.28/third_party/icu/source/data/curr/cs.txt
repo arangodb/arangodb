@@ -124,15 +124,15 @@ cs{
         }
         BGL{
             "BGL",
-            "BGL",
+            "bulharský tvrdý leva",
         }
         BGM{
             "BGM",
-            "BGM",
+            "bulharský socialistický leva",
         }
         BGN{
             "BGN",
-            "bulharský lev",
+            "bulharský leva",
         }
         BGO{
             "BGO",
@@ -261,6 +261,14 @@ cs{
         CLP{
             "CLP",
             "chilské peso",
+        }
+        CNH{
+            "CNH",
+            "čínský jüan (offshore)",
+        }
+        CNX{
+            "CNX",
+            "čínský dolar ČLB",
         }
         CNY{
             "CN¥",
@@ -676,6 +684,10 @@ cs{
         }
         MRO{
             "MRO",
+            "mauritánská ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "mauritánská ouguiya",
         }
         MTL{
@@ -776,7 +788,7 @@ cs{
         }
         PEN{
             "PEN",
-            "peruánský nový sol",
+            "peruánský sol",
         }
         PES{
             "PES",
@@ -908,6 +920,10 @@ cs{
         }
         STD{
             "STD",
+            "svatotomášská dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "svatotomášská dobra",
         }
         SUR{
@@ -1028,6 +1044,10 @@ cs{
         }
         VEF{
             "VEF",
+            "venezuelský bolívar (2008–2018)",
+        }
+        VES{
+            "VES",
             "venezuelský bolívar",
         }
         VND{
@@ -1121,10 +1141,6 @@ cs{
         XTS{
             "XTS",
             "kód zvlášť vyhrazený pro testovací účely",
-        }
-        XUA{
-            "XUA",
-            "XUA",
         }
         XXX{
             "XXX",
@@ -1273,7 +1289,7 @@ cs{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1474,11 +1490,23 @@ cs{
             one{"belgický finanční frank"}
             other{"belgických finančních franků"}
         }
+        BGL{
+            few{"bulharské tvrdé leva"}
+            many{"bulharského tvrdého leva"}
+            one{"bulharský tvrdý leva"}
+            other{"bulharských tvrdých leva"}
+        }
+        BGM{
+            few{"bulharské socialistické leva"}
+            many{"bulharského socialistického leva"}
+            one{"bulharský socialistický leva"}
+            other{"bulharských socialistických leva"}
+        }
         BGN{
-            few{"bulharské lvy"}
-            many{"bulharského lva"}
-            one{"bulharský lev"}
-            other{"bulharských lvů"}
+            few{"bulharské leva"}
+            many{"bulharského leva"}
+            one{"bulharský leva"}
+            other{"bulharských leva"}
         }
         BGO{
             few{"bulharské leva (1879–1952)"}
@@ -1671,6 +1699,18 @@ cs{
             many{"chilského pesa"}
             one{"chilské peso"}
             other{"chilských pes"}
+        }
+        CNH{
+            few{"čínské jüany (offshore)"}
+            many{"čínského jüanu (offshore)"}
+            one{"čínský jüan (offshore)"}
+            other{"čínských jüanů (offshore)"}
+        }
+        CNX{
+            few{"čínské dolary ČLB"}
+            many{"čínského dolaru ČLB"}
+            one{"čínský dolar ČLB"}
+            other{"čínských dolarů ČLB"}
         }
         CNY{
             few{"čínské jüany"}
@@ -2291,6 +2331,12 @@ cs{
             other{"macajských patac"}
         }
         MRO{
+            few{"mauritánské ouguiye (1973–2017)"}
+            many{"mauritánské ouguiye (1973–2017)"}
+            one{"mauritánská ouguiya (1973–2017)"}
+            other{"mauritánských ouguiyí (1973–2017)"}
+        }
+        MRU{
             few{"mauritánské ouguiye"}
             many{"mauritánské ouguiye"}
             one{"mauritánská ouguiya"}
@@ -2441,10 +2487,10 @@ cs{
             other{"peruánských inti"}
         }
         PEN{
-            few{"peruánské nové soly"}
-            many{"peruánského nového solu"}
-            one{"peruánský nový sol"}
-            other{"peruánských nových solů"}
+            few{"peruánské soly"}
+            many{"peruánského solu"}
+            one{"peruánský sol"}
+            other{"peruánských solů"}
         }
         PES{
             few{"peruánské soly (1863–1965)"}
@@ -2639,6 +2685,12 @@ cs{
             other{"jihosúdánských liber"}
         }
         STD{
+            few{"svatotomášské dobry (1977–2017)"}
+            many{"svatotomášské dobry (1977–2017)"}
+            one{"svatotomášská dobra (1977–2017)"}
+            other{"svatotomášských dober (1977–2017)"}
+        }
+        STN{
             few{"svatotomášské dobry"}
             many{"svatotomášské dobry"}
             one{"svatotomášská dobra"}
@@ -2819,6 +2871,12 @@ cs{
             other{"venezuelských bolívarů (1871–2008)"}
         }
         VEF{
+            few{"venezuelské bolívary (2008–2018)"}
+            many{"venezuelského bolívaru (2008–2018)"}
+            one{"venezuelský bolívar (2008–2018)"}
+            other{"venezuelských bolívarů (2008–2018)"}
+        }
+        VES{
             few{"venezuelské bolívary"}
             many{"venezuelského bolívaru"}
             one{"venezuelský bolívar"}
@@ -2938,6 +2996,12 @@ cs{
             one{"trojská unce platiny"}
             other{"trojských uncí platiny"}
         }
+        XRE{
+            few{"kód fondů RINET"}
+            many{"kód fondů RINET"}
+            one{"kód fondů RINET"}
+            other{"kód fondů RINET"}
+        }
         XSU{
             few{"sucre"}
             many{"sucre"}
@@ -3053,5 +3117,5 @@ cs{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.44"}
 }

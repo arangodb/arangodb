@@ -8,6 +8,7 @@
 #include "src/compiler/js-heap-broker.h"
 #include "src/compiler/js-operator.h"
 #include "src/compiler/node-properties.h"
+#include "src/compiler/simplified-operator.h"
 #include "src/heap/factory-inl.h"
 #include "src/objects/map.h"
 #include "src/objects/scope-info.h"
@@ -29,8 +30,7 @@ Reduction JSHeapCopyReducer::Reduce(Node* node) {
       ObjectRef object(broker(), HeapConstantOf(node->op()));
       if (object.IsJSFunction()) object.AsJSFunction().Serialize();
       if (object.IsJSObject()) object.AsJSObject().SerializeObjectCreateMap();
-      if (object.IsModule()) object.AsModule().Serialize();
-      if (object.IsContext()) object.AsContext().Serialize();
+      if (object.IsSourceTextModule()) object.AsSourceTextModule().Serialize();
       break;
     }
     case IrOpcode::kJSCreateArray: {
@@ -63,7 +63,7 @@ Reduction JSHeapCopyReducer::Reduce(Node* node) {
     case IrOpcode::kJSCreateClosure: {
       CreateClosureParameters const& p = CreateClosureParametersOf(node->op());
       SharedFunctionInfoRef(broker(), p.shared_info());
-      HeapObjectRef(broker(), p.feedback_cell());
+      FeedbackCellRef(broker(), p.feedback_cell());
       HeapObjectRef(broker(), p.code());
       break;
     }
@@ -99,6 +99,41 @@ Reduction JSHeapCopyReducer::Reduce(Node* node) {
       NameRef(broker(), p.name());
       break;
     }
+    case IrOpcode::kStoreField:
+    case IrOpcode::kLoadField: {
+      FieldAccess access = FieldAccessOf(node->op());
+      Handle<Map> map_handle;
+      if (access.map.ToHandle(&map_handle)) {
+        MapRef(broker(), map_handle);
+      }
+      Handle<Name> name_handle;
+      if (access.name.ToHandle(&name_handle)) {
+        NameRef(broker(), name_handle);
+      }
+      break;
+    }
+    case IrOpcode::kMapGuard: {
+      ZoneHandleSet<Map> const& maps = MapGuardMapsOf(node->op());
+      for (Handle<Map> map : maps) {
+        MapRef(broker(), map);
+      }
+      break;
+    }
+    case IrOpcode::kCheckMaps: {
+      ZoneHandleSet<Map> const& maps = CheckMapsParametersOf(node->op()).maps();
+      for (Handle<Map> map : maps) {
+        MapRef(broker(), map);
+      }
+      break;
+    }
+    case IrOpcode::kCompareMaps: {
+      ZoneHandleSet<Map> const& maps = CompareMapsParametersOf(node->op());
+      for (Handle<Map> map : maps) {
+        MapRef(broker(), map);
+      }
+      break;
+    }
+
     default:
       break;
   }

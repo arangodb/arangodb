@@ -401,7 +401,7 @@ smn{
         en_GB{"eŋgâlâskielâ (OK)"}
         en_US{"eŋgâlâskielâ (USA)"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     codePatterns{
         language{"kielâ: {0}"}
         script{"čäällimvuáhádâh: {0}"}

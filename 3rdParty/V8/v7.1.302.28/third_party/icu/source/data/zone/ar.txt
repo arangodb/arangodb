@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ar{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"أبيدجان"}
@@ -166,7 +166,7 @@ ar{
             ec{"أنشوراج"}
         }
         "America:Anguilla"{
-            ec{"أنغيلا"}
+            ec{"أنغويلا"}
         }
         "America:Antigua"{
             ec{"أنتيغوا"}
@@ -250,7 +250,7 @@ ar{
             ec{"كايين"}
         }
         "America:Cayman"{
-            ec{"كيمان"}
+            ec{"كايمان"}
         }
         "America:Chicago"{
             ec{"شيكاغو"}
@@ -274,7 +274,7 @@ ar{
             ec{"كيابا"}
         }
         "America:Curacao"{
-            ec{"كوراكاو"}
+            ec{"كوراساو"}
         }
         "America:Danmarkshavn"{
             ec{"دانمرك شافن"}
@@ -439,10 +439,10 @@ ar{
             ec{"ميتلاكاتلا"}
         }
         "America:Mexico_City"{
-            ec{"مدينة المكسيك"}
+            ec{"مكسيكو سيتي"}
         }
         "America:Miquelon"{
-            ec{"ميكولن"}
+            ec{"مكويلون"}
         }
         "America:Moncton"{
             ec{"وينكتون"}
@@ -506,6 +506,9 @@ ar{
         }
         "America:Puerto_Rico"{
             ec{"بورتوريكو"}
+        }
+        "America:Punta_Arenas"{
+            ec{"بونتا أريناز"}
         }
         "America:Rainy_River"{
             ec{"راني ريفر"}
@@ -657,6 +660,9 @@ ar{
         "Asia:Ashgabat"{
             ec{"عشق آباد"}
         }
+        "Asia:Atyrau"{
+            ec{"أتيراو"}
+        }
         "Asia:Baghdad"{
             ec{"بغداد"}
         }
@@ -707,6 +713,9 @@ ar{
         }
         "Asia:Dushanbe"{
             ec{"دوشانبي"}
+        }
+        "Asia:Famagusta"{
+            ec{"فاماغوستا"}
         }
         "Asia:Gaza"{
             ec{"غزة"}
@@ -800,6 +809,9 @@ ar{
         }
         "Asia:Qatar"{
             ec{"قطر"}
+        }
+        "Asia:Qostanay"{
+            ec{"قوستاناي"}
         }
         "Asia:Qyzylorda"{
             ec{"كيزيلوردا"}
@@ -942,6 +954,9 @@ ar{
         "Australia:Sydney"{
             ec{"سيدني"}
         }
+        "Etc:UTC"{
+            ls{"التوقيت العالمي المنسق"}
+        }
         "Etc:Unknown"{
             ec{"مدينة غير معروفة"}
         }
@@ -992,7 +1007,7 @@ ar{
             ec{"جبل طارق"}
         }
         "Europe:Guernsey"{
-            ec{"غيرنسي"}
+            ec{"غيرنزي"}
         }
         "Europe:Helsinki"{
             ec{"هلسنكي"}
@@ -1072,6 +1087,9 @@ ar{
         }
         "Europe:Sarajevo"{
             ec{"سراييفو"}
+        }
+        "Europe:Saratov"{
+            ec{"ساراتوف"}
         }
         "Europe:Simferopol"{
             ec{"سيمفروبول"}
@@ -1387,9 +1405,9 @@ ar{
             ls{"توقيت أزورس الرسمي"}
         }
         "meta:Bangladesh"{
-            ld{"توقيت بنجلاديش الصيفي"}
-            lg{"توقيت بنجلاديش"}
-            ls{"توقيت بنجلاديش الرسمي"}
+            ld{"توقيت بنغلاديش الصيفي"}
+            lg{"توقيت بنغلاديش"}
+            ls{"توقيت بنغلاديش الرسمي"}
         }
         "meta:Bhutan"{
             ls{"توقيت بوتان"}
@@ -1419,9 +1437,9 @@ ar{
             ls{"توقيت تشاتام الرسمي"}
         }
         "meta:Chile"{
-            ld{"توقيت شيلي الصيفي"}
-            lg{"توقيت شيلي"}
-            ls{"توقيت شيلي الرسمي"}
+            ld{"توقيت تشيلي الصيفي"}
+            lg{"توقيت تشيلي"}
+            ls{"توقيت تشيلي الرسمي"}
         }
         "meta:China"{
             ld{"توقيت الصين الصيفي"}
@@ -1445,9 +1463,9 @@ ar{
             ls{"توقيت كولومبيا الرسمي"}
         }
         "meta:Cook"{
-            ld{"توقيت جزر كووك الصيفي"}
+            ld{"توقيت جزر كوك الصيفي"}
             lg{"توقيت جزر كووك"}
-            ls{"توقيت جزر كووك الرسمي"}
+            ls{"توقيت جزر كوك الرسمي"}
         }
         "meta:Cuba"{
             ld{"توقيت كوبا الصيفي"}
@@ -1500,7 +1518,7 @@ ar{
             ls{"توقيت فيجي الرسمي"}
         }
         "meta:French_Guiana"{
-            ls{"توقيت غايانا الفرنسية"}
+            ls{"توقيت غويانا الفرنسية"}
         }
         "meta:French_Southern"{
             ls{"توقيت المقاطعات الفرنسية الجنوبية والأنتارتيكية"}
@@ -1537,6 +1555,7 @@ ar{
         }
         "meta:Gulf"{
             ls{"توقيت الخليج"}
+            ss{"GST"}
         }
         "meta:Guyana"{
             ls{"توقيت غيانا"}
@@ -1619,7 +1638,7 @@ ar{
             ls{"توقيت كراسنويارسك الرسمي"}
         }
         "meta:Kyrgystan"{
-            ls{"توقيت قرغيزستان"}
+            ls{"توقيت قيرغيزستان"}
         }
         "meta:Line_Islands"{
             ls{"توقيت جزر لاين"}
@@ -1641,7 +1660,7 @@ ar{
             ls{"توقيت ماليزيا"}
         }
         "meta:Maldives"{
-            ls{"توقيت الـمالديف"}
+            ls{"توقيت جزر المالديف"}
         }
         "meta:Marquesas"{
             ls{"توقيت ماركيساس"}
@@ -1769,7 +1788,7 @@ ar{
             ls{"توقيت بيونغ يانغ"}
         }
         "meta:Reunion"{
-            ls{"توقيت ريونيون"}
+            ls{"توقيت روينيون"}
         }
         "meta:Rothera"{
             ls{"توقيت روثيرا"}
@@ -1838,9 +1857,9 @@ ar{
             ls{"توقيت توفالو"}
         }
         "meta:Uruguay"{
-            ld{"توقيت أورغواي الصيفي"}
-            lg{"توقيت أورغواي"}
-            ls{"توقيت أورغواي الرسمي"}
+            ld{"توقيت أوروغواي الصيفي"}
+            lg{"توقيت أوروغواي"}
+            ls{"توقيت أوروغواي الرسمي"}
         }
         "meta:Uzbekistan"{
             ld{"توقيت أوزبكستان الصيفي"}
@@ -1885,8 +1904,8 @@ ar{
             ls{"توقيت يكاترينبورغ الرسمي"}
         }
         fallbackFormat{"{1} ({0})"}
-        gmtFormat{"جرينتش{0}"}
-        gmtZeroFormat{"جرينتش"}
+        gmtFormat{"غرينتش{0}"}
+        gmtZeroFormat{"غرينتش"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"توقيت {0}"}
         regionFormatDaylight{"توقيت {0} الصيفي"}

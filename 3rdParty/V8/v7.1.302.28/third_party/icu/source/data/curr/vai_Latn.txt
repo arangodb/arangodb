@@ -125,6 +125,10 @@ vai_Latn{
         }
         MRO{
             "MRO",
+            "Mɔretani Yugiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mɔretani Yugiya",
         }
         MUR{
@@ -173,6 +177,10 @@ vai_Latn{
         }
         STD{
             "STD",
+            "Sawo Tombe ɓɛ a Gbawo Dobura (1977–2017)",
+        }
+        STN{
+            "STN",
             "Sawo Tombe ɓɛ a Gbawo Dobura",
         }
         SZL{
@@ -220,5 +228,5 @@ vai_Latn{
             "Zimbhabhuwe Dala",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

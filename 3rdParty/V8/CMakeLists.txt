@@ -61,6 +61,7 @@ list(APPEND V8_GYP_ARGS
   -Dbyteorder=${ENDIANESS}
   # -Dicu_use_data_file_flag=1 not supportet anymore..
   -Dv8_enable_i18n_support=1
+  -DV8_ROOT=${V8_DIR}
 )
 
 if (CROSS_COMPILING)

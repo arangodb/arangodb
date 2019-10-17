@@ -19,18 +19,21 @@ zu{
         " {nx} {ny} o p {ph} q {qh} r {rh} s {sh} t {th} {tl} {ts} {tsh} u v w x {xh}"
         " y z]"
     }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{"[\\- , ; \\: ! ? . ( ) \\[ \\] \\{ \\}]"}
     MoreInformation{"?"}
     NumberElements{
         default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
-                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                accountingFormat{"¤#,##0.00"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -189,24 +192,28 @@ zu{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"Thatha indlela ejikela kwesokudla engu-{0}"}
+            }
+            plural{
+                one{"{0} usuku"}
+                other{"{0} izinsuku"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.29.22"}
+    Version{"2.1.48.17"}
     calendar{
         generic{
             DateTimePatterns{
@@ -225,8 +232,17 @@ zu{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, MMM d, y G"}
@@ -267,6 +283,53 @@ zu{
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -394,7 +457,12 @@ zu{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -413,10 +481,6 @@ zu{
                 MEd{"MM-dd, E"}
                 MMM{"LLL"}
                 MMMEd{"E, MMM d"}
-                MMMMW{
-                    one{"'week' W 'of' MMM"}
-                    other{"'week' W 'of' MMM"}
-                }
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
                 Md{"MM-dd"}
@@ -437,10 +501,6 @@ zu{
                 yMd{"y-MM-dd"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
-                yw{
-                    one{"'week' w 'of' y"}
-                    other{"'week' w 'of' y"}
-                }
             }
             dayNames{
                 format{
@@ -556,12 +616,12 @@ zu{
                     }
                     narrow{
                         afternoon1{"emini"}
-                        am{"a"}
+                        am{"AM"}
                         evening1{"ntambama"}
                         morning1{"entathakusa"}
                         morning2{"ekuseni"}
                         night1{"ebusuku"}
-                        pm{"p"}
+                        pm{"PM"}
                     }
                     wide{
                         afternoon1{"emini"}
@@ -593,6 +653,53 @@ zu{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH – HH"}
                 }
@@ -623,7 +730,7 @@ zu{
                 }
                 MMMd{
                     M{"MMM d – MMM d"}
-                    d{"MMM d – d"}
+                    d{"MMM d–d"}
                 }
                 Md{
                     M{"M/d – M/d"}
@@ -718,7 +825,7 @@ zu{
                         "D",
                     }
                     wide{
-                        "UMasingana",
+                        "Januwari",
                         "Februwari",
                         "Mashi",
                         "Ephreli",
@@ -938,6 +1045,11 @@ zu{
         }
         day-narrow{
             dn{"Usuku"}
+            relative{
+                "-1"{"izolo"}
+                "0"{"namhlanje"}
+                "1"{"kusasa"}
+            }
             relativeTime{
                 future{
                     one{"osukwini olungu-{0} oluzayo"}
@@ -951,6 +1063,11 @@ zu{
         }
         day-short{
             dn{"Usuku"}
+            relative{
+                "-1"{"izolo"}
+                "0"{"namhlanje"}
+                "1"{"kusasa"}
+            }
             relativeTime{
                 future{
                     one{"osukwini olungu-{0} oluzayo"}
@@ -962,10 +1079,31 @@ zu{
                 }
             }
         }
+        dayOfYear{
+            dn{"Day Of Year"}
+        }
+        dayOfYear-narrow{
+            dn{"usuku lonyaka"}
+        }
+        dayOfYear-short{
+            dn{"usuku lonyaka"}
+        }
         dayperiod{
             dn{"AM/PM"}
         }
+        dayperiod-narrow{
+            dn{"AM/PM"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
         era{
+            dn{"Isikhathi"}
+        }
+        era-narrow{
+            dn{"Isikhathi"}
+        }
+        era-short{
             dn{"Isikhathi"}
         }
         fri{
@@ -1057,7 +1195,7 @@ zu{
                 }
                 past{
                     one{"{0} ihora eledlule"}
-                    other{"{0} amahora edlule"}
+                    other{"emahoreni angu-{0} edlule"}
                 }
             }
         }
@@ -1586,8 +1724,32 @@ zu{
                 }
             }
         }
+        weekOfMonth{
+            dn{"Iviki leNyanga"}
+        }
+        weekOfMonth-narrow{
+            dn{"Iviki leNyanga"}
+        }
+        weekOfMonth-short{
+            dn{"Iviki leNyanga"}
+        }
         weekday{
             dn{"Usuku evikini"}
+        }
+        weekday-narrow{
+            dn{"Usuku evikini"}
+        }
+        weekday-short{
+            dn{"Usuku evikini"}
+        }
+        weekdayOfMonth{
+            dn{"usuku lwenyanga"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"usuku lwenyanga"}
+        }
+        weekdayOfMonth-short{
+            dn{"usuku lwenyanga"}
         }
         year{
             dn{"Unyaka"}
@@ -1636,8 +1798,20 @@ zu{
         zone{
             dn{"Isikhathi sendawo"}
         }
+        zone-narrow{
+            dn{"Isikhathi sendawo"}
+        }
+        zone-short{
+            dn{"Isikhathi sendawo"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} or {1}"}
+            end{"{0}, or {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} ne-{1}"}
             end{"{0}, ne-{1}"}
@@ -1673,5 +1847,33 @@ zu{
         UK{"i-UK"}
         US{"i-US"}
         metric{"i-Metric"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+        }
     }
 }

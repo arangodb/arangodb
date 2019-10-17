@@ -3,7 +3,7 @@
 
 <html lang="en-US" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US">
   <head>
-    <title>ReadMe for ICU 58.1</title>
+    <title>ReadMe for ICU 64.2</title>
     <meta name="COPYRIGHT" content=
     "Copyright (C) 2016 and later: Unicode, Inc. and others. License &amp; terms of use: http://www.unicode.org/copyright.html"/>
     <!-- meta name="COPYRIGHT" content=
@@ -24,7 +24,7 @@
 -->
 
   <body>
-  <!-- <body> -->
+  <!-- <body class="rc"> -->
     <p class="only-draft"><b>Note:</b> This is a draft readme.</p>
 
     <h1>
@@ -32,7 +32,7 @@
       International Components for Unicode<br/>
       <span class="only-rc">Release Candidate</span>
       <span class="only-milestone">(Milestone Release)</span>
-      <abbr title="International Components for Unicode">ICU</abbr> 58.1 ReadMe
+      <abbr title="International Components for Unicode">ICU</abbr> 64.2 ReadMe
     </h1>
 
     <!-- Shouldn't need to comment/uncomment this paragraph, just change the body class -->
@@ -44,7 +44,7 @@
     <p class="note only-rc">This is a release candidate version of ICU4C.
       It is not recommended for production use.</p>
 
-    <p>Last updated: 2016-Oct-13<br/>
+    <p>Last updated: 2019-Apr-04<br/>
       Copyright &copy; 2016 and later: Unicode, Inc. and others. License &amp; terms of use:
       <a href="http://www.unicode.org/copyright.html">http://www.unicode.org/copyright.html</a><br/>
       Copyright &copy; 1997-2016 International Business Machines Corporation and others.
@@ -59,9 +59,7 @@
 
       <li><a href="#GettingStarted">Getting Started</a></li>
 
-      <li><a href="#News">What Is New In This release?</a></li>
-
-      <li><a href="#RecentPreviousChanges">Changes in recent previous releases</a></li>
+      <li><a href="#News">What Is New In This Release?</a></li>
 
       <li><a href="#Download">How To Download the Source Code</a></li>
 
@@ -230,148 +228,24 @@
     </table>
 
     <p><strong>Important:</strong> Please make sure you understand the <a href=
-    "http://source.icu-project.org/repos/icu/icu/trunk/LICENSE">Copyright and License Information</a>.</p>
+    "http://source.icu-project.org/repos/icu/trunk/icu4c/LICENSE">Copyright and License Information</a>.</p>
 
-    <h2><a name="News" href="#News" id="News">What is new in this
-    release?</a></h2>
 
-    <h3>New License</h3>
-    <p>This is the first release of ICU since the project
-    	<a href="http://blog.unicode.org/2016/05/icu-joins-unicode-consortium.html">joined
-    	the Unicode Consortium</a>. The license has changed to the
-    	<a href="http://www.unicode.org/copyright.html#License">Unicode license</a>
-    	(which is similar to the ICU 1.8.1-57 license).</p>
+    <h2><a name="News" href="#News" id="News">What Is New In This Release?</a></h2>
 
-    <h3>Layout Engine Removed</h3>
-    <p>The LayoutEngine was deprecated in ICU 54 and has now been removed.
-    see <a href='http://userguide.icu-project.org/layoutengine'>the
-    User's Guide</a> for more details and migration recommendations.
-    </p>
-    <p>
-      Note that the ParagraphLayout (layoutex) library is not deprecated.
-      There is a new option, <tt>--enable-layoutex</tt> which will build
-      the ParagraphLayout library using <a href="http://harfbuzz.org">HarfBuzz</a>
-      instead of ICU as the layout engine. See <a href="http://userguide.icu-project.org/layoutengine">
-        the users' guide</a> for more information about how to build.
-    </p>
-    <p>
-      The options <tt>--disable-layout</tt>
-      or <tt>--with-layout=false</tt> are being retained for
-      compatibility, but have no effect.
-    </p>
+    <p>See the <a href="http://site.icu-project.org/download/64">ICU 64 download page</a>
+    for an overview of this release, important changes, new features, bug fixes, known issues,
+    changes to supported platforms and build environments,
+    and migration issues for existing applications migrating from previous ICU releases.</p>
 
-    <h3>Changes in CLDR 30 data</h3>
-    <ul>
-    	<li>For some combinations of numbering system (arab, arabext, latn) and/or locale
-    		(ar, fa, he), there were changes to the bidirectional control characters used
-    		with certain symbols (percent, minus, plus), and changes to number patterns
-    		(currency and/or percent, including addition of bidirectional control
-    		characters in some cases).</li>
-    	<li>The bidirectional controls used for such purposes now include U+061C ARABIC
-    		LETTER MARK (ALM), which requires use of the bidirectional algorithm from
-    		Unicode 6.3 or later.</li>
-    	<li>The time separator for Norwegian locales (nb, nn) was changed to be ‘:’
-    		throughout.</li>
-    	<li>For more information on CLDR 30 changes, see
-    		<a href="http://cldr.unicode.org/index/downloads/cldr-30">CLDR 30 download
-    		page</a>.</li>
-    </ul>
+    <p>See the <a href="APIChangeReport.html">API Change Report</a> for a complete list of
+    APIs added, removed, or changed in this release.</p>
 
-    <h3>Windows build changes</h3>
-    <p>Windows builds using Visual Studio now require Visual Studio 2015; otherwise you can
-    	use cygwin or similar to build for Windows.</p>
+    <p><a name="RecentPreviousChanges" id="RecentPreviousChanges"></a>For
+    changes in previous releases, see the
+    main <a href="http://site.icu-project.org/download">ICU download page</a>
+    with its version-specific subpages.</p>
 
-    <h3>API Changes</h3>
-    <p>See the <a href="APIChangeReport.html">API Change Report</a> for a complete
-      list of APIs added, removed, or changed in this release.</p>
-
-    <!-- standing item -->
-    <h3>Full release notes and the latest updates</h3>
-    <p>The previous list concentrates on <em>changes that affect existing
-    applications migrating from previous ICU releases</em>.
-    For more news about this release, as well as late-breaking news, see the
-    <a href="http://site.icu-project.org/download/57">ICU download page</a>.</p>
-
-    <h3>Upcoming changes</h3>
-    <p>Please note the following changes planned for an upcoming ICU4C release (likely ICU 59):</p>
-    <ul>
-    	<li>Compiler support for C++11 will be required.</li>
-    	<li>Support for Windows XP will be removed.</li>
-    </ul>
-
-    <h2><a name="RecentPreviousChanges" href="#RecentPreviousChanges" id="RecentPreviousChanges">Changes in recent
-    previous releases</a></h2>
-
-    <!-- ICU 57 items -->
-    <h3>ICU 57: Changes related to new CLDR data and specifications</h3>
-    <ul>
-    	<li>Time formats may include the new day period characters b, B, and
-    	these may produced in response to the new skeleton character C used
-    	with DateTimePatternGenerator.</li>
-    	<li>In day period rules, the use of "after" has been deprecated.</li>
-    	<li>The measurement unit "proportion-karat" has been renamed to
-    	"concentr-karat".</li>
-    </ul>
-
-    <!-- ICU 56 items -->
-    <h3>ICU 56: COLON withdrawn as date/time pattern character</h3>
-    <p>In ICU 55, COLON was introduced as a date/time pattern character
-      to be replaced by the value of the timeSeparator for the number
-      system being used; a corresponding new UDateFormatField
-      UDAT_TIME_SEPARATOR_FIELD was added. Use of COLON caused some
-      backwards compatibility problems, so it is being withdrawn as a
-      pattern character. However, UDAT_TIME_SEPARATOR_FIELD remains
-      as does the mechanism for replacing a pattern character with the
-      value of the timeSeparator; a new pattern character may be
-      assigned in the future.</p>
-
-    <h3>ICU 56: ICU Plugins are disabled by default</h3>
-    <p>ICU Plugins are now disabled by default. They may be enabled
-      with the configure option
-      <tt>--enable-plugins</tt> or by means of
-      <tt>#define UCONFIG_ENABLE_PLUGINS</tt>.
-	</p>
-
-    <h3>ICU 55: Deprecations in PluralRules (plurrule.h)</h3>
-    <p>The following PluralRules methods never had an implementation
-      but were inadvertently marked @stable; they have now been
-      deprecated. [#<a href="http://bugs.icu-project.org/trac/ticket/10759">10759</a>]</p>
-    <ul>
-      <li><tt>double icu::PluralRules::getUniqueKeywordValue(const UnicodeString&amp;)</tt></li>
-      <li><tt>int32_t icu::PluralRules::getAllKeywordValues(const UnicodeString&amp;, double*, int32_t, UErrorCode&amp;)</tt></li>
-    </ul>
-
-    <h3>ICU 55: Deprecate uidna.h functions for IDNA2003 support</h3>
-    <p>The IDNA2003 API has been deprecated; use the API for IDNA2008 / UTS #46 instead via
-      uidna_openUTS46() or class IDNA [#<a href="http://bugs.icu-project.org/trac/ticket/8477">8477</a>].
-      This applies to the following:</p>
-    <ul>
-      <li><tt>enum  value UIDNA_ALLOW_UNASSIGNED</tt></li>
-      <li><tt>uidna_IDNToASCII</tt></li>
-      <li><tt>uidna_IDNToUnicode</tt></li>
-      <li><tt>uidna_compare</tt></li>
-      <li><tt>uidna_toASCII</tt></li>
-      <li><tt>uidna_toUnicode</tt></li>
-    </ul>
-
-    <h3>ICU 54: Deprecation of Collation Short Strings</h3>
-    <p>The collation short naming scheme and its API functions are deprecated.
-    Use ucol_open() with language tag collation keywords instead (see <a href="http://userguide.icu-project.org/collation/api">Collation API Details</a>). For example, <code>ucol_open("de-u-co-phonebk-ka-shifted", &amp;errorCode)</code>
-     for German Phonebook order with "ignore punctuation" mode.</p>
-
-    <h3>ICU 54: Deprecation of UCOL_TAILORINGS_VERSION</h3>
-    <p>This was originally intended to be the version of collation tailorings,
-    but that information is actually in the tailorings data and this
-    constant has always been (and now will continue to be) 1.</p>
-
-    <!-- ICU 53 items -->
-    <h3>ICU 53: Deprecation of TimeUnitFormat</h3>
-    <p>The TimeUnitFormat and its methods were actually deprecated in ICU 53 and the
-    class as a whole was tagged as deprecated in that release, but the status tags for
-    the individual methods did not correctly indicate the deprecated status; they
-    do as of ICU 54. Use the MeasureFormat class and its methods instead.</p>
-
-    <!-- end of What's New items -->
 
     <h2><a name="Download" href="#Download" id="Download">How To Download the
     Source Code</a></h2>
@@ -392,10 +266,10 @@
       most other platforms.<br />
        Please unzip this file. </li>
 
-      <li><strong>Subversion Source Repository:</strong><br />
+      <li><strong>GitHub Source Repository:</strong><br />
        If you are interested in developing features, patches, or bug fixes for
       ICU, you should probably be working with the latest version of the ICU
-      source code. You will need to check the code out of our Subversion repository to
+      source code. You will need to clone and checkout the code from our GitHub repository to
       ensure that you have the most recent version of all of the files. See our
       <a href="http://site.icu-project.org/repository">source
       repository</a> for details.</li>
@@ -492,8 +366,8 @@
 
           <p>If some of the following directories are missing, it's probably
           because you got an official download. If you need the data source files
-          for customization, then please download the ICU source code from <a
-          href="http://site.icu-project.org/repository">subversion</a>.</p>
+          for customization, then please download the complete ICU source code from <a
+          href="http://site.icu-project.org/repository">the ICU repository</a>.</p>
 
           <ul>
             <li><b>in/</b> A directory that contains a pre-built data library for
@@ -505,12 +379,31 @@
             <li><b>brkitr/</b> Data files for character, word, sentence, title
             casing and line boundary analysis.</li>
 
+            <li><b>coll/</b> Data for collation tailorings. The makefile
+            <b>colfiles.mk</b> contains the list of resource bundle files.</li>
+
             <li><b>locales/</b> These .txt files contain ICU language and
             culture-specific localization data. Two special bundles are
             <b>root</b>, which is the fallback data and parent of other bundles,
             and <b>index</b>, which contains a list of installed bundles. The
             makefile <b>resfiles.mk</b> contains the list of resource bundle
-            files.</li>
+            files. Some of the locale data is split out into the type-specific
+            directories curr, lang, region, unit, and zone, described below.</li>
+
+            <li><b>curr/</b> Locale data for currency symbols and names (including
+            plural forms), with its own makefile <b>resfiles.mk</b>.</li>
+
+            <li><b>lang/</b> Locale data for names of languages, scripts, and locale
+            key names and values, with its own makefile <b>resfiles.mk</b>.</li>
+
+            <li><b>region/</b> Locale data for names of regions, with its own
+            makefile <b>resfiles.mk</b>.</li>
+
+            <li><b>unit/</b> Locale data for measurement unit patterns and names, 
+            with its own makefile <b>resfiles.mk</b>.</li>
+
+            <li><b>zone/</b> Locale data for time zone names, with its own
+            makefile <b>resfiles.mk</b>.</li>
 
             <li><b>mappings/</b> Here are the code page converter tables. These
             .ucm files contain mappings to and from Unicode. These are compiled
@@ -532,9 +425,9 @@
             information.</li>
 
             <li><b>misc/</b> The misc directory contains other data files which
-            did not fit into the above categories. Currently it only contains
-            time zone information, and a name preperation file for <a href=
-            "http://www.ietf.org/rfc/rfc3490.txt">IDNA</a>.</li>
+            did not fit into the above categories, including time zone
+            information, region-specific data, and other data derived from CLDR
+            supplemental data.</li>
 
             <li><b>out/</b> This directory contains the assembled memory mapped
             files.</li>
@@ -658,12 +551,37 @@
     we recommend a small number of modifications and build options.
     Note that C99 compatibility is now required.</p>
     <ul>
-      <li><b>Namespace:</b> By default, unicode/uversion.h has
+      <li><b>Namespace (ICU 61 and later):</b>
+        Since ICU 61, call sites need to qualify ICU types explicitly,
+        for example <code>icu::UnicodeString</code>,
+        or do <code>using icu::UnicodeString;</code> where appropriate.
+        If your code relies on the "using namespace icu;" that used to be in unicode/uversion.h,
+        then you need to update your code.<br />
+        You could temporarily (until you have more time to update your code)
+        revert to the default "using"
+        via <code>-DU_USING_ICU_NAMESPACE=1</code>
+        or by modifying unicode/uversion.h:
+<pre>Index: icu4c/source/common/unicode/uversion.h
+===================================================================
+--- icu4c/source/common/unicode/uversion.h      (revision 40704)
++++ icu4c/source/common/unicode/uversion.h      (working copy)
+@@ -127,7 +127,7 @@
+                 defined(U_LAYOUTEX_IMPLEMENTATION) || defined(U_TOOLUTIL_IMPLEMENTATION)
+ #           define U_USING_ICU_NAMESPACE 0
+ #       else
+-#           define U_USING_ICU_NAMESPACE 0
++#           define U_USING_ICU_NAMESPACE 1
+ #       endif
+ #   endif
+ #   if U_USING_ICU_NAMESPACE
+</pre>
+      </li>
+      <li><b>Namespace (ICU 60 and earlier):</b> By default, unicode/uversion.h has
         "using namespace icu;" which defeats much of the purpose of the namespace.
         (This is for historical reasons: Originally, ICU4C did not use namespaces,
         and some compilers did not support them. The default "using" statement
         preserves source code compatibility.)<br />
-        If this compatibility is not an issue, we recommend you turn this off
+        You should turn this off
          via <code>-DU_USING_ICU_NAMESPACE=0</code>
         or by modifying unicode/uversion.h:
 <pre>Index: source/common/unicode/uversion.h
@@ -690,7 +608,7 @@
         we recommend hardcoding ICU's default charset to UTF-8.
         This means that some implementation code becomes simpler and faster,
         and statically linked ICU libraries become smaller.
-        (See the <a href="http://icu-project.org/apiref/icu4c/utypes_8h.html#0a33e1edf3cd23d9e9c972b63c9f7943">U_CHARSET_IS_UTF8</a>
+        (See the <a href="http://icu-project.org/apiref/icu4c/platform_8h.html#a0a33e1edf3cd23d9e9c972b63c9f7943">U_CHARSET_IS_UTF8</a>
         API documentation for more details.)<br />
         You can <code>-DU_CHARSET_IS_UTF8=1</code> or
         modify unicode/utypes.h (in ICU 4.8 and below)
@@ -737,6 +655,14 @@
         (via -D or uconfig.h, as above)
         and include those header files explicitly that you actually need.<br />
         Note: The ICU test suites cannot be compiled with this setting.</li>
+      <li><b>utf_old.h:</b>
+        All of utf_old.h is deprecated or obsolete.<br />
+        Beginning with ICU 60,
+        you should define <code>U_HIDE_OBSOLETE_UTF_OLD_H</code> to 1
+        (via -D or uconfig.h, as above).
+        Use of any of these macros should be replaced as noted
+        in the comments for the obsolete macro.<br />
+        Note: The ICU test suites <i>can</i> be compiled with this setting.</li>
       <li><b>.dat file:</b> By default, the ICU data is built into
         a shared library (DLL). This is convenient because it requires no
         install-time or runtime configuration,
@@ -779,11 +705,11 @@
         source file tree clean and have build output files written to
         a different location. This is called an "out-of-source build".
         Simply invoke the configure script from the target location:
-<pre>~/icu$ svn export http://source.icu-project.org/repos/icu/icu/trunk
-~/icu$ mkdir trunk-dev
-~/icu$ cd trunk-dev
-~/icu/trunk-dev$ ../trunk/source/runConfigureICU Linux
-~/icu/trunk-dev$ make check</pre><br/>
+<pre>~/icu$ git clone export https://github.com/unicode-org/icu.git
+~/icu$ mkdir icu4c-build
+~/icu$ cd icu4c-build
+~/icu/icu4c-build$ ../icu/icu4c/source/runConfigureICU Linux
+~/icu/icu4c-build$ make check</pre><br/>
         (Note: this example shows a relative path to
          <code>runConfigureICU</code>. If you experience difficulty,
          try using an absolute path to <code>runConfigureICU</code>
@@ -851,7 +777,9 @@
     <ul>
       <li>Microsoft Windows</li>
 
-      <li>Microsoft Visual C++ (see the ICU download page for the currently compatible version)</li>
+      <li>Microsoft Visual C++ (part of <a href="https://www.visualstudio.com/">Visual Studio</a>) (from either Visual Studio 2015 or Visual Studio 2017)</li>
+      
+      <li><i><b>Optional:</b></i> A version of the <a href="https://developer.microsoft.com/windows/downloads">Windows 10 SDK</a> (if you want to build the UWP projects)</li>
     </ul>
         <p class="note"><a href="#HowToBuildCygwin">Cygwin</a> is required if using a version of MSVC other than the one
         compatible with the supplied project files or if other compilers are used to build ICU. (e.g. GCC)</p>
@@ -859,21 +787,38 @@
     <p>The steps are:</p>
 
     <ol>
-      <li>Unzip the icu-XXXX.zip file into any convenient location. Using command
-      line zip, type "unzip -a icu-XXXX.zip -d drive:\directory", or just use
-      WinZip.</li>
+      <li>Unzip the <tt>icu-XXXX.zip</tt> file into any convenient location.<br/>
+        <ul class="no-left-margin">
+          <li>You can use the built-in zip functionality of Windows Explorer to do this.
+          Right-click on the .zip file and choose the "Extract All" option from the context menu.
+          This will open a new window where you can choose the output location to put the files.</li>
+          <li>Alternatively, you can use a 3<sup>rd</sup> party GUI tool like 7-Zip or WinZip to do this as well.</li>
+        </ul>
+      </li>
 
-      <li>Be sure that the ICU binary directory, <i>&lt;ICU&gt;</i>\bin\, is
+      <li>Be sure that the ICU binary directory, (ex: <i>&lt;ICU&gt;</i><tt>\bin\</tt>), is
       included in the <strong>PATH</strong> environment variable. The tests will
-      not work without the location of the ICU DLL files in the path.</li>
+      not work without the location of the ICU DLL files in the path.
+      Note that the binary directory name can depend on what architecture you select when you compile ICU.
+      For x86 or 32-bit builds, the binary directory is "<tt>bin</tt>". Whereas for x64 or 64-bit builds
+      the binary directory is "<tt>bin64</tt>".
+      </li>
 
-      <li>Open the "<i>&lt;ICU&gt;</i>\source\allinone\allinone.sln" workspace
-      file in Microsoft Visual Studio. (This solution includes all the
+      <li>Open the "<i>&lt;ICU&gt;</i><tt>\source\allinone\allinone.sln</tt>" solution
+      file in 'Visual Studio 2017'. (This solution includes all the
       International Components for Unicode libraries, necessary ICU building
-      tools, and the test suite projects). Please see the <a href=
-      "#HowToBuildWindowsCommandLine">command line note below</a> if you want to
+      tools, and the test suite projects). Please see the 
+      <a href="#HowToBuildWindowsCommandLine">command line note below</a> if you want to
       build from the command line instead.</li>
 
+      <li>If you are building using 'Visual Studio 2015' instead, or if you are building the UWP projects and you have a different
+      version of the Windows 10 SDK installed you will first need to modify the two "<tt>Build.Windows.*.props</tt>" files
+      in the "<tt>allinone</tt>" directory before you can open the "allinone" solution file.
+      Please see the notes below about <a href="#HowToUseOtherVSVersions">building with other versions of Visual Studio</a> and the 
+      notes on <a href="#HowToRetargetTheWin10SDK">re-targeting the Windows 10 SDK for the UWP projects</a> for details. Alternatively,
+      you can <a href="#HowToSkipBuildingUWP">skip building the UWP projects</a> entirely as well.
+      </li>
+      
       <li>Set the active platform to "Win32" or "x64" (See <a href="#HowToBuildWindowsPlatform">Windows platform note</a> below)
       and configuration to "Debug" or "Release" (See <a href="#HowToBuildWindowsConfig">Windows configuration note</a> below).</li>
 
@@ -881,60 +826,138 @@
       build the Debug and Release at the same time, see the <a href=
       "#HowToBuildWindowsBatch">batch configuration note</a> below.</li>
 
-
       <li>Run the tests. They can be run from the command line or from within Visual Studio.
 
-	 <h4>Running the Tests from the Windows Command Line (cmd)</h4>
-	<ul>
-	   <li>For x86 (32 bit) and Debug, use: <br />
+        <h4>Running the Tests from the Windows Command Line (cmd)</h4>
+        <ul>
+          <li>The general syntax is:<br />
+              <div class="indent">
+                <tt><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <i>Platform</i> <i>Configuration</i></tt>
+              </div>
+          </li>
+          <li>So, for example for x86 (32-bit) and Debug, use the following:<br />
+              <samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x86</b> <b>Debug</b></samp>
+              For x86 (32-bit) and Release:
+              <samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x86</b> <b>Release</b></samp>
+              For x64 (64-bit) and Debug:
+              <samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x64</b> <b>Debug</b></samp>
+              For x64 (64-bit) and Release:
+              <samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x64</b> <b>Release</b></samp>
+          </li>
+        </ul>
 
-	<tt><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <i>Platform</i> <i>Configuration</i>
-		</tt> <br />
-       </li>
-	<li>So, for example:
-				 <br />
-		<samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x86</b> <b>Debug</b></samp>
-				or
-		<samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x86</b> <b>Release</b></samp>
-				or
-		<samp><i>&lt;ICU&gt;</i>\source\allinone\icucheck.bat  <b>x64</b> <b>Release</b></samp></li>
-	</ul>
+        <h4>Running the Tests from within Visual Studio</h4>
 
-         <h4>Running the Tests from within Visual Studio</h4>
+        <ol>
+          <li>Run the C++ test suite, "<tt>intltest</tt>". To do this: set the active startup
+          project to "intltest", and press Ctrl+F5 to run it. Make sure that it
+          passes without any errors.</li>
 
-	<ol>
-      <li>Run the C++ test suite, "intltest". To do this: set the active startup
-      project to "intltest", and press Ctrl+F5 to run it. Make sure that it
-      passes without any errors.</li>
+          <li>Run the C test suite, "<tt>cintltst</tt>". To do this: set the active startup
+          project to "cintltst", and press Ctrl+F5 to run it. Make sure that it
+          passes without any errors.</li>
 
-      <li>Run the C test suite, "cintltst". To do this: set the active startup
-      project to "cintltst", and press Ctrl+F5 to run it. Make sure that it
-      passes without any errors.</li>
-
-      <li>Run the I/O test suite, "iotest". To do this: set the active startup
-      project to "iotest", and press Ctrl+F5 to run it. Make sure that it passes
-      without any errors.</li>
-
-	</ol>
-
-	</li>
+          <li>Run the I/O test suite, "<tt>iotest</tt>". To do this: set the active startup
+          project to "iotest", and press Ctrl+F5 to run it. Make sure that it passes
+          without any errors.</li>
+        </ol>
+	    </li>
 
       <li>You are now able to develop applications with ICU by using the
-      libraries and tools in <i>&lt;ICU&gt;</i>\bin\. The headers are in
-      <i>&lt;ICU&gt;</i>\include\ and the link libraries are in
-      <i>&lt;ICU&gt;</i>\lib\. To install the ICU runtime on a machine, or ship
+      libraries and tools in <tt><i>&lt;ICU&gt;</i>\bin\</tt>. The headers are in
+      <tt><i>&lt;ICU&gt;</i>\include\</tt> and the link libraries are in
+      <tt><i>&lt;ICU&gt;</i>\lib\</tt>. To install the ICU runtime on a machine, or ship
       it with your application, copy the needed components from
-      <i>&lt;ICU&gt;</i>\bin\ to a location on the system PATH or to your
+      <tt><i>&lt;ICU&gt;</i>\bin\</tt> to a location on the system PATH or to your
       application directory.</li>
     </ol>
 
+    <p><a name="HowToUseOtherVSVersions" id="HowToUseOtherVSVersions">
+    <strong>Building with other versions of Visual Studio Note:</strong></a>
+    The particular version of the MSVC compiler tool-set (and thus the corresponding version of Visual Studio) that
+    is used to compile ICU is determined by the "<tt>PlatformToolset</tt>" property. This property is stored in two
+    different shared files that are used to set common configuration settings amongst the various ICU "<tt>*.vcxproj</tt>" project files.
+    
+    For the non-UWP projects, this setting is in the shared file called "<tt>Build.Windows.ProjectConfiguration.props</tt>" located
+    in the "allinone" directory.
+    
+    For the UWP projects, this setting is in the shared file called "<tt>Build.Windows.UWP.ProjectConfiguration.props</tt>", also 
+    located in the "allinone" directory.
+    <br/>
+    The value of <tt>v140</tt> corresponds to the Visual Studio 2015 compiler tool set, whereas the value of
+    <tt>v141</tt> corresponds to the Visual Studio 2017 compiler tool set.
+    
+    <br/>In order to build the non-UWP projects with Visual Studio 2015 you will need to modify the file
+    called "<tt>Build.Windows.ProjectConfiguration.props</tt>" to change the value of the <tt>PlatformToolset</tt> property.
+    
+    Note however that Visual Studio 2017 is required for building the UWP projects.
+    </p>
+    
+    <p>Please consider: Using older versions of the MSVC compiler is generally not recommended due to the improved support for the C++11 standard
+    in newer versions of the compiler.</p>
+    
+    <p><a name="HowToRetargetTheWin10SDK" id="HowToRetargetTheWin10SDK">
+    <strong>Re-targeting the Windows 10 SDK for the UWP projects Note:</strong></a>
+    
+      If the version of the Windows 10 SDK that you have installed does not match the version used by the UWP projects, then you 
+      will need to "retarget" them to use the version of the SDK that you have installed instead.
+      
+      There are two ways to do this:
+      <ul>
+        <li>In Visual Studio you can right-click on the UWP projects in the 'Solution Explorer' and select the
+            option 'Retarget Projects' from the context menu. This will open up a window where you can select the
+            SDK version to target from a drop-down list of the various SDKs that are installed on the machine.</li>
+
+        <li>Alternatively, you can manually edit the shared file called "<tt>Build.Windows.UWP.ProjectConfiguration.props</tt>"
+            which is located in the "allinone" directory. You will need to change the of the
+            "<tt>WindowsTargetPlatformVersion</tt>" property to the version of the SDK that you would like to use instead.</li>
+      </ul>
+    </p>
+    
     <p><a name="HowToBuildWindowsCommandLine" id=
-    "HowToBuildWindowsCommandLine"><strong>Using MSDEV At The Command Line
-    Note:</strong></a> You can build ICU from the command line. Assuming that you
-    have properly installed Microsoft Visual C++ to support command line
-    execution, you can run the following command, 'devenv.com
-    <i>&lt;ICU&gt;</i>\source\allinone\allinone.sln /build "Win32|Release"'. You can also
-    use Cygwin with this compiler to build ICU, and you can refer to the <a href=
+    "HowToBuildWindowsCommandLine"><strong>Using MSBUILD At The Command Line Note:</strong></a>
+    You can build ICU from the command line instead of using the Visual Studio GUI.
+    
+    Assuming that you have properly installed Visual Studio to support command line building, you 
+    should have a shortcut for the "Developer Command Prompt" listed in the Start Menu.
+    (For Visual Studio 2017 you will need to install the "Desktop development with C++" option).</p>
+    
+    <ul>
+      <li>Open the "Developer Command Prompt" shortcut from the Start Menu. (This will open up a new command line window).</li>
+      <li>From within the "Developer Command Prompt" change directory (<tt>cd</tt>) to the ICU source directory.</li>
+      <li>You can then use either '<tt>msbuild</tt>' directly, or you can use the '<tt>devenv.com</tt>' command to build ICU.</li>
+      <li>Using <tt>MSBUILD</tt>:</li>
+      <ul class="no-left-margin">
+        <li>To build the 32-bit Debug version, use the following command line:<br/>
+          <code>'msbuild source\allinone\allinone.sln /p:Configuration=Debug /p:Platform=Win32'</code>.</li>
+        <li>To build the 64-bit Release version, use the following command line:<br/> 
+          <code>'msbuild source\allinone\allinone.sln /p:Configuration=Release /p:Platform=x64'</code>.</li>
+      </ul>
+      <li>Using <tt>devenv.com</tt>:</li>
+      <ul class="no-left-margin">
+        <li>To build the 32-bit Debug version, use the following command line:<br/>
+          <code>'devenv.com source\allinone\allinone.sln /build "Debug|Win32"'</code>.</li>
+        <li>To build the 64-bit Release version, use the following command line:<br/>
+          <code>'devenv.com source\allinone\allinone.sln /build "Release|x64"'</code>.</li>
+      </ul>
+    </ul>
+    
+    <p><a name="HowToSkipBuildingUWP" id=
+      "HowToSkipBuildingUWP"><strong>Skipping the UWP Projects on the Command Line Note:</strong></a>
+      You can skip (or omit) building the UWP projects on the command line by passing the argument
+      '<code>SkipUWP=true</code>' to either MSBUILD or devenv.</p>
+    
+      <ul>
+        <li>For example, using <tt>MSBUILD</tt>:</li>
+        <ul class="no-left-margin">
+          <li>To skip building the UWP projects with a 32-bit Debug build, use the following command line:<br/>
+            <code>'msbuild source\allinone\allinone.sln /p:Configuration=Debug /p:Platform=Win32 /p:SkipUWP=true'</code>.</li>
+          <li>To skip building the UWP projects with a 64-bit Release version, use the following command line:<br/> 
+            <code>'msbuild source\allinone\allinone.sln /p:Configuration=Release /p:Platform=x64 /p:SkipUWP=true'</code>.</li>
+        </ul>
+      </ul>
+    
+    <p>You can also use Cygwin with the MSVC compiler to build ICU, and you can refer to the <a href=
     "#HowToBuildCygwin">How To Build And Install On Windows with Cygwin</a>
     section for more details.</p>
 
@@ -981,7 +1004,7 @@
     <ul>
       <li>Microsoft Windows</li>
 
-      <li>Microsoft Visual C++ (when gcc isn't used).</li>
+      <li>Microsoft Visual C++ (from Visual Studio 2015 or newer, when gcc isn't used).</li>
 
       <li>
         Cygwin with the following installed:
@@ -1016,11 +1039,11 @@
       Visual C++ compiler will not work with a bash command prompt.</li>
 
       <li>If the computer isn't set up to use Visual C++ from the command line,
-      you need to run vcvars32.bat.<br />For example:<br />"<tt>C:\Program Files\Microsoft
-      Visual Studio 8\VC\bin\vcvars32.bat</tt>" can be used for 32-bit builds
-      <strong>or</strong> <br />"<tt>C:\Program Files (x86)\Microsoft Visual Studio
-      8\VC\bin\amd64\vcvarsamd64.bat</tt>" can be used for 64-bit builds on
-      Windows x64.</li>
+      you need to run vcvars32.bat.<br />For example:<br />
+      "<tt>C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\vcvars32.bat</tt>"
+      can be used for 32-bit builds <strong>or</strong> <br />
+      "<tt>C:\Program Files (x86)\Microsoft Visual Studio 14\VC\bin\x86_amd64\vcvarsx86_amd64.bat</tt>"
+      can be used for 64-bit builds on Windows x64.</li>
 
       <li>Unzip the icu-XXXX.zip file into any convenient location. Using command
       line zip, type "unzip -a icu-XXXX.zip -d drive:\directory", or just use
@@ -1168,7 +1191,7 @@
     installation and uninstallation of files on the system, as well as the
     integrity of the system configuration. You may want to check if ICU can be
     packaged for your package management tools by looking into the "packaging"
-    directory. (Please note that if you are using a snapshot of ICU from Subversion, it
+    directory. (Please note that if you are using a snapshot of ICU from Git, it
     is probable that the packaging scripts or related files are not up to date
     with the contents of ICU at this time, so use them with caution).</p>
 
@@ -1229,9 +1252,9 @@
       configure option.</li>
 
       <li>The latest versions of z/OS use <a
-      href="http://www.ibm.com/support/docview.wss?uid=swg2120240">XPLINK
+      href="https://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.cbcux01/oebind6.htm">XPLINK
       version (C128) of the C++ standard library</a> by default. You may see <a
-      href="http://www.ibm.com/support/docview.wss?uid=swg21376279">an
+      href="https://www.ibm.com/support/knowledgecenter/SSLTBW_2.2.0/com.ibm.zos.v2r2.cbcux01/oebind5.htm">an
       error</a> when running with XPLINK disabled. To avoid this error,
       set the following environment variable or similar:
 
@@ -1405,7 +1428,7 @@ cd ../../..</samp></pre>
       <li>Test ICU. <pre><samp>gmake check</samp></pre>
         (The <tt> QIBM_MULTI_THREADED=Y</tt> flag will be automatically applied to intltest -
           you can look at the <a href=
-      "http://publib.boulder.ibm.com/infocenter/iseries/v5r3/index.jsp?topic=/apis/concept4.htm">
+      "https://www.ibm.com/support/knowledgecenter/ssw_ibm_i_73/rzahw/rzahwceeco.htm">
       iSeries Information Center</a> for more details regarding the running of multiple threads
       on IBM i.)</li>
     </ol>
@@ -1657,7 +1680,7 @@ gnumake</pre>
     <p>In order to avoid synchronization and threading issues, developers are
     <strong>suggested</strong> to strictly follow the compiling and linking
     guidelines for multithreaded applications, specified in the following
-    document from Sun Microsystems. Most notably, pay strict attention to the
+    SUn Solaris document available from Oracle. Most notably, pay strict attention to the
     following statements from Sun:</p>
 
     <blockquote>
@@ -1671,21 +1694,26 @@ gnumake</pre>
     <p>Failure to do this may cause spurious lock conflicts, recursive mutex
     failure, and deadlock.</p>
 
-    <p>Source: "<i>Solaris Multithreaded Programming Guide, Compiling and
-    Debugging</i>", Sun Microsystems, Inc., Apr 2004<br />
+    <p>Source: "<i>Multithreaded Programming Guide, Compiling and
+    Debugging</i>", Sun Microsystems, 2002 <br />
      <a href=
-    "http://docs.sun.com/app/docs/doc/816-5137/6mba5vpke?a=view">http://docs.sun.com/app/docs/doc/816-5137/6mba5vpke?a=view</a></p>
+    "https://docs.oracle.com/cd/E19683-01/806-6867/compile-74765/index.html">https://docs.oracle.com/cd/E19683-01/806-6867/compile-74765/index.html</a></p>
+
+    <p>Note, a version of that chapter from a 2008 document update covering both Solaris 9
+    and Solaris 10 is available here:<br />
+     <a href=
+    "http://docs.oracle.com/cd/E19253-01/816-5137/compile-94179/index.html">http://docs.oracle.com/cd/E19253-01/816-5137/compile-94179/index.html</a></p>
 
     <h3><a name="ImportantNotesWindows" href="#ImportantNotesWindows" id=
     "ImportantNotesWindows">Windows Platform</a></h3>
 
-    <p>If you are building on the Win32 platform, it is important that you
+    <p>If you are building on the Windows platform, it is important that you
     understand a few of the following build details.</p>
 
     <h4>DLL directories and the PATH setting</h4>
 
     <p>As delivered, the International Components for Unicode build as several
-    DLLs, which are placed in the "<i>&lt;ICU&gt;</i>\bin" directory. You must
+    DLLs, which are placed in the "<i>&lt;ICU&gt;</i>\bin64" directory. You must
     add this directory to the PATH environment variable in your system, or any
     executables you build will not be able to access International Components for
     Unicode libraries. Alternatively, you can copy the DLL files into a directory
@@ -1695,12 +1723,12 @@ gnumake</pre>
     <h4><a name="ImportantNotesWindowsPath" id=
     "ImportantNotesWindowsPath">Changing your PATH</a></h4>
 
-    <p><strong>Windows 2000/XP</strong>: Use the System Icon in the Control
+    <p><strong>Windows 2000/XP and above</strong>: Use the System Icon in the Control
     Panel. Pick the "Advanced" tab. Select the "Environment Variables..."
     button. Select the variable PATH in the lower box, and select the lower
     "Edit..." button. In the "Variable Value" box, append the string
-    ";<i>&lt;ICU&gt;</i>\bin" to the end of the path string. If there is
-    nothing there, just type in "<i>&lt;ICU&gt;</i>\bin". Click the Set button,
+    ";<i>&lt;ICU&gt;</i>\bin64" to the end of the path string. If there is
+    nothing there, just type in "<i>&lt;ICU&gt;</i>\bin64". Click the Set button,
     then the OK button.</p>
 
     <p>Note: When packaging a Windows application for distribution and

@@ -10,14 +10,13 @@
 #include <iosfwd>
 #include <memory>
 
-#include "src/globals.h"
-#include "src/handles.h"
+#include "src/common/globals.h"
+#include "src/handles/handles.h"
 
 namespace v8 {
 namespace internal {
 
 class OptimizedCompilationInfo;
-class RegisterConfiguration;
 class SharedFunctionInfo;
 class SourcePosition;
 namespace compiler {
@@ -65,7 +64,7 @@ V8_INLINE V8_EXPORT_PRIVATE NodeOriginAsJSON AsJSON(const NodeOrigin& no) {
 std::ostream& operator<<(std::ostream& out, const SourcePositionAsJSON& pos);
 
 // Small helper that deduplicates SharedFunctionInfos.
-class SourceIdAssigner {
+class V8_EXPORT_PRIVATE SourceIdAssigner {
  public:
   explicit SourceIdAssigner(size_t size) {
     printed_.reserve(size);
@@ -157,7 +156,6 @@ std::ostream& operator<<(std::ostream& os,
                          const AsC1VRegisterAllocationData& ac);
 
 struct InstructionOperandAsJSON {
-  const RegisterConfiguration* register_configuration_;
   const InstructionOperand* op_;
   const InstructionSequence* code_;
 };
@@ -165,7 +163,6 @@ struct InstructionOperandAsJSON {
 std::ostream& operator<<(std::ostream& os, const InstructionOperandAsJSON& o);
 
 struct InstructionAsJSON {
-  const RegisterConfiguration* register_configuration_;
   int index_;
   const Instruction* instr_;
   const InstructionSequence* code_;
@@ -173,7 +170,6 @@ struct InstructionAsJSON {
 std::ostream& operator<<(std::ostream& os, const InstructionAsJSON& i);
 
 struct InstructionBlockAsJSON {
-  const RegisterConfiguration* register_configuration_;
   const InstructionBlock* block_;
   const InstructionSequence* code_;
 };
@@ -181,7 +177,6 @@ struct InstructionBlockAsJSON {
 std::ostream& operator<<(std::ostream& os, const InstructionBlockAsJSON& b);
 
 struct InstructionSequenceAsJSON {
-  const RegisterConfiguration* register_configuration_;
   const InstructionSequence* sequence_;
 };
 std::ostream& operator<<(std::ostream& os, const InstructionSequenceAsJSON& s);

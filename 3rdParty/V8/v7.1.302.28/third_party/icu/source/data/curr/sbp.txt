@@ -124,6 +124,10 @@ sbp{
         }
         MRO{
             "MRO",
+            "Ihela ya Molitaniya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ihela ya Molitaniya",
         }
         MUR{
@@ -176,6 +180,10 @@ sbp{
         }
         STD{
             "STD",
+            "Ihela ya Sao Tome ni Pilinsipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Ihela ya Sao Tome ni Pilinsipe",
         }
         SZL{
@@ -223,5 +231,5 @@ sbp{
             "Ihela ya Simbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

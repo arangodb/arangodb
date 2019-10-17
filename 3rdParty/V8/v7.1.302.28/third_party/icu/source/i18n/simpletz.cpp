@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
  *******************************************************************************
@@ -177,7 +177,7 @@ void SimpleTimeZone::construct(int32_t rawOffsetGMT,
 
     decodeRules(status);
 
-    if (savingsDST <= 0) {
+    if (savingsDST == 0) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
     }
 }
@@ -686,7 +686,7 @@ SimpleTimeZone::setRawOffset(int32_t offsetMillis)
 void 
 SimpleTimeZone::setDSTSavings(int32_t millisSavedDuringDST, UErrorCode& status) 
 {
-    if (millisSavedDuringDST <= 0) {
+    if (millisSavedDuringDST == 0) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
     }
     else {
@@ -1077,19 +1077,19 @@ SimpleTimeZone::deleteTransitionRules(void) {
  *         allocate it in the constructors. This would be a more intrusive change, but doable
  *         if performance turns out to be an issue.
  */
-static UMutex gLock = U_MUTEX_INITIALIZER;
 
 void
 SimpleTimeZone::checkTransitionRules(UErrorCode& status) const {
     if (U_FAILURE(status)) {
         return;
     }
-    umtx_lock(&gLock);
+    static UMutex *gLock = new UMutex();
+    umtx_lock(gLock);
     if (!transitionRulesInitialized) {
         SimpleTimeZone *ncThis = const_cast<SimpleTimeZone*>(this);
         ncThis->initTransitionRules(status);
     }
-    umtx_unlock(&gLock);
+    umtx_unlock(gLock);
 }
 
 void
@@ -1189,13 +1189,22 @@ SimpleTimeZone::initTransitionRules(UErrorCode& status) {
         // Create a TimeZoneRule for initial time
         if (firstStdStart < firstDstStart) {
             initialRule = new InitialTimeZoneRule(tzid+UnicodeString(DST_STR), getRawOffset(), dstRule->getDSTSavings());
+            if (initialRule == NULL) {
+                status = U_MEMORY_ALLOCATION_ERROR;
+                deleteTransitionRules();
+                return;
+            }
             firstTransition = new TimeZoneTransition(firstStdStart, *initialRule, *stdRule);
         } else {
             initialRule = new InitialTimeZoneRule(tzid+UnicodeString(STD_STR), getRawOffset(), 0);
+            if (initialRule == NULL) {
+                status = U_MEMORY_ALLOCATION_ERROR;
+                deleteTransitionRules();
+                return;
+            }
             firstTransition = new TimeZoneTransition(firstDstStart, *initialRule, *dstRule);
         }
-        // Check for null pointers.
-        if (initialRule == NULL || firstTransition == NULL) {
+        if (firstTransition == NULL) {
             status = U_MEMORY_ALLOCATION_ERROR;
             deleteTransitionRules();
             return;

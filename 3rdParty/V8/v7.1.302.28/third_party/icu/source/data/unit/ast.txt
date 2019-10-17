@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ast{
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -439,6 +439,11 @@ ast{
                 dnam{"picómetros"}
                 one{"{0} picómetru"}
                 other{"{0} picómetros"}
+            }
+            point{
+                dnam{"Puntos"}
+                one{"{0} puntu"}
+                other{"{0} puntos"}
             }
             yard{
                 dnam{"yardes"}
@@ -1106,8 +1111,8 @@ ast{
             }
             fathom{
                 dnam{"fathom"}
-                one{"{0}fm"}
-                other{"{0}fm"}
+                one{"{0}fth"}
+                other{"{0}fth"}
             }
             foot{
                 dnam{"ft"}
@@ -1849,8 +1854,8 @@ ast{
             }
             fathom{
                 dnam{"fathoms"}
-                one{"{0} ftm"}
-                other{"{0} ftm"}
+                one{"{0} fth"}
+                other{"{0} fth"}
             }
             foot{
                 dnam{"pies"}
@@ -1925,6 +1930,11 @@ ast{
                 dnam{"pm"}
                 one{"{0} pm"}
                 other{"{0} pm"}
+            }
+            point{
+                dnam{"pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
             }
             yard{
                 dnam{"yd"}

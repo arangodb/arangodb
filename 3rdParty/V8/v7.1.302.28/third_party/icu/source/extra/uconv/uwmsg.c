@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 **********************************************************************
@@ -156,6 +156,7 @@ U_CFUNC int u_wmsg(FILE *fp, const char *tag, ... )
         uprint(msg,msgLen, fp, &err);
     }
 #else
+    (void)gNoFormatting;  // suppress -Wunused-variable
     va_start(ap, tag);
 
     resultLength = u_vformatMessage(uloc_getDefault(), msg, msgLen, result, resultLength, ap, &err);

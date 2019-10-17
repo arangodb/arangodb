@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 kn{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"ಅಬಿದ್‌ಜನ್"}
@@ -58,7 +58,7 @@ kn{
             ec{"ಡಾರ್ ಎಸ್ ಸಲಾಮ್"}
         }
         "Africa:Djibouti"{
-            ec{"ಡಿಬೌಟಿ"}
+            ec{"ಜಿಬೂಟಿ"}
         }
         "Africa:Douala"{
             ec{"ದೌಲಾ"}
@@ -507,6 +507,9 @@ kn{
         "America:Puerto_Rico"{
             ec{"ಪ್ಯುರ್ಟೋ ರಿಕೊ"}
         }
+        "America:Punta_Arenas"{
+            ec{"ಪುಂತಾ ಅರೇನಾಸ್"}
+        }
         "America:Rainy_River"{
             ec{"ರೈನಿ ರಿವರ್"}
         }
@@ -657,6 +660,9 @@ kn{
         "Asia:Ashgabat"{
             ec{"ಅಶ್ಗಬಾತ್"}
         }
+        "Asia:Atyrau"{
+            ec{"ಅಟ್ರಾವ್"}
+        }
         "Asia:Baghdad"{
             ec{"ಬಾಗ್ದಾದ್"}
         }
@@ -707,6 +713,9 @@ kn{
         }
         "Asia:Dushanbe"{
             ec{"ದುಶಾಂಬೆ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ಫಮಾಗುಸ್ತಾ"}
         }
         "Asia:Gaza"{
             ec{"ಗಾಜಾ"}
@@ -801,11 +810,14 @@ kn{
         "Asia:Qatar"{
             ec{"ಖತಾರ್"}
         }
+        "Asia:Qostanay"{
+            ec{"ಕೊಸ್ಟನಯ್"}
+        }
         "Asia:Qyzylorda"{
             ec{"ಕಿಜೈಲೋರ್ದ"}
         }
         "Asia:Rangoon"{
-            ec{"ರಂಗೂನ್"}
+            ec{"ಯಾಂಗೊನ್"}
         }
         "Asia:Riyadh"{
             ec{"ರಿಯಾದ್"}
@@ -904,7 +916,7 @@ kn{
             ec{"ಸೇಂಟ್ ಹೆಲೆನಾ"}
         }
         "Atlantic:Stanley"{
-            ec{"ಸ್ಟಾನ್ಲಿ"}
+            ec{"ಸ್ಟ್ಯಾನ್ಲಿ"}
         }
         "Australia:Adelaide"{
             ec{"ಅಡಿಲೇಡ್"}
@@ -942,8 +954,11 @@ kn{
         "Australia:Sydney"{
             ec{"ಸಿಡ್ನಿ"}
         }
+        "Etc:UTC"{
+            ls{"ಸಂಘಟಿತ ಸಾರ್ವತ್ರಿಕ ಸಮಯ"}
+        }
         "Etc:Unknown"{
-            ec{"ಅಜ್ಞಾತ ನಗರ"}
+            ec{"ಅಪರಿಚಿತ ನಗರ"}
         }
         "Europe:Amsterdam"{
             ec{"ಆಮ್‌ಸ್ಟೆರ್‌ಡ್ಯಾಂ"}
@@ -1072,6 +1087,9 @@ kn{
         }
         "Europe:Sarajevo"{
             ec{"ಸರಜೆವೊ"}
+        }
+        "Europe:Saratov"{
+            ec{"ಸರಾಟೋವ್"}
         }
         "Europe:Simferopol"{
             ec{"ಸಿಮ್ಫೆರೋಪೋಲ್"}

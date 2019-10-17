@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
  ********************************************************************************
@@ -43,12 +43,17 @@ U_NAMESPACE_BEGIN
 class TimeZone;
 class DateTimePatternGenerator;
 
-// explicit template instantiation. see digitlst.h
-#if defined (_MSC_VER)
+/**
+ * \cond
+ * Export an explicit template instantiation. (See digitlst.h, datefmt.h, and others.)
+ * (When building DLLs for Windows this is required.)
+ */
+#if U_PF_WINDOWS <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN && !defined(U_IN_DOXYGEN)
 template class U_I18N_API EnumSet<UDateFormatBooleanAttribute,
             0, 
             UDAT_BOOLEAN_ATTRIBUTE_COUNT>;
 #endif
+/** \endcond */
 
 /**
  * DateFormat is an abstract class for a family of classes that convert dates and

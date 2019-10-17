@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*****************************************************************************
 *
@@ -736,7 +736,7 @@ ConvertFile::convertFile(const char *pname,
         willexit = FALSE;
 
         // input file offset at the beginning of the next buffer
-        infoffset += rd;
+        infoffset += static_cast<uint32_t>(rd);
 
         rd = fread(buf, 1, bufsz, infile);
         if (ferror(infile) != 0) {
@@ -974,7 +974,7 @@ ConvertFile::convertFile(const char *pname,
                         // input file offset of the current byte buffer +
                         // byte buffer offset of where the current Unicode buffer is converted from +
                         // fromoffsets[Unicode offset]
-                        ferroffset = infoffset + (prevbufp - buf) + fromoffset;
+                        ferroffset = static_cast<int32_t>(infoffset + (prevbufp - buf) + fromoffset);
                         errtag = "problemCvtFromU";
                     } else {
                         // Do not use fromoffsets if (t != NULL) because the Unicode text may

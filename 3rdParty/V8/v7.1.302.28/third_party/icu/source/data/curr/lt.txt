@@ -262,6 +262,10 @@ lt{
             "CLP",
             "Čilės pesas",
         }
+        CNH{
+            "CNH",
+            "Kinijos Užsienio juanis",
+        }
         CNX{
             "CNX",
             "Kinijos \u0022People\u0022 banko doleris",
@@ -680,6 +684,10 @@ lt{
         }
         MRO{
             "MRO",
+            "Mauritanijos ugija (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritanijos ugija",
         }
         MTL{
@@ -780,7 +788,7 @@ lt{
         }
         PEN{
             "PEN",
-            "Peru naujasis solis",
+            "Peru solis",
         }
         PES{
             "PES",
@@ -912,6 +920,10 @@ lt{
         }
         STD{
             "STD",
+            "San Tomės ir Principės dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "San Tomės ir Principės dobra",
         }
         SUR{
@@ -1032,6 +1044,10 @@ lt{
         }
         VEF{
             "VEF",
+            "Venesuelos bolivaras (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venesuelos bolivaras",
         }
         VND{
@@ -1131,7 +1147,7 @@ lt{
             "Azijos plėtros banko apskaitos vienetas",
         }
         XXX{
-            "XXX",
+            "¤",
             "nežinoma valiuta",
         }
         YDD{
@@ -1275,7 +1291,7 @@ lt{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1294,7 +1310,6 @@ lt{
     Currencies%variant{
         GEL{"₾"}
         RUB{"₽"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1686,6 +1701,12 @@ lt{
             many{"Čilės peso"}
             one{"Čilės pesas"}
             other{"Čilės pesų"}
+        }
+        CNH{
+            few{"Kinijos Užsienio juaniai"}
+            many{"Kinijos Užsienio juanio"}
+            one{"Kinijos Užsienio juanis"}
+            other{"Kinijos Užsienio juanių"}
         }
         CNX{
             few{"Kinijos \u0022People\u0022 banko doleriai"}
@@ -2312,6 +2333,12 @@ lt{
             other{"Makao patakų"}
         }
         MRO{
+            few{"Mauritanijos ugijos (1973–2017)"}
+            many{"Mauritanijos ugijos (1973–2017)"}
+            one{"Mauritanijos ugija (1973–2017)"}
+            other{"Mauritanijos ugijų (1973–2017)"}
+        }
+        MRU{
             few{"Mauritanijos ugijos"}
             many{"Mauritanijos ugijos"}
             one{"Mauritanijos ugija"}
@@ -2462,10 +2489,10 @@ lt{
             other{"Peru intis"}
         }
         PEN{
-            few{"Peru naujieji soliai"}
-            many{"Peru naujojo solio"}
-            one{"Peru naujasis solis"}
-            other{"Peru naujųjų solių"}
+            few{"Peru soliai"}
+            many{"Peru solio"}
+            one{"Peru solis"}
+            other{"Peru solių"}
         }
         PES{
             few{"Peru soliai (1863–1965)"}
@@ -2660,6 +2687,12 @@ lt{
             other{"Pietų Sudano svarų"}
         }
         STD{
+            few{"San Tomės ir Principės dobros (1977–2017)"}
+            many{"San Tomės ir Principės dobros (1977–2017)"}
+            one{"San Tomės ir Principės dobra (1977–2017)"}
+            other{"Sao Tomės ir Principės dobrų (1977–2017)"}
+        }
+        STN{
             few{"San Tomės ir Principės dobros"}
             many{"San Tomės ir Principės dobros"}
             one{"San Tomės ir Principės dobra"}
@@ -2840,6 +2873,12 @@ lt{
             other{"Venesuelos bolivarų (1871–2008)"}
         }
         VEF{
+            few{"Venesuelos bolivarai (2008–2018)"}
+            many{"Venesuelos bolivaro (2008–2018)"}
+            one{"Venesuelos bolivaras (2008–2018)"}
+            other{"Venesuelos bolivarų (2008–2018)"}
+        }
+        VES{
             few{"Venesuelos bolivarai"}
             many{"Venesuelos bolivaro"}
             one{"Venesuelos bolivaras"}
@@ -3086,5 +3125,5 @@ lt{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

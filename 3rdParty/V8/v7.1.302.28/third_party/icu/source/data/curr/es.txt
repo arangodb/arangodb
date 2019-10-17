@@ -76,7 +76,7 @@ es{
         }
         AZN{
             "AZN",
-            "manat azerí",
+            "manat azerbaiyano",
         }
         BAD{
             "BAD",
@@ -84,7 +84,7 @@ es{
         }
         BAM{
             "BAM",
-            "marco convertible de Bosnia-Herzegovina",
+            "marco convertible de Bosnia y Herzegovina",
         }
         BBD{
             "BBD",
@@ -226,6 +226,10 @@ es{
             "CLP",
             "peso chileno",
         }
+        CNH{
+            "CNH",
+            "yuan chino (extracontinental)",
+        }
         CNY{
             "CNY",
             "yuan",
@@ -352,7 +356,7 @@ es{
         }
         GBP{
             "GBP",
-            "libra británica",
+            "libra esterlina",
         }
         GEK{
             "GEK",
@@ -612,6 +616,10 @@ es{
         }
         MRO{
             "MRO",
+            "uguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "uguiya",
         }
         MTL{
@@ -708,7 +716,7 @@ es{
         }
         PEN{
             "PEN",
-            "nuevo sol peruano",
+            "sol peruano",
         }
         PES{
             "PES",
@@ -840,6 +848,10 @@ es{
         }
         STD{
             "STD",
+            "dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra",
         }
         SUR{
@@ -927,7 +939,7 @@ es{
             "chelín ugandés",
         }
         USD{
-            "$",
+            "US$",
             "dólar estadounidense",
         }
         USN{
@@ -950,6 +962,10 @@ es{
             "UYU",
             "peso uruguayo",
         }
+        UYW{
+            "UYW",
+            "unidad previsional uruguayo",
+        }
         UZS{
             "UZS",
             "sum",
@@ -960,6 +976,10 @@ es{
         }
         VEF{
             "VEF",
+            "bolívar venezolano (2008–2018)",
+        }
+        VES{
+            "VES",
             "bolívar venezolano",
         }
         VND{
@@ -976,7 +996,7 @@ es{
         }
         XAF{
             "XAF",
-            "franco CFA BEAC",
+            "franco CFA de África Central",
         }
         XAG{
             "XAG",
@@ -1024,7 +1044,7 @@ es{
         }
         XOF{
             "XOF",
-            "franco CFA BCEAO",
+            "franco CFA de África Occidental",
         }
         XPD{
             "XPD",
@@ -1047,7 +1067,7 @@ es{
             "código reservado para pruebas",
         }
         XXX{
-            "XXX",
+            "¤",
             "moneda desconocida",
         }
         YDD{
@@ -1084,7 +1104,7 @@ es{
         }
         ZMW{
             "ZMW",
-            "kuacha zambiano",
+            "kwacha zambiano",
         }
         ZRN{
             "ZRN",
@@ -1134,7 +1154,6 @@ es{
         FKP{"£"}
         GBP{"£"}
         GEL{"₾"}
-        GIP{"£"}
         GNF{"FG"}
         GTQ{"Q"}
         GYD{"$"}
@@ -1149,7 +1168,6 @@ es{
         JMD{"$"}
         JPY{"¥"}
         KHR{"៛"}
-        KMF{"CF"}
         KPW{"₩"}
         KRW{"₩"}
         KYD{"$"}
@@ -1183,7 +1201,7 @@ es{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1257,16 +1275,16 @@ es{
             other{"florines arubeños"}
         }
         AZN{
-            one{"manat azerí"}
-            other{"manat azeríes"}
+            one{"manat azerbaiyano"}
+            other{"manat azerbaiyanos"}
         }
         BAD{
             one{"dinar bosnio"}
             other{"dinares bosnios"}
         }
         BAM{
-            one{"marco convertible de Bosnia-Herzegovina"}
-            other{"marcos convertibles de Bosnia-Herzegovina"}
+            one{"marco convertible de Bosnia y Herzegovina"}
+            other{"marcos convertibles de Bosnia y Herzegovina"}
         }
         BBD{
             one{"dólar barbadense"}
@@ -1408,6 +1426,10 @@ es{
             one{"peso chileno"}
             other{"pesos chilenos"}
         }
+        CNH{
+            one{"yuan chino (extracontinental)"}
+            other{"yuan chino (extracontinental)"}
+        }
         CNY{
             one{"yuan"}
             other{"yuanes"}
@@ -1533,8 +1555,8 @@ es{
             other{"francos franceses"}
         }
         GBP{
-            one{"libra británica"}
-            other{"libras británicas"}
+            one{"libra esterlina"}
+            other{"libras esterlinas"}
         }
         GEL{
             one{"lari"}
@@ -1738,7 +1760,7 @@ es{
         }
         MDL{
             one{"leu moldavo"}
-            other{"leus moldavos"}
+            other{"lei moldavos"}
         }
         MGA{
             one{"ariari"}
@@ -1761,6 +1783,10 @@ es{
             other{"patacas de Macao"}
         }
         MRO{
+            one{"uguiya (1973–2017)"}
+            other{"uguiyas (1973–2017)"}
+        }
+        MRU{
             one{"uguiya"}
             other{"uguiyas"}
         }
@@ -1853,8 +1879,8 @@ es{
             other{"intis peruanos"}
         }
         PEN{
-            one{"nuevo sol peruano"}
-            other{"nuevos soles peruanos"}
+            one{"sol peruano"}
+            other{"soles peruanos"}
         }
         PES{
             one{"sol peruano (1863–1965)"}
@@ -1898,7 +1924,7 @@ es{
         }
         RON{
             one{"leu rumano"}
-            other{"leus rumanos"}
+            other{"lei rumanos"}
         }
         RSD{
             one{"dinar serbio"}
@@ -1977,6 +2003,10 @@ es{
             other{"libras sursudanesas"}
         }
         STD{
+            one{"dobra (1977–2017)"}
+            other{"dobras (1977–2017)"}
+        }
+        STN{
             one{"dobra"}
             other{"dobras"}
         }
@@ -2010,7 +2040,7 @@ es{
         }
         TMT{
             one{"manat turcomano"}
-            other{"manats turcomanos"}
+            other{"manat turcomanos"}
         }
         TND{
             one{"dinar tunecino"}
@@ -2076,6 +2106,10 @@ es{
             one{"peso uruguayo"}
             other{"pesos uruguayos"}
         }
+        UYW{
+            one{"unidad previsional uruguayo"}
+            other{"unidades previsionales uruguayos"}
+        }
         UZS{
             one{"sum"}
             other{"sums"}
@@ -2085,6 +2119,10 @@ es{
             other{"bolívares venezolanos (1871–2008)"}
         }
         VEF{
+            one{"bolívar venezolano (2008–2018)"}
+            other{"bolívares venezolanos (2008–2018)"}
+        }
+        VES{
             one{"bolívar venezolano"}
             other{"bolívares venezolanos"}
         }
@@ -2101,8 +2139,8 @@ es{
             other{"talas"}
         }
         XAF{
-            one{"franco CFA BEAC"}
-            other{"francos CFA BEAC"}
+            one{"franco CFA de África Central"}
+            other{"francos CFA de África Central"}
         }
         XAG{
             one{"plata"}
@@ -2145,8 +2183,8 @@ es{
             other{"francos UIC franceses"}
         }
         XOF{
-            one{"franco CFA BCEAO"}
-            other{"francos CFA BCEAO"}
+            one{"franco CFA de África Occidental"}
+            other{"francos CFA de África Occidental"}
         }
         XPD{
             one{"paladio"}
@@ -2181,13 +2219,13 @@ es{
             other{"kwachas zambianos (1968–2012)"}
         }
         ZMW{
-            one{"kuacha zambiano"}
-            other{"kuachas zambianos"}
+            one{"kwacha zambiano"}
+            other{"kwachas zambianos"}
         }
     }
     CurrencyUnitPatterns{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.80"}
+    Version{"2.1.49.82"}
 }

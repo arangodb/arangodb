@@ -5,5 +5,5 @@ en_NZ{
     Languages{
         mi{"Māori"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.86"}
 }

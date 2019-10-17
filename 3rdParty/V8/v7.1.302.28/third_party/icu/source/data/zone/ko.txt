@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ko{
-    Version{"2.1.29.22"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"아비장"}
@@ -507,6 +507,9 @@ ko{
         "America:Puerto_Rico"{
             ec{"푸에르토리코"}
         }
+        "America:Punta_Arenas"{
+            ec{"푼타아레나스"}
+        }
         "America:Rainy_River"{
             ec{"레이니강"}
         }
@@ -538,7 +541,7 @@ ko{
             ec{"산토도밍고"}
         }
         "America:Sao_Paulo"{
-            ec{"상파울로"}
+            ec{"상파울루"}
         }
         "America:Scoresbysund"{
             ec{"스코레스바이선드"}
@@ -657,6 +660,9 @@ ko{
         "Asia:Ashgabat"{
             ec{"아슈하바트"}
         }
+        "Asia:Atyrau"{
+            ec{"아티라우"}
+        }
         "Asia:Baghdad"{
             ec{"바그다드"}
         }
@@ -707,6 +713,9 @@ ko{
         }
         "Asia:Dushanbe"{
             ec{"두샨베"}
+        }
+        "Asia:Famagusta"{
+            ec{"파마구스타"}
         }
         "Asia:Gaza"{
             ec{"가자"}
@@ -800,6 +809,9 @@ ko{
         }
         "Asia:Qatar"{
             ec{"카타르"}
+        }
+        "Asia:Qostanay"{
+            ec{"코스타나이"}
         }
         "Asia:Qyzylorda"{
             ec{"키질로르다"}
@@ -942,6 +954,9 @@ ko{
         "Australia:Sydney"{
             ec{"시드니"}
         }
+        "Etc:UTC"{
+            ls{"협정 세계시"}
+        }
         "Etc:Unknown"{
             ec{"알 수 없는 장소"}
         }
@@ -1072,6 +1087,9 @@ ko{
         }
         "Europe:Sarajevo"{
             ec{"사라예보"}
+        }
+        "Europe:Saratov"{
+            ec{"사라토프"}
         }
         "Europe:Simferopol"{
             ec{"심페로폴"}
@@ -1372,9 +1390,9 @@ ko{
             ls{"아르메니아 표준시"}
         }
         "meta:Atlantic"{
-            ld{"북미 대서양 하계 표준시"}
-            lg{"북미 대서양 시간"}
-            ls{"북미 대서양 표준시"}
+            ld{"대서양 하계 표준시"}
+            lg{"대서양 시간"}
+            ls{"대서양 표준시"}
         }
         "meta:Australia_Central"{
             ld{"호주 중부 하계 표준시"}
@@ -1538,9 +1556,9 @@ ko{
             ls{"감비에 시간"}
         }
         "meta:Georgia"{
-            ld{"그루지아 하계 표준시"}
-            lg{"그루지아 시간"}
-            ls{"그루지아 표준시"}
+            ld{"조지아 하계 표준시"}
+            lg{"조지아 시간"}
+            ls{"조지아 표준시"}
         }
         "meta:Gilbert_Islands"{
             ls{"길버트 제도 시간"}

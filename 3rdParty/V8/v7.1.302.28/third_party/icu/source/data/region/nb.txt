@@ -31,6 +31,7 @@ nb{
         151{"Øst-Europa"}
         154{"Nord-Europa"}
         155{"Vest-Europa"}
+        202{"Afrika sør for Sahara"}
         419{"Latin-Amerika"}
         AC{"Ascension"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ nb{
         CW{"Curaçao"}
         CX{"Christmasøya"}
         CY{"Kypros"}
-        CZ{"Den tsjekkiske republikk"}
+        CZ{"Tsjekkia"}
         DE{"Tyskland"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -106,9 +107,10 @@ nb{
         ES{"Spania"}
         ET{"Etiopia"}
         EU{"EU"}
+        EZ{"eurosonen"}
         FI{"Finland"}
         FJ{"Fiji"}
-        FK{"Falklandsøyene"}
+        FK{"Falklandsøyene (Islas Malvinas)"}
         FM{"Mikronesiaføderasjonen"}
         FO{"Færøyene"}
         FR{"Frankrike"}
@@ -181,7 +183,7 @@ nb{
         MF{"Saint-Martin"}
         MG{"Madagaskar"}
         MH{"Marshalløyene"}
-        MK{"Makedonia"}
+        MK{"Nord-Makedonia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -217,8 +219,8 @@ nb{
         PH{"Filippinene"}
         PK{"Pakistan"}
         PL{"Polen"}
-        PM{"St. Pierre og Miquelon"}
-        PN{"Pitcairn"}
+        PM{"Saint-Pierre-et-Miquelon"}
+        PN{"Pitcairnøyene"}
         PR{"Puerto Rico"}
         PS{"Palestina"}
         PT{"Portugal"}
@@ -251,7 +253,7 @@ nb{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
-        SZ{"Swaziland"}
+        SZ{"Eswatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks- og Caicosøyene"}
         TD{"Tsjad"}
@@ -301,9 +303,8 @@ nb{
     Countries%variant{
         CD{"Den demokratiske republikken Kongo"}
         CG{"Republikken Kongo"}
-        CZ{"Tsjekkia"}
-        FK{"Falklandsøyene (Islas Malvinas)"}
-        MK{"Den tidligere jugoslaviske republikk Makedonia"}
+        CZ{"Den tsjekkiske republikk"}
+        SZ{"Swaziland"}
     }
-    Version{"2.1.30.7"}
+    Version{"2.1.48.42"}
 }

@@ -242,6 +242,10 @@ bs{
             "CLP",
             "Čileanski pezos",
         }
+        CNH{
+            "CNH",
+            "Kineski juan (izvanteritorijalni)",
+        }
         CNY{
             "CNY",
             "Kineski juan",
@@ -644,6 +648,10 @@ bs{
         }
         MRO{
             "MRO",
+            "Mauritanijska ugvija (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritanijska ugvija",
         }
         MTL{
@@ -740,7 +748,7 @@ bs{
         }
         PEN{
             "PEN",
-            "Peruanski novi sol",
+            "Peruanski sol",
         }
         PES{
             "PES",
@@ -872,6 +880,10 @@ bs{
         }
         STD{
             "STD",
+            "Dobra Sao Toma i Principa (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra Sao Toma i Principa",
         }
         SUR{
@@ -992,7 +1004,11 @@ bs{
         }
         VEF{
             "VEF",
-            "Venecuelanski bolivar",
+            "venecuelanski bolivar (2008–2018)",
+        }
+        VES{
+            "VES",
+            "venecuelanski bolivar",
         }
         VND{
             "₫",
@@ -1083,7 +1099,7 @@ bs{
             "Kod testirane valute",
         }
         XXX{
-            "XXX",
+            "¤",
             "Nepoznata valuta",
         }
         YDD{
@@ -1214,6 +1230,7 @@ bs{
         PKR{"Rs"}
         PLN{"zł"}
         PYG{"₲"}
+        RON{"lei"}
         RUB{"₽"}
         RWF{"RF"}
         SBD{"$"}
@@ -1222,7 +1239,7 @@ bs{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1508,7 +1525,7 @@ bs{
             other{"belizeanskih dolara"}
         }
         CAD{
-            few{"kanadski dolari"}
+            few{"kanadska dolara"}
             one{"kanadski dolar"}
             other{"kanadskih dolara"}
         }
@@ -1541,6 +1558,11 @@ bs{
             few{"čileanska pezosa"}
             one{"čileanski pezos"}
             other{"čileanskih pezosa"}
+        }
+        CNH{
+            few{"kineska juana (izvanteritorijalni)"}
+            one{"kineski juan (izvanteritorijalni)"}
+            other{"kineskih juana (izvanteritorijalni)"}
         }
         CNY{
             few{"kineska juana"}
@@ -1713,9 +1735,9 @@ bs{
             other{"ganskih ceda (1979–2007)"}
         }
         GHS{
-            few{"ganska ceda"}
+            few{"ganska cedija"}
             one{"ganski cedi"}
-            other{"ganskih ceda"}
+            other{"ganskih cedija"}
         }
         GIP{
             few{"gibraltarske funte"}
@@ -2043,6 +2065,11 @@ bs{
             other{"makaonskih pataka"}
         }
         MRO{
+            few{"mauritanijske ugvije (1973–2017)"}
+            one{"mauritanijska ugvija (1973–2017)"}
+            other{"mauritanijskih ugvija (1973–2017)"}
+        }
+        MRU{
             few{"mauritanijske ugvije"}
             one{"mauritanijska ugvija"}
             other{"mauritanijskih ugvija"}
@@ -2125,7 +2152,7 @@ bs{
         NIO{
             few{"nikaragvanske kordobe"}
             one{"nikaragvanska kordoba"}
-            other{"nikaragvanska kordoba"}
+            other{"nikaragvanskih kordoba"}
         }
         NLG{
             few{"holandska guldena"}
@@ -2155,7 +2182,7 @@ bs{
         PAB{
             few{"panamske balboe"}
             one{"panamska balboa"}
-            other{"panamska balboa"}
+            other{"panamskih balboa"}
         }
         PEI{
             few{"peruanske inte"}
@@ -2163,9 +2190,9 @@ bs{
             other{"peruanska inta"}
         }
         PEN{
-            few{"peruanska nova sola"}
-            one{"peruanski novi sol"}
-            other{"peruanskih novih sola"}
+            few{"peruanska sola"}
+            one{"peruanski sol"}
+            other{"peruanskih sola"}
         }
         PES{
             few{"peruanska sola (1863–1965)"}
@@ -2328,6 +2355,11 @@ bs{
             other{"južnosudanskih funti"}
         }
         STD{
+            few{"dobre Sao Toma i Principa (1977–2017)"}
+            one{"dobra Sao Toma i Principa (1977–2017)"}
+            other{"dobri Sao Toma i Principa (1977–2017)"}
+        }
+        STN{
             few{"dobre Sao Toma i Principa"}
             one{"dobra Sao Toma i Principa"}
             other{"dobri Sao Toma i Principa"}
@@ -2478,8 +2510,13 @@ bs{
             other{"venecuelskih bolivara (1871–2008)"}
         }
         VEF{
+            few{"venecuelanska bolivara (2008–2018)"}
+            one{"venecuelanski bolivar (2008–2018)"}
+            other{"venecuelanskih bolivara (2008–2018)"}
+        }
+        VES{
             few{"venecuelanska bolivara"}
-            one{"venecuelanski bolivar"}
+            one{"venecuelanskih bolivara"}
             other{"venecuelanskih bolivara"}
         }
         VND{
@@ -2673,5 +2710,5 @@ bs{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

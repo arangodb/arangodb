@@ -13,8 +13,8 @@ GEN_DEPS.cc=	$(CXX) -E -M $(DEFS) $(CPPFLAGS)
 #           This helps in the data library,
 # -qproto assumes all functions are prototyped (for optimization)
 # -qrtti turns on compiler RTTI, required beginning with ICU 4.6
-CFLAGS += -qproto -qroconst
-CXXFLAGS += -qproto -qroconst -qrtti
+CFLAGS += -qproto -qroconst -qlanglvl=extended
+CXXFLAGS += -qproto -qroconst -qrtti -qlanglvl=extended0x
 
 # If you readd this line, you must change the SO value
 #LDFLAGS += -brtl
@@ -111,11 +111,31 @@ $(LIBDIR)/%.a : %.so
 %.o: $(srcdir)/%.c
 	$(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS) -o $@ $<
 
-%.$(STATIC_O): $(srcdir)/%.cpp
-	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) -o $@ $<
+
+## C++ compilation rules.
+
+# This causes escapesrc to be built before other ICU targets.
+NEED_ESCAPING=YES
+
+ifneq ($(SKIP_ESCAPING),)
+# no escaping - bootstrap
 %.o: $(srcdir)/%.cpp
 	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) -o $@ $<
+else
+# convert *.cpp files to _*.cpp with \u / \U escaping
+CLEANFILES += _*.cpp
 
+# the actual escaping
+_%.cpp: $(srcdir)/%.cpp
+	@$(BINDIR)/escapesrc$(EXEEXT) $< $@
+
+# compilation for static obj
+%.$(STATIC_O): _%.cpp
+	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) -o $@ $<
+# compilation for dynamic obj
+%.o: _%.cpp
+	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) -o $@ $<
+endif
 
 ## Dependency rules
 %.d : %.u

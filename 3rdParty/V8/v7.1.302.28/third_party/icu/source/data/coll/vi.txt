@@ -13,7 +13,7 @@ vi{
                 "&o<ô<<<Ô<ơ<<<Ơ"
                 "&u<ư<<<Ư"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -32,7 +32,7 @@ vi{
                 "&T<th<<<Th<<<TH<tr<<<Tr<<<TR"
                 "&u<ư<<<Ư"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

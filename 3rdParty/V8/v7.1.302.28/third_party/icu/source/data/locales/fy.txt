@@ -15,6 +15,7 @@ fy{
         " s t u ú û ü v w y ý z]"
     }
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P R S T U V W X Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
         "″]"
@@ -154,7 +155,7 @@ fy{
         }
         minimumGroupingDigits{"1"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.47.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -943,8 +944,8 @@ fy{
                 MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMMW{
-                    one{"'wike' W 'fan' MMM"}
-                    other{"'wike' W 'fan' MMM"}
+                    one{"'wike' W 'fan' MMMM"}
+                    other{"'wike' W 'fan' MMMM"}
                 }
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
@@ -967,8 +968,8 @@ fy{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    one{"'wike' w 'fan' y"}
-                    other{"'wike' w 'fan' y"}
+                    one{"'wike' w 'fan' Y"}
+                    other{"'wike' w 'fan' Y"}
                 }
             }
             dayNames{

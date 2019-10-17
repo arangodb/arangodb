@@ -2,6 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ii{
     ExemplarCharacters{"[ꀀ-ꒌ]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -19,7 +20,7 @@ ii{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         gregorian{
             AmPmMarkers{

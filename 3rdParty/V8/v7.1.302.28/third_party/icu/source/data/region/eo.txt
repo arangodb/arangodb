@@ -2,6 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 eo{
     Countries{
+        001{"Mondo"}
         AD{"Andoro"}
         AE{"Unuiĝintaj Arabaj Emirlandoj"}
         AF{"Afganujo"}
@@ -226,5 +227,5 @@ eo{
         ZM{"Zambio"}
         ZW{"Zimbabvo"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.49.33"}
 }

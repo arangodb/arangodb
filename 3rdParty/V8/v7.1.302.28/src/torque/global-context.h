@@ -5,119 +5,91 @@
 #ifndef V8_TORQUE_GLOBAL_CONTEXT_H_
 #define V8_TORQUE_GLOBAL_CONTEXT_H_
 
+#include <map>
+
+#include "src/torque/ast.h"
+#include "src/torque/contextual.h"
 #include "src/torque/declarable.h"
-#include "src/torque/declarations.h"
-#include "src/torque/scope.h"
-#include "src/torque/type-oracle.h"
 
 namespace v8 {
 namespace internal {
 namespace torque {
 
-class GlobalContext;
-class Scope;
-class TypeOracle;
-class Builtin;
-class Label;
-
-class Module {
+class GlobalContext : public ContextualClass<GlobalContext> {
  public:
-  explicit Module(const std::string& name, bool is_default)
-      : name_(name), is_default_(is_default) {}
-  const std::string& name() const { return name_; }
-  bool IsDefault() const { return is_default_; }
-  std::ostream& source_stream() { return source_stream_; }
-  std::ostream& header_stream() { return header_stream_; }
-  std::string source() { return source_stream_.str(); }
-  std::string header() { return header_stream_.str(); }
+  GlobalContext(GlobalContext&&) V8_NOEXCEPT = default;
+  GlobalContext& operator=(GlobalContext&&) V8_NOEXCEPT = default;
+  explicit GlobalContext(Ast ast);
+
+  static Namespace* GetDefaultNamespace() { return Get().default_namespace_; }
+  template <class T>
+  T* RegisterDeclarable(std::unique_ptr<T> d) {
+    T* ptr = d.get();
+    declarables_.push_back(std::move(d));
+    return ptr;
+  }
+
+  static const std::vector<std::unique_ptr<Declarable>>& AllDeclarables() {
+    return Get().declarables_;
+  }
+
+  static void RegisterClass(const TypeAlias* alias) {
+    DCHECK(alias->ParentScope()->IsNamespace());
+    Get().classes_.push_back(alias);
+  }
+
+  using GlobalClassList = std::vector<const TypeAlias*>;
+
+  static const GlobalClassList& GetClasses() { return Get().classes_; }
+
+  static void AddCppInclude(std::string include_path) {
+    Get().cpp_includes_.push_back(std::move(include_path));
+  }
+  static const std::vector<std::string>& CppIncludes() {
+    return Get().cpp_includes_;
+  }
+
+  static void SetCollectLanguageServerData() {
+    Get().collect_language_server_data_ = true;
+  }
+  static bool collect_language_server_data() {
+    return Get().collect_language_server_data_;
+  }
+  static void SetForceAssertStatements() {
+    Get().force_assert_statements_ = true;
+  }
+  static bool force_assert_statements() {
+    return Get().force_assert_statements_;
+  }
+  static Ast* ast() { return &Get().ast_; }
+  static size_t FreshId() { return Get().fresh_id_++; }
+
+  struct PerFileStreams {
+    std::stringstream csa_headerfile;
+    std::stringstream csa_ccfile;
+  };
+  static PerFileStreams& GeneratedPerFile(SourceId file) {
+    return Get().generated_per_file_[file];
+  }
 
  private:
-  std::string name_;
-  bool is_default_;
-  std::stringstream header_stream_;
-  std::stringstream source_stream_;
-};
-
-class GlobalContext {
- public:
-  explicit GlobalContext(Ast ast)
-      : verbose_(false),
-        next_label_number_(0),
-        default_module_(GetModule("base", true)),
-        ast_(std::move(ast)) {}
-  Module* GetDefaultModule() { return default_module_; }
-  Module* GetModule(const std::string& name, bool is_default = false) {
-    auto i = modules_.find(name);
-    if (i != modules_.end()) {
-      return i->second.get();
-    }
-    Module* module = new Module(name, is_default);
-    modules_[name] = std::unique_ptr<Module>(module);
-    return module;
-  }
-
-  int GetNextLabelNumber() { return next_label_number_++; }
-
-  const std::map<std::string, std::unique_ptr<Module>>& GetModules() const {
-    return modules_;
-  }
-
-  void SetVerbose() { verbose_ = true; }
-  bool verbose() const { return verbose_; }
-
-  friend class CurrentCallableActivator;
-  friend class BreakContinueActivator;
-
-  Callable* GetCurrentCallable() const { return current_callable_; }
-  Block* GetCurrentBreak() const { return break_continue_stack_.back().first; }
-  Block* GetCurrentContinue() const {
-    return break_continue_stack_.back().second;
-  }
-
-  Declarations* declarations() { return &declarations_; }
-  Ast* ast() { return &ast_; }
-
- private:
-  bool verbose_;
-  int next_label_number_;
-  Declarations declarations_;
-  Callable* current_callable_;
-  std::vector<std::pair<Block*, Block*>> break_continue_stack_;
-  std::map<std::string, std::unique_ptr<Module>> modules_;
-  Module* default_module_;
+  bool collect_language_server_data_;
+  bool force_assert_statements_;
+  Namespace* default_namespace_;
   Ast ast_;
+  std::vector<std::unique_ptr<Declarable>> declarables_;
+  std::vector<std::string> cpp_includes_;
+  std::map<SourceId, PerFileStreams> generated_per_file_;
+  GlobalClassList classes_;
+  size_t fresh_id_ = 0;
+
+  friend class LanguageServerData;
 };
 
-class CurrentCallableActivator {
- public:
-  CurrentCallableActivator(GlobalContext& context, Callable* callable,
-                           CallableNode* decl)
-      : context_(context), scope_activator_(context.declarations(), decl) {
-    remembered_callable_ = context_.current_callable_;
-    context_.current_callable_ = callable;
-  }
-  ~CurrentCallableActivator() {
-    context_.current_callable_ = remembered_callable_;
-  }
-
- private:
-  GlobalContext& context_;
-  Callable* remembered_callable_;
-  Declarations::NodeScopeActivator scope_activator_;
-};
-
-class BreakContinueActivator {
- public:
-  BreakContinueActivator(GlobalContext& context, Block* break_block,
-                         Block* continue_block)
-      : context_(context) {
-    context_.break_continue_stack_.push_back({break_block, continue_block});
-  }
-  ~BreakContinueActivator() { context_.break_continue_stack_.pop_back(); }
-
- private:
-  GlobalContext& context_;
-};
+template <class T>
+T* RegisterDeclarable(std::unique_ptr<T> d) {
+  return GlobalContext::Get().RegisterDeclarable(std::move(d));
+}
 
 }  // namespace torque
 }  // namespace internal

@@ -73,12 +73,12 @@ mt{
         CD{"ir-Repubblika Demokratika tal-Kongo"}
         CF{"ir-Repubblika Ċentru-Afrikana"}
         CG{"il-Kongo - Brazzaville"}
-        CH{"Żvizzera"}
+        CH{"l-Iżvizzera"}
         CI{"il-Kosta tal-Avorju"}
         CK{"Gżejjer Cook"}
         CL{"iċ-Ċili"}
         CM{"il-Kamerun"}
-        CN{"CN"}
+        CN{"iċ-Ċina"}
         CO{"il-Kolombja"}
         CP{"il-Gżira Clipperton"}
         CR{"il-Costa Rica"}
@@ -106,7 +106,7 @@ mt{
         EU{"Unjoni Ewropea"}
         FI{"il-Finlandja"}
         FJ{"Fiġi"}
-        FK{"il-Gżejjer Falkland"}
+        FK{"Il-Gżejjer Falkland (il-Gżejjer Malvinas)"}
         FM{"Mikroneżja"}
         FO{"il-Gżejjer Faeroe"}
         FR{"Franza"}
@@ -179,7 +179,7 @@ mt{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Gżejjer Marshall"}
-        MK{"l-Eks-Repubblika Jugoslava tal-Maċedonia"}
+        MK{"il-Maċedonja ta’ Fuq"}
         ML{"il-Mali"}
         MM{"il-Myanmar/Burma"}
         MN{"il-Mongolja"}
@@ -281,7 +281,7 @@ mt{
         VU{"Vanuatu"}
         WF{"Wallis u Futuna"}
         WS{"Samoa"}
-        XK{"Kosovo"}
+        XK{"il-Kosovo"}
         YE{"il-Jemen"}
         YT{"Mayotte"}
         ZA{"l-Afrika t’Isfel"}
@@ -296,8 +296,8 @@ mt{
     Countries%variant{
         CD{"Kongo (RDK)"}
         CG{"ir-Repubblika tal-Kongo"}
-        FK{"Il-Gżejjer Falkland (il-Gżejjer Malvinas)"}
+        CZ{"Ir-Repubblika Ċeka"}
         TL{"Timor tal-Lvant"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
 }

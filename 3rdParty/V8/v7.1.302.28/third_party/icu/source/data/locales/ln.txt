@@ -11,6 +11,7 @@ ln{
         "[A B C D E Ɛ F G {Gb} H I K L M {Mb} {Mp} N {Nd} {Ng} {Nk} {Ns} {Nt} {Ny} {N"
         "z} O Ɔ P R S T U V W Y Z]"
     }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -23,7 +24,7 @@ ln{
             }
         }
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

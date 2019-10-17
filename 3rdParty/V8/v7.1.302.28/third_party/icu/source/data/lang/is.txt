@@ -44,7 +44,7 @@ is{
         ar{"arabíska"}
         ar_001{"stöðluð nútímaarabíska"}
         arc{"arameíska"}
-        arn{"arákaníska"}
+        arn{"mapuche"}
         arp{"arapahó"}
         arw{"aravakska"}
         as{"assamska"}
@@ -104,7 +104,7 @@ is{
         cop{"koptíska"}
         cr{"krí"}
         crh{"krímtyrkneska"}
-        crs{"Seselwa kreólsk franska"}
+        crs{"seychelles-kreólska"}
         cs{"tékkneska"}
         csb{"kasúbíska"}
         cu{"kirkjuslavneska"}
@@ -164,6 +164,7 @@ is{
         fr{"franska"}
         fr_CA{"kanadísk franska"}
         fr_CH{"svissnesk franska"}
+        frc{"cajun-franska"}
         frm{"miðfranska"}
         fro{"fornfranska"}
         frr{"norðurfrísneska"}
@@ -173,6 +174,7 @@ is{
         ga{"írska"}
         gaa{"ga"}
         gag{"gagás"}
+        gan{"gan"}
         gay{"gajó"}
         gba{"gbaja"}
         gd{"skosk gelíska"}
@@ -194,6 +196,7 @@ is{
         gwi{"gvísín"}
         ha{"hása"}
         hai{"haída"}
+        hak{"hak"}
         haw{"havaíska"}
         he{"hebreska"}
         hi{"hindí"}
@@ -203,6 +206,7 @@ is{
         ho{"hírímótú"}
         hr{"króatíska"}
         hsb{"hásorbneska"}
+        hsn{"hsn"}
         ht{"haítíska"}
         hu{"ungverska"}
         hup{"húpa"}
@@ -286,6 +290,7 @@ is{
         ln{"lingala"}
         lo{"laó"}
         lol{"mongó"}
+        lou{"kreólska (Louisiana)"}
         loz{"lozi"}
         lrc{"norðurlúrí"}
         lt{"litháíska"}
@@ -335,6 +340,7 @@ is{
         myv{"ersja"}
         mzn{"masanderaní"}
         na{"nárúska"}
+        nan{"nan"}
         nap{"napólíska"}
         naq{"nama"}
         nb{"norskt bókmál"}
@@ -455,7 +461,7 @@ is{
         sux{"súmerska"}
         sv{"sænska"}
         sw{"svahílí"}
-        sw_CD{"Kongó-svahílí"}
+        sw_CD{"kongósvahílí"}
         swb{"shimaoríska"}
         syc{"klassísk sýrlenska"}
         syr{"sýrlenska"}
@@ -508,11 +514,12 @@ is{
         vun{"vunjó"}
         wa{"vallónska"}
         wae{"valser"}
-        wal{"valamó"}
+        wal{"volayatta"}
         war{"varaí"}
         was{"vasjó"}
         wbp{"varlpiri"}
         wo{"volof"}
+        wuu{"wuu"}
         xal{"kalmúkska"}
         xh{"sósa"}
         xog{"sóga"}
@@ -522,7 +529,7 @@ is{
         ybb{"yemba"}
         yi{"jiddíska"}
         yo{"jórúba"}
-        yue{"kantoneska"}
+        yue{"kantónska"}
         za{"súang"}
         zap{"sapótek"}
         zbl{"blisstákn"}
@@ -544,9 +551,13 @@ is{
     Scripts{
         Arab{"arabískt"}
         Armn{"armenskt"}
+        Bali{"balinesíska"}
+        Batk{"batakíska"}
         Beng{"bengalskt"}
         Bopo{"bopomofo"}
+        Brah{"brahmíska"}
         Brai{"blindraletur"}
+        Copt{"koptíska"}
         Cyrl{"kyrillískt"}
         Deva{"devanagari"}
         Ethi{"eþíópískt"}
@@ -561,8 +572,9 @@ is{
         Hant{"hefðbundið"}
         Hebr{"hebreskt"}
         Hira{"hiragana"}
-        Hrkt{"katakana eða hiragana"}
+        Hrkt{"japönsk samstöfuletur"}
         Jamo{"jamo"}
+        Java{"javanesíska"}
         Jpan{"japanskt"}
         Kana{"katakana"}
         Khmr{"kmer"}
@@ -570,11 +582,14 @@ is{
         Kore{"kóreskt"}
         Laoo{"lao"}
         Latn{"latneskt"}
+        Mand{"mandaíska"}
         Mlym{"malalajam"}
         Mong{"mongólskt"}
         Mymr{"mjanmarskt"}
+        Nkoo{"n-kó"}
         Orya{"oriya"}
         Sinh{"sinhala"}
+        Sund{"sundanesíska"}
         Taml{"tamílskt"}
         Telu{"telúgú"}
         Thaa{"thaana"}
@@ -607,6 +622,7 @@ is{
             indian{"indverskt dagatal"}
             islamic{"Íslamskt dagatal"}
             islamic-civil{"Íslamskt borgaradagatal"}
+            islamic-umalqura{"Íslamskt dagatal (Umm al-Qura)"}
             iso8601{"ISO-8601 dagatal"}
             japanese{"Japanskt dagatal"}
             persian{"Persneskt dagatal"}
@@ -650,8 +666,10 @@ is{
         }
         collation{
             big5han{"hefðbundin kínversk röðun - Big5"}
+            compat{"Fyrri röðun, til samræmis"}
             dictionary{"Orðabókarröð"}
             ducet{"Sjálfgefin Unicode-röðun"}
+            eor{"Evrópskar reglur um röðun"}
             gb2312han{"einfölduð kínversk röðun - GB2312"}
             phonebook{"Símaskráarröðun"}
             phonetic{"Hljóðfræðileg röð"}
@@ -666,7 +684,7 @@ is{
         }
         d0{
             fwidth{"Full breidd"}
-            hwidth{"Hálf breidd"}
+            hwidth{"Hálfbreidd"}
             npinyin{"Tölulegur"}
         }
         hc{
@@ -681,8 +699,8 @@ is{
             strict{"Ströng línuskipting"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"US BGN umritun"}
+            ungegn{"UN GEGN umritun"}
         }
         ms{
             metric{"Metrakerfi"}
@@ -690,6 +708,7 @@ is{
             ussystem{"Bandarískt mælingakerfi"}
         }
         numbers{
+            ahom{"ahom-tölur"}
             arab{"Arabískar-indverskar tölur"}
             arabext{"Auknar arabískar-indverskar tölur"}
             armn{"Armenskir tölustafir"}
@@ -720,7 +739,7 @@ is{
             mong{"Mongólskar tölur"}
             mymr{"Mjanmarskar tölur"}
             native{"Upprunalegir tölustafir"}
-            orya{"Oriya-tölur"}
+            orya{"Odia-tölur"}
             roman{"Rómverskir tölustafir"}
             romanlow{"Rómverskar lágstafatölur"}
             taml{"Hefðbundnir tamílskir tölustafir"}
@@ -732,7 +751,7 @@ is{
             vaii{"Vai-tölustafir"}
         }
     }
-    Version{"2.1.29.65"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — allt"}
         category-list{"{0}: {1}"}
@@ -744,7 +763,7 @@ is{
         other{"{0} — annað"}
         scripts{"letur — {0}"}
         strokes{
-            one{"{0} slög"}
+            one{"{0} slag"}
             other{"{0} slög"}
         }
     }

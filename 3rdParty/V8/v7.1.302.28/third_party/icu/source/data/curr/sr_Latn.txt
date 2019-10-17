@@ -227,6 +227,10 @@ sr_Latn{
             "CLP",
             "Čileanski pezos",
         }
+        CNH{
+            "CNH",
+            "Kineski juan (ostrvski)",
+        }
         CNY{
             "CN¥",
             "Kineski juan",
@@ -621,6 +625,10 @@ sr_Latn{
         }
         MRO{
             "MRO",
+            "Mauritanijska ogija (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritanijska ogija",
         }
         MTL{
@@ -717,11 +725,11 @@ sr_Latn{
         }
         PEN{
             "PEN",
-            "Peruanski novi sol",
+            "Peruanski sol",
         }
         PES{
             "PES",
-            "Peruanski sol",
+            "Peruanski sol (1863–1965)",
         }
         PGK{
             "PGK",
@@ -761,11 +769,11 @@ sr_Latn{
         }
         ROL{
             "ROL",
-            "Rumunski lej",
+            "Rumunski lej (1952–2006)",
         }
         RON{
             "RON",
-            "Rumunski lej (1952–2006)",
+            "Rumunski lej",
         }
         RSD{
             "RSD",
@@ -849,6 +857,10 @@ sr_Latn{
         }
         STD{
             "STD",
+            "Saotomska dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Saotomska dobra",
         }
         SUR{
@@ -969,6 +981,10 @@ sr_Latn{
         }
         VEF{
             "VEF",
+            "Venecuelanski bolivar (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venecuelanski bolivar",
         }
         VND{
@@ -1060,7 +1076,7 @@ sr_Latn{
             "Kod testirane valute",
         }
         XXX{
-            "XXX",
+            "¤",
             "Nepoznata valuta",
         }
         YDD{
@@ -1191,6 +1207,7 @@ sr_Latn{
         PKR{"Rs"}
         PLN{"zł"}
         PYG{"₲"}
+        RON{"lei"}
         RUB{"₽"}
         RWF{"RF"}
         SBD{"$"}
@@ -1199,7 +1216,6 @@ sr_Latn{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1499,6 +1515,11 @@ sr_Latn{
             few{"čileanska pezosa"}
             one{"čileanski pezos"}
             other{"čileanskih pezosa"}
+        }
+        CNH{
+            few{"kineska juana (ostrvska)"}
+            one{"kineski juan (ostrvski)"}
+            other{"kineskih juana (ostrvskih)"}
         }
         CNY{
             few{"kineska juana"}
@@ -1991,6 +2012,11 @@ sr_Latn{
             other{"makaoskih pataka"}
         }
         MRO{
+            few{"mauritanijske ogije (1973–2017)"}
+            one{"mauritanijska ogija (1973–2017)"}
+            other{"mauritanijskih ogija (1973–2017)"}
+        }
+        MRU{
             few{"mauritanijske ogije"}
             one{"mauritanijska ogija"}
             other{"mauritanijskih ogija"}
@@ -2111,14 +2137,14 @@ sr_Latn{
             other{"peruvijskih intija"}
         }
         PEN{
-            few{"peruanska nova sola"}
-            one{"peruanski novi sol"}
-            other{"peruanskih novih sola"}
-        }
-        PES{
             few{"peruanska sola"}
             one{"peruanski sol"}
             other{"peruanskih sola"}
+        }
+        PES{
+            few{"peruanska sola (1863–1965)"}
+            one{"peruanski sol (1863–1965)"}
+            other{"peruanskih sola (1863–1965)"}
         }
         PGK{
             few{"papuanske kine"}
@@ -2166,14 +2192,14 @@ sr_Latn{
             other{"rodežanskih dolara"}
         }
         ROL{
-            few{"rumunska leja"}
-            one{"rumunski lej"}
-            other{"rumunskih leja"}
-        }
-        RON{
             few{"rumunska leja (1952–2006)"}
             one{"rumunski lej (1952–2006)"}
             other{"rumunskih leja (1952–2006)"}
+        }
+        RON{
+            few{"rumunska leja"}
+            one{"rumunski lej"}
+            other{"rumunskih leja"}
         }
         RSD{
             few{"srpska dinara"}
@@ -2276,6 +2302,11 @@ sr_Latn{
             other{"južnosudanskih funti"}
         }
         STD{
+            few{"saotomske dobre (1977–2017)"}
+            one{"saotomska dobra (1977–2017)"}
+            other{"saotomskih dobri (1977–2017)"}
+        }
+        STN{
             few{"saotomske dobre"}
             one{"saotomska dobra"}
             other{"saotomskih dobri"}
@@ -2426,6 +2457,11 @@ sr_Latn{
             other{"venecuelanskih bolivara (1871–2008)"}
         }
         VEF{
+            few{"venecuelanska bolivara (2008–2018)"}
+            one{"venecuelanski bolivar (2008–2018)"}
+            other{"venecuelanskih bolivara (2008–2018)"}
+        }
+        VES{
             few{"venecuelanska bolivara"}
             one{"venecuelanski bolivar"}
             other{"venecuelanskih bolivara"}
@@ -2621,5 +2657,5 @@ sr_Latn{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.33"}
+    Version{"2.1.49.82"}
 }

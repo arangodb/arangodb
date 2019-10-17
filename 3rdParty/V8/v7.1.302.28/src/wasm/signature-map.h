@@ -7,15 +7,13 @@
 
 #include <unordered_map>
 
-#include "src/signature.h"
+#include "src/codegen/signature.h"
 #include "src/wasm/value-type.h"
 
 namespace v8 {
 namespace internal {
 
 namespace wasm {
-
-using FunctionSig = Signature<ValueType>;
 
 // A signature map canonicalizes signatures into a range of indices so that
 // two different {FunctionSig} instances with the same contents map to the
@@ -36,8 +34,11 @@ class V8_EXPORT_PRIVATE SignatureMap {
   // Disallows further insertions to this signature map.
   void Freeze() { frozen_ = true; }
 
+  size_t size() const { return map_.size(); }
+
+  bool is_frozen() const { return frozen_; }
+
  private:
-  uint32_t next_ = 0;
   bool frozen_ = false;
   std::unordered_map<FunctionSig, uint32_t, base::hash<FunctionSig>> map_;
 };

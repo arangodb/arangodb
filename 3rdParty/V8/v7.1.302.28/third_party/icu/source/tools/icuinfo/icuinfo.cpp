@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  icuinfo.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -84,6 +84,12 @@ void cmd_version(UBool /* noLoad */, UErrorCode &errorCode)
         errorCode=U_INTERNAL_PROGRAM_ERROR;
     }
 
+#if defined(_MSC_VER)
+// Ignore warning 4127, conditional expression is constant. This is intentional below.
+#pragma warning(push)
+#pragma warning(disable: 4127)
+#endif
+
     if(U_SIZEOF_WCHAR_T==sizeof(wchar_t)) {
       //printf("U_SIZEOF_WCHAR_T: %d\n", U_SIZEOF_WCHAR_T);
     } else {
@@ -107,6 +113,10 @@ void cmd_version(UBool /* noLoad */, UErrorCode &errorCode)
                 U_CHARSET_FAMILY, charsetFamily);
         errorCode=U_INTERNAL_PROGRAM_ERROR;
     }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
     printf("\n\nICU Initialization returned: %s\n", u_errorName(initStatus));
     

@@ -12,11 +12,11 @@
 # Don't want NFKD, because that would convert things like superscripts and
 # subscripts, which we do not want. So the individual transforms below
 # include an appropriate subset of the NFKD ones.
-# Here we remove accents from Latin characters. We then recompose to permit rules
+# Here we remove accents from Latin characters or digits. We then recompose to permit rules
 # such as mapping NOT EQUAL TO to an ASCII equivalent e.g. "!=" if we choose to.
 #
 :: NFD() ;
-[:Latin:] { [:Mn:]+ → ; # maps to nothing; remove all Mn following Latin letter
+[[:Latin:][0-9]] { [:Mn:]+ → ; # maps to nothing; remove all Mn following Latin letter/digit
 :: NFC() ;
 #
 # Some of the following mappings (noted) are from CLDR ‹character-fallback› data.

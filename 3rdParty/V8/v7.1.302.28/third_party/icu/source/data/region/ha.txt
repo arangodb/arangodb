@@ -58,7 +58,7 @@ ha{
         DZ{"Aljeriya"}
         EC{"Ekwador"}
         EE{"Estoniya"}
-        EG{"Masar, Misira"}
+        EG{"Misira"}
         ER{"Eritireya"}
         ES{"Sipen"}
         ET{"Habasha"}
@@ -68,7 +68,7 @@ ha{
         FM{"Mikuronesiya"}
         FR{"Faransa"}
         GA{"Gabon"}
-        GB{"Birtaniya"}
+        GB{"Biritaniya"}
         GD{"Girnada"}
         GE{"Jiwarjiya"}
         GF{"Gini Ta Faransa"}
@@ -99,7 +99,7 @@ ha{
         IT{"Italiya"}
         JM{"Jamaika"}
         JO{"Jordan"}
-        JP{"Japan"}
+        JP{"Jàpân"}
         KE{"Kenya"}
         KG{"Kirgizistan"}
         KH{"Kambodiya"}
@@ -209,7 +209,7 @@ ha{
         TZ{"Tanzaniya"}
         UA{"Yukaran"}
         UG{"Yuganda"}
-        US{"Amurka"}
+        US{"Amirka"}
         UY{"Yurugai"}
         UZ{"Uzubekistan"}
         VA{"Batikan"}
@@ -226,6 +226,7 @@ ha{
         ZA{"Afirka Ta Kudu"}
         ZM{"Zambiya"}
         ZW{"Zimbabuwe"}
+        ZZ{"Yanki da ba a sani ba"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.48.45"}
 }

@@ -89,7 +89,7 @@ kea{
         CW{"Kurasau"}
         CX{"Ilha di Natal"}
         CY{"Xipri"}
-        CZ{"Repúblika Txeka"}
+        CZ{"Txékia"}
         DE{"Alimanha"}
         DG{"Diegu Garsia"}
         DJ{"Djibuti"}
@@ -108,7 +108,7 @@ kea{
         EU{"Uniãu Europeia"}
         FI{"Finlándia"}
         FJ{"Fidji"}
-        FK{"Ilhas Malvinas"}
+        FK{"Ilhas Falkland (Ilhas Malvinas)"}
         FM{"Mikronézia"}
         FO{"Ilhas Faroe"}
         FR{"Fransa"}
@@ -300,9 +300,8 @@ kea{
         CD{"Repúblika Dimokrátika di Kongu"}
         CG{"Repúblika di Kongu"}
         CI{"Kosta di Marfin (Côte d’Ivoire)"}
-        CZ{"Txékia"}
-        FK{"Ilhas Falkland (Ilhas Malvinas)"}
+        CZ{"Repúblika Txeka"}
         MK{"Masidónia (FYROM)"}
     }
-    Version{"2.1.27.46"}
+    Version{"2.1.48.9"}
 }

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 he{
-    Version{"2.1.29.27"}
+    Version{"2.1.48.42"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -68,6 +68,13 @@ he{
                 one{"אקר {0}"}
                 other{"{0} אקר"}
                 two{"{0} אקר"}
+            }
+            dunam{
+                dnam{"דונם"}
+                many{"{0} דונם"}
+                one{"{0} דונם"}
+                other{"{0} דונם"}
+                two{"{0} דונם"}
             }
             hectare{
                 dnam{"הקטאר"}
@@ -156,12 +163,40 @@ he{
                 other{"{0} מילימול/ליטר"}
                 two{"{0} מילימול/ליטר"}
             }
+            mole{
+                dnam{"מול"}
+                many{"{0} מול"}
+                one{"{0} מול"}
+                other{"{0} מול"}
+                two{"{0} מול"}
+            }
             part-per-million{
                 dnam{"חלקים למיליון"}
                 many{"{0} חלקים למיליון"}
                 one{"{0} חלקים למיליון"}
                 other{"{0} חלקים למיליון"}
                 two{"{0} חלקים למיליון"}
+            }
+            percent{
+                dnam{"אחוז"}
+                many{"{0} אחוז"}
+                one{"{0} אחוז"}
+                other{"{0} אחוז"}
+                two{"{0} אחוז"}
+            }
+            permille{
+                dnam{"פרומיל"}
+                many{"{0} פרומיל"}
+                one{"{0} פרומיל"}
+                other{"{0} פרומיל"}
+                two{"{0} פרומיל"}
+            }
+            permyriad{
+                dnam{"רבבית"}
+                many{"{0} רבביות"}
+                one{"רבבית {0}"}
+                other{"{0} רבביות"}
+                two{"{0} רבביות"}
             }
         }
         consumption{
@@ -195,32 +230,33 @@ he{
             }
         }
         coordinate{
-            east{"{0}מזרח"}
-            north{"{0}צפון"}
-            south{"{0}דרום"}
-            west{"{0}מערב"}
+            dnam{"רוחות השמיים"}
+            east{"{0} מזרח"}
+            north{"{0} צפון"}
+            south{"{0} דרום"}
+            west{"{0} מערב"}
         }
         digital{
             bit{
-                dnam{"סיביות"}
-                many{"{0} סיביות"}
-                one{"סיבית {0}"}
-                other{"{0} סיביות"}
-                two{"{0} סיביות"}
+                dnam{"ביט"}
+                many{"ביט {0}"}
+                one{"ביט {0}"}
+                other{"ביט {0}"}
+                two{"ביט {0}"}
             }
             byte{
-                dnam{"בתים"}
-                many{"{0} בתים"}
-                one{"בית {0}"}
-                other{"{0} בתים"}
-                two{"{0} בתים"}
+                dnam{"בייט"}
+                many{"{0} בייט"}
+                one{"{0} בייט"}
+                other{"{0} בייט"}
+                two{"{0} בייט"}
             }
             gigabit{
-                dnam{"גיגהסיביות"}
-                many{"{0} גיגהסיביות"}
-                one{"{0} גיגהסיבית"}
-                other{"{0} גיגהסיביות"}
-                two{"{0} גיגהסיביות"}
+                dnam{"גיגהביט"}
+                many{"{0} גיגהביט"}
+                one{"{0} גיגהביט"}
+                other{"{0} גיגהביט"}
+                two{"{0} גיגהביט"}
             }
             gigabyte{
                 dnam{"ג׳יגה-בייט"}
@@ -230,11 +266,11 @@ he{
                 two{"{0} ג׳יגה-בייט"}
             }
             kilobit{
-                dnam{"קילוסיביות"}
-                many{"{0} קילוסיביות"}
-                one{"{0} קילוסיבית"}
-                other{"{0} קילוסיביות"}
-                two{"{0} קילוסיביות"}
+                dnam{"קילוביט"}
+                many{"{0} קילוביט"}
+                one{"{0} קילוביט"}
+                other{"{0} קילוביט"}
+                two{"{0} קילוביט"}
             }
             kilobyte{
                 dnam{"קילו-בייט"}
@@ -244,32 +280,39 @@ he{
                 two{"{0} קילו-בייט"}
             }
             megabit{
-                dnam{"מגה-סיביות"}
-                many{"{0} מגה-סיביות"}
-                one{"מגה-סיבית {0}"}
-                other{"{0} מגה-סיביות"}
-                two{"{0} מגה-סיביות"}
+                dnam{"מגה-ביט"}
+                many{"מגה-ביט {0}"}
+                one{"מגה-ביט {0}"}
+                other{"מגה-ביט {0}"}
+                two{"מגה-ביט {0}"}
             }
             megabyte{
-                dnam{"מגה-בתים"}
-                many{"{0} מגה-בתים"}
-                one{"מגה-בית {0}"}
-                other{"{0} מגה-בתים"}
-                two{"{0} מגה-בתים"}
+                dnam{"מגה-בייט"}
+                many{"{0} מגה-בייט"}
+                one{"מגה-בייט"}
+                other{"{0} מגה-בייט"}
+                two{"{0} מגה-בייט"}
+            }
+            petabyte{
+                dnam{"פטה-בייט"}
+                many{"{0} פטה-בייט"}
+                one{"{0} פטה-בייט"}
+                other{"{0} פטה-בייט"}
+                two{"{0} פטה-בייט"}
             }
             terabit{
-                dnam{"טרה-סיביות"}
-                many{"{0} טרה-סיביות"}
-                one{"טרה-סיבית {0}"}
-                other{"{0} טרה-סיביות"}
-                two{"{0} טרה-סיביות"}
+                dnam{"טרה-ביט"}
+                many{"טרה-ביט {0}"}
+                one{"טרה-ביט {0}"}
+                other{"טרה-ביט {0}"}
+                two{"טרה-ביט {0}"}
             }
             terabyte{
-                dnam{"טרה-בתים"}
-                many{"{0} טרה-בתים"}
-                one{"טרה-בית {0}"}
-                other{"{0} טרה-בתים"}
-                two{"{0} טרה-בתים"}
+                dnam{"טרה-בייט"}
+                many{"טרה-בייט {0}"}
+                one{"טרה-בייט {0}"}
+                other{"טרה-בייט {0}"}
+                two{"טרה-בייט {0}"}
             }
         }
         duration{
@@ -389,12 +432,26 @@ he{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"יחידות תרמיות בריטיות"}
+                many{"{0} יחידות תרמיות בריטיות"}
+                one{"{0} יחידה תרמית בריטית"}
+                other{"{0} יחידות תרמיות בריטיות"}
+                two{"{0} יחידות תרמיות בריטיות"}
+            }
             calorie{
                 dnam{"קלוריות"}
                 many{"{0} קלוריות"}
                 one{"קלוריה {0}"}
                 other{"{0} קלוריות"}
                 two{"{0} קלוריות"}
+            }
+            electronvolt{
+                dnam{"אלקטרון וולט"}
+                many{"{0} אלקטרון וולט"}
+                one{"{0} אלקטרון וולט"}
+                other{"{0} אלקטרון וולט"}
+                two{"{0} אלקטרון וולט"}
             }
             foodcalorie{
                 dnam{"קלוריות"}
@@ -430,6 +487,22 @@ he{
                 one{"קילוואט־שעה {0}"}
                 other{"{0} קילוואט-שעה"}
                 two{"{0} קילוואט-שעה"}
+            }
+        }
+        force{
+            newton{
+                dnam{"ניוטון"}
+                many{"{0} ניוטון"}
+                one{"{0} ניוטון"}
+                other{"{0} ניוטון"}
+                two{"{0} ניוטון"}
+            }
+            pound-force{
+                dnam{"ליברת-כוח"}
+                many{"{0} ליברות-כוח"}
+                one{"{0} ליברת-כוח"}
+                other{"{0} ליברות-כוח"}
+                two{"{0} ליברות-כוח"}
             }
         }
         frequency{
@@ -580,6 +653,20 @@ he{
                 other{"{0} פיקומטרים"}
                 two{"{0} פיקומטרים"}
             }
+            point{
+                dnam{"נקודות"}
+                many{"{0} נק'"}
+                one{"נקודה"}
+                other{"{0} נקודות"}
+                two{"{0} נק'"}
+            }
+            solar-radius{
+                dnam{"רדיוס סולרי"}
+                many{"{0} R☉"}
+                one{"{0} רדיוס סולרי"}
+                other{"{0} R☉"}
+                two{"{0} R☉"}
+            }
             yard{
                 dnam{"יארד"}
                 many{"{0} יארד"}
@@ -596,6 +683,13 @@ he{
                 other{"{0} לוקס"}
                 two{"{0} לוקס"}
             }
+            solar-luminosity{
+                dnam{"אנרגיה סולארית ביחידת זמן"}
+                many{"{0} L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+                two{"{0} L☉"}
+            }
         }
         mass{
             carat{
@@ -604,6 +698,20 @@ he{
                 one{"קרט אחד"}
                 other{"{0} קרט"}
                 two{"שני קרט"}
+            }
+            dalton{
+                dnam{"דלטון"}
+                many{"{0} דלטון"}
+                one{"{0} דלטון"}
+                other{"{0} דלטון"}
+                two{"{0} דלטון"}
+            }
+            earth-mass{
+                dnam{"מסת כדור הארץ"}
+                many{"{0} מסות כדור הארץ"}
+                one{"{0} מסת כדור הארץ"}
+                other{"{0} M⊕"}
+                two{"{0} מסות כדור הארץ"}
             }
             gram{
                 dnam{"גרם"}
@@ -665,6 +773,20 @@ he{
                 per{"{0}/פאונד"}
                 two{"שני פאונד"}
             }
+            solar-mass{
+                dnam{"מסת השמש"}
+                many{"{0} מסות שמש"}
+                one{"{0} מסת השמש"}
+                other{"{0} מסות שמש"}
+                two{"{0} מסות שמש"}
+            }
+            stone{
+                dnam{"סטון"}
+                many{"{0} סטון"}
+                one{"סטון {0}"}
+                other{"{0} סטון"}
+                two{"{0} סטון"}
+            }
             ton{
                 dnam{"טונות"}
                 many{"{0} טונות"}
@@ -718,6 +840,13 @@ he{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"אטמוספרות"}
+                many{"{0} אטמוספרה"}
+                one{"{0} אטמוספרה"}
+                other{"{0} אטמוספרות"}
+                two{"{0} אטמוספרה"}
+            }
             hectopascal{
                 dnam{"הקטופסקל"}
                 many{"{0} הקטופסקל"}
@@ -731,6 +860,20 @@ he{
                 one{"אינץ׳ כספית {0}"}
                 other{"{0} אינץ׳ כספית"}
                 two{"{0} אינץ׳ כספית"}
+            }
+            kilopascal{
+                dnam{"קילו-פסקל"}
+                many{"{0} קילו-פסקל"}
+                one{"{0} קילו-פסקל"}
+                other{"{0} קילו-פסקל"}
+                two{"{0} קילו-פסקל"}
+            }
+            megapascal{
+                dnam{"מגה-פסקל"}
+                many{"{0} מגה-פסקל"}
+                one{"{0} מגה-פסקל"}
+                other{"{0} מגה-פסקל"}
+                two{"{0} מגה-פסקל"}
             }
             millibar{
                 dnam{"מיליבר"}
@@ -814,6 +957,22 @@ he{
                 two{"{0} קלווין"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"ניוטון-מטר"}
+                many{"{0} ניוטון-מטר"}
+                one{"{0} ניוטון-מטר"}
+                other{"{0} ניוטון-מטר"}
+                two{"{0} ניוטון-מטר"}
+            }
+            pound-foot{
+                dnam{"כוח פאונד"}
+                many{"{0} כוח פאונד"}
+                one{"{0} כוח פאונד"}
+                other{"{0} כוח פאונד"}
+                two{"{0} כוח פאונד"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"אקר-רגל"}
@@ -821,6 +980,13 @@ he{
                 one{"אקר-רגל {0}"}
                 other{"{0} אקר-רגל"}
                 two{"{0} אקר-רגל"}
+            }
+            barrel{
+                dnam{"חביות"}
+                many{"{0} חביות"}
+                one{"{0} חבית"}
+                other{"{0} חביות"}
+                two{"{0} חביות"}
             }
             centiliter{
                 dnam{"סנטיליטר"}
@@ -908,6 +1074,13 @@ he{
                 other{"{0} אונקיות נוזלים"}
                 two{"{0} אונקיות נוזלים"}
             }
+            fluid-ounce-imperial{
+                dnam{"אונקיית נוזלים אימפריאלית"}
+                many{"{0} אונקיית נוזלים אימפריאלית"}
+                one{"{0} אונקיית נוזלים אימפריאלית"}
+                other{"{0} אונקיית נוזלים אימפריאלית"}
+                two{"{0} אונקיית נוזלים אימפריאלית"}
+            }
             gallon{
                 dnam{"גלון"}
                 many{"{0} גלונים"}
@@ -917,7 +1090,12 @@ he{
                 two{"{0} גלונים"}
             }
             gallon-imperial{
+                dnam{"גלון אימפריאלי"}
+                many{"{0} גלון אימפריאלי"}
+                one{"גלון אימפריאלי {0}"}
+                other{"{0} גלון אימפריאלי"}
                 per{"{0}/גלון אימפריאלי"}
+                two{"{0} גלון אימפריאלי"}
             }
             hectoliter{
                 dnam{"הקטוליטר"}
@@ -988,10 +1166,7 @@ he{
     unitsNarrow{
         acceleration{
             g-force{
-                many{"{0} G"}
-                one{"{0} G"}
-                other{"{0} G"}
-                two{"{0} G"}
+                dnam{"כוח ג׳י"}
             }
         }
         angle{
@@ -1006,12 +1181,6 @@ he{
                 one{"שנ׳ {0}"}
                 other{"{0} שנ׳"}
                 two{"{0} שנ׳"}
-            }
-            degree{
-                many{"{0}°"}
-                one{"{0}°"}
-                other{"{0}°"}
-                two{"{0}°"}
             }
         }
         area{
@@ -1055,6 +1224,15 @@ he{
         compound{
             per{"{0}/{1}"}
         }
+        concentr{
+            percent{
+                dnam{"%"}
+                many{"{0}%"}
+                one{"{0}%"}
+                other{"{0}%"}
+                two{"{0}%"}
+            }
+        }
         consumption{
             liter-per-100kilometers{
                 dnam{"ל׳/100ק״מ"}
@@ -1071,12 +1249,50 @@ he{
                 two{"{0} מייל/גלון"}
             }
         }
+        coordinate{
+            dnam{"כיוון"}
+            east{"{0} מז׳"}
+            north{"{0} צפ׳"}
+            south{"{0} דר׳"}
+            west{"{0} מע׳"}
+        }
+        digital{
+            bit{
+                dnam{"סיבית"}
+                many{"{0} סיביות"}
+                one{"סיבית {0}"}
+                other{"{0} סיביות"}
+                two{"{0} סיביות"}
+            }
+            gigabyte{
+                dnam{"ג״ב"}
+                many{"{0} ג״ב"}
+                one{"{0} ג״ב"}
+                other{"{0} ג״ב"}
+                two{"{0} ג״ב"}
+            }
+            kilobyte{
+                dnam{"ק״ב"}
+                many{"{0} ק״ב"}
+                one{"ק״ב {0}"}
+                other{"{0} ק״ב"}
+                two{"{0} ק״ב"}
+            }
+        }
         duration{
+            century{
+                dnam{"מאות"}
+                many{"{0} מאות"}
+                one{"מאה {0}"}
+                other{"{0} מאות"}
+                two{"{0} מאות"}
+            }
             day{
                 dnam{"יום"}
                 many{"{0} י׳"}
                 one{"י׳"}
                 other{"{0} י׳"}
+                per{"{0}/יום"}
                 two{"{0} י׳"}
             }
             hour{
@@ -1084,7 +1300,11 @@ he{
                 many{"{0} שע׳"}
                 one{"שעה {0}"}
                 other{"{0} שע׳"}
+                per{"{0}/שעה"}
                 two{"{0} שע׳"}
+            }
+            microsecond{
+                dnam{"μsecs"}
             }
             millisecond{
                 dnam{"ms"}
@@ -1098,6 +1318,7 @@ he{
                 many{"{0} דק׳"}
                 one{"דקה"}
                 other{"{0} דק׳"}
+                per{"{0}/ד׳"}
                 two{"שתי דק׳"}
             }
             month{
@@ -1105,6 +1326,7 @@ he{
                 many{"{0} ח׳"}
                 one{"ח׳ {0}"}
                 other{"{0} ח׳"}
+                per{"{0}/חודש"}
                 two{"{0} ח׳"}
             }
             second{
@@ -1112,21 +1334,24 @@ he{
                 many{"{0} שנ׳"}
                 one{"שניה"}
                 other{"{0} שנ׳"}
+                per{"{0}/שנ׳"}
                 two{"שתי שנ׳"}
             }
             week{
                 dnam{"שבוע"}
-                many{"{0} שבועות"}
-                one{"שבוע {0}"}
-                other{"{0} שבועות"}
-                two{"{0} שבועות"}
+                many{"{0} ש′"}
+                one{"ש′ {0}"}
+                other{"{0} ש′"}
+                per{"{0}/שבוע"}
+                two{"{0} ש′"}
             }
             year{
                 dnam{"ש׳"}
-                many{"{0} שנים"}
-                one{"שנה {0}"}
-                other{"{0} שנים"}
-                two{"{0} שנים"}
+                many{"{0} ש′"}
+                one{"ש′ {0}"}
+                other{"{0} ש′"}
+                per{"{0}/שנה"}
+                two{"{0} ש′"}
             }
         }
         length{
@@ -1135,18 +1360,30 @@ he{
                 many{"{0} ס״מ"}
                 one{"ס\u0022מ {0}"}
                 other{"{0} ס״מ"}
+                per{"{0}/ס״מ"}
                 two{"{0} ס״מ"}
             }
+            decimeter{
+                dnam{"ד״מ"}
+                many{"{0} ד״מ"}
+                one{"{0} ד״מ"}
+                other{"{0} ד״מ"}
+                two{"{0} ד״מ"}
+            }
             foot{
+                dnam{"רגל"}
                 many{"{0} רגל"}
                 one{"רגל {0}"}
                 other{"{0} רגל"}
+                per{"{0}/רגל"}
                 two{"{0} רגל"}
             }
             inch{
+                dnam{"אינץ׳"}
                 many{"{0} אינץ׳"}
                 one{"אינץ׳ {0}"}
                 other{"{0} אינץ׳"}
+                per{"{0}/אינץ׳"}
                 two{"{0} אינץ׳"}
             }
             kilometer{
@@ -1154,9 +1391,11 @@ he{
                 many{"{0} ק״מ"}
                 one{"{0} ק״מ"}
                 other{"{0} ק״מ"}
+                per{"{0}/ק״מ"}
                 two{"{0} ק״מ"}
             }
             light-year{
+                dnam{"שנות אור"}
                 many{"{0} שנות אור"}
                 one{"שנת אור {0}"}
                 other{"{0} שנות אור"}
@@ -1164,12 +1403,14 @@ he{
             }
             meter{
                 dnam{"מטר"}
-                many{"{0}מ׳"}
-                one{"מ׳ אחד"}
+                many{"{0} מ׳"}
+                one{"מ' {0}"}
                 other{"{0} מ׳"}
-                two{"שני מ׳"}
+                per{"{0}/מ׳"}
+                two{"{0} מ′"}
             }
             mile{
+                dnam{"מייל"}
                 many{"{0} מייל"}
                 one{"מייל {0}"}
                 other{"{0} מייל"}
@@ -1182,13 +1423,29 @@ he{
                 other{"{0} מ״מ"}
                 two{"{0} מ״מ"}
             }
+            nautical-mile{
+                dnam{"מ״י"}
+                many{"{0} מ״י"}
+                one{"מ״י אחד"}
+                other{"{0} מ״י"}
+                two{"שני מ״י"}
+            }
             picometer{
+                dnam{"פ״מ"}
                 many{"{0} פיקומטר"}
                 one{"פיקומטר {0}"}
                 other{"{0} פיקומטר"}
                 two{"{0} פיקומטר"}
             }
+            point{
+                dnam{"נק׳"}
+                many{"{0} נק׳"}
+                one{"נק׳ {0}"}
+                other{"{0} נק'"}
+                two{"{0} נק׳"}
+            }
             yard{
+                dnam{"יארד"}
                 many{"{0} יארד"}
                 one{"יארד {0}"}
                 other{"{0} יארד"}
@@ -1196,11 +1453,15 @@ he{
             }
         }
         mass{
+            carat{
+                dnam{"קרט"}
+            }
             gram{
                 dnam{"גרם"}
                 many{"{0}g"}
                 one{"{0}g"}
                 other{"{0}g"}
+                per{"{0}/גר׳"}
                 two{"{0}g"}
             }
             kilogram{
@@ -1208,7 +1469,22 @@ he{
                 many{"{0}kg"}
                 one{"{0}kg"}
                 other{"{0}kg"}
+                per{"{0}/ק״ג"}
                 two{"{0}kg"}
+            }
+            microgram{
+                dnam{"מק״ג"}
+                many{"{0} מק״ג"}
+                one{"מק״ג {0}"}
+                other{"{0} מק״ג"}
+                two{"{0} מק״ג"}
+            }
+            milligram{
+                dnam{"מ״ג"}
+                many{"{0} מ״ג"}
+                one{"{0} מ״ג"}
+                other{"{0} מ״ג"}
+                two{"{0} מ״ג"}
             }
             ounce{
                 many{"{0} אונקיות"}
@@ -1217,10 +1493,18 @@ he{
                 two{"{0} אונקיות"}
             }
             pound{
+                dnam{"פאונד"}
                 many{"{0} ליבראות"}
                 one{"ליברה {0}"}
                 other{"{0} ליבראות"}
                 two{"{0} ליבראות"}
+            }
+            ton{
+                dnam{"טון"}
+                many{"{0} ט׳"}
+                one{"ט׳ {0}"}
+                other{"{0} ט׳"}
+                two{"{0} ט׳"}
             }
         }
         power{
@@ -1229,18 +1513,6 @@ he{
                 one{"כ״ס {0}"}
                 other{"{0} כ״ס"}
                 two{"{0} כ״ס"}
-            }
-            kilowatt{
-                many{"{0} kW"}
-                one{"{0} kW"}
-                other{"{0} kW"}
-                two{"{0} kW"}
-            }
-            watt{
-                many{"{0} W"}
-                one{"{0} W"}
-                other{"{0} W"}
-                two{"{0} W"}
             }
         }
         pressure{
@@ -1251,12 +1523,14 @@ he{
                 two{"{0} hPa"}
             }
             inch-hg{
+                dnam{"in Hg"}
                 many{"{0} inHg"}
                 one{"{0} inHg"}
                 other{"{0} inHg"}
                 two{"{0} inHg"}
             }
             millibar{
+                dnam{"מ״ב"}
                 many{"{0} מיליבר"}
                 one{"מיליבר {0}"}
                 other{"{0} מיליבר"}
@@ -1272,12 +1546,14 @@ he{
                 two{"{0} קמ״ש"}
             }
             meter-per-second{
+                dnam{"מ׳/שנ׳"}
                 many{"{0} מ/ש"}
                 one{"{0} מ/ש"}
                 other{"{0} מ/ש"}
                 two{"{0} מ/ש"}
             }
             mile-per-hour{
+                dnam{"mph"}
                 many{"{0} mph"}
                 one{"{0} mph"}
                 other{"{0} mph"}
@@ -1292,12 +1568,6 @@ he{
                 other{"{0}°C"}
                 two{"{0}°C"}
             }
-            fahrenheit{
-                many{"{0}°F"}
-                one{"{0}°F"}
-                other{"{0}°F"}
-                two{"{0}°F"}
-            }
         }
         volume{
             cubic-kilometer{
@@ -1305,12 +1575,6 @@ he{
                 one{"{0} קמ״ק"}
                 other{"{0} קמ״ק"}
                 two{"{0} קמ״ק"}
-            }
-            cubic-mile{
-                many{"{0} mi³"}
-                one{"{0} mi³"}
-                other{"{0} mi³"}
-                two{"{0} mi³"}
             }
             liter{
                 dnam{"ליטר"}
@@ -1382,6 +1646,13 @@ he{
                 one{"{0} ac"}
                 other{"{0} ac"}
                 two{"{0} ac"}
+            }
+            dunam{
+                dnam{"דונם"}
+                many{"{0} דונם"}
+                one{"{0} דונם"}
+                other{"{0} דונם"}
+                two{"{0} דונם"}
             }
             hectare{
                 dnam{"הקטאר"}
@@ -1470,12 +1741,40 @@ he{
                 other{"{0} mmol/L"}
                 two{"{0} mmol/L"}
             }
+            mole{
+                dnam{"mol"}
+                many{"{0} mol"}
+                one{"{0} mol"}
+                other{"{0} mol"}
+                two{"{0} mol"}
+            }
             part-per-million{
                 dnam{"ppm"}
                 many{"{0} ppm"}
                 one{"{0} ppm"}
                 other{"{0} ppm"}
                 two{"{0} ppm"}
+            }
+            percent{
+                dnam{"%"}
+                many{"{0}%"}
+                one{"{0}%"}
+                other{"{0}%"}
+                two{"{0}%"}
+            }
+            permille{
+                dnam{"‰"}
+                many{"{0}‰"}
+                one{"{0}‰"}
+                other{"{0}‰"}
+                two{"{0}‰"}
+            }
+            permyriad{
+                dnam{"‱"}
+                many{"{0}‱"}
+                one{"{0}‱"}
+                other{"{0}‱"}
+                two{"{0}‱"}
             }
         }
         consumption{
@@ -1509,18 +1808,19 @@ he{
             }
         }
         coordinate{
-            east{"{0}מז׳"}
-            north{"{0}צפ׳"}
-            south{"{0}דר׳"}
-            west{"{0}מע׳"}
+            dnam{"כיוון"}
+            east{"{0} מז׳"}
+            north{"{0} צפ׳"}
+            south{"{0} דר׳"}
+            west{"{0} מע׳"}
         }
         digital{
             bit{
-                dnam{"סיבית"}
-                many{"{0} סיביות"}
-                one{"סיבית {0}"}
-                other{"{0} סיביות"}
-                two{"{0} סיביות"}
+                dnam{"ביט"}
+                many{"ביט {0}"}
+                one{"ביט {0}"}
+                other{"ביט {0}"}
+                two{"ביט {0}"}
             }
             byte{
                 dnam{"בייט"}
@@ -1570,6 +1870,13 @@ he{
                 one{"{0} MB"}
                 other{"{0} MB"}
                 two{"{0} MB"}
+            }
+            petabyte{
+                dnam{"PB"}
+                many{"{0} PB"}
+                one{"{0} PB"}
+                other{"{0} PB"}
+                two{"{0} PB"}
             }
             terabit{
                 dnam{"Tb"}
@@ -1703,12 +2010,26 @@ he{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"BTU"}
+                many{"{0} Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+                two{"{0} Btu"}
+            }
             calorie{
                 dnam{"cal"}
                 many{"{0} cal"}
                 one{"{0} cal"}
                 other{"{0} cal"}
                 two{"{0} cal"}
+            }
+            electronvolt{
+                dnam{"eV"}
+                many{"{0} eV"}
+                one{"{0} eV"}
+                other{"{0} eV"}
+                two{"{0} eV"}
             }
             foodcalorie{
                 dnam{"Cal"}
@@ -1744,6 +2065,22 @@ he{
                 one{"{0} קוט״ש"}
                 other{"{0} קוט״ש"}
                 two{"{0} קוט״ש"}
+            }
+        }
+        force{
+            newton{
+                dnam{"N"}
+                many{"{0} N"}
+                one{"{0} N"}
+                other{"{0} N"}
+                two{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                many{"{0} lbf"}
+                one{"{0} lbf"}
+                other{"{0} lbf"}
+                two{"{0} lbf"}
             }
         }
         frequency{
@@ -1833,7 +2170,7 @@ he{
             meter{
                 dnam{"מטרים"}
                 many{"{0} מ׳"}
-                one{"מ׳ אחד"}
+                one{"מ׳"}
                 other{"{0} מ׳"}
                 per{"{0}/מ׳"}
                 two{"שני מ׳"}
@@ -1862,7 +2199,7 @@ he{
             millimeter{
                 dnam{"מ״מ"}
                 many{"{0} מ״מ"}
-                one{"{0} מ״מ"}
+                one{"מ″מ {0}"}
                 other{"{0} מ״מ"}
                 two{"{0} מ״מ"}
             }
@@ -1889,10 +2226,24 @@ he{
             }
             picometer{
                 dnam{"פ״מ"}
-                many{"{0} פיקומטר"}
-                one{"פיקומטר {0}"}
-                other{"{0} פיקומטר"}
-                two{"{0} פיקומטר"}
+                many{"פ“מ {0}"}
+                one{"פ“מ {0}"}
+                other{"פ“מ {0}"}
+                two{"פ“מ {0}"}
+            }
+            point{
+                dnam{"נקודות"}
+                many{"{0} נק'"}
+                one{"{0} נק'"}
+                other{"{0} נק'"}
+                two{"{0} נק'"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                many{"{0} R☉"}
+                one{"{0} R☉"}
+                other{"{0} R☉"}
+                two{"{0} R☉"}
             }
             yard{
                 dnam{"יארד"}
@@ -1910,6 +2261,13 @@ he{
                 other{"{0} lx"}
                 two{"{0} lx"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                many{"{0} L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+                two{"{0} L☉"}
+            }
         }
         mass{
             carat{
@@ -1918,6 +2276,20 @@ he{
                 one{"{0} CD"}
                 other{"{0} CD"}
                 two{"{0} CD"}
+            }
+            dalton{
+                dnam{"Da"}
+                many{"{0} Da"}
+                one{"{0} Da"}
+                other{"{0} Da"}
+                two{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                many{"{0} M⊕"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
+                two{"{0} M⊕"}
             }
             gram{
                 dnam{"גרם"}
@@ -1979,6 +2351,20 @@ he{
                 per{"{0}/lb"}
                 two{"{0} lbs"}
             }
+            solar-mass{
+                dnam{"M☉"}
+                many{"{0} M☉"}
+                one{"{0} M☉"}
+                other{"{0} M☉"}
+                two{"{0} M☉"}
+            }
+            stone{
+                dnam{"סטון"}
+                many{"{0} סטון"}
+                one{"סטון {0}"}
+                other{"{0} סטון"}
+                two{"{0} סטון"}
+            }
             ton{
                 dnam{"טון"}
                 many{"{0} ט׳"}
@@ -2032,6 +2418,13 @@ he{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"atm"}
+                many{"{0} atm"}
+                one{"{0} atm"}
+                other{"{0} atm"}
+                two{"{0} atm"}
+            }
             hectopascal{
                 dnam{"hPa"}
                 many{"{0} hPa"}
@@ -2045,6 +2438,20 @@ he{
                 one{"{0} inHg"}
                 other{"{0} inHg"}
                 two{"{0} inHg"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                many{"{0} kPa"}
+                one{"{0} kPa"}
+                other{"{0} kPa"}
+                two{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                many{"{0} MPa"}
+                one{"{0} MPa"}
+                other{"{0} MPa"}
+                two{"{0} MPa"}
             }
             millibar{
                 dnam{"mbar"}
@@ -2128,6 +2535,22 @@ he{
                 two{"{0} K"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                many{"{0} N⋅m"}
+                one{"{0} N⋅m"}
+                other{"{0} N⋅m"}
+                two{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                many{"{0} lbf⋅ft"}
+                one{"{0} lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+                two{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"ac ft"}
@@ -2135,6 +2558,13 @@ he{
                 one{"{0} ac ft"}
                 other{"{0} ac ft"}
                 two{"{0} ac ft"}
+            }
+            barrel{
+                dnam{"bbl"}
+                many{"{0} bbl"}
+                one{"{0} bbl"}
+                other{"{0} bbl"}
+                two{"{0} bbl"}
             }
             centiliter{
                 dnam{"cL"}
@@ -2144,7 +2574,7 @@ he{
                 two{"{0} cL"}
             }
             cubic-centimeter{
-                dnam{"cm³"}
+                dnam{"סמ״ק"}
                 many{"{0} סמ״ק"}
                 one{"{0} סמ״ק"}
                 other{"{0} סמ״ק"}
@@ -2221,6 +2651,13 @@ he{
                 one{"{0} fl oz"}
                 other{"{0} fl oz"}
                 two{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                many{"{0} fl oz Imp."}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
+                two{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"גלון"}

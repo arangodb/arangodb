@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn_BA{
-    Version{"2.1.29.33"}
+    Version{"2.1.48.77"}
     calendar{
         generic{
             intervalFormats{
@@ -25,26 +25,26 @@ sr_Latn_BA{
             }
             availableFormats{
                 MMMMW{
-                    few{"W. 'sjedmica' 'u' MMM"}
-                    one{"W. 'sjedmica' 'u' MMM"}
-                    other{"W. 'sjedmica' 'u' MMM"}
+                    few{"W. 'sjedmica' 'u' MMMM"}
+                    one{"W. 'sjedmica' 'u' MMMM"}
+                    other{"W. 'sjedmica' 'u' MMMM"}
                 }
                 yw{
-                    few{"w. 'sjedmica' 'u' y."}
-                    one{"w. 'sjedmica' 'u' y."}
-                    other{"w. 'sjedmica' 'u' y."}
+                    few{"w. 'sjedmica' 'u' Y."}
+                    one{"w. 'sjedmica' 'u' Y."}
+                    other{"w. 'sjedmica' 'u' Y."}
                 }
             }
             dayNames{
                 format{
                     abbreviated{
-                        "ned.",
-                        "pon.",
-                        "ut.",
-                        "sr.",
-                        "čet.",
-                        "pet.",
-                        "sub.",
+                        "ned",
+                        "pon",
+                        "ut",
+                        "sr",
+                        "čet",
+                        "pet",
+                        "sub",
                     }
                     wide{
                         "nedjelja",
@@ -58,13 +58,13 @@ sr_Latn_BA{
                 }
                 stand-alone{
                     abbreviated{
-                        "ned.",
-                        "pon.",
-                        "ut.",
-                        "sr.",
-                        "čet.",
-                        "pet.",
-                        "sub.",
+                        "ned",
+                        "pon",
+                        "ut",
+                        "sr",
+                        "čet",
+                        "pet",
+                        "sub",
                     }
                     wide{
                         "nedjelja",
@@ -121,39 +121,55 @@ sr_Latn_BA{
                     "nove ere",
                 }
             }
-            monthNames{
-                format{
-                    abbreviated{
-                        "jan.",
-                        "feb.",
-                        "mart",
-                        "apr.",
-                        "maj",
-                        "jun",
-                        "jul",
-                        "avg.",
-                        "sept.",
-                        "okt.",
-                        "nov.",
-                        "dec.",
-                    }
+            intervalFormats{
+                MEd{
+                    M{"E, MM-dd – E, MM-dd"}
+                    d{"E, MM-dd – E, MM-dd"}
                 }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                yM{
+                    M{"y-MM – y-MM"}
+                    y{"y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"E, y-MM-dd – E, y-MM-dd"}
+                    d{"E, y-MM-dd – E, y-MM-dd"}
+                    y{"E, y-MM-dd – E, y-MM-dd"}
+                }
+                yMd{
+                    M{"y-MM-dd – y-MM-dd"}
+                    d{"y-MM-dd – y-MM-dd"}
+                    y{"y-MM-dd – y-MM-dd"}
+                }
+            }
+            monthNames{
                 stand-alone{
                     abbreviated{
-                        "jan.",
-                        "feb.",
+                        "jan",
+                        "feb",
                         "mart",
-                        "apr.",
+                        "apr",
                         "maj",
                         "jun",
                         "jul",
-                        "avg.",
-                        "sept.",
-                        "okt.",
-                        "nov.",
-                        "dec.",
+                        "avg",
+                        "sept",
+                        "okt",
+                        "nov",
+                        "dec",
                     }
                 }
+            }
+        }
+    }
+    fields{
+        week{
+            relative{
+                "-1"{"prethodne nedelje"}
+                "1"{"naredne nedelje"}
             }
         }
     }

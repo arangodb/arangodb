@@ -31,6 +31,7 @@ hu{
         151{"Kelet-Európa"}
         154{"Észak-Európa"}
         155{"Nyugat-Európa"}
+        202{"Szubszaharai Afrika"}
         419{"Latin-Amerika"}
         AC{"Ascension-sziget"}
         AD{"Andorra"}
@@ -106,11 +107,12 @@ hu{
         ES{"Spanyolország"}
         ET{"Etiópia"}
         EU{"Európai Unió"}
+        EZ{"Eurózóna"}
         FI{"Finnország"}
         FJ{"Fidzsi"}
-        FK{"Falkland-szigetek"}
+        FK{"Falkland-szigetek (Malvin-szigetek)"}
         FM{"Mikronézia"}
-        FO{"Feröer-szigetek"}
+        FO{"Feröer szigetek"}
         FR{"Franciaország"}
         GA{"Gabon"}
         GB{"Egyesült Királyság"}
@@ -181,7 +183,7 @@ hu{
         MF{"Saint Martin"}
         MG{"Madagaszkár"}
         MH{"Marshall-szigetek"}
-        MK{"Macedónia"}
+        MK{"Észak-Macedónia"}
         ML{"Mali"}
         MM{"Mianmar (Burma)"}
         MN{"Mongólia"}
@@ -247,7 +249,7 @@ hu{
         SO{"Szomália"}
         SR{"Suriname"}
         SS{"Dél-Szudán"}
-        ST{"Sao Tomé és Príncipe"}
+        ST{"São Tomé és Príncipe"}
         SV{"Salvador"}
         SX{"Sint Maarten"}
         SY{"Szíria"}
@@ -271,8 +273,8 @@ hu{
         TZ{"Tanzánia"}
         UA{"Ukrajna"}
         UG{"Uganda"}
-        UM{"Az Amerikai Egyesült Államok lakatlan külbirtokai"}
-        UN{"ENSZ"}
+        UM{"Az USA lakatlan külbirtokai"}
+        UN{"Egyesült Nemzetek Szervezete"}
         US{"Egyesült Államok"}
         UY{"Uruguay"}
         UZ{"Üzbegisztán"}
@@ -281,10 +283,12 @@ hu{
         VE{"Venezuela"}
         VG{"Brit Virgin-szigetek"}
         VI{"Amerikai Virgin-szigetek"}
-        VN{"Vietnam"}
+        VN{"Vietnám"}
         VU{"Vanuatu"}
         WF{"Wallis és Futuna"}
         WS{"Szamoa"}
+        XA{"Pszeudo-nyelvjárások"}
+        XB{"Pszeudo-kétirányú"}
         XK{"Koszovó"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -301,8 +305,9 @@ hu{
     Countries%variant{
         CD{"Kongó (KDK)"}
         CG{"Kongó (Köztársaság)"}
-        FK{"Falkland-szigetek (Malvin-szigetek)"}
-        MK{"Macedónia (MVJK)"}
+        CI{"CI"}
+        CZ{"Cseh Köztársaság"}
+        TL{"Timor-Leste"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ur{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"عابدجان"}
@@ -507,6 +507,9 @@ ur{
         "America:Puerto_Rico"{
             ec{"پیورٹو ریکو"}
         }
+        "America:Punta_Arenas"{
+            ec{"پنٹا یریناس"}
+        }
         "America:Rainy_River"{
             ec{"رینی ریور"}
         }
@@ -657,6 +660,9 @@ ur{
         "Asia:Ashgabat"{
             ec{"اشغبت"}
         }
+        "Asia:Atyrau"{
+            ec{"آتیراؤ"}
+        }
         "Asia:Baghdad"{
             ec{"بغداد"}
         }
@@ -703,10 +709,13 @@ ur{
             ec{"ڈلی"}
         }
         "Asia:Dubai"{
-            ec{"دوبئی"}
+            ec{"دبئی"}
         }
         "Asia:Dushanbe"{
             ec{"دوشانبے"}
+        }
+        "Asia:Famagusta"{
+            ec{"فاماگوسٹا"}
         }
         "Asia:Gaza"{
             ec{"غزہ"}
@@ -801,6 +810,9 @@ ur{
         "Asia:Qatar"{
             ec{"قطر"}
         }
+        "Asia:Qostanay"{
+            ec{"کوستانے"}
+        }
         "Asia:Qyzylorda"{
             ec{"کیزیلورڈا"}
         }
@@ -859,7 +871,7 @@ ur{
             ec{"یورومکی"}
         }
         "Asia:Ust-Nera"{
-            ec{"Ust-Nera"}
+            ec{"اوست-نیرا"}
         }
         "Asia:Vientiane"{
             ec{"وینٹیانا"}
@@ -942,6 +954,9 @@ ur{
         "Australia:Sydney"{
             ec{"سڈنی"}
         }
+        "Etc:UTC"{
+            ls{"کوآرڈینیٹڈ یونیورسل ٹائم"}
+        }
         "Etc:Unknown"{
             ec{"نامعلوم شہر"}
         }
@@ -1007,7 +1022,7 @@ ur{
             ec{"جرسی"}
         }
         "Europe:Kaliningrad"{
-            ec{"كالينينغراد"}
+            ec{"کالينينغراد"}
         }
         "Europe:Kiev"{
             ec{"کیوو"}
@@ -1072,6 +1087,9 @@ ur{
         }
         "Europe:Sarajevo"{
             ec{"سراجیوو"}
+        }
+        "Europe:Saratov"{
+            ec{"سیراٹو"}
         }
         "Europe:Simferopol"{
             ec{"سمفروپول"}
@@ -1883,7 +1901,7 @@ ur{
         gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} وقت"}
-        regionFormatDaylight{"{0} (+1)"}
-        regionFormatStandard{"{0} (+0)"}
+        regionFormatDaylight{"{0} ڈے لائٹ ٹائم"}
+        regionFormatStandard{"{0} اسٹینڈرڈ ٹائم"}
     }
 }

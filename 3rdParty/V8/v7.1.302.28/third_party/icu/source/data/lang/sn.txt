@@ -48,5 +48,5 @@ sn{
         zh{"chiChinese"}
         zu{"chiZulu"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.48.4"}
 }

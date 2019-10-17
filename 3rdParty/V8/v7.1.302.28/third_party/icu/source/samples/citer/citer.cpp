@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*     Copyright (C) 2016 and later: Unicode, Inc. and others.
+*     © 2016 and later: Unicode, Inc. and others.
 *     License & terms of use: http://www.unicode.org/copyright.html#License
 *
 *******************************************************************************
@@ -22,6 +22,11 @@
 #include <stdlib.h>
 
 static UFILE *out;
+
+using icu::CharacterIterator;
+using icu::StringCharacterIterator;
+using icu::UCharCharacterIterator;
+using icu::UnicodeString;
 
 void printUnicodeString(const UnicodeString &s)
 {

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 am{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"አቢጃን"}
@@ -91,7 +91,7 @@ am{
             ec{"ኪጋሊ"}
         }
         "Africa:Kinshasa"{
-            ec{"ኪንሳሻ"}
+            ec{"ኪንሻሳ"}
         }
         "Africa:Lagos"{
             ec{"ሌጎስ"}
@@ -112,7 +112,7 @@ am{
             ec{"ሉሳካ"}
         }
         "Africa:Malabo"{
-            ec{"ማሌቦ"}
+            ec{"ማላቡ"}
         }
         "Africa:Maputo"{
             ec{"ማፑቱ"}
@@ -507,6 +507,9 @@ am{
         "America:Puerto_Rico"{
             ec{"ፖርቶሪኮ"}
         }
+        "America:Punta_Arenas"{
+            ec{"ፑንታ አሬናስ"}
+        }
         "America:Rainy_River"{
             ec{"ሬኒ ሪቨር"}
         }
@@ -514,7 +517,7 @@ am{
             ec{"ራንኪን ኢንሌት"}
         }
         "America:Recife"{
-            ec{"ፓሲፍ"}
+            ec{"ረሲፍ"}
         }
         "America:Regina"{
             ec{"ረጂና"}
@@ -657,6 +660,9 @@ am{
         "Asia:Ashgabat"{
             ec{"አሽጋባት"}
         }
+        "Asia:Atyrau"{
+            ec{"አትይራኡ"}
+        }
         "Asia:Baghdad"{
             ec{"ባግዳድ"}
         }
@@ -707,6 +713,9 @@ am{
         }
         "Asia:Dushanbe"{
             ec{"ደሻንቤ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ፋማጉስታ"}
         }
         "Asia:Gaza"{
             ec{"ጋዛ"}
@@ -805,7 +814,7 @@ am{
             ec{"ኩይዚሎርዳ"}
         }
         "Asia:Rangoon"{
-            ec{"ራንጉን"}
+            ec{"ያንጎን"}
         }
         "Asia:Riyadh"{
             ec{"ሪያድ"}
@@ -823,7 +832,7 @@ am{
             ec{"ሴኦል"}
         }
         "Asia:Shanghai"{
-            ec{"ሸንጋይ"}
+            ec{"ሻንጋይ"}
         }
         "Asia:Singapore"{
             ec{"ሲንጋፖር"}
@@ -941,6 +950,9 @@ am{
         }
         "Australia:Sydney"{
             ec{"ሲድኒ"}
+        }
+        "Etc:UTC"{
+            ls{"የተቀነባበረ ሁለገብ ሰዓት"}
         }
         "Etc:Unknown"{
             ec{"ያልታወቀ ከተማ"}
@@ -1073,11 +1085,14 @@ am{
         "Europe:Sarajevo"{
             ec{"ሳሪየቮ"}
         }
+        "Europe:Saratov"{
+            ec{"ሳራቶቭ"}
+        }
         "Europe:Simferopol"{
             ec{"ሲምፈሮፖል"}
         }
         "Europe:Skopje"{
-            ec{"ስኮፕጄ"}
+            ec{"ስኮፕየ"}
         }
         "Europe:Sofia"{
             ec{"ሶፊያ"}
@@ -1209,7 +1224,7 @@ am{
             ec{"ኪሪቲማቲ"}
         }
         "Pacific:Kosrae"{
-            ec{"ኮስሬ እ"}
+            ec{"ኮስሬ"}
         }
         "Pacific:Kwajalein"{
             ec{"ክዋጃሊን"}
@@ -1221,7 +1236,7 @@ am{
             ec{"ማርክዌሳስ"}
         }
         "Pacific:Midway"{
-            ec{"አጋማሽ"}
+            ec{"ሚድወይ"}
         }
         "Pacific:Nauru"{
             ec{"ናውሩ"}
@@ -1269,7 +1284,7 @@ am{
             ec{"ቹክ"}
         }
         "Pacific:Wake"{
-            ec{"ዋቄ"}
+            ec{"ዋኬ"}
         }
         "Pacific:Wallis"{
             ec{"ዋሊስ"}
@@ -1303,13 +1318,13 @@ am{
         }
         "meta:America_Central"{
             ld{"የመካከለኛ የቀን ሰዓት አቆጣጠር"}
-            lg{"የመካከለኛ ሰዓት አቆጣጠር"}
-            ls{"የመካከለኛ መደበኛ ሰዓት አቆጣጠር"}
+            lg{"የሰሜን አሜሪካ የመካከለኛ ሰዓት አቆጣጠር"}
+            ls{"የሰሜን አሜሪካ የመካከለኛ መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:America_Eastern"{
-            ld{"የምዕራባዊ የቀን ሰዓት አቆጣጠር"}
-            lg{"የምዕራባዊ ሰዓት አቆጣጠር"}
-            ls{"የምዕራባዊ መደበኛ የሰዓት አቆጣጠር"}
+            ld{"ምስራቃዊ የቀን ሰዓት አቆጣጠር"}
+            lg{"ምስራቃዊ ሰዓት አቆጣጠር"}
+            ls{"ምስራቃዊ መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:America_Mountain"{
             ld{"የተራራ የቀንሰዓት አቆጣጠር"}
@@ -1377,9 +1392,9 @@ am{
             ls{"የአውስትራሊያ ምስራቃዊ መደበኛ ሰዓት አቆጣጠር"}
         }
         "meta:Azerbaijan"{
-            ld{"የአዘርባይጃን ክረምት ሰዓት"}
-            lg{"የአዘርባይጃን ሰዓት"}
-            ls{"የአዘርባይጃን መደበኛ ሰዓት"}
+            ld{"የአዘርባጃን ክረምት ሰዓት"}
+            lg{"የአዘርባጃን ሰዓት"}
+            ls{"የአዘርባጃን መደበኛ ሰዓት"}
         }
         "meta:Azores"{
             ld{"የአዞረስ ክረምት ሰዓት"}
@@ -1429,7 +1444,7 @@ am{
             ls{"የቻይና መደበኛ ሰዓት"}
         }
         "meta:Choibalsan"{
-            ld{"የቾይባልሳን የበጋ የሰአት አቆጣጠር"}
+            ld{"የቾይባልሳን የበጋ የሰዓት አቆጣጠር"}
             lg{"የቾይባልሳ ሰዓት አቆጣጠር"}
             ls{"የቾይባልሳን መደበኛ የሰዓት አቆጣጠር"}
         }

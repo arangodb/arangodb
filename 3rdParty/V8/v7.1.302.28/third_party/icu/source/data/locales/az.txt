@@ -12,126 +12,127 @@ az{
     }
     ExemplarCharacters{"[a b c ç d e ə f g ğ h x ı i İ j k q l m n o ö p r s ş t u ü v y z]"}
     ExemplarCharactersIndex{"[A B C Ç D E Ə F G Ğ H X I İ J K Q L M N O Ö P R S Ş T U Ü V Y Z W]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
         "″]"
     }
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
-                accountingFormat{"¤ #,##0.00"}
-                currencyFormat{"¤ #,##0.00"}
-                decimalFormat{"#,##0.###"}
+                accountingFormat{"#,##0.00 ¤"}
+                currencyFormat{"#,##0.00 ¤"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
                     1000{
-                        one{"0K"}
-                        other{"0K"}
+                        one{"0 min"}
+                        other{"0 min"}
                     }
                     10000{
-                        one{"00K"}
-                        other{"00K"}
+                        one{"00 min"}
+                        other{"00 min"}
                     }
                     100000{
-                        one{"000K"}
-                        other{"000K"}
+                        one{"000 min"}
+                        other{"000 min"}
                     }
                     1000000{
-                        one{"0M"}
-                        other{"0M"}
+                        one{"0 milyon"}
+                        other{"0 milyon"}
                     }
                     10000000{
-                        one{"00M"}
-                        other{"00M"}
+                        one{"00 milyon"}
+                        other{"00 milyon"}
                     }
                     100000000{
-                        one{"000M"}
-                        other{"000M"}
+                        one{"000 milyon"}
+                        other{"000 milyon"}
                     }
                     1000000000{
-                        one{"0G"}
-                        other{"0G"}
+                        one{"0 milyard"}
+                        other{"0 milyard"}
                     }
                     10000000000{
-                        one{"00G"}
-                        other{"00G"}
+                        one{"00 milyard"}
+                        other{"00 milyard"}
                     }
                     100000000000{
-                        one{"000G"}
-                        other{"000G"}
+                        one{"000 milyard"}
+                        other{"000 milyard"}
                     }
                     1000000000000{
-                        one{"0T"}
-                        other{"0T"}
+                        one{"0 trilyon"}
+                        other{"0 trilyon"}
                     }
                     10000000000000{
-                        one{"00T"}
-                        other{"00T"}
+                        one{"00 trilyon"}
+                        other{"00 trilyon"}
                     }
                     100000000000000{
-                        one{"000T"}
-                        other{"000T"}
+                        one{"000 trilyon"}
+                        other{"000 trilyon"}
                     }
                 }
             }
             patternsShort{
                 currencyFormat{
                     1000{
-                        one{"¤ 0K"}
-                        other{"¤ 0K"}
+                        one{"0K ¤"}
+                        other{"0K ¤"}
                     }
                     10000{
-                        one{"¤ 00K"}
-                        other{"¤ 00K"}
+                        one{"00K ¤"}
+                        other{"00K ¤"}
                     }
                     100000{
-                        one{"¤ 000K"}
-                        other{"¤ 000K"}
+                        one{"000K ¤"}
+                        other{"000K ¤"}
                     }
                     1000000{
-                        one{"¤ 0M"}
-                        other{"¤ 0M"}
+                        one{"0M ¤"}
+                        other{"0M ¤"}
                     }
                     10000000{
-                        one{"¤ 00M"}
-                        other{"¤ 00M"}
+                        one{"00M ¤"}
+                        other{"00M ¤"}
                     }
                     100000000{
-                        one{"¤ 000M"}
-                        other{"¤ 000M"}
+                        one{"000M ¤"}
+                        other{"000M ¤"}
                     }
                     1000000000{
-                        one{"¤ 0G"}
-                        other{"¤ 0G"}
+                        one{"0G ¤"}
+                        other{"0G ¤"}
                     }
                     10000000000{
-                        one{"¤ 00G"}
-                        other{"¤ 00G"}
+                        one{"00G ¤"}
+                        other{"00G ¤"}
                     }
                     100000000000{
-                        one{"¤ 000G"}
-                        other{"¤ 000G"}
+                        one{"000G ¤"}
+                        other{"000G ¤"}
                     }
                     1000000000000{
-                        one{"¤ 0T"}
-                        other{"¤ 0T"}
+                        one{"0T ¤"}
+                        other{"0T ¤"}
                     }
                     10000000000000{
-                        one{"¤ 00T"}
-                        other{"¤ 00T"}
+                        one{"00T ¤"}
+                        other{"00T ¤"}
                     }
                     100000000000000{
-                        one{"¤ 000T"}
-                        other{"¤ 000T"}
+                        one{"000T ¤"}
+                        other{"000T ¤"}
                     }
                 }
                 decimalFormat{
@@ -191,19 +192,28 @@ az{
                 group{"."}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                few{"{0}-cü sağ döngəni seçin."}
+                many{"{0}-cı sağ döngəni seçin."}
+                one{"{0}-ci sağ döngəni seçin."}
+                other{"{0}-cu sağ döngəni seçin."}
+            }
+            plural{
+                one{"Alış-veriş katınızda {0} X var. Almaq istəyirsiniz?"}
+                other{"Alış-veriş kartınızda {0} X var. Almaq istəyirsiniz?"}
+            }
+        }
         minimumGroupingDigits{"1"}
-        native{"latn"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -222,12 +232,24 @@ az{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d, E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"G y"}
                 GyMMM{"G MMM y"}
                 GyMMMEd{"G d MMM y, E"}
                 GyMMMd{"G d MMM y"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
                 M{"L"}
                 MEd{"dd.MM, E"}
                 MMM{"LLL"}
@@ -236,19 +258,84 @@ az{
                 MMMd{"d MMM"}
                 Md{"dd.MM"}
                 d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
                 y{"G y"}
                 yyyy{"G y"}
                 yyyyM{"GGGGG MM y"}
                 yyyyMEd{"GGGGG dd.MM.y, E"}
                 yyyyMMM{"G MMM y"}
                 yyyyMMMEd{"G d MMM y, E"}
-                yyyyMMMM{"G y MMMM"}
+                yyyyMMMM{"G MMMM y"}
                 yyyyMMMd{"G d MMM y"}
                 yyyyMd{"GGGGG dd.MM.y"}
                 yyyyQQQ{"G y QQQ"}
                 yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG MM/y– GGGGG MM/y"}
+                    M{"GGGGG MM/y – MM/y"}
+                    y{"GGGGG MM/y – MM/y"}
+                }
+                GyMEd{
+                    G{"GGGGG dd/MM/y, E – GGGGG dd/MM/y, E"}
+                    M{"GGGGG dd/MM/y, E – dd/MM/y, E"}
+                    d{"GGGGG dd/MM/y, E – dd/MM/y, E"}
+                    y{"GGGGG dd/MM/y, E – dd/MM/y, E"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM – MMM y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G d MMM y, E – G d MMM y, E"}
+                    M{"G d MMM, E – d MMM y, E"}
+                    d{"G d MMM, E – d MMM y, E"}
+                    y{"G d MMM y, E – d MMM y, E"}
+                }
+                GyMMMd{
+                    G{"G d MMM y – G d MMM y"}
+                    M{"G d MMM – d MMM y"}
+                    d{"G d – d MMM y"}
+                    y{"G d MMM y – d MMM y"}
+                }
+                GyMd{
+                    G{"GGGGG dd/MM/y – GGGGG dd/MM/y"}
+                    M{"GGGGG dd/MM/y – dd/MM/y"}
+                    d{"GGGGG dd/MM/y – dd/MM/y"}
+                    y{"GGGGG dd/MM/y – dd/MM/y"}
+                }
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
                 M{
                     M{"MM–MM"}
                 }
@@ -275,6 +362,24 @@ az{
                     d{"d–d"}
                 }
                 fallback{"{0} – {1}"}
+                h{
+                    a{"h a – h a"}
+                    h{"h–h a"}
+                }
+                hm{
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
+                }
+                hv{
+                    a{"h a – h a v"}
+                    h{"h–h a v"}
+                }
                 y{
                     y{"G y–y"}
                 }
@@ -344,7 +449,12 @@ az{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -364,10 +474,10 @@ az{
                 MMM{"LLL"}
                 MMMEd{"d MMM, E"}
                 MMMMW{
-                    one{"MMM, W 'həftə'"}
-                    other{"MMM, W 'həftə'"}
+                    one{"MMMM, W 'həftə'"}
+                    other{"MMMM, W 'həftə'"}
                 }
-                MMMMd{"MMMM d"}
+                MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
                 Md{"dd.MM"}
                 d{"d"}
@@ -382,14 +492,14 @@ az{
                 yMEd{"dd.MM.y, E"}
                 yMMM{"MMM y"}
                 yMMMEd{"d MMM y, E"}
-                yMMMM{"y MMMM"}
+                yMMMM{"MMMM y"}
                 yMMMd{"d MMM y"}
                 yMd{"dd.MM.y"}
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    one{"y, w 'həftə'"}
-                    other{"y, w 'həftə'"}
+                    one{"Y, w 'həftə'"}
+                    other{"Y, w 'həftə'"}
                 }
             }
             dayNames{
@@ -561,6 +671,53 @@ az{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG MM.y – GGGGG MM.y"}
+                    M{"GGGGG MM.y – MM.y"}
+                    y{"GGGGG MM.y – MM.y"}
+                }
+                GyMEd{
+                    G{"GGGGG dd.MM.y, E – GGGGG dd.MM.y, E"}
+                    M{"GGGGG dd.MM.y, E – dd.MM.y, E"}
+                    d{"GGGGG dd.MM.y, E – dd.MM.y, E"}
+                    y{"GGGGG dd.MM.y, E – dd.MM.y, E"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM – MMM y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G d MMM y, E – d MMM y, E"}
+                    M{"G d MMM, E – d MMM y, E"}
+                    d{"G d MMM, E – d MMM y, E"}
+                    y{"G d MMM y, E – d MMM y, E"}
+                }
+                GyMMMd{
+                    G{"G d MMM y – G d MMM y"}
+                    M{"G d MMM – d MMM y"}
+                    d{"G d – d MMM y"}
+                    y{"G d MMM y – d MMM y"}
+                }
+                GyMd{
+                    G{"GGGGG dd.MM.y – GGGGG dd.MM.y"}
+                    M{"GGGGG dd.MM.y – dd.MM.y"}
+                    d{"GGGGG dd.MM.y – dd.MM.y"}
+                    y{"GGGGG dd.MM.y – dd.MM.y"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -928,10 +1085,31 @@ az{
                 }
             }
         }
+        dayOfYear{
+            dn{"ilin günü"}
+        }
+        dayOfYear-narrow{
+            dn{"ilin günü"}
+        }
+        dayOfYear-short{
+            dn{"ilin günü"}
+        }
         dayperiod{
             dn{"AM/PM"}
         }
+        dayperiod-narrow{
+            dn{"AM/PM"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
         era{
+            dn{"Era"}
+        }
+        era-narrow{
+            dn{"Era"}
+        }
+        era-short{
             dn{"Era"}
         }
         fri{
@@ -1094,8 +1272,8 @@ az{
             }
             relativeTime{
                 future{
-                    one{"{0} bazar ertəsi əzrində"}
-                    other{"{0} bazar ertəsi əzrində"}
+                    one{"{0} bazar ertəsi ərzində"}
+                    other{"{0} bazar ertəsi ərzində"}
                 }
                 past{
                     one{"{0} bazar ertəsi öncə"}
@@ -1111,8 +1289,8 @@ az{
             }
             relativeTime{
                 future{
-                    one{"{0} bazar ertəsi əzrində"}
-                    other{"{0} bazar ertəsi əzrində"}
+                    one{"{0} bazar ertəsi ərzində"}
+                    other{"{0} bazar ertəsi ərzində"}
                 }
                 past{
                     one{"{0} bazar ertəsi öncə"}
@@ -1184,6 +1362,11 @@ az{
         }
         quarter-narrow{
             dn{"rüb"}
+            relative{
+                "-1"{"keçən rüb"}
+                "0"{"bu rüb"}
+                "1"{"gələn rüb"}
+            }
             relativeTime{
                 future{
                     one{"{0} rüb ərzində"}
@@ -1197,6 +1380,11 @@ az{
         }
         quarter-short{
             dn{"rüb"}
+            relative{
+                "-1"{"keçən rüb"}
+                "0"{"bu rüb"}
+                "1"{"gələn rüb"}
+            }
             relativeTime{
                 future{
                     one{"{0} rüb ərzində"}
@@ -1552,8 +1740,32 @@ az{
                 }
             }
         }
+        weekOfMonth{
+            dn{"Ayın həftəsi"}
+        }
+        weekOfMonth-narrow{
+            dn{"ay hft."}
+        }
+        weekOfMonth-short{
+            dn{"ay hft."}
+        }
         weekday{
             dn{"Həftənin Günü"}
+        }
+        weekday-narrow{
+            dn{"hft. günü"}
+        }
+        weekday-short{
+            dn{"hft. günü"}
+        }
+        weekdayOfMonth{
+            dn{"ayın həftə günü"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ay hft. günü"}
+        }
+        weekdayOfMonth-short{
+            dn{"ay hft. günü"}
         }
         year{
             dn{"İl"}
@@ -1602,11 +1814,29 @@ az{
         zone{
             dn{"Saat Qurşağı"}
         }
+        zone-narrow{
+            dn{"qurşaq"}
+        }
+        zone-short{
+            dn{"qurşaq"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} yaxud {1}"}
+            end{"{0}, yaxud {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} və {1}"}
             end{"{0} və {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
@@ -1639,5 +1869,33 @@ az{
         UK{"Britaniya"}
         US{"ABŞ"}
         metric{"Metrik"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+        }
     }
 }

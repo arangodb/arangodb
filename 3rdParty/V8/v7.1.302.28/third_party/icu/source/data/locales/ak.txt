@@ -4,6 +4,7 @@ ak{
     AuxExemplarCharacters{"[c j q v z]"}
     ExemplarCharacters{"[a b d e ɛ f g h i k l m n o ɔ p r s t u w y]"}
     ExemplarCharactersIndex{"[A B C D E Ɛ F G H I J K L M N O Ɔ P Q R S T U V W X Y Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -14,8 +15,17 @@ ak{
                 group{","}
             }
         }
+        minimalPairs{
+            ordinal{
+                other{"Fa nyimfa {0}."}
+            }
+            plural{
+                one{"da {0}"}
+                other{"nda {0}"}
+            }
+        }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

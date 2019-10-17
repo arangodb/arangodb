@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 **********************************************************************
@@ -319,7 +319,7 @@ int  main(int argc, char **argv) {
         return NULL;
     }
 
-    long t = fread(result, 1, fileSize, file);
+    long t = static_cast<long>(fread(result, 1, fileSize, file));
     if (t != fileSize)  {
         delete [] result;
         fclose(file);

@@ -10,6 +10,7 @@ bas{
         "t u ú ù û ǔ ū {u\u1DC6}{u\u1DC7} v w y z]"
     }
     ExemplarCharactersIndex{"[A B Ɓ C D E Ɛ F G H I J K L M N Ŋ O Ɔ P R S T U V W Y Z]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -23,7 +24,7 @@ bas{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 is{
-    Version{"2.1.29.65"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -303,6 +303,9 @@ is{
         "America:El_Salvador"{
             ec{"El Salvador"}
         }
+        "America:Fort_Nelson"{
+            ec{"Fort Nelson"}
+        }
         "America:Fortaleza"{
             ec{"Fortaleza"}
         }
@@ -504,6 +507,9 @@ is{
         "America:Puerto_Rico"{
             ec{"Púertó Ríkó"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -654,6 +660,9 @@ is{
         "Asia:Ashgabat"{
             ec{"Ashgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -666,6 +675,9 @@ is{
         "Asia:Bangkok"{
             ec{"Bangkok"}
         }
+        "Asia:Barnaul"{
+            ec{"Barnaul"}
+        }
         "Asia:Beirut"{
             ec{"Beirút"}
         }
@@ -677,6 +689,9 @@ is{
         }
         "Asia:Calcutta"{
             ec{"Kalkútta"}
+        }
+        "Asia:Chita"{
+            ec{"Chita"}
         }
         "Asia:Choibalsan"{
             ec{"Choibalsan"}
@@ -698,6 +713,9 @@ is{
         }
         "Asia:Dushanbe"{
             ec{"Dushanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -792,6 +810,9 @@ is{
         "Asia:Qatar"{
             ec{"Katar"}
         }
+        "Asia:Qostanay"{
+            ec{"Kostanay"}
+        }
         "Asia:Qyzylorda"{
             ec{"Qyzylorda"}
         }
@@ -819,6 +840,9 @@ is{
         "Asia:Singapore"{
             ec{"Singapúr"}
         }
+        "Asia:Srednekolymsk"{
+            ec{"Srednekolymsk"}
+        }
         "Asia:Taipei"{
             ec{"Taipei"}
         }
@@ -836,6 +860,9 @@ is{
         }
         "Asia:Tokyo"{
             ec{"Tókýó"}
+        }
+        "Asia:Tomsk"{
+            ec{"Tomsk"}
         }
         "Asia:Ulaanbaatar"{
             ec{"Úlan Bator"}
@@ -927,6 +954,9 @@ is{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Samræmdur alþjóðlegur tími"}
+        }
         "Etc:Unknown"{
             ec{"Óþekkt borg"}
         }
@@ -935,6 +965,9 @@ is{
         }
         "Europe:Andorra"{
             ec{"Andorra"}
+        }
+        "Europe:Astrakhan"{
+            ec{"Astrakhan"}
         }
         "Europe:Athens"{
             ec{"Aþena"}
@@ -994,6 +1027,9 @@ is{
         "Europe:Kiev"{
             ec{"Kænugarður"}
         }
+        "Europe:Kirov"{
+            ec{"Kirov"}
+        }
         "Europe:Lisbon"{
             ec{"Lissabon"}
         }
@@ -1052,6 +1088,9 @@ is{
         "Europe:Sarajevo"{
             ec{"Sarajevó"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopol"}
         }
@@ -1069,6 +1108,9 @@ is{
         }
         "Europe:Tirane"{
             ec{"Tirane"}
+        }
+        "Europe:Ulyanovsk"{
+            ec{"Ulyanovsk"}
         }
         "Europe:Uzhgorod"{
             ec{"Uzhgorod"}
@@ -1138,6 +1180,9 @@ is{
         }
         "Pacific:Auckland"{
             ec{"Auckland"}
+        }
+        "Pacific:Bougainville"{
+            ec{"Bougainville"}
         }
         "Pacific:Chatham"{
             ec{"Chatham"}
@@ -1731,6 +1776,9 @@ is{
         }
         "meta:Ponape"{
             ls{"Ponape-tími"}
+        }
+        "meta:Pyongyang"{
+            ls{"Tími í Pjongjang"}
         }
         "meta:Reunion"{
             ls{"Réunion-tími"}

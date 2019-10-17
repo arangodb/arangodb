@@ -1,5 +1,5 @@
 /***********************************************************************
- * Copyright (C) 2016 and later: Unicode, Inc. and others.
+ * © 2016 and later: Unicode, Inc. and others.
  * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
@@ -11,6 +11,8 @@
 #include "unicode/unistr.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+using namespace icu;
 
 // Verify that a UErrorCode is successful; exit(1) if not
 void check(UErrorCode& status, const char* msg) {

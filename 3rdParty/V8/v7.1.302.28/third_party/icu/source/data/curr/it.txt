@@ -218,6 +218,10 @@ it{
             "CLP",
             "peso cileno",
         }
+        CNH{
+            "CNH",
+            "CNH",
+        }
         CNY{
             "CN¥",
             "renminbi cinese",
@@ -605,6 +609,10 @@ it{
         }
         MRO{
             "MRO",
+            "ouguiya della Mauritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ouguiya della Mauritania",
         }
         MTL{
@@ -697,11 +705,11 @@ it{
         }
         PEN{
             "PEN",
-            "nuovo sol peruviano",
+            "sol peruviano",
         }
         PES{
             "PES",
-            "sol peruviano",
+            "sol peruviano (1863–1965)",
         }
         PGK{
             "PGK",
@@ -825,7 +833,11 @@ it{
         }
         STD{
             "STD",
-            "dobra di Sao Tomé e Principe",
+            "dobra di Sao Tomé e Principe (1977–2017)",
+        }
+        STN{
+            "STN",
+            "dobra di Sao Tomé e Príncipe",
         }
         SUR{
             "SUR",
@@ -912,7 +924,7 @@ it{
             "scellino ugandese",
         }
         USD{
-            "US$",
+            "USD",
             "dollaro statunitense",
         }
         USN{
@@ -945,6 +957,10 @@ it{
         }
         VEF{
             "VEF",
+            "bolívar venezuelano (2008–2018)",
+        }
+        VES{
+            "VES",
             "bolívar venezuelano",
         }
         VND{
@@ -1028,7 +1044,7 @@ it{
             "codice di verifica della valuta",
         }
         XXX{
-            "XXX",
+            "¤",
             "valuta sconosciuta",
         }
         YDD{
@@ -1146,7 +1162,6 @@ it{
         MXN{"$"}
         MYR{"RM"}
         NAD{"$"}
-        NGN{"₦"}
         NIO{"C$"}
         NOK{"NKr"}
         NPR{"Rs"}
@@ -1155,7 +1170,7 @@ it{
         PKR{"Rs"}
         PLN{"zł"}
         PYG{"₲"}
-        RON{"L"}
+        RON{"lei"}
         RUB{"₽"}
         RWF{"RF"}
         SBD{"$"}
@@ -1164,7 +1179,7 @@ it{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1308,6 +1323,10 @@ it{
         CLP{
             one{"peso cileno"}
             other{"pesos cileni"}
+        }
+        CNH{
+            one{"CNH"}
+            other{"CNH"}
         }
         CNY{
             one{"renmimbi cinese"}
@@ -1558,6 +1577,10 @@ it{
             other{"patacas di Macao"}
         }
         MRO{
+            one{"ouguiya della Mauritania (1973–2017)"}
+            other{"ouguiya della Mauritania (1973–2017)"}
+        }
+        MRU{
             one{"ouguiya della Mauritania"}
             other{"ouguiya della Mauritania"}
         }
@@ -1622,8 +1645,8 @@ it{
             other{"balboa panamensi"}
         }
         PEN{
-            one{"nuovo sol peruviano"}
-            other{"nuovi sol peruviani"}
+            one{"sol peruviano"}
+            other{"sol peruviani"}
         }
         PGK{
             one{"kina papuana"}
@@ -1714,8 +1737,12 @@ it{
             other{"sterline sud-sudanesi"}
         }
         STD{
-            one{"dobra di Sao Tomé e Principe"}
-            other{"dobra di Sao Tomé e Principe"}
+            one{"dobra di Sao Tomé e Principe (1977–2017)"}
+            other{"dobra di Sao Tomé e Principe (1977–2017)"}
+        }
+        STN{
+            one{"dobra di Sao Tomé e Príncipe"}
+            other{"dobra di Sao Tomé e Príncipe"}
         }
         SYP{
             one{"lira siriana"}
@@ -1790,6 +1817,10 @@ it{
             other{"bolivares venezuelani (1871–2008)"}
         }
         VEF{
+            one{"bolívar venezuelano (2008–2018)"}
+            other{"bolívares venezuelani (2008–2018)"}
+        }
+        VES{
             one{"bolívar venezuelano"}
             other{"bolívares venezuelani"}
         }
@@ -1846,5 +1877,5 @@ it{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

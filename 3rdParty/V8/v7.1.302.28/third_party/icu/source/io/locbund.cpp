@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -45,9 +45,9 @@ static UBool U_CALLCONV locbund_cleanup(void) {
 }
 U_CDECL_END
 
-static UMutex gLock = U_MUTEX_INITIALIZER;
 static inline UNumberFormat * copyInvariantFormatter(ULocaleBundle *result, UNumberFormatStyle style) {
     U_NAMESPACE_USE
+    static UMutex gLock = U_MUTEX_INITIALIZER;
     Mutex lock(&gLock);
     if (result->fNumberFormat[style-1] == NULL) {
         if (gPosixNumberFormat[style-1] == NULL) {

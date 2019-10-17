@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 lo{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"ອາບິດແຈນ"}
@@ -507,6 +507,9 @@ lo{
         "America:Puerto_Rico"{
             ec{"ເປີໂທຣິໂກ"}
         }
+        "America:Punta_Arenas"{
+            ec{"ພຸນທາ ອະຣີນາສ໌"}
+        }
         "America:Rainy_River"{
             ec{"ເຣນນີ ຣິເວີ"}
         }
@@ -657,6 +660,9 @@ lo{
         "Asia:Ashgabat"{
             ec{"ອາດຊ໌ກາບັດ"}
         }
+        "Asia:Atyrau"{
+            ec{"ອັດທີເຣົາ"}
+        }
         "Asia:Baghdad"{
             ec{"ແບກແດດ"}
         }
@@ -707,6 +713,9 @@ lo{
         }
         "Asia:Dushanbe"{
             ec{"ດູຊານເບ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ຟາມາກັສທາ"}
         }
         "Asia:Gaza"{
             ec{"ກາຊາ"}
@@ -942,6 +951,9 @@ lo{
         "Australia:Sydney"{
             ec{"ຊິດນີ"}
         }
+        "Etc:UTC"{
+            ls{"ເວລາສາກົນເຊີງພິກັດ"}
+        }
         "Etc:Unknown"{
             ec{"ບໍ່ຮູ້ຊື່ເມືອງ"}
         }
@@ -1072,6 +1084,9 @@ lo{
         }
         "Europe:Sarajevo"{
             ec{"ຊາຣາເຢໂວ"}
+        }
+        "Europe:Saratov"{
+            ec{"ຊາຣາທອບ"}
         }
         "Europe:Simferopol"{
             ec{"ຊີມເຟໂລໂປ"}

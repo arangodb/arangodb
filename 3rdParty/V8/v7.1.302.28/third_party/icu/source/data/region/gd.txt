@@ -31,6 +31,7 @@ gd{
         151{"An Roinn-Eòrpa an Ear"}
         154{"An Roinn-Eòrpa a Tuath"}
         155{"An Roinn-Eòrpa an Iar"}
+        202{"Afraga Deas air an t-Sathara"}
         419{"Aimeireaga Laidinneach"}
         AC{"Eilean na Deasgabhalach"}
         AD{"Andorra"}
@@ -49,7 +50,7 @@ gd{
         AW{"Arùba"}
         AX{"Na h-Eileanan Åland"}
         AZ{"Asarbaideàn"}
-        BA{"Bosna agus Hearsagobhana"}
+        BA{"Bosna is Hearsagobhana"}
         BB{"Barbados"}
         BD{"Bangladais"}
         BE{"A’ Bheilg"}
@@ -89,7 +90,7 @@ gd{
         CW{"Curaçao"}
         CX{"Eilean na Nollaig"}
         CY{"Cìopras"}
-        CZ{"Poblachd na Seice"}
+        CZ{"An t-Seic"}
         DE{"A’ Ghearmailt"}
         DG{"Diego Garcia"}
         DJ{"Diobùtaidh"}
@@ -106,9 +107,10 @@ gd{
         ES{"An Spàinnt"}
         ET{"An Itiop"}
         EU{"An t-Aonadh Eòrpach"}
+        EZ{"Raon an Eòro"}
         FI{"An Fhionnlann"}
         FJ{"Fìdi"}
-        FK{"Na h-Eileanan Fàclannach"}
+        FK{"Na h-Eileanan Fàclannach (Islas Malvinas)"}
         FM{"Na Meanbh-eileanan"}
         FO{"Na h-Eileanan Fàro"}
         FR{"An Fhraing"}
@@ -181,7 +183,7 @@ gd{
         MF{"Naomh Màrtainn"}
         MG{"Madagasgar"}
         MH{"Eileanan Mharshall"}
-        MK{"A’ Mhasadon"}
+        MK{"A’ Mhasadon a Tuath"}
         ML{"Màili"}
         MM{"Miànmar"}
         MN{"Dùthaich nam Mongol"}
@@ -218,7 +220,7 @@ gd{
         PK{"Pagastàn"}
         PL{"A’ Phòlainn"}
         PM{"Saint Pierre agus Miquelon"}
-        PN{"Eileanan Peit a’ Chàirn"}
+        PN{"Eileanan Pheit a’ Chàirn"}
         PR{"Porto Rìceo"}
         PS{"Palastain"}
         PT{"A’ Phortagail"}
@@ -272,6 +274,7 @@ gd{
         UA{"An Ucràin"}
         UG{"Uganda"}
         UM{"Meanbh-Eileanan Iomallach nan SA"}
+        UN{"Na Dùthchannan Aonaichte"}
         US{"Na Stàitean Aonaichte"}
         UY{"Uruguaidh"}
         UZ{"Usbagastàn"}
@@ -300,10 +303,8 @@ gd{
         CD{"A’ Chongo (PDC)"}
         CG{"A’ Chongo"}
         CI{"An Costa Ìbhri"}
-        CZ{"An t-Seic"}
-        FK{"Na h-Eileanan Fàclannach (Islas Malvinas)"}
-        MK{"A’ Mhasadon (FYROM)"}
+        CZ{"Poblachd na Seice"}
         TL{"Tìomor an Ear"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
 }

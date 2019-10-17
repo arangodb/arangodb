@@ -104,6 +104,10 @@ dyo{
         }
         MRO{
             "MRO",
+            "ugiiya yati Mooritanii (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ugiiya yati Mooritanii",
         }
         MWK{
@@ -119,5 +123,5 @@ dyo{
             "seefa yati BCEAO",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

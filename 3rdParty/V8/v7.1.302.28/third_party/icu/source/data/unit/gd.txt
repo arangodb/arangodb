@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 gd{
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -104,6 +104,7 @@ gd{
                 few{"{0} cilemeatairean ceàrnagach"}
                 one{"{0} chilemeatair ceàrnagach"}
                 other{"{0} cilemeatair ceàrnagach"}
+                per{"{0} sa chilemeatair cheàrnagach"}
                 two{"{0} chilemeatair ceàrnagach"}
             }
             square-meter{
@@ -119,6 +120,7 @@ gd{
                 few{"{0} mìltean ceàrnagach"}
                 one{"{0} mhìle cheàrnagach"}
                 other{"{0} mìle cheàrnagach"}
+                per{"{0} sa mhìle cheàrnagach"}
                 two{"{0} mhìle cheàrnagach"}
             }
             square-yard{
@@ -139,6 +141,41 @@ gd{
                 one{"{0} karat"}
                 other{"{0} karat"}
                 two{"{0} karat"}
+            }
+            milligram-per-deciliter{
+                dnam{"mille-ghrama san deicheamh-liotair"}
+                few{"{0} mille-ghramaichean san deicheamh-liotair"}
+                one{"{0} mhille-ghrama san deicheamh-liotair"}
+                other{"{0} mille-ghrama san deicheamh-liotair"}
+                two{"{0} mhille-ghrama san deicheamh-liotair"}
+            }
+            millimole-per-liter{
+                dnam{"mille-mhòl san liotair"}
+                few{"{0} mille-mhòlaichean san liotair"}
+                one{"{0} mhille-mhòl san liotair"}
+                other{"{0} mille-mhòl san liotair"}
+                two{"{0} mhille-mhòl san liotair"}
+            }
+            part-per-million{
+                dnam{"pàirt sa mhillean"}
+                few{"{0} pàirtean sa mhillean"}
+                one{"{0} phàirt sa mhillean"}
+                other{"{0} pàirt sa mhillean"}
+                two{"{0} phàirt sa mhillean"}
+            }
+            percent{
+                dnam{"sa cheud"}
+                few{"{0} sa cheud"}
+                one{"{0} sa cheud"}
+                other{"{0} sa cheud"}
+                two{"{0} sa cheud"}
+            }
+            permille{
+                dnam{"sa mhìle"}
+                few{"{0} sa mhìle"}
+                one{"{0} sa mhìle"}
+                other{"{0} sa mhìle"}
+                two{"{0} sa mhìle"}
             }
         }
         consumption{
@@ -163,8 +200,16 @@ gd{
                 other{"{0} mìle sa ghalan"}
                 two{"{0} mhìle sa ghalan"}
             }
+            mile-per-gallon-imperial{
+                dnam{"mìle sa ghalan impireil"}
+                few{"{0} mìltean sa ghalan impireil"}
+                one{"{0} mhìle sa ghalan impireil"}
+                other{"{0} mìle sa ghalan impireil"}
+                two{"{0} mhìle sa ghalan impireil"}
+            }
         }
         coordinate{
+            dnam{"comhair combaist"}
             east{"{0}E"}
             north{"{0}T"}
             south{"{0}D"}
@@ -226,6 +271,13 @@ gd{
                 one{"{0} mheaga-baidht"}
                 other{"{0} meaga-baidht"}
                 two{"{0} mheaga-baidht"}
+            }
+            petabyte{
+                dnam{"peta-baidht"}
+                few{"{0} peta-baidht"}
+                one{"{0} pheta-baidht"}
+                other{"{0} peta-baidht"}
+                two{"{0} pheta-baidht"}
             }
             terabit{
                 dnam{"tera-biod"}
@@ -564,6 +616,13 @@ gd{
                 other{"{0} piceo-mheatair"}
                 two{"{0} phiceo-mheatair"}
             }
+            point{
+                dnam{"puing"}
+                few{"{0} puingean"}
+                one{"{0} phuing"}
+                other{"{0} puing"}
+                two{"{0} phuing"}
+            }
             yard{
                 dnam{"slat"}
                 few{"{0} slatan"}
@@ -709,6 +768,13 @@ gd{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"brùthadh-àile"}
+                few{"{0} brùthadh-àile"}
+                one{"{0} bhrùthadh-àile"}
+                other{"{0} brùthadh-àile"}
+                two{"{0} bhrùthadh-àile"}
+            }
             hectopascal{
                 dnam{"heacta pascal"}
                 few{"{0} heacta pascal"}
@@ -914,6 +980,14 @@ gd{
                 per{"{0} sa ghalan"}
                 two{"{0} ghalan"}
             }
+            gallon-imperial{
+                dnam{"galan impireil"}
+                few{"{0} galanan impireil"}
+                one{"{0} ghalan impireil"}
+                other{"{0} galan impireil"}
+                per{"{0} sa ghalan impireil"}
+                two{"{0} ghalan impireil"}
+            }
             hectoliter{
                 dnam{"heactailiotair"}
                 few{"{0} heactailiotairean"}
@@ -1077,6 +1151,7 @@ gd{
                 few{"{0}km²"}
                 one{"{0}km²"}
                 other{"{0}km²"}
+                per{"{0}/km²"}
                 two{"{0}km²"}
             }
             square-meter{
@@ -1092,6 +1167,7 @@ gd{
                 few{"{0}mì²"}
                 one{"{0}mì²"}
                 other{"{0}mì²"}
+                per{"{0}/mì²"}
                 two{"{0}mì²"}
             }
             square-yard{
@@ -1112,6 +1188,41 @@ gd{
                 one{"{0}kt"}
                 other{"{0}kt"}
                 two{"{0}kt"}
+            }
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+                few{"{0}mg/dL"}
+                one{"{0}mg/dL"}
+                other{"{0}mg/dL"}
+                two{"{0}mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"mmòl/L"}
+                few{"{0}mmòl/L"}
+                one{"{0}mmòl/L"}
+                other{"{0}mmòl/L"}
+                two{"{0}mmòl/L"}
+            }
+            part-per-million{
+                dnam{"ppm"}
+                few{"{0}ppm"}
+                one{"{0}ppm"}
+                other{"{0}ppm"}
+                two{"{0}ppm"}
+            }
+            percent{
+                dnam{"%"}
+                few{"{0}%"}
+                one{"{0}%"}
+                other{"{0}%"}
+                two{"{0}%"}
+            }
+            permille{
+                dnam{"‰"}
+                few{"{0}‰"}
+                one{"{0}‰"}
+                other{"{0}‰"}
+                two{"{0}‰"}
             }
         }
         consumption{
@@ -1136,8 +1247,16 @@ gd{
                 other{"{0}mì/g"}
                 two{"{0}mì/g"}
             }
+            mile-per-gallon-imperial{
+                dnam{"mìle/gal RA"}
+                few{"{0}m/gRA"}
+                one{"{0}m/gRA"}
+                other{"{0}m/gRA"}
+                two{"{0}m/gRA"}
+            }
         }
         coordinate{
+            dnam{"comhair"}
             east{"{0}E"}
             north{"{0}T"}
             south{"{0}D"}
@@ -1199,6 +1318,13 @@ gd{
                 one{"{0}MB"}
                 other{"{0}MB"}
                 two{"{0}MB"}
+            }
+            petabyte{
+                dnam{"PB"}
+                few{"{0}PB"}
+                one{"{0}PB"}
+                other{"{0}PB"}
+                two{"{0}PB"}
             }
             terabit{
                 dnam{"Tb"}
@@ -1430,10 +1556,10 @@ gd{
             }
             fathom{
                 dnam{"aitheamh"}
-                few{"{0}fm"}
-                one{"{0}fm"}
-                other{"{0}fm"}
-                two{"{0}fm"}
+                few{"{0}fth"}
+                one{"{0}fth"}
+                other{"{0}fth"}
+                two{"{0}fth"}
             }
             foot{
                 dnam{"troigh"}
@@ -1536,6 +1662,13 @@ gd{
                 one{"{0}pm"}
                 other{"{0}pm"}
                 two{"{0}pm"}
+            }
+            point{
+                dnam{"pt"}
+                few{"{0}pt"}
+                one{"{0}pt"}
+                other{"{0}pt"}
+                two{"{0}pt"}
             }
             yard{
                 dnam{"slat"}
@@ -1682,6 +1815,13 @@ gd{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"atm"}
+                few{"{0}atm"}
+                one{"{0}atm"}
+                other{"{0}atm"}
+                two{"{0}atm"}
+            }
             hectopascal{
                 dnam{"hPa"}
                 few{"{0}hPa"}
@@ -1887,6 +2027,14 @@ gd{
                 per{"{0}/gal"}
                 two{"{0}gal"}
             }
+            gallon-imperial{
+                dnam{"gal imp."}
+                few{"{0} gal i."}
+                one{"{0} ghal i."}
+                other{"{0} gal i."}
+                per{"{0}/gal i."}
+                two{"{0} ghal i."}
+            }
             hectoliter{
                 dnam{"hL"}
                 few{"{0}hL"}
@@ -2050,6 +2198,7 @@ gd{
                 few{"{0} km²"}
                 one{"{0} km²"}
                 other{"{0} km²"}
+                per{"{0}/km²"}
                 two{"{0} km²"}
             }
             square-meter{
@@ -2065,6 +2214,7 @@ gd{
                 few{"{0} mì²"}
                 one{"{0} mì²"}
                 other{"{0} mì²"}
+                per{"{0}/mì²"}
                 two{"{0} mì²"}
             }
             square-yard{
@@ -2085,6 +2235,41 @@ gd{
                 one{"{0} kt"}
                 other{"{0} kt"}
                 two{"{0} kt"}
+            }
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+                few{"{0} mg/dL"}
+                one{"{0} mg/dL"}
+                other{"{0} mg/dL"}
+                two{"{0} mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"mmòl/L"}
+                few{"{0} mmòl/L"}
+                one{"{0} mmòl/L"}
+                other{"{0} mmòl/L"}
+                two{"{0} mmòl/L"}
+            }
+            part-per-million{
+                dnam{"ppm"}
+                few{"{0} ppm"}
+                one{"{0} ppm"}
+                other{"{0} ppm"}
+                two{"{0} ppm"}
+            }
+            percent{
+                dnam{"sa cheud"}
+                few{"{0}%"}
+                one{"{0}%"}
+                other{"{0}%"}
+                two{"{0}%"}
+            }
+            permille{
+                dnam{"sa mhìle"}
+                few{"{0}‰"}
+                one{"{0}‰"}
+                other{"{0}‰"}
+                two{"{0}‰"}
             }
         }
         consumption{
@@ -2109,8 +2294,16 @@ gd{
                 other{"{0} mì/g"}
                 two{"{0} mì/g"}
             }
+            mile-per-gallon-imperial{
+                dnam{"mìle/gal imp."}
+                few{"{0} mì/gal imp."}
+                one{"{0} mhì/gal imp."}
+                other{"{0} mì/gal imp."}
+                two{"{0} mhì/gal imp."}
+            }
         }
         coordinate{
+            dnam{"comhair"}
             east{"{0}E"}
             north{"{0}T"}
             south{"{0}D"}
@@ -2172,6 +2365,13 @@ gd{
                 one{"{0} MB"}
                 other{"{0} MB"}
                 two{"{0} MB"}
+            }
+            petabyte{
+                dnam{"PB"}
+                few{"{0} PB"}
+                one{"{0} PB"}
+                other{"{0} PB"}
+                two{"{0} PB"}
             }
             terabit{
                 dnam{"Tb"}
@@ -2510,6 +2710,13 @@ gd{
                 other{"{0} pm"}
                 two{"{0} pm"}
             }
+            point{
+                dnam{"puing"}
+                few{"{0} pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
+                two{"{0} pt"}
+            }
             yard{
                 dnam{"slat"}
                 few{"{0} slat"}
@@ -2655,6 +2862,13 @@ gd{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"àile"}
+                few{"{0} àile"}
+                one{"{0} àile"}
+                other{"{0} àile"}
+                two{"{0} àile"}
+            }
             hectopascal{
                 dnam{"hPa"}
                 few{"{0} hPa"}
@@ -2859,6 +3073,14 @@ gd{
                 other{"{0} gal"}
                 per{"{0}/gal"}
                 two{"{0} gal"}
+            }
+            gallon-imperial{
+                dnam{"gal imp."}
+                few{"{0} gal imp."}
+                one{"{0} ghal imp."}
+                other{"{0} gal imp."}
+                per{"{0}/gal imp."}
+                two{"{0} ghal imp."}
             }
             hectoliter{
                 dnam{"hL"}

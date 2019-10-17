@@ -19,22 +19,23 @@ si{
         "[අ ආ ඇ ඈ ඉ ඊ උ ඌ ඍ එ ඒ ඓ ඔ ඕ ඖ ක ඛ ග ඝ ඞ ඟ ච ඡ ජ ඣ ඥ ඤ ට ඨ ඩ ඪ ණ ඬ ත ථ ද ධ න"
         " ඳ ප ඵ බ භ ම ඹ ය ර ල ව ශ ෂ ස හ ළ ෆ]"
     }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
         "″]"
     }
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#"}
             }
@@ -193,23 +194,26 @@ si{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{"."}
             }
         }
-        minimumGroupingDigits{"1"}
-        native{"latn"}
+        minimalPairs{
+            ordinal{
+                other{"{0} වන හැරවුම දකුණට"}
+            }
+            plural{
+                one{"{0} පොතක් ඇත. එය කියවීමි."}
+                other{"පොත් {0}ක් ඇත. ඒවා කියවීමි."}
+            }
+        }
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     calendar{
         generic{
             DateTimePatterns{
@@ -228,8 +232,17 @@ si{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"G y"}
                 GyMMM{"G y MMM"}
                 GyMMMEd{"G y MMM d, E"}
@@ -262,6 +275,53 @@ si{
                 yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -389,7 +449,12 @@ si{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH.mm"}
                 EHms{"E HH.mm.ss"}
                 Ed{"d E"}
@@ -409,8 +474,8 @@ si{
                 MMM{"LLL"}
                 MMMEd{"MMM d E"}
                 MMMMW{
-                    one{"MMM සතිය W"}
-                    other{"MMM සතිය W"}
+                    one{"MMMM සතිය W"}
+                    other{"MMMM සතිය W"}
                 }
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
@@ -433,8 +498,8 @@ si{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    one{"y සතිය w"}
-                    other{"y සතිය w"}
+                    one{"Y සතිය w"}
+                    other{"Y සතිය w"}
                 }
             }
             dayNames{
@@ -606,6 +671,53 @@ si{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"M/y GGGGG – M/y GGGGG"}
+                    M{"M/y – M/y GGGGG"}
+                    y{"M/y – M/y GGGGG"}
+                }
+                GyMEd{
+                    G{"E, M/d/y GGGGG – E, M/d/y GGGGG"}
+                    M{"E, M/d/y – E, M/d/y GGGGG"}
+                    d{"E, M/d/y – E, M/d/y GGGGG"}
+                    y{"E, M/d/y – E, M/d/y GGGGG"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"M/d/y GGGGG – M/d/y GGGGG"}
+                    M{"M/d/y – M/d/y GGGGG"}
+                    d{"M/d/y – M/d/y GGGGG"}
+                    y{"M/d/y – M/d/y GGGGG"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -914,7 +1026,9 @@ si{
         technical_symbols{"තාක්ෂණික සංකේත"}
         tone_marks{"නාද සලකුණු"}
         travel{"සංචාරය"}
+        travel_places{"ගම්න් කිරීම් සහ ස්තාන"}
         upwards_arrows{"උඩු ඊතල"}
+        variant_forms{"වෙනස් පෝරම"}
         vocalic_jamo{"වොකාලික් ජාමො"}
         weather{"කාලගුණය"}
         western_asian_scripts{"බටහිර ආසියානු පිටපත්"}
@@ -973,10 +1087,31 @@ si{
                 }
             }
         }
+        dayOfYear{
+            dn{"වසරේ දිනය"}
+        }
+        dayOfYear-narrow{
+            dn{"වසරේ දිනය"}
+        }
+        dayOfYear-short{
+            dn{"වසරේ දිනය"}
+        }
         dayperiod{
             dn{"පෙ.ව/ප.ව"}
         }
+        dayperiod-narrow{
+            dn{"පෙ.ව/ප.ව"}
+        }
+        dayperiod-short{
+            dn{"පෙ.ව/ප.ව"}
+        }
         era{
+            dn{"යුගය"}
+        }
+        era-narrow{
+            dn{"යුගය"}
+        }
+        era-short{
             dn{"යුගය"}
         }
         fri{
@@ -1047,7 +1182,7 @@ si{
             }
         }
         hour-narrow{
-            dn{"පැ"}
+            dn{"පැය"}
             relativeTime{
                 future{
                     one{"පැය {0}කින්"}
@@ -1089,7 +1224,7 @@ si{
             }
         }
         minute-narrow{
-            dn{"මි"}
+            dn{"මිනි."}
             relativeTime{
                 future{
                     one{"මිනිත්තු {0}කින්"}
@@ -1341,7 +1476,7 @@ si{
             }
         }
         second-narrow{
-            dn{"ත"}
+            dn{"තත්."}
             relativeTime{
                 future{
                     one{"තත්පර {0}කින්"}
@@ -1627,8 +1762,32 @@ si{
                 }
             }
         }
+        weekOfMonth{
+            dn{"මාසයේ සතිය"}
+        }
+        weekOfMonth-narrow{
+            dn{"මාසයේ සතිය"}
+        }
+        weekOfMonth-short{
+            dn{"මාසයේ සතිය"}
+        }
         weekday{
             dn{"සතියේ දිනය"}
+        }
+        weekday-narrow{
+            dn{"සතියේ දිනය"}
+        }
+        weekday-short{
+            dn{"සතියේ දිනය"}
+        }
+        weekdayOfMonth{
+            dn{"මාසයේ සතියේ දිනය"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"මාසයේ සතියේ දිනය"}
+        }
+        weekdayOfMonth-short{
+            dn{"මාසයේ සතියේ දිනය"}
         }
         year{
             dn{"වර්ෂය"}
@@ -1685,11 +1844,29 @@ si{
             }
         }
         zone{
-            dn{"කාල කලාපය"}
+            dn{"වේලා කලාපය"}
+        }
+        zone-narrow{
+            dn{"කලාපය"}
+        }
+        zone-short{
+            dn{"කලාපය"}
         }
     }
     listPattern{
+        or{
+            2{"{0} හෝ {1}"}
+            end{"{0}, හෝ {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
+            2{"{0} සහ {1}"}
+            end{"{0}, සහ {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} සහ {1}"}
             end{"{0}, සහ {1}"}
             middle{"{0}, {1}"}
@@ -1724,5 +1901,37 @@ si{
         UK{"එංගලන්ත"}
         US{"ඇමරිකානු"}
         metric{"මෙට්රික්"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

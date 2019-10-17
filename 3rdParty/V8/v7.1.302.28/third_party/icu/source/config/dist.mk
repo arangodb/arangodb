@@ -8,39 +8,38 @@
 # This is to be called from ../Makefile.in
 #
 # This will only work if subversion is installed.
+# You must checkout ICU4C at the `/icu`  or `/icu/icu4c` level - not just `…/source`
+# also note that `make dist` does NOT reflect any local modifications, but pulls from HEAD.
 
 top_builddir = .
 
 include $(top_builddir)/icudefs.mk
 
-
+DISTY_DIR=dist
 DISTY_TMP=dist/tmp
 DISTY_ICU=$(DISTY_TMP)/icu
 DISTY_DATA=$(DISTY_ICU)/source/data
-DISTY_RMV=brkitr coll curr lang locales mappings rbnf region translit xml zone
+# The following line controls what is removed in the data/ subdirectory for the source tarball.
+DISTY_RMV=brkitr coll curr lang locales mappings rbnf region translit xml zone misc/*.txt misc/*.mk unit
 DISTY_RMDIR=$(DISTY_RMV:%=$(DISTY_DATA)/%)
 DISTY_IN=$(DISTY_DATA)/in
 DOCZIP=icu-docs.zip
 
-SVNTOP=$(top_srcdir)/..
-SVNDOT=$(SVNTOP)/.svn
-SVNVER=$(shell svnversion $(SVNTOP) | cut -d: -f1 | tr -cd 'a-zA-Z0-9')
-SVNURL=$(shell svn info $(SVNTOP) | grep '^URL:' | cut -d: -f2-)
+ICU4CTOP=$(top_srcdir)/..
+GITVER=$(shell (cd $(ICU4CTOP) && (git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)) || echo 'unknown')
 DISTY_VER=$(shell echo $(VERSION) | tr '.' '_' )
 DISTY_PREFIX=icu4c
 DISTY_FILE_DIR=$(shell pwd)/$(DISTY_DIR)
-DISTY_FILE_TGZ=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-src-$(DISTY_VER)-r$(SVNVER).tgz
-DISTY_FILE_ZIP=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-src-$(DISTY_VER)-r$(SVNVER).zip
-DISTY_DOC_ZIP=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-docs-$(DISTY_VER)-r$(SVNVER).zip
-DISTY_DATA_ZIP=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-data-$(DISTY_VER)-r$(SVNVER).zip
-DISTY_DAT=$(firstword $(wildcard data/out/tmp/icudt$(SO_TARGET_VERSION_MAJOR)*.dat))
+DISTY_FILE_TGZ=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-$(DISTY_VER)-$(GITVER)-src.tgz
+DISTY_FILE_ZIP=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-$(DISTY_VER)-$(GITVER)-src.zip
+DISTY_DOC_ZIP=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-$(DISTY_VER)-$(GITVER)-docs.zip
+DISTY_DATA_ZIP=$(DISTY_FILE_DIR)/$(DISTY_PREFIX)-$(DISTY_VER)-$(GITVER)-data.zip
+DISTY_DAT:=$(firstword $(wildcard data/out/tmp/icudt$(SO_TARGET_VERSION_MAJOR)*.dat))
 
 DISTY_FILES_SRC=$(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP)
 DISTY_FILES=$(DISTY_FILES_SRC) $(DISTY_DOC_ZIP)
-
-$(SVNDOT):
-	@echo "ERROR: 'dist' will not work unless the parent of the top_srcdir ( $(SVNTOP) ) is checked out from svn, and svn is installed."
-	false
+# colon-equals because we watn to run this once!
+EXCLUDES_FILE:=$(shell mktemp)
 
 $(DISTY_FILE_DIR):
 	$(MKINSTALLDIRS) $(DISTY_FILE_DIR)
@@ -48,30 +47,42 @@ $(DISTY_FILE_DIR):
 $(DISTY_TMP):
 	$(MKINSTALLDIRS) $(DISTY_TMP)
 
-$(DISTY_DOC_ZIP): $(SVNDOT) $(DOCZIP) $(DISTY_FILE_DIR)
+$(DISTY_DOC_ZIP):  $(DOCZIP) $(DISTY_FILE_DIR)
 	cp $(DOCZIP) $(DISTY_DOC_ZIP)
+	ln -sf $(shell basename $(DISTY_DOC_ZIP)) $(DISTY_FILE_DIR)/icu4c-docs.zip
+	ln -f $(DISTY_DOC_ZIP) $(DISTY_FILE_DIR)/icu4c-$(DISTY_VER)-docs.zip
 
-$(DISTY_DAT): 
+$(DISTY_DAT):
 	echo Missing $@
 	/bin/false
 
+# make sure we get the non-lgpl docs
 $(DOCZIP):
-	$(MAKE) -C . srcdir="$(srcdir)" top_srcdir="$(top_srcdir)" builddir=. $@
+	-$(RMV) "$(top_builddir)"/doc
+	"$(MAKE)" -C . srcdir="$(srcdir)" top_srcdir="$(top_srcdir)" builddir=. $@
 
-$(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP) $(DISTY_DATA_ZIP): $(SVNDOT) $(DISTY_DAT) $(DISTY_TMP)
-	@echo "svnversion of $(SVNTOP) is as follows (if this fails, make sure svn is installed..)"
-	svnversion $(SVNTOP)
+$(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP) $(DISTY_DATA_ZIP):  $(DISTY_DAT) $(DISTY_TMP)
+	@echo Export icu4c@$(GITVER) to "$(DISTY_TMP)/icu"
 	-$(RMV) $(DISTY_FILE) $(DISTY_TMP)
 	$(MKINSTALLDIRS) $(DISTY_TMP)
-	svn export -r $(shell echo $(SVNVER) | tr -d 'a-zA-Z' ) $(SVNURL) "$(DISTY_TMP)/icu"
+	( cd $(ICU4CTOP)/.. && git archive --format=tar --prefix=icu/ HEAD:icu4c/ ) | ( cd "$(DISTY_TMP)" && tar xf - )
 	( cd $(DISTY_TMP)/icu/source ; zip -rlq $(DISTY_DATA_ZIP) data )
-	$(RMV) $(DISTY_RMDIR)
 	$(MKINSTALLDIRS) $(DISTY_IN)
+	echo DISTY_DAT=$(DISTY_DAT)
 	cp $(DISTY_DAT) $(DISTY_IN)
+	$(RMV) $(DISTY_RMDIR)
 	( cd $(DISTY_TMP)/icu ; python as_is/bomlist.py > as_is/bomlist.txt || rm -f as_is/bomlist.txt )
 	( cd $(DISTY_TMP) ; tar cfpz $(DISTY_FILE_TGZ) icu )
 	( cd $(DISTY_TMP) ; zip -rlq $(DISTY_FILE_ZIP) icu )
-	ls -l $(DISTY_FILE)
+	$(RMV) $(DISTY_TMP)
+	ln -sf $(shell basename $(DISTY_FILE_ZIP)) $(DISTY_FILE_DIR)/icu4c-src.zip
+	ln -sf $(shell basename $(DISTY_FILE_TGZ)) $(DISTY_FILE_DIR)/icu4c-src.tgz
+	ln -sf $(shell basename $(DISTY_DATA_ZIP)) $(DISTY_FILE_DIR)/icu4c-data.zip
+	ln -f $(DISTY_FILE_ZIP) $(DISTY_FILE_DIR)/icu4c-$(DISTY_VER)-src.zip
+	ln -f $(DISTY_FILE_TGZ) $(DISTY_FILE_DIR)/icu4c-$(DISTY_VER)-src.tgz
+	ln -f $(DISTY_DATA_ZIP) $(DISTY_FILE_DIR)/icu4c-$(DISTY_VER)-data.zip
+	ls -l $(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP) $(DISTY_DATA_ZIP)
+
 
 dist-local: $(DISTY_FILES)
 

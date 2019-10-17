@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 es_HN{
     %%Parent{"es_419"}
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
@@ -12,7 +12,7 @@ es_HN{
                 "HH:mm",
                 "EEEE dd 'de' MMMM 'de' y G",
                 "dd 'de' MMMM 'de' y G",
-                "d/M/y G",
+                "d 'de' MMM 'de' y G",
                 "dd/MM/yy GGGGG",
                 "{1} {0}",
                 "{1}, {0}",
@@ -23,12 +23,12 @@ es_HN{
         }
         gregorian{
             AmPmMarkers{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -48,16 +48,16 @@ es_HN{
             dayPeriod{
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     wide{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                 }
             }
@@ -67,7 +67,7 @@ es_HN{
         day{
             relative{
                 "-1"{"ayer"}
-                "-2"{"antier"}
+                "-2"{"anteayer"}
                 "0"{"hoy"}
                 "1"{"mañana"}
                 "2"{"pasado mañana"}

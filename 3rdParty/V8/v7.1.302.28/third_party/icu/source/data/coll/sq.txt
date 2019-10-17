@@ -17,7 +17,7 @@ sq{
                 "&[before 1]Y<xh<<<Xh<<<XH"
                 "&[before 1]Ʒ<zh<<<Zh<<<ZH"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

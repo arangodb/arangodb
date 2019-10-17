@@ -162,6 +162,10 @@ is{
             "CLP",
             "síleskur pesi",
         }
+        CNH{
+            "CNH",
+            "kínverskt júan (utan heimalands)",
+        }
         CNY{
             "CN¥",
             "kínverskt júan",
@@ -496,6 +500,10 @@ is{
         }
         MRO{
             "MRO",
+            "márítönsk úgía (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "márítönsk úgía",
         }
         MTL{
@@ -704,6 +712,10 @@ is{
         }
         STD{
             "STD",
+            "Saó Tóme og Prinsípe-dóbra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Saó Tóme og Prinsípe-dóbra",
         }
         SUR{
@@ -812,6 +824,10 @@ is{
         }
         VEF{
             "VEF",
+            "venesúelskur bólívari (2008–2018)",
+        }
+        VES{
+            "VES",
             "venesúelskur bólívari",
         }
         VND{
@@ -855,7 +871,7 @@ is{
             "pólinesískur franki",
         }
         XXX{
-            "XXX",
+            "¤",
             "óþekktur gjaldmiðill",
         }
         YDD{
@@ -900,7 +916,6 @@ is{
         BND{"$"}
         BRL{"R$"}
         BSD{"$"}
-        BYN{"р."}
         BZD{"$"}
         CAD{"$"}
         CLP{"$"}
@@ -918,6 +933,7 @@ is{
         IDR{"Rp"}
         ILS{"₪"}
         INR{"₹"}
+        ISK{"kr"}
         JMD{"$"}
         JPY{"¥"}
         KHR{"៛"}
@@ -1071,6 +1087,10 @@ is{
             one{"síleskur pesi"}
             other{"síleskir pesar"}
         }
+        CNH{
+            one{"kínverskt júan (utan heimalands)"}
+            other{"kínverskt júan (utan heimalands)"}
+        }
         CNY{
             one{"kínverskt júan"}
             other{"kínversk júön"}
@@ -1115,6 +1135,10 @@ is{
             one{"alsírskur denari"}
             other{"alsírskir denarar"}
         }
+        EEK{
+            one{"eistnesk króna"}
+            other{"eistneskar krónur"}
+        }
         EGP{
             one{"egypskt pund"}
             other{"egypsk pund"}
@@ -1152,7 +1176,7 @@ is{
             other{"ganverskir sedar"}
         }
         GIP{
-            one{"Gíbraltarpund"}
+            one{"Gíbraltarspund"}
             other{"Gíbraltarspund"}
         }
         GMD{
@@ -1320,6 +1344,10 @@ is{
             other{"makaóskar patökur"}
         }
         MRO{
+            one{"máritönsk úgía (1973–2017)"}
+            other{"máritanskar úgíur (1973–2017)"}
+        }
+        MRU{
             one{"máritönsk úgía"}
             other{"máritanskar úgíur"}
         }
@@ -1472,6 +1500,10 @@ is{
             other{"suðursúdönsk pund"}
         }
         STD{
+            one{"Saó Tóme og Prinsípe-dóbra (1977–2017)"}
+            other{"Saó Tóme og Prinsípe-dóbrur (1977–2017)"}
+        }
+        STN{
             one{"Saó Tóme og Prinsípe-dóbra"}
             other{"Saó Tóme og Prinsípe-dóbrur"}
         }
@@ -1548,6 +1580,10 @@ is{
             other{"úsbeksk súm"}
         }
         VEF{
+            one{"venesúelskur bólívari (2008–2018)"}
+            other{"venesúelskir bólívarar (2008–2018)"}
+        }
+        VES{
             one{"venesúelskur bólívari"}
             other{"venesúelskir bólívarar"}
         }
@@ -1600,5 +1636,5 @@ is{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.29.65"}
+    Version{"2.1.49.82"}
 }

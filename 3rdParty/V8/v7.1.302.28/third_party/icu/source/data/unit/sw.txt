@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sw{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -53,6 +53,11 @@ sw{
                 one{"ekari {0}"}
                 other{"ekari {0}"}
             }
+            dunam{
+                dnam{"dunamu"}
+                one{"dunamu {0}"}
+                other{"dunamu {0}"}
+            }
             hectare{
                 dnam{"hekta"}
                 one{"hekta {0}"}
@@ -73,19 +78,19 @@ sw{
                 dnam{"inchi za mraba"}
                 one{"inchi {0} ya mraba"}
                 other{"inchi {0} za mraba"}
-                per{"{0} kwa kila inchi ya mraba"}
+                per{"{0} kwa kila inchi mraba"}
             }
             square-kilometer{
                 dnam{"kilomita za mraba"}
                 one{"kilomita {0} ya mraba"}
                 other{"kilomita {0} za mraba"}
-                per{"{0}/km²"}
+                per{"{0} kwa kila kilomita mraba"}
             }
             square-meter{
                 dnam{"mita za mraba"}
                 one{"mita {0} ya mraba"}
                 other{"mita {0} za mraba"}
-                per{"{0} kwa kila mita ya mraba"}
+                per{"{0} kwa kila mita mraba"}
             }
             square-mile{
                 dnam{"maili za mraba"}
@@ -118,10 +123,30 @@ sw{
                 one{"milimoli {0} kwa kila lita"}
                 other{"milimoli {0} kwa kila lita"}
             }
+            mole{
+                dnam{"moli"}
+                one{"moli {0}"}
+                other{"moli {0}"}
+            }
             part-per-million{
                 dnam{"ppm"}
-                one{"{0} ppm"}
-                other{"{0} ppm"}
+                one{"ppm {0}"}
+                other{"ppm {0}"}
+            }
+            percent{
+                dnam{"asilimia"}
+                one{"asilimia {0}"}
+                other{"asilimia {0}"}
+            }
+            permille{
+                dnam{"kwa elfu"}
+                one{"{0} kwa kila elfu"}
+                other{"{0} kwa kila elfu"}
+            }
+            permyriad{
+                dnam{"permyriadi"}
+                one{"permyriadi {0}"}
+                other{"permyriadi {0}"}
             }
         }
         consumption{
@@ -147,6 +172,7 @@ sw{
             }
         }
         coordinate{
+            dnam{"sehemu kuu za dira"}
             east{"{0} Mashariki"}
             north{"{0} Kaskazini"}
             south{"{0} Kusini"}
@@ -193,6 +219,11 @@ sw{
                 one{"megabaiti {0}"}
                 other{"megabaiti {0}"}
             }
+            petabyte{
+                dnam{"petabaiti"}
+                one{"petabaiti {0}"}
+                other{"petabaiti {0}"}
+            }
             terabit{
                 dnam{"terabiti"}
                 one{"terabiti {0}"}
@@ -207,8 +238,8 @@ sw{
         duration{
             century{
                 dnam{"karne"}
-                one{"karne ya {0}"}
-                other{"karne za {0}"}
+                one{"karne {0}"}
+                other{"karne {0}"}
             }
             day{
                 dnam{"siku"}
@@ -291,10 +322,20 @@ sw{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"kalori"}
                 one{"kalori {0}"}
                 other{"kalori {0}"}
+            }
+            electronvolt{
+                dnam{"elektrovolti"}
+                one{"elektrovolti {0}"}
+                other{"elektrovolti {0}"}
             }
             foodcalorie{
                 dnam{"kalori"}
@@ -320,6 +361,18 @@ sw{
                 dnam{"kilowati kwa saa"}
                 one{"kilowati {0} kwa saa"}
                 other{"kilowati {0} kwa saa"}
+            }
+        }
+        force{
+            newton{
+                dnam{"newtoni"}
+                one{"newtoni {0}"}
+                other{"newtoni {0}"}
+            }
+            pound-force{
+                dnam{"pauni za kani"}
+                one{"pauni {0} ya kani"}
+                other{"pauni {0} za kani"}
             }
         }
         frequency{
@@ -430,6 +483,16 @@ sw{
                 one{"pikomita {0}"}
                 other{"pikomita {0}"}
             }
+            point{
+                dnam{"pointi"}
+                one{"pointi {0}"}
+                other{"pointi {0}"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                one{"{0} R☉"}
+                other{"{0} R☉"}
+            }
             yard{
                 dnam{"yadi"}
                 one{"yadi {0}"}
@@ -442,12 +505,27 @@ sw{
                 one{"lux {0}"}
                 other{"lux {0}"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"karati"}
                 one{"karati {0}"}
                 other{"karati {0}"}
+            }
+            dalton{
+                dnam{"Da"}
+                one{"{0} Da"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"gramu"}
@@ -493,6 +571,11 @@ sw{
                 other{"ratili {0}"}
                 per{"{0} kwa kila ratili"}
             }
+            solar-mass{
+                dnam{"M☉"}
+                one{"{0} M☉"}
+                other{"{0} M☉"}
+            }
             ton{
                 dnam{"tani"}
                 one{"tani {0}"}
@@ -532,6 +615,11 @@ sw{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"kanieneo ya hewa"}
+                one{"kanieneo {0}"}
+                other{"kanieneo {0}"}
+            }
             hectopascal{
                 dnam{"hektopaskali"}
                 one{"hektopaskali {0}"}
@@ -541,6 +629,16 @@ sw{
                 dnam{"inchi za zebaki"}
                 one{"inchi {0} ya zebaki"}
                 other{"inchi {0} za zebaki"}
+            }
+            kilopascal{
+                dnam{"kilopaskali"}
+                one{"kilopaskali {0}"}
+                other{"kilopaskali {0}"}
+            }
+            megapascal{
+                dnam{"megapaskali"}
+                one{"megapaskali {0}"}
+                other{"megapaskali {0}"}
             }
             millibar{
                 dnam{"kipimo cha milibari"}
@@ -602,11 +700,28 @@ sw{
                 other{"kelvini {0}"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"newtonimita"}
+                one{"newtonimita {0}"}
+                other{"newtonimita {0}"}
+            }
+            pound-foot{
+                dnam{"paunifuti"}
+                one{"paunifuti {0}"}
+                other{"paunifuti {0}"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"ekari futi"}
                 one{"ekari futi {0}"}
                 other{"ekari futi {0}"}
+            }
+            barrel{
+                dnam{"mapipa"}
+                one{"pipa {0}"}
+                other{"mapipa {0}"}
             }
             centiliter{
                 dnam{"sentilita"}
@@ -669,6 +784,11 @@ sw{
                 dnam{"aunsi za ujazo"}
                 one{"aunsi {0} ya ujazo"}
                 other{"aunsi {0} za ujazo"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"galoni"}
@@ -780,6 +900,13 @@ sw{
         compound{
             per{"{0}/{1}"}
         }
+        concentr{
+            percent{
+                dnam{"asilimia"}
+                one{"asilimia {0}"}
+                other{"asilimia {0}"}
+            }
+        }
         consumption{
             liter-per-100kilometers{
                 dnam{"lita kwa kilomita 100"}
@@ -788,6 +915,7 @@ sw{
             }
         }
         coordinate{
+            dnam{"mwelekeo"}
             east{"{0} Mashariki"}
             north{"{0} Kaskazini"}
             south{"{0} Kusini"}
@@ -1024,6 +1152,11 @@ sw{
                 one{"ekari {0}"}
                 other{"ekari {0}"}
             }
+            dunam{
+                dnam{"dunamu"}
+                one{"dunamu {0}"}
+                other{"dunamu {0}"}
+            }
             hectare{
                 dnam{"hekta"}
                 one{"hekta {0}"}
@@ -1089,10 +1222,30 @@ sw{
                 one{"mmol {0}/lita"}
                 other{"mmol {0}/L"}
             }
+            mole{
+                dnam{"moli"}
+                one{"moli {0}"}
+                other{"moli {0}"}
+            }
             part-per-million{
                 dnam{"ppm"}
-                one{"{0} ppm"}
-                other{"{0} ppm"}
+                one{"ppm {0}"}
+                other{"ppm {0}"}
+            }
+            percent{
+                dnam{"asilimia"}
+                one{"asilimia {0}"}
+                other{"asilimia {0}"}
+            }
+            permille{
+                dnam{"kwa elfu"}
+                one{"{0} kwa elfu"}
+                other{"{0} kwa elfu"}
+            }
+            permyriad{
+                dnam{"permyriadi"}
+                one{"{0}‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
@@ -1118,6 +1271,7 @@ sw{
             }
         }
         coordinate{
+            dnam{"mwelekeo"}
             east{"{0} Mashariki"}
             north{"{0} Kaskazini"}
             south{"{0} Kusini"}
@@ -1164,6 +1318,11 @@ sw{
                 one{"MB {0}"}
                 other{"MB {0}"}
             }
+            petabyte{
+                dnam{"petabaiti"}
+                one{"PB {0}"}
+                other{"PB {0}"}
+            }
             terabit{
                 dnam{"terabiti"}
                 one{"terabiti {0}"}
@@ -1178,8 +1337,8 @@ sw{
         duration{
             century{
                 dnam{"karne"}
-                one{"karne ya {0}"}
-                other{"karne za {0}"}
+                one{"karne {0}"}
+                other{"karne {0}"}
             }
             day{
                 dnam{"siku"}
@@ -1262,10 +1421,20 @@ sw{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"kalori"}
                 one{"kalori {0}"}
                 other{"kalori {0}"}
+            }
+            electronvolt{
+                dnam{"elektrovolti"}
+                one{"{0} eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"kalori"}
@@ -1291,6 +1460,18 @@ sw{
                 dnam{"kilowati kwa saa"}
                 one{"{0} kWh"}
                 other{"{0} kWh"}
+            }
+        }
+        force{
+            newton{
+                dnam{"newtoni"}
+                one{"{0} N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"paunikani"}
+                one{"{0} lbf"}
+                other{"{0} lbf"}
             }
         }
         frequency{
@@ -1401,6 +1582,16 @@ sw{
                 one{"pikomita {0}"}
                 other{"pikomita {0}"}
             }
+            point{
+                dnam{"pointi"}
+                one{"pointi {0}"}
+                other{"pointi {0}"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                one{"{0} R☉"}
+                other{"{0} R☉"}
+            }
             yard{
                 dnam{"yadi"}
                 one{"yadi {0}"}
@@ -1413,12 +1604,27 @@ sw{
                 one{"lx {0}"}
                 other{"lx {0}"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"karati"}
                 one{"karati {0}"}
                 other{"karati {0}"}
+            }
+            dalton{
+                dnam{"Da"}
+                one{"{0} Da"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"gramu"}
@@ -1464,6 +1670,11 @@ sw{
                 other{"ratili {0}"}
                 per{"{0}/lb"}
             }
+            solar-mass{
+                dnam{"M☉"}
+                one{"{0} M☉"}
+                other{"{0} M☉"}
+            }
             ton{
                 dnam{"tani"}
                 one{"tani {0}"}
@@ -1503,6 +1714,11 @@ sw{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"atm"}
+                one{"atm {0}"}
+                other{"atm {0}"}
+            }
             hectopascal{
                 dnam{"hektopaskali"}
                 one{"hPa {0}"}
@@ -1513,6 +1729,16 @@ sw{
                 one{"{0} inHg"}
                 other{"{0} inHg"}
             }
+            kilopascal{
+                dnam{"kPa"}
+                one{"kPa {0}"}
+                other{"kPa {0}"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                one{"MPa {0}"}
+                other{"MPa {0}"}
+            }
             millibar{
                 dnam{"kipimo cha milibari"}
                 one{"mbar {0}"}
@@ -1521,7 +1747,7 @@ sw{
             millimeter-of-mercury{
                 dnam{"milimita za zebaki"}
                 one{"milimita {0} ya zebaki"}
-                other{"milimita {0} za zebaki"}
+                other{"{0} mm Hg"}
             }
             pound-per-square-inch{
                 dnam{"pauni kwa kila inchi mraba"}
@@ -1573,11 +1799,28 @@ sw{
                 other{"{0} K"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                one{"{0} N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                one{"{0} lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"ekari futi"}
                 one{"ekari futi {0}"}
                 other{"ekari futi {0}"}
+            }
+            barrel{
+                dnam{"pipa"}
+                one{"pipa {0}"}
+                other{"mapipa {0}"}
             }
             centiliter{
                 dnam{"sentilita"}
@@ -1640,6 +1883,11 @@ sw{
                 dnam{"aunsi za ujazo"}
                 one{"fl oz {0}"}
                 other{"fl oz {0}"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"galoni"}

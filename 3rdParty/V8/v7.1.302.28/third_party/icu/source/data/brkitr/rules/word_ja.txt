@@ -273,3 +273,8 @@ $Double_QuoteEx $Hebrew_LetterEx;
 
 # For dictionary-based break
 $dictionary $dictionary;
+
+# Skip over potentially very long words or numbers.
+# Not necessary to reach a safe point, but avoids potential performance
+problems.
+($ALetter | $Numeric) ($ALetter | $Numeric);

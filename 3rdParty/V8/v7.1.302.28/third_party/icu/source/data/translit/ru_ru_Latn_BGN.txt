@@ -22,10 +22,7 @@
 ########################################################################
 # MINIMAL FILTER: Russian-Latin
 ::[АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя];
-# BUG(ftang) remove the following line. Otherwise the rule for
-# Й й Ё ё will break since the rule is written in NFC but
-# the line decomposes the text.
-# :: NFD (NFC) ;
+::NFC;
 ########################################################################
 # Define All Transformation Variables
 ########################################################################
@@ -44,7 +41,8 @@ $lower = [:Lowercase:];
 # Rules moved to front to avoid masking
 ########################################################################
 $lowerVowels { ы → ·y ;
-$upperVowels { [Ыы] → ·Y ;
+$upperVowels { [Ыы] } $lower → ·y ;
+$upperVowels { [Ыы] } → ·Y ;
 [$consonants - [Йй]]{Э → ·E ;
 [$consonants - [Йй]]{э → ·e ;
 [$upperVowels [ЙЪЬ]] { Е } $upper → YE ; # CYRILLIC CAPITAL LETTER IE
@@ -53,9 +51,9 @@ $upperVowels { [Ыы] → ·Y ;
 [$upperVowels [ЙЪЬ]] { Ё } $upper → YË ; # CYRILLIC CAPITAL LETTER IO
 [$upperVowels [ЙЪЬ]] { Ё → Yë ; # CYRILLIC CAPITAL LETTER IO
 [$upperVowels $lowerVowels [ЙйЪъЬь]] { ё → yë ; # CYRILLIC SMALL LETTER IO
-# Since in the above rule we look use the context before the characters,
-# we have to perform them in a separate pass before we change the vowels
-# the ::Null forces a separate pass.
+# Since in the above rule we look at the Cyrillic context before the E/Ё/ё,
+# we have to transform these in a separate pass before we change the vowels.
+# The ::Null forces a separate pass.
 ::Null;
 ########################################################################
 # Start of Alphabetic Transformations
@@ -107,8 +105,8 @@ $wordBoundary{е → ye ; # CYRILLIC SMALL LETTER IE
 # BUG(ftang)- the following two lines said BEFORE the vowels, instead of AFTER
 # Ё}[$upperVowels [ЙЪЬ]] → YË ; # CYRILLIC CAPITAL LETTER IO
 # Ё}[$lowerVowels [йъь]] → Yë ; # CYRILLIC CAPITAL LETTER IO
-$wordBoundary {Ё} $upper → YË ; # CYRILLIC CAPITAL LETTER IO
-$wordBoundary {Ё} $lower → Yë ; # CYRILLIC CAPITAL LETTER IO
+$wordBoundary {Ё} [·]? $upper → YË ; # CYRILLIC CAPITAL LETTER IO
+$wordBoundary {Ё} [·]? $lower → Yë ; # CYRILLIC CAPITAL LETTER IO
 Ё → Ë ; # CYRILLIC CAPITAL LETTER IO
 # BUG(ftang)- the following line said BEFORE the vowels, instead of AFTER
 # ё}[$upperVowels $lowerVowels [ЙйЪъЬь]] → yë ; # CYRILLIC SMALL LETTER IO

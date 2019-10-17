@@ -124,6 +124,10 @@ kab{
         }
         MRO{
             "MRO",
+            "Agiya Amuriṭani (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Agiya Amuriṭani",
         }
         MUR{
@@ -176,6 +180,10 @@ kab{
         }
         STD{
             "STD",
+            "Asw Ṭum d Udubra Amenzay (1977–2017)",
+        }
+        STN{
+            "STN",
             "Asw Ṭum d Udubra Amenzay",
         }
         SZL{
@@ -223,5 +231,5 @@ kab{
             "Adular Azimbabwi",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

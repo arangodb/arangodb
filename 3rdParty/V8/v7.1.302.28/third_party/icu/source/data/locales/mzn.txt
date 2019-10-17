@@ -18,10 +18,15 @@ mzn{
     ExemplarCharactersPunctuation{"[\\- ‐ ، ٫ ٬ ؛ \\: ! ؟ . … ‹ › « » ( ) \\[ \\] * / \\\\]"}
     MoreInformation{"؟"}
     NumberElements{
+        arabext{
+            symbols{
+                timeSeparator{":"}
+            }
+        }
         default{"arabext"}
         native{"arabext"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     calendar{
         default{"persian"}
         gregorian{

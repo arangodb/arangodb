@@ -4,7 +4,7 @@ ru_BY{
     Currencies{
         BYN{
             "Br",
-            "Белорусский рубль",
+            "белорусский рубль",
         }
         RUR{
             "RUR",
@@ -14,5 +14,5 @@ ru_BY{
     Currencies%narrow{
         BYN{"Br"}
     }
-    Version{"2.1.30.5"}
+    Version{"2.1.47.71"}
 }

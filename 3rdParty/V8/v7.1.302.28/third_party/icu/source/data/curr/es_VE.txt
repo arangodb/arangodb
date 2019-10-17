@@ -7,9 +7,20 @@ es_VE{
             "Bs.",
             "bolívar venezolano",
         }
+        VES{
+            "Bs.S",
+            "bolívar soberano",
+        }
     }
     Currencies%narrow{
         VEF{"Bs."}
+        VES{"Bs.S"}
     }
-    Version{"2.1.27.99"}
+    CurrencyPlurals{
+        VES{
+            one{"bolívar soberano"}
+            other{"bolívares soberanos"}
+        }
+    }
+    Version{"2.1.47.70"}
 }

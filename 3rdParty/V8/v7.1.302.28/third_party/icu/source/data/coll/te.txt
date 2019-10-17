@@ -9,7 +9,7 @@ te{
                 "[reorder Telu Deva Beng Guru Gujr Orya Taml Knda Mlym Sinh]"
                 "&ఔ<ఁ<ం<ః"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

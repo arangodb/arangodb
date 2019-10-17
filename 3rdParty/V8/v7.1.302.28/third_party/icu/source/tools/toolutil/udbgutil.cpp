@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /********************************************************************
  * COPYRIGHT:
@@ -351,8 +351,10 @@ int32_t udbg_enumByName(UDebugEnumType type, const char *value) {
  */
 U_CAPI const char *udbg_getPlatform(void)
 {
-#if U_PLATFORM_HAS_WIN32_API
+#if U_PLATFORM_USES_ONLY_WIN32_API
     return "Windows";
+#elif U_PLATFORM == U_PF_CYGWIN
+    return "Cygwin";
 #elif U_PLATFORM == U_PF_UNKNOWN
     return "unknown";
 #elif U_PLATFORM == U_PF_DARWIN
@@ -398,7 +400,7 @@ U_CAPI  int32_t
 paramStatic(const USystemParams *param, char *target, int32_t targetCapacity, UErrorCode *status) {
   if(param->paramStr==NULL) return paramEmpty(param,target,targetCapacity,status);
   if(U_FAILURE(*status))return 0;
-  int32_t len = uprv_strlen(param->paramStr);
+  int32_t len = static_cast<int32_t>(uprv_strlen(param->paramStr));
   if(target!=NULL) {
     uprv_strncpy(target,param->paramStr,uprv_min(len,targetCapacity));
   }
@@ -410,14 +412,14 @@ static const char *nullString = "(null)";
 static int32_t stringToStringBuffer(char *target, int32_t targetCapacity, const char *str, UErrorCode *status) {
   if(str==NULL) str=nullString;
 
-  int32_t len = uprv_strlen(str);
+  int32_t len = static_cast<int32_t>(uprv_strlen(str));
   if (U_SUCCESS(*status)) {
     if(target!=NULL) {
       uprv_strncpy(target,str,uprv_min(len,targetCapacity));
     }
   } else {
     const char *s = u_errorName(*status);
-    len = uprv_strlen(s);
+    len = static_cast<int32_t>(uprv_strlen(s));
     if(target!=NULL) {
       uprv_strncpy(target,s,uprv_min(len,targetCapacity));
     }
@@ -552,7 +554,6 @@ static const USystemParams systemParams[] = {
 #endif
   { "uconfig.internal_digitlist", paramInteger, "b", 1}, /* always 1 */
   { "uconfig.have_parseallinput", paramInteger, "b", UCONFIG_HAVE_PARSEALLINPUT},
-  { "uconfig.format_fastpaths_49",paramInteger, "b", UCONFIG_FORMAT_FASTPATHS_49},
 
 
 };
@@ -612,40 +613,6 @@ U_CAPI char *udbg_knownIssueURLFrom(const char *ticket, char *buf) {
   return buf;
 }
 
-
-#if !U_HAVE_STD_STRING
-const char *warning = "WARNING: Don't have std::string (STL) - known issue logs will be deficient.";
-
-U_CAPI void *udbg_knownIssue_openU(void *ptr, const char *ticket, char *where, const UChar *msg, UBool *firstForTicket,
-                                   UBool *firstForWhere) {
-  if(ptr==NULL) {
-    puts(warning);
-  }
-  printf("%s\tKnown Issue #%s\n", where, ticket);
-
-  return (void*)warning;
-}
-
-U_CAPI void *udbg_knownIssue_open(void *ptr, const char *ticket, char *where, const char *msg, UBool *firstForTicket,
-                                   UBool *firstForWhere) {
-  if(ptr==NULL) {
-    puts(warning);
-  }
-  if(msg==NULL) msg = "";
-  printf("%s\tKnown Issue #%s  \"%s\n", where, ticket, msg);
-
-  return (void*)warning;
-}
-
-U_CAPI UBool udbg_knownIssue_print(void *ptr) {
-  puts(warning);
-  return FALSE;
-}
-
-U_CAPI void udbg_knownIssue_close(void *ptr) {
-  // nothing to do
-}
-#else
 
 #include <set>
 #include <map>
@@ -785,5 +752,3 @@ U_CAPI void udbg_knownIssue_close(void *ptr) {
   KnownIssues *t = static_cast<KnownIssues*>(ptr);
   delete t;
 }
-
-#endif

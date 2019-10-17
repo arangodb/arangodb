@@ -4,10 +4,11 @@ mg{
     AuxExemplarCharacters{"[c q u w x]"}
     ExemplarCharacters{"[a à â b d e é è ê ë f g h i ì î ï j k l m n ñ o ô p r s t v y z]"}
     ExemplarCharactersIndex{"[A B D E F G H I J K L M N O P R S T V Y Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -32,7 +33,7 @@ mg{
         }
         minimumGroupingDigits{"1"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.48.4"}
     calendar{
         generic{
             DateTimePatterns{
@@ -132,10 +133,6 @@ mg{
                 MMM{"MMM"}
                 MMMEd{"E d MMM"}
                 MMMMEd{"E d MMMM"}
-                MMMMW{
-                    one{"'week' W 'of' MMM"}
-                    other{"'week' W 'of' MMM"}
-                }
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
                 MMd{"d/MM"}
@@ -159,10 +156,6 @@ mg{
                 yMd{"y-MM-dd"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
-                yw{
-                    one{"'week' w 'of' y"}
-                    other{"'week' w 'of' y"}
-                }
             }
             dayNames{
                 format{

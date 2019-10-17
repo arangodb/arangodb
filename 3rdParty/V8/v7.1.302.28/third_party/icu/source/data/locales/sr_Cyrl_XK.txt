@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Cyrl_XK{
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
     calendar{
         generic{
             intervalFormats{
@@ -12,30 +12,6 @@ sr_Cyrl_XK{
             }
         }
         gregorian{
-            dayNames{
-                format{
-                    abbreviated{
-                        "нед.",
-                        "пон.",
-                        "ут.",
-                        "ср.",
-                        "чет.",
-                        "пет.",
-                        "суб.",
-                    }
-                }
-                stand-alone{
-                    abbreviated{
-                        "нед.",
-                        "пон.",
-                        "ут.",
-                        "ср.",
-                        "чет.",
-                        "пет.",
-                        "суб.",
-                    }
-                }
-            }
             dayPeriod{
                 format{
                     abbreviated{
@@ -65,34 +41,34 @@ sr_Cyrl_XK{
             monthNames{
                 format{
                     abbreviated{
-                        "јан.",
-                        "феб.",
+                        "јан",
+                        "феб",
                         "март",
-                        "апр.",
+                        "апр",
                         "мај",
                         "јун",
                         "јул",
-                        "авг.",
-                        "септ.",
-                        "окт.",
-                        "нов.",
-                        "дец.",
+                        "авг",
+                        "септ",
+                        "окт",
+                        "нов",
+                        "дец",
                     }
                 }
                 stand-alone{
                     abbreviated{
-                        "јан.",
-                        "феб.",
+                        "јан",
+                        "феб",
                         "март",
-                        "апр.",
+                        "апр",
                         "мај",
                         "јун",
                         "јул",
-                        "авг.",
-                        "септ.",
-                        "окт.",
-                        "нов.",
-                        "дец.",
+                        "авг",
+                        "септ",
+                        "окт",
+                        "нов",
+                        "дец",
                     }
                 }
             }

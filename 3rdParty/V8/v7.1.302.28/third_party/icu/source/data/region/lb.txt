@@ -181,7 +181,7 @@ lb{
         MF{"St. Martin"}
         MG{"Madagaskar"}
         MH{"Marshallinselen"}
-        MK{"Mazedonien"}
+        MK{"Nordmazedonien"}
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolei"}
@@ -272,7 +272,7 @@ lb{
         UA{"Ukrain"}
         UG{"Uganda"}
         UM{"Amerikanesch-Ozeanien"}
-        US{"Vereenegt Staate vun Amerika"}
+        US{"Vereenegt Staaten"}
         UY{"Uruguay"}
         UZ{"Usbekistan"}
         VA{"Vatikanstad"}
@@ -300,7 +300,6 @@ lb{
         CD{"Kongo (Demokratesch Republik)"}
         CG{"Kongo (Republik)"}
         CI{"Elfebeeküst"}
-        MK{"Mazedonien (EJR)"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
 }

@@ -31,6 +31,7 @@ is{
         151{"Austur-Evrópa"}
         154{"Norður-Evrópa"}
         155{"Vestur-Evrópa"}
+        202{"Afríka sunnan Sahara"}
         419{"Rómanska Ameríka"}
         AC{"Ascension-eyja"}
         AD{"Andorra"}
@@ -106,9 +107,10 @@ is{
         ES{"Spánn"}
         ET{"Eþíópía"}
         EU{"Evrópusambandið"}
+        EZ{"Evrusvæðið"}
         FI{"Finnland"}
         FJ{"Fídjíeyjar"}
-        FK{"Falklandseyjar"}
+        FK{"Falklandseyjar (Malvinas)"}
         FM{"Míkrónesía"}
         FO{"Færeyjar"}
         FR{"Frakkland"}
@@ -181,7 +183,7 @@ is{
         MF{"St. Martin"}
         MG{"Madagaskar"}
         MH{"Marshalleyjar"}
-        MK{"Makedónía"}
+        MK{"Norður-Makedónía"}
         ML{"Malí"}
         MM{"Mjanmar (Búrma)"}
         MN{"Mongólía"}
@@ -295,15 +297,13 @@ is{
     }
     Countries%short{
         GB{"Bretland"}
-        UN{"Sameinuðu þjóðirnar"}
+        UN{"SÞ"}
         US{"BNA"}
     }
     Countries%variant{
         CD{"Kongó (Lýðstjórnarlýðveldið)"}
         CG{"Kongó (Lýðveldið)"}
-        FK{"Falklandseyjar (Malvinas)"}
-        MK{"Makedónía (Fyrrverandi lýðveldi Júgóslavíu)"}
         TL{"Austur-Tímor"}
     }
-    Version{"2.1.29.65"}
+    Version{"2.1.49.82"}
 }

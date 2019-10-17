@@ -55,7 +55,7 @@ $(ICUDIR)/config.status:
 	-mv $(ICUDIR) $(ICUDIR)old
 	-(rm -rf $(ICUDIR)old &)
 	mkdir $(ICUDIR)
-	( cd $(ICUDIR) ; CPPFLAGS=-DU_DISABLE_RENAMING=1 $(GENREN_CONFIGURE_ENV) $(top_srcdir)/../configure --with-data-packaging=archive --enable-tests=no --prefix=`pwd` $(GENREN_CONFIGURE_OPTS) )
+	( cd $(ICUDIR) ; CPPFLAGS="-DU_DISABLE_RENAMING=1 -DUCONFIG_ENABLE_PLUGINS" $(GENREN_CONFIGURE_ENV) $(top_srcdir)/../configure --with-data-packaging=archive --enable-tests=no --prefix=`pwd` $(GENREN_CONFIGURE_OPTS) )
     # cause lib and bin to be created, and any other general sanity
 	$(MAKE) $(FLAG_OVERRIDE) -C $(ICUDIR) clean
 	$(MAKE) $(FLAG_OVERRIDE) -C $(ICUDIR) all-local

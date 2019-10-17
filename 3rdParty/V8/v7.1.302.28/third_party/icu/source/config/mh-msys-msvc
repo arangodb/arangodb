@@ -52,8 +52,9 @@ endif
 # -EHsc enables exception handling
 # -Zc:wchar_t makes wchar_t a native type. Required for C++ ABI compatibility.
 # -D_CRT_SECURE_NO_DEPRECATE is needed to quiet warnings about using standard C functions.
-CFLAGS+=-GF -nologo
-CXXFLAGS+=-GF -nologo -EHsc -Zc:wchar_t
+# -utf-8 set source file encoding to utf-8.
+CFLAGS+=-GF -nologo -utf-8
+CXXFLAGS+=-GF -nologo -EHsc -Zc:wchar_t -utf-8
 CPPFLAGS+=-D_CRT_SECURE_NO_DEPRECATE
 DEFS+=-DWIN32 -DCYGWINMSVC
 LDFLAGS+=-nologo

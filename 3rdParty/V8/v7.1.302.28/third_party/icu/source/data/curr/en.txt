@@ -262,6 +262,10 @@ en{
             "CLP",
             "Chilean Peso",
         }
+        CNH{
+            "CNH",
+            "Chinese Yuan (offshore)",
+        }
         CNX{
             "CNX",
             "Chinese People’s Bank Dollar",
@@ -308,7 +312,7 @@ en{
         }
         CZK{
             "CZK",
-            "Czech Republic Koruna",
+            "Czech Koruna",
         }
         DDM{
             "DDM",
@@ -680,6 +684,10 @@ en{
         }
         MRO{
             "MRO",
+            "Mauritanian Ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritanian Ouguiya",
         }
         MTL{
@@ -792,7 +800,7 @@ en{
         }
         PHP{
             "PHP",
-            "Philippine Peso",
+            "Philippine Piso",
         }
         PKR{
             "PKR",
@@ -912,6 +920,10 @@ en{
         }
         STD{
             "STD",
+            "São Tomé & Príncipe Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "São Tomé & Príncipe Dobra",
         }
         SUR{
@@ -1022,6 +1034,10 @@ en{
             "UYU",
             "Uruguayan Peso",
         }
+        UYW{
+            "UYW",
+            "Uruguayan Nominal Wage Index Unit",
+        }
         UZS{
             "UZS",
             "Uzbekistani Som",
@@ -1032,6 +1048,10 @@ en{
         }
         VEF{
             "VEF",
+            "Venezuelan Bolívar (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venezuelan Bolívar",
         }
         VND{
@@ -1131,7 +1151,7 @@ en{
             "ADB Unit of Account",
         }
         XXX{
-            "XXX",
+            "¤",
             "Unknown Currency",
         }
         YDD{
@@ -1456,6 +1476,10 @@ en{
             one{"Chilean peso"}
             other{"Chilean pesos"}
         }
+        CNH{
+            one{"Chinese yuan (offshore)"}
+            other{"Chinese yuan (offshore)"}
+        }
         CNX{
             one{"Chinese People’s Bank dollar"}
             other{"Chinese People’s Bank dollars"}
@@ -1501,8 +1525,8 @@ en{
             other{"Cypriot pounds"}
         }
         CZK{
-            one{"Czech Republic koruna"}
-            other{"Czech Republic korunas"}
+            one{"Czech koruna"}
+            other{"Czech korunas"}
         }
         DDM{
             one{"East German mark"}
@@ -1873,6 +1897,10 @@ en{
             other{"Macanese patacas"}
         }
         MRO{
+            one{"Mauritanian ouguiya (1973–2017)"}
+            other{"Mauritanian ouguiyas (1973–2017)"}
+        }
+        MRU{
             one{"Mauritanian ouguiya"}
             other{"Mauritanian ouguiyas"}
         }
@@ -1985,8 +2013,8 @@ en{
             other{"Papua New Guinean kina"}
         }
         PHP{
-            one{"Philippine peso"}
-            other{"Philippine pesos"}
+            one{"Philippine piso"}
+            other{"Philippine pisos"}
         }
         PKR{
             one{"Pakistani rupee"}
@@ -2105,6 +2133,10 @@ en{
             other{"South Sudanese pounds"}
         }
         STD{
+            one{"São Tomé & Príncipe dobra (1977–2017)"}
+            other{"São Tomé & Príncipe dobras (1977–2017)"}
+        }
+        STN{
             one{"São Tomé & Príncipe dobra"}
             other{"São Tomé & Príncipe dobras"}
         }
@@ -2216,6 +2248,10 @@ en{
             one{"Uruguayan peso"}
             other{"Uruguayan pesos"}
         }
+        UYW{
+            one{"Uruguayan nominal wage index unit"}
+            other{"Uruguayan nominal wage index units"}
+        }
         UZS{
             one{"Uzbekistani som"}
             other{"Uzbekistani som"}
@@ -2225,6 +2261,10 @@ en{
             other{"Venezuelan bolívars (1871–2008)"}
         }
         VEF{
+            one{"Venezuelan bolívar (2008–2018)"}
+            other{"Venezuelan bolívars (2008–2018)"}
+        }
+        VES{
             one{"Venezuelan bolívar"}
             other{"Venezuelan bolívars"}
         }
@@ -2393,5 +2433,5 @@ en{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.30.50"}
+    Version{"2.1.48.65"}
 }

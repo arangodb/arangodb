@@ -50,7 +50,7 @@ fo{
         bin{"bini"}
         bla{"siksika"}
         bm{"bambara"}
-        bn{"bengalskt"}
+        bn{"bangla"}
         bo{"tibetskt"}
         br{"bretonskt"}
         brx{"bodo"}
@@ -135,7 +135,7 @@ fo{
         hr{"kroatiskt"}
         hsb{"ovara sorbian"}
         hsn{"xiang kinesiskt"}
-        ht{"haitiskt"}
+        ht{"haitiskt creole"}
         hu{"ungarskt"}
         hup{"hupa"}
         hy{"armenskt"}
@@ -278,7 +278,7 @@ fo{
         nyn{"nyankole"}
         oc{"occitanskt"}
         om{"oromo"}
-        or{"oriya"}
+        or{"odia"}
         os{"ossetiskt"}
         pa{"punjabi"}
         pag{"pangasinan"}
@@ -419,7 +419,7 @@ fo{
     Scripts{
         Arab{"arabisk"}
         Armn{"armenskt"}
-        Beng{"bengali"}
+        Beng{"bangla"}
         Bopo{"bopomofo"}
         Brai{"blindaskrift"}
         Cyrl{"kyrilliskt"}
@@ -448,7 +448,7 @@ fo{
         Mlym{"malayalam"}
         Mong{"mongolsk"}
         Mymr{"myanmarskt"}
-        Orya{"oriya"}
+        Orya{"odia"}
         Sinh{"sinhala"}
         Taml{"tamilskt"}
         Telu{"telugu"}
@@ -511,7 +511,7 @@ fo{
             arabext{"víðkað arabisk tøl"}
             armn{"armensk tøl"}
             armnlow{"armensk tøl (smáir bókstavir)"}
-            beng{"bengalisk tøl"}
+            beng{"bangla tøl"}
             deva{"devanagarik tøl"}
             ethi{"etiopisk tøl"}
             fullwide{"tøl í fullari longd"}
@@ -534,7 +534,7 @@ fo{
             latn{"vesturlendsk tøl"}
             mlym{"malayalam tøl"}
             mymr{"myanmarsk tøl"}
-            orya{"oriya tøl"}
+            orya{"odia tøl"}
             roman{"rómartøl"}
             romanlow{"rómartøl (smáir bókstavir)"}
             taml{"vanlig tamilsk tøl"}
@@ -550,9 +550,10 @@ fo{
         POLYTON{"polytonísk"}
         WADEGILE{"Wade-Giles"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.48.9"}
     characterLabelPattern{
         all{"{0} — Alt"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — Sambæri"}
         enclosed{"{0} — Girða"}
         extended{"{0} — Víðkað"}

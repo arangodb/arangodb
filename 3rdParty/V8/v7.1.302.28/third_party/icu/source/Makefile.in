@@ -34,9 +34,11 @@ subdir = .
 @LAYOUTEX_TRUE@LAYOUTEX = layoutex
 @ICUIO_TRUE@ICUIO = io
 @EXTRAS_TRUE@EXTRA = extra
-@TESTS_TRUE@TEST = test
+# need tools for tests
+@TOOLS_TRUE@@TESTS_TRUE@TEST = test
 @SAMPLES_TRUE@SAMPLE = samples
 @TOOLS_TRUE@TOOLS = tools
+@TOOLS_TRUE@DATASUBDIR = data
 
 ## pkgconfig setup. Always have uc and i18n. Others are optional.
 ALL_PKGCONFIG_SUFFIX=uc i18n
@@ -45,6 +47,8 @@ ALL_PKGCONFIG_SUFFIX=uc i18n
 
 DOXYGEN = @DOXYGEN@
 DOCZIP = icu-docs.zip
+
+INSTALL_ICU_CONFIG = @INSTALL_ICU_CONFIG@
 
 ## Files to remove for 'make clean'
 CLEANFILES = *~
@@ -58,11 +62,13 @@ INSTALLED_BUILT_FILES = $(top_builddir)/config/Makefile.inc $(top_builddir)/conf
 LOCAL_BUILT_FILES = icudefs.mk config/icucross.mk config/icucross.inc
 
 DOCDIRS = common i18n
-SUBDIRS =  stubdata common i18n $(LAYOUTEX) $(ICUIO) $(TOOLS) data $(EXTRA) $(SAMPLE) $(TEST)
+SUBDIRS =  stubdata common i18n $(LAYOUTEX) $(ICUIO) $(TOOLS) $(DATASUBDIR) $(EXTRA) $(SAMPLE) $(TEST)
 
 SECTION = 1
 
+ifeq ($(INSTALL_ICU_CONFIG),true)
 MANX_FILES = config/icu-config.$(SECTION)
+endif
 
 ALL_MAN_FILES = $(MANX_FILES)
 
@@ -85,7 +91,7 @@ all: all-local all-recursive
 install: install-recursive install-local
 clean: clean-recursive-with-twist clean-local
 distclean : distclean-recursive distclean-local
-dist: dist-recursive dist-local
+dist: dist-recursive
 check: all check-recursive
 check-recursive: all
 xcheck: all xcheck-recursive
@@ -140,6 +146,10 @@ $(LIBDIR) $(BINDIR):
 
 ## Recursive targets
 all-recursive install-recursive clean-recursive distclean-recursive dist-recursive check-recursive check-exhaustive-recursive: $(LIBDIR) $(BINDIR)
+ifneq ($(NEED_ESCAPING),)
+	@echo "building tools/escapesrc (Needed for this platform with NEED_ESCAPING)"
+	@(cd tools/escapesrc && $(MAKE) RECURSIVE=YES $$local_target) || exit
+endif
 	@dot_seen=no; \
 	target=`echo $@ | sed s/-recursive//`; \
 	list='$(LOCAL_SUBDIRS)'; for subdir in $$list; do \
@@ -181,13 +191,15 @@ install-icu: $(INSTALLED_BUILT_FILES)
 	@$(MKINSTALLDIRS) $(DESTDIR)$(libdir)/pkgconfig
 	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(libdir)/pkgconfig/
 	$(INSTALL_DATA) $(top_srcdir)/../LICENSE $(DESTDIR)$(pkgdatadir)/LICENSE
+ifeq ($(INSTALL_ICU_CONFIG),true)
 	$(INSTALL_SCRIPT) $(top_builddir)/config/icu-config $(DESTDIR)$(bindir)/icu-config
+endif
 	$(INSTALL_DATA) $(top_builddir)/config/Makefile.inc $(DESTDIR)$(pkglibdir)/Makefile.inc
 	$(INSTALL_DATA) $(top_builddir)/config/pkgdata.inc $(DESTDIR)$(pkglibdir)/pkgdata.inc
 #	@echo icuinfo.xml is built after make check.
 #	-$(INSTALL_DATA) $(top_builddir)/config/icuinfo.xml $(DESTDIR)$(pkglibdir)/icuinfo.xml
 	cd $(DESTDIR)$(pkglibdir)/..; \
-	    $(RM) current && ln -s $(VERSION) current; \
+	    $(RMV) current && ln -s $(VERSION) current; \
 	    $(RM) Makefile.inc && ln -s current/Makefile.inc Makefile.inc; \
 	    $(RM) pkgdata.inc && ln -s current/pkgdata.inc pkgdata.inc
 
@@ -323,9 +335,10 @@ $(top_builddir)/config/icu-config: $(top_builddir)/Makefile $(top_srcdir)/config
 	-$(RMV) $@
 	$(INSTALL_SCRIPT) $(top_srcdir)/config/icu-config-top $@
 	chmod u+w $@
+	@echo "# Following from icu/icu4c/source/config/Makefile.inc" >> $@
+	LC_ALL=C $(SED) -f $(top_srcdir)/config/make2sh.sed < $(top_builddir)/config/Makefile.inc | grep -v '#M#' | uniq >> $@
 	@echo "# Following from @platform_make_fragment@" >> $@
-	LC_ALL=C sed -f $(top_srcdir)/config/make2sh.sed < $(top_builddir)/config/Makefile.inc | grep -v '#M#' | uniq >> $@
-	LC_ALL=C sed -f $(top_srcdir)/config/make2sh.sed < @platform_make_fragment@ | grep -v '#M#' | uniq >> $@
+	LC_ALL=C $(SED) -f $(top_srcdir)/config/make2sh.sed < @platform_make_fragment@ | grep -v '#M#' | uniq >> $@
 	cat $(top_srcdir)/config/icu-config-bottom >> $@
 	chmod u-w $@
 
@@ -343,7 +356,9 @@ config.status: $(srcdir)/configure $(srcdir)/common/unicode/uvernum.h
 
 install-manx: $(MANX_FILES)
 	$(MKINSTALLDIRS) $(DESTDIR)$(mandir)/man$(SECTION)
+ifneq ($(MANX_FILES),)
 	$(INSTALL_DATA) $? $(DESTDIR)$(mandir)/man$(SECTION)
+endif
 
 config/%.$(SECTION): $(srcdir)/config/%.$(SECTION).in
 	cd $(top_builddir) \

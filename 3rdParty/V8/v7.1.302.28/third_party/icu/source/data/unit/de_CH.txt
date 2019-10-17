@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 de_CH{
-    Version{"2.1.29.33"}
+    Version{"2.1.47.86"}
     units{
         area{
             square-foot{
@@ -28,6 +28,11 @@ de_CH{
                 dnam{"Kubikfuss"}
                 one{"{0} Kubikfuss"}
                 other{"{0} Kubikfuss"}
+            }
+            gallon-imperial{
+                one{"{0} gal Imp."}
+                other{"{0} gal Imp."}
+                per{"{0}/gal Imp."}
             }
         }
     }

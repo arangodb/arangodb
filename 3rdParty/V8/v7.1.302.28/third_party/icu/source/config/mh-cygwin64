@@ -7,7 +7,7 @@
 
 ## Commands to generate dependency files
 GEN_DEPS.c=	$(CC) -E -MM $(DEFS) $(CPPFLAGS)
-GEN_DEPS.cc=	$(CXX) -E -MM $(DEFS) $(CPPFLAGS)
+GEN_DEPS.cc=	$(CXX) -E -MM $(DEFS) $(CPPFLAGS) $(CXXFLAGS)
 
 ## Flags to create/use a static library
 ifneq ($(ENABLE_SHARED),YES)
@@ -17,6 +17,10 @@ else
 ## Make sure that the static libraries can be built
 STATICCPPFLAGS = -DU_STATIC_IMPLEMENTATION
 endif
+
+## ICU requires a minimum target of Windows 7, and WINVER is not set to this by default.
+## https://msdn.microsoft.com/en-us/library/aa383745.aspx
+CPPFLAGS += -DWINVER=0x0601 -D_WIN32_WINNT=0x0601
 
 ## Flags for position independent code
 SHAREDLIBCFLAGS = 

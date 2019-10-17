@@ -7,9 +7,12 @@
 
 #include <vector>
 
+#include "src/common/globals.h"
 #include "src/debug/debug-frames.h"
 #include "src/debug/debug-scopes.h"
-#include "src/objects.h"
+#include "src/debug/debug.h"
+#include "src/execution/frames.h"
+#include "src/objects/objects.h"
 #include "src/objects/shared-function-info.h"
 #include "src/objects/string-table.h"
 
@@ -28,7 +31,7 @@ class DebugEvaluate : public AllStatic {
   // - Parameters and stack-allocated locals need to be materialized.  Altered
   //   values need to be written back to the stack afterwards.
   // - The arguments object needs to materialized.
-  static MaybeHandle<Object> Local(Isolate* isolate, StackFrame::Id frame_id,
+  static MaybeHandle<Object> Local(Isolate* isolate, StackFrameId frame_id,
                                    int inlined_jsframe_index,
                                    Handle<String> source,
                                    bool throw_on_side_effect);
@@ -42,6 +45,10 @@ class DebugEvaluate : public AllStatic {
   static DebugInfo::SideEffectState FunctionGetSideEffectState(
       Isolate* isolate, Handle<SharedFunctionInfo> info);
   static void ApplySideEffectChecks(Handle<BytecodeArray> bytecode_array);
+
+#ifdef DEBUG
+  static void VerifyTransitiveBuiltins(Isolate* isolate);
+#endif  // DEBUG
 
  private:
   // This class builds a context chain for evaluation of expressions

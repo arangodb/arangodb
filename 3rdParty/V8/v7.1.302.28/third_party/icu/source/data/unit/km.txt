@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 km{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -44,6 +44,10 @@ km{
             acre{
                 dnam{"អា"}
                 other{"{0} អា"}
+            }
+            dunam{
+                dnam{"dunams"}
+                other{"{0} dunams"}
             }
             hectare{
                 dnam{"ហិកតា"}
@@ -99,9 +103,25 @@ km{
                 dnam{"មិល្លីម៉ូលក្នុងមួយលីត្រ"}
                 other{"{0} មិល្លីម៉ូលក្នុងមួយលីត្រ"}
             }
+            mole{
+                dnam{"mol"}
+                other{"{0} mol"}
+            }
             part-per-million{
                 dnam{"ផ្នែកក្នុងមួយលាន"}
                 other{"{0} ផ្នែកក្នុងមួយលាន"}
+            }
+            percent{
+                dnam{"ភាគរយ"}
+                other{"{0} ភាគរយ"}
+            }
+            permille{
+                dnam{"‰"}
+                other{"{0}‰"}
+            }
+            permyriad{
+                dnam{"‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
@@ -123,6 +143,7 @@ km{
             }
         }
         coordinate{
+            dnam{"ទិសទាំងបួន"}
             east{"{0}កើត"}
             north{"{0}ជើង"}
             south{"{0}ត្បូង"}
@@ -160,6 +181,10 @@ km{
             megabyte{
                 dnam{"មេហ្គាបៃ"}
                 other{"{0} មេហ្គាបៃ"}
+            }
+            petabyte{
+                dnam{"PB"}
+                other{"{0} PB"}
             }
             terabit{
                 dnam{"តេរ៉ាប៊ីត"}
@@ -242,9 +267,17 @@ km{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"BTU"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"កាឡូរី"}
                 other{"{0} កាឡូរី"}
+            }
+            electronvolt{
+                dnam{"eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"កាឡូរី"}
@@ -265,6 +298,16 @@ km{
             kilowatt-hour{
                 dnam{"គីឡូវ៉ាត់​ម៉ោង"}
                 other{"{0} គីឡូវ៉ាត់​ម៉ោង"}
+            }
+        }
+        force{
+            newton{
+                dnam{"N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                other{"{0} lbf"}
             }
         }
         frequency{
@@ -355,6 +398,14 @@ km{
                 dnam{"ពីកូម៉ែត្រ"}
                 other{"{0} ពីកូម៉ែត្រ"}
             }
+            point{
+                dnam{"pt"}
+                other{"{0} pt"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                other{"{0} R☉"}
+            }
             yard{
                 dnam{"យ៉ាត"}
                 other{"{0} យ៉ាត"}
@@ -365,11 +416,23 @@ km{
                 dnam{"lux"}
                 other{"{0} lux"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"ការ៉ាត់"}
                 other{"{0} ការ៉ាត់"}
+            }
+            dalton{
+                dnam{"Da"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"ក្រាម"}
@@ -407,6 +470,10 @@ km{
                 other{"{0} ផោន"}
                 per{"{0} ក្នុងមួយផោន"}
             }
+            solar-mass{
+                dnam{"M☉"}
+                other{"{0} M☉"}
+            }
             ton{
                 dnam{"តោន"}
                 other{"{0} តោន"}
@@ -439,6 +506,10 @@ km{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"បរិយាកាស"}
+                other{"បរិយាកាស {0}"}
+            }
             hectopascal{
                 dnam{"ហិចតូប៉ាស្កាល់"}
                 other{"{0} ហិចតូប៉ាស្កាល់"}
@@ -446,6 +517,14 @@ km{
             inch-hg{
                 dnam{"អ៊ីញនៃបារត"}
                 other{"{0} អ៊ីញនៃបារត"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                other{"{0} MPa"}
             }
             millibar{
                 dnam{"មិល្លីបារ"}
@@ -496,10 +575,24 @@ km{
                 other{"{0} អង្សា​ខែលវិន"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"អាហ្វីត"}
                 other{"{0} អាហ្វីត"}
+            }
+            barrel{
+                dnam{"bbl"}
+                other{"{0} bbl"}
             }
             centiliter{
                 dnam{"សង់ទីលីត្រ"}
@@ -550,6 +643,10 @@ km{
             fluid-ounce{
                 dnam{"អោន​វត្ថុ​រាវ"}
                 other{"{0} អោន​វត្ថុ​រាវ"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"ហ្គាឡុង"}
@@ -640,6 +737,12 @@ km{
         compound{
             per{"{0}/{1}"}
         }
+        concentr{
+            percent{
+                dnam{"%"}
+                other{"{0}%"}
+            }
+        }
         consumption{
             liter-per-100kilometers{
                 dnam{"L/100km"}
@@ -647,6 +750,7 @@ km{
             }
         }
         coordinate{
+            dnam{"ទិស"}
             east{"{0}កើត"}
             north{"{0}ជើង"}
             south{"{0}ត្បូង"}
@@ -832,6 +936,10 @@ km{
                 dnam{"អា"}
                 other{"{0} ac"}
             }
+            dunam{
+                dnam{"dunams"}
+                other{"{0} dunam"}
+            }
             hectare{
                 dnam{"ហិកតា"}
                 other{"{0} ha"}
@@ -886,9 +994,25 @@ km{
                 dnam{"mmol/L"}
                 other{"{0} mmol/L"}
             }
+            mole{
+                dnam{"mol"}
+                other{"{0} mol"}
+            }
             part-per-million{
                 dnam{"ppm"}
                 other{"{0} ppm"}
+            }
+            percent{
+                dnam{"ភាគរយ"}
+                other{"{0}%"}
+            }
+            permille{
+                dnam{"‰"}
+                other{"{0}‰"}
+            }
+            permyriad{
+                dnam{"‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
@@ -910,6 +1034,7 @@ km{
             }
         }
         coordinate{
+            dnam{"ទិស"}
             east{"{0}កើត"}
             north{"{0}ជើង"}
             south{"{0}ត្បូង"}
@@ -947,6 +1072,10 @@ km{
             megabyte{
                 dnam{"MB"}
                 other{"{0} MB"}
+            }
+            petabyte{
+                dnam{"PB"}
+                other{"{0} PB"}
             }
             terabit{
                 dnam{"Tb"}
@@ -1029,9 +1158,17 @@ km{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"BTU"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"cal"}
                 other{"{0} cal"}
+            }
+            electronvolt{
+                dnam{"eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"Cal"}
@@ -1052,6 +1189,16 @@ km{
             kilowatt-hour{
                 dnam{"kWh"}
                 other{"{0} kWh"}
+            }
+        }
+        force{
+            newton{
+                dnam{"N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                other{"{0} lbf"}
             }
         }
         frequency{
@@ -1142,6 +1289,14 @@ km{
                 dnam{"pm"}
                 other{"{0} pm"}
             }
+            point{
+                dnam{"pt"}
+                other{"{0} pt"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                other{"{0} R☉"}
+            }
             yard{
                 dnam{"យ៉ាត"}
                 other{"{0} yd"}
@@ -1152,11 +1307,23 @@ km{
                 dnam{"lux"}
                 other{"{0} lx"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"ការ៉ាត់"}
                 other{"{0} CD"}
+            }
+            dalton{
+                dnam{"Da"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"ក្រាម"}
@@ -1194,6 +1361,10 @@ km{
                 other{"{0} lb"}
                 per{"{0}/lb"}
             }
+            solar-mass{
+                dnam{"M☉"}
+                other{"{0} M☉"}
+            }
             ton{
                 dnam{"តោន"}
                 other{"{0} tn"}
@@ -1226,6 +1397,10 @@ km{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"atm"}
+                other{"{0} atm"}
+            }
             hectopascal{
                 dnam{"hPa"}
                 other{"{0} hPa"}
@@ -1233,6 +1408,14 @@ km{
             inch-hg{
                 dnam{"inHg"}
                 other{"{0} inHg"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                other{"{0} MPa"}
             }
             millibar{
                 dnam{"mbar"}
@@ -1283,10 +1466,24 @@ km{
                 other{"{0} K"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"អាហ្វីត"}
                 other{"{0} ac ft"}
+            }
+            barrel{
+                dnam{"bbl"}
+                other{"{0} bbl"}
             }
             centiliter{
                 dnam{"cL"}
@@ -1337,6 +1534,10 @@ km{
             fluid-ounce{
                 dnam{"fl oz"}
                 other{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"gal"}

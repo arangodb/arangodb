@@ -51,6 +51,7 @@ fi{
         aro{"araona"}
         arp{"arapaho"}
         arq{"algerianarabia"}
+        ars{"arabia – najd"}
         arw{"arawak"}
         ary{"marokonarabia"}
         arz{"egyptinarabia"}
@@ -108,6 +109,7 @@ fi{
         car{"karibi"}
         cay{"cayuga"}
         cch{"atsam"}
+        ccp{"chakma"}
         ce{"tšetšeeni"}
         ceb{"cebuano"}
         cgg{"kiga"}
@@ -179,7 +181,7 @@ fi{
         eu{"baski"}
         ewo{"ewondo"}
         ext{"extremadura"}
-        fa{"farsi"}
+        fa{"persia"}
         fan{"fang"}
         fat{"fanti"}
         ff{"fulani"}
@@ -192,7 +194,7 @@ fi{
         fr{"ranska"}
         fr_CA{"kanadanranska"}
         fr_CH{"sveitsinranska"}
-        frc{"cajun"}
+        frc{"cajunranska"}
         frm{"keskiranska"}
         fro{"muinaisranska"}
         frp{"arpitaani"}
@@ -339,6 +341,7 @@ fi{
         ln{"lingala"}
         lo{"lao"}
         lol{"mongo"}
+        lou{"louisianankreoli"}
         loz{"lozi"}
         lrc{"pohjoisluri"}
         lt{"liettua"}
@@ -690,6 +693,7 @@ fi{
         Geok{"muinaisgeorgialainen"}
         Geor{"georgialainen"}
         Glag{"glagoliittinen"}
+        Gonm{"masaram-gondi"}
         Goth{"goottilainen"}
         Gran{"grantha"}
         Grek{"kreikkalainen"}
@@ -699,14 +703,14 @@ fi{
         Hang{"hangul"}
         Hani{"kiinalainen han"}
         Hano{"hanunoolainen"}
-        Hans{"yksinkertaistettu han"}
-        Hant{"perinteinen han"}
+        Hans{"yksinkertaistettu"}
+        Hant{"perinteinen"}
         Hatr{"hatralainen"}
         Hebr{"heprealainen"}
         Hira{"hiragana"}
         Hluw{"anatolialaiset hieroglyfit"}
         Hmng{"pahawh hmong"}
-        Hrkt{"hiragana tai katakana"}
+        Hrkt{"japanin tavumerkistöt"}
         Hung{"muinaisunkarilainen"}
         Inds{"induslainen"}
         Ital{"muinaisitalialainen"}
@@ -788,6 +792,7 @@ fi{
         Sind{"khudabadi"}
         Sinh{"sinhalilainen"}
         Sora{"sorang sompeng"}
+        Soyo{"soyombo-kirjaimisto"}
         Sund{"sundalainen"}
         Sylo{"syloti nagri"}
         Syrc{"syyrialainen"}
@@ -817,6 +822,7 @@ fi{
         Xpeo{"muinaispersialainen"}
         Xsux{"sumerilais-akkadilainen nuolenpääkirjoitus"}
         Yiii{"yiläinen"}
+        Zanb{"zanabazar-neliökirjaimisto"}
         Zinh{"peritty"}
         Zmth{"matemaattinen"}
         Zsye{"emoji-symbolit"}
@@ -833,8 +839,8 @@ fi{
         Visp{"Visible Speech"}
     }
     Scripts%stand-alone{
-        Hans{"kiinalainen yksinkertaistettu han"}
-        Hant{"kiinalainen perinteinen han"}
+        Hans{"yksinkertaistettu han"}
+        Hant{"perinteinen han"}
     }
     Scripts%variant{
         Arab{"persialaisarabialainen"}
@@ -1051,10 +1057,12 @@ fi{
         EKAVSK{"serbian ekavialainen ääntämys"}
         EMODENG{"varhaisnykyenglanti"}
         FONIPA{"kansainvälinen foneettinen aakkosto IPA"}
+        FONNAPA{"pohjoisamerikkalainen foneettinen aakkosto NAPA"}
         FONUPA{"uralilainen foneettinen aakkosto UPA"}
         FONXSAMP{"foneettinen X-SAMPA-merkistö"}
         HEPBURN{"japanin Hepburn-latinaistus"}
         HOGNORSK{"norjan högnorsk"}
+        HSISTEMO{"esperanton h-kirjoitus"}
         IJEKAVSK{"serbian ijekavialainen ääntämys"}
         ITIHASA{"sanskriitin eeppinen muoto"}
         JAUER{"retoromaanin jauer-murre"}
@@ -1074,6 +1082,9 @@ fi{
         NULIK{"nykyvolapük"}
         OSOJS{"sloveenin resian Oseaccon/Osojanen alamurre"}
         OXENDICT{"englannin Oxfordin sanakirjan oikeinkirjoitus"}
+        PAHAWH2{"pahawh-hmongin tavukirjoituksen toinen vaihe"}
+        PAHAWH3{"pahawh-hmongin tavukirjoituksen kolmas vaihe"}
+        PAHAWH4{"pahawh-hmongin tavukirjoituksen viimeinen vaihe"}
         PAMAKA{"pamakan kreolimurre"}
         PETR1708{"venäjän Pietarin siviiliaakkosto 1708"}
         PINYIN{"kiinan pinyin-latinaistus"}
@@ -1090,6 +1101,7 @@ fi{
         SIMPLE{"yksinkertaistettu kielimuoto"}
         SOLBA{"sloveenin resian Stolvizzan/Solbican alamurre"}
         SOTAV{"kapverdenkreolin sotaventolainen murreryhmä"}
+        SPANGLIS{"spanglish"}
         SURMIRAN{"retoromaanin surmiran-muoto"}
         SURSILV{"retoromaanin sursilvan-muoto"}
         SUTSILV{"retoromaanin sutsilvan-muoto"}
@@ -1102,21 +1114,22 @@ fi{
         VALENCIA{"katalaanin valencian murre"}
         VALLADER{"reoromaanin vallader-muoto"}
         WADEGILE{"kiinan Wade-Giles-latinaistus"}
+        XSISTEMO{"esperanton x-kirjoitus"}
     }
     Variants%secondary{
         FONUPA{"suomalais-ugrilainen tarkekirjoitus"}
     }
-    Version{"2.1.29.88"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
-        all{"{0} – Kaikki"}
+        all{"{0} – kaikki"}
         category-list{"{0}: {1}"}
-        compatibility{"{0} – Yhteensopivuus"}
-        enclosed{"{0} – Ympäröity"}
-        extended{"{0} – Laajennettu"}
-        historic{"{0} – Historiallinen"}
-        miscellaneous{"{0} – Sekalaiset"}
-        other{"{0} – Muu"}
-        scripts{"Kirjoitusjärjestelmät – {0}"}
+        compatibility{"{0} – yhteensopivuus"}
+        enclosed{"{0} – ympäröity"}
+        extended{"{0} – laajennettu"}
+        historic{"{0} – historiallinen"}
+        miscellaneous{"{0} – sekalaiset"}
+        other{"{0} – muut"}
+        scripts{"kirjoitusjärjestelmät – {0}"}
         strokes{
             one{"{0} piirtoviiva"}
             other{"{0} piirtoviivaa"}

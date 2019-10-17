@@ -124,6 +124,10 @@ nmg{
         }
         MRO{
             "MRO",
+            "Mɔn Moritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mɔn Moritania",
         }
         MUR{
@@ -180,6 +184,10 @@ nmg{
         }
         STD{
             "STD",
+            "Mɔn Sao tomé na prinship (1977–2017)",
+        }
+        STN{
+            "STN",
             "Mɔn Sao tomé na prinship",
         }
         SZL{
@@ -227,5 +235,5 @@ nmg{
             "Dɔ́llɔ Zimbabwǝ (1980–2008)",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

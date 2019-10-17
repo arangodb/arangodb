@@ -5,8 +5,9 @@
 #ifndef V8_OBJECTS_PROTOTYPE_INFO_H_
 #define V8_OBJECTS_PROTOTYPE_INFO_H_
 
-#include "src/objects.h"
 #include "src/objects/fixed-array.h"
+#include "src/objects/objects.h"
+#include "src/objects/struct.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -32,7 +33,7 @@ class PrototypeInfo : public Struct {
   // [object_create_map]: A field caching the map for Object.create(prototype).
   static inline void SetObjectCreateMap(Handle<PrototypeInfo> info,
                                         Handle<Map> map);
-  inline Map* ObjectCreateMap();
+  inline Map ObjectCreateMap();
   inline bool HasObjectCreateMap();
 
   // [registry_slot]: Slot in prototype's user registry where this user
@@ -52,14 +53,8 @@ class PrototypeInfo : public Struct {
   DECL_PRINTER(PrototypeInfo)
   DECL_VERIFIER(PrototypeInfo)
 
-  static const int kJSModuleNamespaceOffset = HeapObject::kHeaderSize;
-  static const int kPrototypeUsersOffset =
-      kJSModuleNamespaceOffset + kPointerSize;
-  static const int kRegistrySlotOffset = kPrototypeUsersOffset + kPointerSize;
-  static const int kValidityCellOffset = kRegistrySlotOffset + kPointerSize;
-  static const int kObjectCreateMapOffset = kValidityCellOffset + kPointerSize;
-  static const int kBitFieldOffset = kObjectCreateMapOffset + kPointerSize;
-  static const int kSize = kBitFieldOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(HeapObject::kHeaderSize,
+                                TORQUE_GENERATED_PROTOTYPE_INFO_FIELDS)
 
   // Bit field usage.
   static const int kShouldBeFastBit = 0;
@@ -69,30 +64,30 @@ class PrototypeInfo : public Struct {
  private:
   DECL_ACCESSORS(object_create_map, MaybeObject)
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(PrototypeInfo);
+  OBJECT_CONSTRUCTORS(PrototypeInfo, Struct);
 };
 
 // A growing array with an additional API for marking slots "empty". When adding
 // new elements, we reuse the empty slots instead of growing the array.
-class PrototypeUsers : public WeakArrayList {
+class V8_EXPORT_PRIVATE PrototypeUsers : public WeakArrayList {
  public:
   static Handle<WeakArrayList> Add(Isolate* isolate,
                                    Handle<WeakArrayList> array,
                                    Handle<Map> value, int* assigned_index);
 
-  static inline void MarkSlotEmpty(WeakArrayList* array, int index);
+  static inline void MarkSlotEmpty(WeakArrayList array, int index);
 
   // The callback is called when a weak pointer to HeapObject "object" is moved
   // from index "from_index" to index "to_index" during compaction. The callback
   // must not cause GC.
-  typedef void (*CompactionCallback)(HeapObject* object, int from_index,
-                                     int to_index);
-  static WeakArrayList* Compact(Handle<WeakArrayList> array, Heap* heap,
-                                CompactionCallback callback,
-                                PretenureFlag pretenure = NOT_TENURED);
+  using CompactionCallback = void (*)(HeapObject object, int from_index,
+                                      int to_index);
+  static WeakArrayList Compact(
+      Handle<WeakArrayList> array, Heap* heap, CompactionCallback callback,
+      AllocationType allocation = AllocationType::kYoung);
 
 #ifdef VERIFY_HEAP
-  static void Verify(WeakArrayList* array);
+  static void Verify(WeakArrayList array);
 #endif  // VERIFY_HEAP
 
   static const int kEmptySlotIndex = 0;
@@ -101,10 +96,10 @@ class PrototypeUsers : public WeakArrayList {
   static const int kNoEmptySlotsMarker = 0;
 
  private:
-  static inline Smi* empty_slot_index(WeakArrayList* array);
-  static inline void set_empty_slot_index(WeakArrayList* array, int index);
+  static inline Smi empty_slot_index(WeakArrayList array);
+  static inline void set_empty_slot_index(WeakArrayList array, int index);
 
-  static void IsSlotEmpty(WeakArrayList* array, int index);
+  static void IsSlotEmpty(WeakArrayList array, int index);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(PrototypeUsers);
 };

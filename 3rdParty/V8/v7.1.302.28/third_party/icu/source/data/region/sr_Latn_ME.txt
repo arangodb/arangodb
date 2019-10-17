@@ -4,13 +4,11 @@ sr_Latn_ME{
     Countries{
         BY{"Bjelorusija"}
         CG{"Kongo"}
-        CI{"Obala Slonovače (Kot d’Ivoar)"}
         CZ{"Češka Republika"}
         DE{"Njemačka"}
         KN{"Sveti Kits i Nevis"}
         PM{"Sveti Pjer i Mikelon"}
         RE{"Reunion"}
-        TL{"Timor-Leste (Istočni Timor)"}
         UM{"Manja udaljena ostrva SAD"}
         VC{"Sveti Vinsent i Grenadini"}
         VG{"Britanska Djevičanska Ostrva"}
@@ -19,5 +17,5 @@ sr_Latn_ME{
     Countries%variant{
         MK{"BJR Makedonija"}
     }
-    Version{"2.1.29.33"}
+    Version{"2.1.47.82"}
 }

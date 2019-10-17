@@ -9,7 +9,7 @@ kn{
                 "[reorder Knda Deva Beng Guru Gujr Orya Taml Telu Mlym Sinh]"
                 "&ಔ<ಂ<ಃ<ೱ<ೲ"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -651,7 +651,7 @@ kn{
                 "&ಫೋ<<<ಫ಼ೋ"
                 "&ಫೌ<<<ಫ಼ೌ"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

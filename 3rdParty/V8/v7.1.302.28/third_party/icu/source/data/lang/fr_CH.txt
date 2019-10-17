@@ -6,5 +6,5 @@ fr_CH{
         pdc{"allemand de Pennsylvanie"}
         sdh{"kurde méridional"}
     }
-    Version{"2.1.27.96"}
+    Version{"2.1.48.88"}
 }

@@ -1,5 +1,5 @@
 /********************************************************************************
-* Copyright (C) 2016 and later: Unicode, Inc. and others.
+* © 2016 and later: Unicode, Inc. and others.
 * License & terms of use: http://www.unicode.org/copyright.html#License
 ********************************************************************************
 ********************************************************************************
@@ -13,9 +13,11 @@
 #include "unicode/plurfmt.h"
 #include "unicode/msgfmt.h"
 #include "unicode/ustdio.h"
-//! [PluralFormatExample1] 
+//! [PluralFormatExample1]
 
 using namespace std;
+using namespace icu;
+
 static void PluralFormatExample() {
 	  
 	u_printf("=============================================================================\n");

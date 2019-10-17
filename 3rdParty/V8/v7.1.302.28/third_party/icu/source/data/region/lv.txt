@@ -31,6 +31,7 @@ lv{
         151{"Austrumeiropa"}
         154{"Ziemeļeiropa"}
         155{"Rietumeiropa"}
+        202{"Subsahāras Āfrika"}
         419{"Latīņamerika"}
         AC{"Debesbraukšanas sala"}
         AD{"Andora"}
@@ -89,7 +90,7 @@ lv{
         CW{"Kirasao"}
         CX{"Ziemsvētku sala"}
         CY{"Kipra"}
-        CZ{"Čehijas Republika"}
+        CZ{"Čehija"}
         DE{"Vācija"}
         DG{"Djego Garsijas atols"}
         DJ{"Džibutija"}
@@ -106,14 +107,15 @@ lv{
         ES{"Spānija"}
         ET{"Etiopija"}
         EU{"Eiropas Savienība"}
+        EZ{"Eirozona"}
         FI{"Somija"}
         FJ{"Fidži"}
-        FK{"Folklenda salas"}
+        FK{"Folklenda (Malvinu) salas"}
         FM{"Mikronēzija"}
         FO{"Fēru salas"}
         FR{"Francija"}
         GA{"Gabona"}
-        GB{"Lielbritānija"}
+        GB{"Apvienotā Karaliste"}
         GD{"Grenāda"}
         GE{"Gruzija"}
         GF{"Francijas Gviāna"}
@@ -146,7 +148,7 @@ lv{
         IO{"Indijas okeāna Britu teritorija"}
         IQ{"Irāka"}
         IR{"Irāna"}
-        IS{"Īslande"}
+        IS{"Islande"}
         IT{"Itālija"}
         JE{"Džērsija"}
         JM{"Jamaika"}
@@ -181,7 +183,7 @@ lv{
         MF{"Senmartēna"}
         MG{"Madagaskara"}
         MH{"Māršala salas"}
-        MK{"Maķedonija"}
+        MK{"Ziemeļmaķedonija"}
         ML{"Mali"}
         MM{"Mjanma (Birma)"}
         MN{"Mongolija"}
@@ -285,6 +287,8 @@ lv{
         VU{"Vanuatu"}
         WF{"Volisa un Futunas salas"}
         WS{"Samoa"}
+        XA{"pseidoakcenti"}
+        XB{"pseido-Bidi"}
         XK{"Kosova"}
         YE{"Jemena"}
         YT{"Majota"}
@@ -294,7 +298,7 @@ lv{
         ZZ{"nezināms reģions"}
     }
     Countries%short{
-        GB{"Lielbritānija"}
+        GB{"Apvienotā Karaliste"}
         UN{"ANO"}
         US{"ASV"}
     }
@@ -302,9 +306,7 @@ lv{
         CD{"Kongo Demokrātiskā Republika"}
         CG{"Kongo (Republika)"}
         CI{"Ziloņkaula krasts"}
-        CZ{"Čehija"}
-        FK{"Folklenda (Malvinu) salas"}
-        MK{"bijusī Dienvidslāvijas Maķedonijas Republika"}
+        CZ{"Čehijas Republika"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.43"}
 }

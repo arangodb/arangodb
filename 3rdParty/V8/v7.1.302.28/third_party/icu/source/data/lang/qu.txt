@@ -7,6 +7,7 @@ qu{
         ar{"Arabe Simi"}
         arn{"Mapuche Simi"}
         as{"Asames Simi"}
+        ay{"Aymara Simi"}
         az{"Azerbaiyano Simi"}
         ba{"Baskir Simi"}
         be{"Bielorruso Simi"}
@@ -28,6 +29,7 @@ qu{
         el{"Griego Simi"}
         en{"Ingles Simi"}
         es{"Español Simi"}
+        es_419{"Español Simi (Latino América)"}
         et{"Estonio Simi"}
         eu{"Euskera Simi"}
         fa{"Persa Simi"}
@@ -110,6 +112,7 @@ qu{
         sr{"Serbio Simi"}
         sv{"Sueco Simi"}
         sw{"Suajili Simi"}
+        sw_CD{"Suajili Simi (Congo (RDC))"}
         syr{"Siriaco Simi"}
         ta{"Tamil Simi"}
         te{"Telugu Simi"}
@@ -131,8 +134,12 @@ qu{
         zh{"Chino Simi"}
         zu{"Isizulu Simi"}
     }
+    Languages%short{
+        en_GB{"Ingles Simi (GB)"}
+        en_US{"Ingles Simi (US)"}
+    }
     Variants{
         VALENCIA{"Valenciano Simi"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.49.82"}
 }

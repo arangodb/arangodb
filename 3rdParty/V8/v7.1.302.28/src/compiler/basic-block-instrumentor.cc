@@ -6,14 +6,14 @@
 
 #include <sstream>
 
+#include "src/codegen/optimized-compilation-info.h"
 #include "src/compiler/common-operator.h"
 #include "src/compiler/graph.h"
 #include "src/compiler/machine-operator.h"
 #include "src/compiler/node.h"
 #include "src/compiler/operator-properties.h"
 #include "src/compiler/schedule.h"
-#include "src/objects-inl.h"
-#include "src/optimized-compilation-info.h"
+#include "src/objects/objects-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -41,8 +41,9 @@ static NodeVector::iterator FindInsertionPoint(BasicBlock* block) {
 // TODO(dcarney): need to mark code as non-serializable.
 static const Operator* PointerConstant(CommonOperatorBuilder* common,
                                        intptr_t ptr) {
-  return kPointerSize == 8 ? common->Int64Constant(ptr)
-                           : common->Int32Constant(static_cast<int32_t>(ptr));
+  return kSystemPointerSize == 8
+             ? common->Int64Constant(ptr)
+             : common->Int32Constant(static_cast<int32_t>(ptr));
 }
 
 BasicBlockProfiler::Data* BasicBlockInstrumentor::Instrument(

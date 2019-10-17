@@ -124,6 +124,10 @@ ewo{
         }
         MRO{
             "MRO",
+            "Ugiya yá Moritaní (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ugiya yá Moritaní",
         }
         MUR{
@@ -180,6 +184,10 @@ ewo{
         }
         STD{
             "STD",
+            "Dóbə́ra yá Saó Tomé ai Pəlinəsípe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dóbə́ra yá Saó Tomé ai Pəlinəsípe",
         }
         SZL{
@@ -227,5 +235,5 @@ ewo{
             "Dolár yá Zimbabwé",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

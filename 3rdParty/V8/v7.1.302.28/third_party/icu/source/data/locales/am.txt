@@ -1,7 +1,6 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 am{
-    AuxExemplarCharacters{"[]"}
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
@@ -20,19 +19,24 @@ am{
         " ጡ ጢ ጣ ጤ ጥ ጦ ጧ ጨ ጩ ጪ ጫ ጬ ጭ ጮ ጯ ጰ ጱ ጲ ጳ ጴ ጵ ጶ ጷ ጸ ጹ ጺ ጻ ጼ ጽ ጾ ጿ ፀ ፁ ፂ ፃ ፄ ፅ ፆ"
         " ፈ ፉ ፊ ፋ ፌ ፍ ፎ ፏ ፐ ፑ ፒ ፓ ፔ ፕ ፖ ፗ]"
     }
+    ExemplarCharactersIndex{
+        "[ሀ ለ ሐ መ ሠ ረ ሰ ሸ ቀ ቈ በ ቨ ተ ቸ ኀ ኈ ነ ኘ አ ከ ኰ ኸ ወ ዐ ዘ ዠ የ ደ ጀ ገ ጐ ጠ ጨ ጰ ጸ ፀ ፈ ፐ"
+        "]"
+    }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[‐ – , ፡ ፣ ፤ ፥ ፦ ! ? . ። ‹ › « » ( ) \\[ \\]]"}
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -191,25 +195,28 @@ am{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"በቀኝ በኩል ባለው በ{0}ኛው መታጠፊያ ግባ።"}
+            }
+            plural{
+                one{"{0} ቀን"}
+                other{"{0} ቀናት"}
             }
         }
         minimumGroupingDigits{"1"}
-        native{"latn"}
         traditional{"ethi"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -628,6 +635,19 @@ am{
                 }
             }
         }
+        ethiopic-amete-alem{
+            eras{
+                abbreviated{
+                    "ERA0",
+                }
+                narrow{
+                    "ERA0",
+                }
+                wide{
+                    "ERA0",
+                }
+            }
+        }
         generic{
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -645,10 +665,19 @@ am{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
-                GyMMM{"MMM፣ y G"}
+                GyMMM{"G y MMM"}
                 GyMMMEd{"E MMM d፣ y G"}
                 GyMMMd{"MMM d፣ y G"}
                 H{"H"}
@@ -689,6 +718,15 @@ am{
                 yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -802,7 +840,7 @@ am{
                 "h:mm:ss a z",
                 "h:mm:ss a",
                 "h:mm a",
-                "EEEE ፣d MMMM y",
+                "y MMMM d, EEEE",
                 "d MMMM y",
                 "d MMM y",
                 "dd/MM/y",
@@ -816,7 +854,12 @@ am{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d"}
@@ -824,8 +867,8 @@ am{
                 Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
-                GyMMMEd{"E፣ MMM d፣ y G"}
-                GyMMMd{"MMM d፣ y G"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
                 H{"H"}
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
@@ -836,10 +879,6 @@ am{
                 MMM{"LLL"}
                 MMMEd{"E፣ MMM d"}
                 MMMMEd{"E፣ MMMM d"}
-                MMMMW{
-                    one{"'week' W 'of' MMM"}
-                    other{"'week' W 'of' MMM"}
-                }
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
                 Md{"M/d"}
@@ -860,10 +899,6 @@ am{
                 yMd{"d/M/y"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
-                yw{
-                    one{"'week' w 'of' y"}
-                    other{"'week' w 'of' y"}
-                }
             }
             dayNames{
                 format{
@@ -946,7 +981,7 @@ am{
             dayPeriod{
                 format{
                     abbreviated{
-                        afternoon1{"ከሰዓት1"}
+                        afternoon1{"ከሰዓት 7"}
                         evening1{"ማታ1"}
                         midnight{"እኩለ ሌሊት"}
                         morning1{"ጥዋት1"}
@@ -962,7 +997,7 @@ am{
                         noon{"ቀ"}
                     }
                     wide{
-                        afternoon1{"ከሰዓት1"}
+                        afternoon1{"ከሰዓት 7 ሰዓት"}
                         evening1{"ማታ1"}
                         midnight{"እኩለ ሌሊት"}
                         morning1{"ጥዋት1"}
@@ -1008,10 +1043,6 @@ am{
                     "ዓ/ዓ",
                     "ዓ/ም",
                 }
-                abbreviated%variant{
-                    "BCE",
-                    "CE",
-                }
                 narrow{
                     "ዓ/ዓ",
                     "ዓ/ም",
@@ -1021,11 +1052,58 @@ am{
                     "ዓመተ ምሕረት",
                 }
                 wide%variant{
-                    "BCE",
+                    "ዓ/ዓ",
                     "ዓ/ም",
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG M/y – GGGGG M/y"}
+                    M{"GGGGG M/y – M/y"}
+                    y{"GGGGG M/y – M/y"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM–MMM፣ y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G E፣ MMM d፣ y – G E፣ MMM d፣ y"}
+                    M{"G E MMM d፣ y – E MMM d"}
+                    d{"G E MMM d – E MMM d፣ y"}
+                    y{"G E፣ MMM d፣ y – E፣ MMM d፣ y"}
+                }
+                GyMMMd{
+                    G{"G MMM d፣ y – G MMM d፣ y"}
+                    M{"G MMM d – MMM d፣ y"}
+                    d{"G MMM d–d፣ y"}
+                    y{"G MMM d፣ y – MMM d፣ y"}
+                }
+                GyMd{
+                    G{"GGGGG d/M/y – GGGGG d/M/y"}
+                    M{"GGGGG d/M/y – d/M/y"}
+                    d{"GGGGG d/M/y – d/M/y"}
+                    y{"GGGGG d/M/y – d/M/y"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -1051,7 +1129,7 @@ am{
                     M{"MMM–MMM"}
                 }
                 MMMEd{
-                    M{"E፣ MMM d – E፣ MMM d"}
+                    M{"MMM d, E – MMM d, E"}
                     d{"E d – E d፣ MMM"}
                 }
                 MMMd{
@@ -1093,7 +1171,7 @@ am{
                 }
                 yMEd{
                     M{"E d/M/ – E d/M፣ y"}
-                    d{"E፣ d/M/y – E፣ d/M/y"}
+                    d{"y-MM-dd, E – y-MM-dd, E"}
                     y{"E፣ d/M/y – E፣ d/M/y"}
                 }
                 yMMM{
@@ -1262,85 +1340,85 @@ am{
         animals_nature{"እንስሳት እና ተፈጥሮ"}
         arrows{"ቀስቶች"}
         body{"ሰውነት"}
-        box_drawing{"Box Drawing"}
+        box_drawing{"ስዕላዊ ሳጥን"}
         braille{"ብሬይል"}
         building{"ህንጻ"}
-        bullets_stars{"Bullets/Stars"}
-        consonantal_jamo{"Consonantal Jamo"}
+        bullets_stars{"ጥይቶች ወይም ኮከቦች"}
+        consonantal_jamo{"የጃሞ ሆሄያት"}
         currency_symbols{"የምንዛሪ ምልክቶች"}
-        dash_connector{"Dash/Connector"}
-        digits{"Digits"}
-        dingbats{"Dingbats"}
-        divination_symbols{"Divination Symbols"}
-        downwards_arrows{"Downwards Arrows"}
-        downwards_upwards_arrows{"Downwards Upwards Arrows"}
-        east_asian_scripts{"East Asian Scripts"}
+        dash_connector{"ጭረት ወይም አያያዥ"}
+        digits{"ዲጂት"}
+        dingbats{"ነቁጥ"}
+        divination_symbols{"የመለኮት ምልክቶች"}
+        downwards_arrows{"ወደታች ቀስቶች"}
+        downwards_upwards_arrows{"ወደታች ወደላይ ቀስቶች"}
+        east_asian_scripts{"ምስራቅ ኤስያ ስክሪፕቶች"}
         emoji{"ስሜት ገላጭ ምስሎች"}
-        european_scripts{"European Scripts"}
+        european_scripts{"የኤውሮጳ ስክሪፕቶች"}
         female{"ሴት"}
         flag{"ባንዲራ"}
-        flags{"Flags"}
+        flags{"ባንዲራዎች"}
         food_drink{"ምግብ እና መጠጥ"}
         format{"ቅርጸት"}
-        format_whitespace{"Format & Whitespace"}
-        full_width_form_variant{"Full-Width Form Variants"}
-        geometric_shapes{"Geometric Shapes"}
-        half_width_form_variant{"Half-Width Form Variants"}
-        han_characters{"Han Characters"}
-        han_radicals{"Han Radicals"}
-        hanja{"Hanja"}
-        hanzi_simplified{"Hanzi (Simplified)"}
-        hanzi_traditional{"Hanzi (Traditional)"}
+        format_whitespace{"ቅርጸት እና ባዶቦታ"}
+        full_width_form_variant{"ሙሉ ስፋት የተለያየ መልክ"}
+        geometric_shapes{"ጂኦሜትሪክ ቅርጽ"}
+        half_width_form_variant{"ግማሽ ስፋት የተለያየ መልክ"}
+        han_characters{"ሃን ቁምፊ"}
+        han_radicals{"ሃን ራዲካልስ"}
+        hanja{"ሃንጃ"}
+        hanzi_simplified{"ሃንዚ(በቀላሉ)"}
+        hanzi_traditional{"ሃንዚ(ባህላዊ)"}
         heart{"ልብ"}
         historic_scripts{"ታሪካዊ ስክሪፕቶች"}
-        ideographic_desc_characters{"Ideographic Desc. Characters"}
-        japanese_kana{"Japanese Kana"}
-        kanbun{"Kanbun"}
-        kanji{"Kanji"}
+        ideographic_desc_characters{"ሃሳባዊ ቁምፊዎች"}
+        japanese_kana{"የጃፓን ፊደል"}
+        kanbun{"ካንቡን"}
+        kanji{"ካንጂ"}
         keycap{"የአብይ ሆሄ ቁልፍ ማብሪያ"}
-        leftwards_arrows{"Leftwards Arrows"}
-        leftwards_rightwards_arrows{"Leftwards Rightwards Arrows"}
-        letterlike_symbols{"Letterlike Symbols"}
-        limited_use{"Limited Use"}
+        leftwards_arrows{"ወደግራ ቀስቶች"}
+        leftwards_rightwards_arrows{"ወደግራ ወደቀኝ ቀስቶች"}
+        letterlike_symbols{"ፊደል መሰል ምልክቶች"}
+        limited_use{"የተወሰነ ኣጠቃቀም"}
         male{"ወንድ"}
-        math_symbols{"Math Symbols"}
-        middle_eastern_scripts{"Middle Eastern Scripts"}
+        math_symbols{"የሂሳብ ምልክቶች"}
+        middle_eastern_scripts{"የመካከለኛው ምስራቅ ስክሪፕቶች"}
         miscellaneous{"የተለያዩ"}
-        modern_scripts{"Modern Scripts"}
-        modifier{"Modifier"}
+        modern_scripts{"ዘመናዊ ስክሪፕቶች"}
+        modifier{"ማሻሻያ"}
         musical_symbols{"የሙዚቃ ምልክቶች"}
         nature{"ተፈጥሮ"}
-        nonspacing{"Nonspacing"}
+        nonspacing{"የተጣበቁ ቃላት"}
         numbers{"ቁጥሮች"}
-        objects{"Objects"}
+        objects{"ነገሮች"}
         other{"ሌሎች"}
         paired{"የተጣመረ"}
         person{"ሰው"}
-        phonetic_alphabet{"Phonetic Alphabet"}
-        pictographs{"Pictographs"}
+        phonetic_alphabet{"የድምፅ ፊደል"}
+        pictographs{"ስዕላዊ"}
         place{"ቦታ"}
         plant{"አትክልት"}
-        punctuation{"Punctuation"}
-        rightwards_arrows{"Rightwards Arrows"}
-        sign_standard_symbols{"Sign/Standard Symbols"}
-        small_form_variant{"Small Form Variants"}
+        punctuation{"ስርዓተ ነጥብ"}
+        rightwards_arrows{"ወደቀኝ ቀስቶች"}
+        sign_standard_symbols{"አርማ ወይም ምልክት"}
+        small_form_variant{"ትንሽ የተለያየ መልክ"}
         smiley{"ሳቅ"}
-        smileys_people{"Smileys & People"}
-        south_asian_scripts{"South Asian Scripts"}
-        southeast_asian_scripts{"Southeast Asian Scripts"}
-        spacing{"Spacing"}
+        smileys_people{"ሳቂታ ወይም ሰው"}
+        south_asian_scripts{"ደቡብ እስያ ስክሪፕት"}
+        southeast_asian_scripts{"ደቡብ ምስራቅ እስያ ስክሪፕት"}
+        spacing{"ባዶ ቦታ"}
         sport{"ስፖርት"}
         symbols{"ምልክቶች"}
-        technical_symbols{"Technical Symbols"}
-        tone_marks{"Tone Marks"}
+        technical_symbols{"ቴክኒካል ምልክቶች"}
+        tone_marks{"የኖታ ምልክት"}
         travel{"ጉዞ"}
-        travel_places{"Travel & Places"}
-        upwards_arrows{"Upwards Arrows"}
-        variant_forms{"Variant Forms"}
-        vocalic_jamo{"Vocalic Jamo"}
+        travel_places{"ጉዞ እና ቦታ"}
+        upwards_arrows{"ወደላይ ቀስቶች"}
+        variant_forms{"የተለያየ መልክ ቅጾች"}
+        vocalic_jamo{"ቮልካኒክ ጃሞ"}
         weather{"የአየር ሁኔታ"}
-        western_asian_scripts{"Western Asian Scripts"}
-        whitespace{"Whitespace"}
+        western_asian_scripts{"ምእራባዊ ኤስያ ስክሪፕት"}
+        whitespace{"ባዶ ቦታ"}
     }
     delimiters{
         alternateQuotationEnd{"›"}
@@ -1409,10 +1487,31 @@ am{
                 }
             }
         }
+        dayOfYear{
+            dn{"የዓመቱ ቀን"}
+        }
+        dayOfYear-narrow{
+            dn{"የዓመቱ ቀን"}
+        }
+        dayOfYear-short{
+            dn{"የዓመቱ ቀን"}
+        }
         dayperiod{
             dn{"ጥዋት/ከሰዓት"}
         }
+        dayperiod-narrow{
+            dn{"ጥዋት/ከሰዓት"}
+        }
+        dayperiod-short{
+            dn{"ጥዋት/ከሰዓት"}
+        }
         era{
+            dn{"ዘመን"}
+        }
+        era-narrow{
+            dn{"ዘመን"}
+        }
+        era-short{
             dn{"ዘመን"}
         }
         fri{
@@ -2069,8 +2168,32 @@ am{
                 }
             }
         }
+        weekOfMonth{
+            dn{"የወሩ ሳምንት"}
+        }
+        weekOfMonth-narrow{
+            dn{"የወሩ ሳምንት"}
+        }
+        weekOfMonth-short{
+            dn{"የወሩ ሳምንት"}
+        }
         weekday{
             dn{"አዘቦት"}
+        }
+        weekday-narrow{
+            dn{"አዘቦት"}
+        }
+        weekday-short{
+            dn{"አዘቦት"}
+        }
+        weekdayOfMonth{
+            dn{"የወሩ የሳምንት ቀን"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"የወሩ የሳምንት ቀን"}
+        }
+        weekdayOfMonth-short{
+            dn{"የወሩ የሳምንት ቀን"}
         }
         year{
             dn{"ዓመት"}
@@ -2129,13 +2252,29 @@ am{
         zone{
             dn{"የሰዓት ሰቅ"}
         }
+        zone-narrow{
+            dn{"የሰዓት ሰቅ"}
+        }
+        zone-short{
+            dn{"የሰዓት ሰቅ"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ወይም {1}﻿"}
+            end{"{0} ወይም {1}﻿"}
+            middle{"{0}፣ {1}"}
+            start{"{0}፣ {1}"}
+        }
         standard{
             2{"{0} እና {1}"}
             end{"{0}, እና {1}"}
             middle{"{0}፣ {1}"}
             start{"{0}፣ {1}"}
+        }
+        standard-narrow{
+            middle{"{0}፣ {1}"}
+            start{"{0}, {1}"}
         }
         standard-short{
             2{"{0} እና {1}"}
@@ -2144,20 +2283,20 @@ am{
             start{"{0}፣ {1}"}
         }
         unit{
-            2{"{0} እና {1}"}
-            end{"{0}, እና {1}"}
+            2{"{0}፣ {1}"}
+            end{"{0}፣ {1}"}
             middle{"{0}፣ {1}"}
             start{"{0}፣ {1}"}
         }
         unit-narrow{
-            2{"{0} እና {1}"}
-            end{"{0}, እና {1}"}
+            2{"{0} {1}"}
+            end{"{0} {1}"}
             middle{"{0}፣ {1}"}
             start{"{0}፣ {1}"}
         }
         unit-short{
-            2{"{0} እና {1}"}
-            end{"{0}, እና {1}"}
+            2{"{0}፣ {1}"}
+            end{"{0}፣ {1}"}
             middle{"{0}፣ {1}"}
             start{"{0}፣ {1}"}
         }
@@ -2166,5 +2305,37 @@ am{
         UK{"ዩኬ"}
         US{"ዩ ኤስ"}
         metric{"ሜትሪክ"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

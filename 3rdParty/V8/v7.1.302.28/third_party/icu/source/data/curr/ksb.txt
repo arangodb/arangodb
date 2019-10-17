@@ -124,6 +124,10 @@ ksb{
         }
         MRO{
             "MRO",
+            "ugwiya ya Molitania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ugwiya ya Molitania",
         }
         MUR{
@@ -180,6 +184,10 @@ ksb{
         }
         STD{
             "STD",
+            "dobla ya Sao Tome na Plincipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobla ya Sao Tome na Plincipe",
         }
         SZL{
@@ -227,5 +235,5 @@ ksb{
             "dola ya Zimbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

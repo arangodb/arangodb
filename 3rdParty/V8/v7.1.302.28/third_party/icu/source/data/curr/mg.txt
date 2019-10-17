@@ -124,6 +124,10 @@ mg{
         }
         MRO{
             "MRO",
+            "Ouguiya moritanianina (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ouguiya moritanianina",
         }
         MUR{
@@ -180,6 +184,10 @@ mg{
         }
         STD{
             "STD",
+            "Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra",
         }
         SZL{
@@ -231,5 +239,5 @@ mg{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.48.4"}
 }

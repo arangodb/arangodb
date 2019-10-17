@@ -6,12 +6,16 @@
 #define V8_OBJECTS_JS_GENERATOR_H_
 
 #include "src/objects/js-objects.h"
+#include "src/objects/struct.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
 
 namespace v8 {
 namespace internal {
+
+// Forward declarations.
+class JSPromise;
 
 class JSGeneratorObject : public JSObject {
  public:
@@ -64,18 +68,27 @@ class JSGeneratorObject : public JSObject {
   static const int kGeneratorClosed = -1;
 
   // Layout description.
-  static const int kFunctionOffset = JSObject::kHeaderSize;
-  static const int kContextOffset = kFunctionOffset + kPointerSize;
-  static const int kReceiverOffset = kContextOffset + kPointerSize;
-  static const int kInputOrDebugPosOffset = kReceiverOffset + kPointerSize;
-  static const int kResumeModeOffset = kInputOrDebugPosOffset + kPointerSize;
-  static const int kContinuationOffset = kResumeModeOffset + kPointerSize;
-  static const int kParametersAndRegistersOffset =
-      kContinuationOffset + kPointerSize;
-  static const int kSize = kParametersAndRegistersOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(JSObject::kHeaderSize,
+                                TORQUE_GENERATED_JSGENERATOR_OBJECT_FIELDS)
 
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSGeneratorObject);
+  OBJECT_CONSTRUCTORS(JSGeneratorObject, JSObject);
+};
+
+class JSAsyncFunctionObject : public JSGeneratorObject {
+ public:
+  DECL_CAST(JSAsyncFunctionObject)
+
+  // Dispatched behavior.
+  DECL_VERIFIER(JSAsyncFunctionObject)
+
+  // [promise]: The promise of the async function.
+  DECL_ACCESSORS(promise, JSPromise)
+
+  // Layout description.
+  DEFINE_FIELD_OFFSET_CONSTANTS(JSGeneratorObject::kSize,
+                                TORQUE_GENERATED_JSASYNC_FUNCTION_OBJECT_FIELDS)
+
+  OBJECT_CONSTRUCTORS(JSAsyncFunctionObject, JSGeneratorObject);
 };
 
 class JSAsyncGeneratorObject : public JSGeneratorObject {
@@ -95,12 +108,30 @@ class JSAsyncGeneratorObject : public JSGeneratorObject {
   DECL_INT_ACCESSORS(is_awaiting)
 
   // Layout description.
-  static const int kQueueOffset = JSGeneratorObject::kSize;
-  static const int kIsAwaitingOffset = kQueueOffset + kPointerSize;
-  static const int kSize = kIsAwaitingOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(
+      JSGeneratorObject::kSize,
+      TORQUE_GENERATED_JSASYNC_GENERATOR_OBJECT_FIELDS)
+#undef JS_ASYNC_GENERATOR_FIELDS
 
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSAsyncGeneratorObject);
+  OBJECT_CONSTRUCTORS(JSAsyncGeneratorObject, JSGeneratorObject);
+};
+
+class AsyncGeneratorRequest : public Struct {
+ public:
+  // Holds an AsyncGeneratorRequest, or Undefined.
+  DECL_ACCESSORS(next, Object)
+  DECL_INT_ACCESSORS(resume_mode)
+  DECL_ACCESSORS(value, Object)
+  DECL_ACCESSORS(promise, Object)
+
+  DEFINE_FIELD_OFFSET_CONSTANTS(Struct::kHeaderSize,
+                                TORQUE_GENERATED_ASYNC_GENERATOR_REQUEST_FIELDS)
+
+  DECL_CAST(AsyncGeneratorRequest)
+  DECL_PRINTER(AsyncGeneratorRequest)
+  DECL_VERIFIER(AsyncGeneratorRequest)
+
+  OBJECT_CONSTRUCTORS(AsyncGeneratorRequest, Struct);
 };
 
 }  // namespace internal

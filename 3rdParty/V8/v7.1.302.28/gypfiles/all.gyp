@@ -3,6 +3,11 @@
 # found in the LICENSE file.
 
 {
+  'variables': {
+#    'V8_ROOT': '../',
+    'v8_code': 1,
+    'v8_enable_i18n_support%': 1,
+  },
   'targets': [
     {
       'target_name': 'All',

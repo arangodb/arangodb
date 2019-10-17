@@ -15,5 +15,5 @@ es_AR{
     Currencies%variant{
         GEL{"GEL"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
 }

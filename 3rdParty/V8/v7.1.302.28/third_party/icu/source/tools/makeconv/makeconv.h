@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  makeconv.h
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -41,21 +41,22 @@ enum {
 struct NewConverter;
 typedef struct NewConverter NewConverter;
 
+U_CDECL_BEGIN
 struct NewConverter {
     void
-    (*close)(NewConverter *cnvData);
+    (* U_CALLCONV_FPTR close)(NewConverter *cnvData);
 
     /** is this byte sequence valid? */
     UBool
-    (*isValid)(NewConverter *cnvData,
+    (*U_CALLCONV_FPTR isValid)(NewConverter *cnvData,
                const uint8_t *bytes, int32_t length);
 
     UBool
-    (*addTable)(NewConverter *cnvData, UCMTable *table, UConverterStaticData *staticData);
+    (*U_CALLCONV_FPTR addTable)(NewConverter *cnvData, UCMTable *table, UConverterStaticData *staticData);
 
     uint32_t
-    (*write)(NewConverter *cnvData, const UConverterStaticData *staticData,
+    (*U_CALLCONV_FPTR write)(NewConverter *cnvData, const UConverterStaticData *staticData,
              UNewDataMemory *pData, int32_t tableType);
 };
-
+U_CDECL_END
 #endif /* __MAKECONV_H__ */

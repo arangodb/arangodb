@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ga{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -214,7 +214,7 @@ ga{
             ec{"Belém"}
         }
         "America:Belize"{
-            ec{"An Bheilís"}
+            ec{"an Bheilís"}
         }
         "America:Blanc-Sablon"{
             ec{"Blanc-Sablon"}
@@ -301,7 +301,7 @@ ga{
             ec{"Eirunepé"}
         }
         "America:El_Salvador"{
-            ec{"An tSalvadóir"}
+            ec{"an tSalvadóir"}
         }
         "America:Fort_Nelson"{
             ec{"Fort Nelson"}
@@ -334,7 +334,7 @@ ga{
             ec{"Guayaquil"}
         }
         "America:Guyana"{
-            ec{"An Ghuáin"}
+            ec{"an Ghuáin"}
         }
         "America:Halifax"{
             ec{"Halifax"}
@@ -507,6 +507,9 @@ ga{
         "America:Puerto_Rico"{
             ec{"Portó Ríce"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -562,7 +565,7 @@ ga{
             ec{"St. Thomas"}
         }
         "America:St_Vincent"{
-            ec{"St. Vincent"}
+            ec{"San Uinseann"}
         }
         "America:Swift_Current"{
             ec{"Swift Current"}
@@ -657,6 +660,9 @@ ga{
         "Asia:Ashgabat"{
             ec{"Ashgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -694,7 +700,7 @@ ga{
             ec{"Colombo"}
         }
         "Asia:Damascus"{
-            ec{"An Damaisc"}
+            ec{"an Damaisc"}
         }
         "Asia:Dhaka"{
             ec{"Dhaka"}
@@ -707,6 +713,9 @@ ga{
         }
         "Asia:Dushanbe"{
             ec{"Dushanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -775,7 +784,7 @@ ga{
             ec{"Muscat"}
         }
         "Asia:Nicosia"{
-            ec{"An Niocóis"}
+            ec{"an Niocóis"}
         }
         "Asia:Novokuznetsk"{
             ec{"Novokuznetsk"}
@@ -877,13 +886,13 @@ ga{
             ec{"Eireaván"}
         }
         "Atlantic:Azores"{
-            ec{"Na hAsóir"}
+            ec{"na hAsóir"}
         }
         "Atlantic:Bermuda"{
             ec{"Beirmiúda"}
         }
         "Atlantic:Canary"{
-            ec{"Na hOileáin Chanáracha"}
+            ec{"na hOileáin Chanáracha"}
         }
         "Atlantic:Cape_Verde"{
             ec{"Rinn Verde"}
@@ -898,7 +907,7 @@ ga{
             ec{"Réicivíc"}
         }
         "Atlantic:South_Georgia"{
-            ec{"An tSeoirsia Theas"}
+            ec{"an tSeoirsia Theas"}
         }
         "Atlantic:St_Helena"{
             ec{"San Héilin"}
@@ -942,6 +951,9 @@ ga{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Am Uilíoch Lárnach"}
+        }
         "Etc:Unknown"{
             ec{"Cathair Anaithnid"}
         }
@@ -952,10 +964,10 @@ ga{
             ec{"Andóra"}
         }
         "Europe:Astrakhan"{
-            ec{"An Astracáin"}
+            ec{"an Astracáin"}
         }
         "Europe:Athens"{
-            ec{"An Aithin"}
+            ec{"an Aithin"}
         }
         "Europe:Belgrade"{
             ec{"Béalgrád"}
@@ -964,10 +976,10 @@ ga{
             ec{"Beirlín"}
         }
         "Europe:Bratislava"{
-            ec{"An Bhratasláiv"}
+            ec{"an Bhratasláiv"}
         }
         "Europe:Brussels"{
-            ec{"An Bhruiséil"}
+            ec{"an Bhruiséil"}
         }
         "Europe:Bucharest"{
             ec{"Búcairist"}
@@ -1064,7 +1076,7 @@ ga{
             ec{"Ríge"}
         }
         "Europe:Rome"{
-            ec{"An Róimh"}
+            ec{"an Róimh"}
         }
         "Europe:Samara"{
             ec{"Samara"}
@@ -1074,6 +1086,9 @@ ga{
         }
         "Europe:Sarajevo"{
             ec{"Sairéavó"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1220,7 +1235,7 @@ ga{
             ec{"Majuro"}
         }
         "Pacific:Marquesas"{
-            ec{"Na hOileáin Mharcasacha"}
+            ec{"na hOileáin Mharcasacha"}
         }
         "Pacific:Midway"{
             ec{"Oileáin Midway"}
@@ -1332,6 +1347,9 @@ ga{
             ld{"Am Samhraidh an Aigéin Chiúin"}
             lg{"Am an Aigéin Chiúin"}
             ls{"Am Caighdeánach an Aigéin Chiúin"}
+            sd{"ASAC"}
+            sg{"AAC"}
+            ss{"ACAC"}
         }
         "meta:Anadyr"{
             ld{"Am Samhraidh Anadyr"}

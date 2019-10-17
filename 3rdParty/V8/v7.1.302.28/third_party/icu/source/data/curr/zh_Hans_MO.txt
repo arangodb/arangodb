@@ -19,9 +19,6 @@ zh_Hans_MO{
         ANG{
             other{"荷兰安的列斯盾"}
         }
-        AWG{
-            other{"阿鲁巴弗罗林"}
-        }
         NIO{
             other{"尼加拉瓜科多巴"}
         }
@@ -29,5 +26,5 @@ zh_Hans_MO{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
 }

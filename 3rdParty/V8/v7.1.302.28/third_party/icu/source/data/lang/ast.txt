@@ -758,54 +758,6 @@ ast{
         Phnx{"feniciu"}
         Plrd{"fonéticu de Pollard"}
         Prti{"partu d’inscripciones"}
-        Qaaa{"qaaa"}
-        Qaab{"qaab"}
-        Qaac{"qaac"}
-        Qaad{"qaad"}
-        Qaae{"qaae"}
-        Qaaf{"qaaf"}
-        Qaag{"qaag"}
-        Qaah{"qaah"}
-        Qaak{"qaak"}
-        Qaal{"qaal"}
-        Qaam{"qaam"}
-        Qaan{"qaan"}
-        Qaao{"qaao"}
-        Qaap{"qaap"}
-        Qaaq{"qaaq"}
-        Qaar{"qaar"}
-        Qaas{"qaas"}
-        Qaat{"qaat"}
-        Qaau{"qaau"}
-        Qaav{"qaav"}
-        Qaaw{"qaaw"}
-        Qaax{"qaax"}
-        Qaay{"qaay"}
-        Qaaz{"qaaz"}
-        Qaba{"qaba"}
-        Qabb{"qabb"}
-        Qabc{"qabc"}
-        Qabd{"qabd"}
-        Qabe{"qabe"}
-        Qabf{"qabf"}
-        Qabg{"qabg"}
-        Qabh{"qabh"}
-        Qabi{"qabi"}
-        Qabj{"qabj"}
-        Qabk{"qabk"}
-        Qabl{"qabl"}
-        Qabm{"qabm"}
-        Qabn{"qabn"}
-        Qabo{"qabo"}
-        Qabp{"qabp"}
-        Qabq{"qabq"}
-        Qabr{"qabr"}
-        Qabs{"qabs"}
-        Qabt{"qabt"}
-        Qabu{"qabu"}
-        Qabv{"qabv"}
-        Qabw{"qabw"}
-        Qabx{"qabx"}
         Rjng{"rejang"}
         Roro{"rongorongo"}
         Runr{"runes"}
@@ -1077,9 +1029,10 @@ ast{
         VALLADER{"VALLADER"}
         WADEGILE{"romanización de Wade-Giles"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     characterLabelPattern{
         all{"{0} — too"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — compatibilidá"}
         enclosed{"{0} — arrodiáu"}
         extended{"{0} — enantáu"}

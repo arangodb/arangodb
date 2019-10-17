@@ -12,9 +12,8 @@ es_CL{
                 group{"."}
             }
         }
-        minimumGroupingDigits{"2"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
@@ -86,12 +85,12 @@ es_CL{
         }
         gregorian{
             AmPmMarkers{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -132,16 +131,16 @@ es_CL{
             dayPeriod{
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     wide{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                 }
             }
@@ -224,7 +223,7 @@ es_CL{
     }
     fields{
         dayperiod{
-            dn{"a. m./p. m."}
+            dn{"a. m./p. m."}
         }
     }
 }

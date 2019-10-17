@@ -1,6 +1,6 @@
 /*************************************************************************
 *
-*   Copyright (C) 2016 and later: Unicode, Inc. and others.
+*   © 2016 and later: Unicode, Inc. and others.
 *   License & terms of use: http://www.unicode.org/copyright.html#License
 *
 **************************************************************************
@@ -16,7 +16,7 @@
 //   ugrep  - an ICU sample program illustrating the use of ICU Regular Expressions.
 //
 //            The use of the ICU Regex API all occurs within the main()
-//            function.  The rest of the code deals with with opening files,
+//            function.  The rest of the code deals with opening files,
 //            encoding conversions, printing results, etc.
 //
 //            This is not a full-featured grep program.  The command line options
@@ -35,9 +35,10 @@
 #include "unicode/ucnv.h"
 #include "unicode/uclean.h"
 
+using namespace icu;
 
 //
-//  The following variables contain paramters that may be set from the command line.
+//  The following variables contain parameters that may be set from the command line.
 //
 const char *pattern = NULL;     // The regular expression
 int        firstFileNum;        //  argv index of the first file name
@@ -95,7 +96,7 @@ int main(int argc, const char** argv) {
     UBool     matchFound = FALSE;
 
     //
-    //  Process the commmand line options.
+    //  Process the command line options.
     //
     processOptions(argc, argv);
 
@@ -170,7 +171,7 @@ int main(int argc, const char** argv) {
 //   doOptions          Run through the command line options, and set
 //                      the global variables accordingly.
 //
-//                      exit without returning if an error occured and
+//                      exit without returning if an error occurred and
 //                      ugrep should not proceed further.
 //
 //------------------------------------------------------------------------------------------
@@ -290,7 +291,7 @@ void readFile(const char *name) {
     //   Read in the file
     //
     charBuf    = (char *)realloc(charBuf, rawFileLen+1);   // Need error checking...
-    int t = fread(charBuf, 1, rawFileLen, file);
+    int t = static_cast<int>(fread(charBuf, 1, rawFileLen, file));
     if (t != rawFileLen)  {
         fprintf(stderr, "Error reading file \"%s\"\n", fileName);
         fclose(file);
@@ -371,7 +372,7 @@ void readFile(const char *name) {
 //
 //   nextLine           Advance the line index variables, starting at the
 //                      specified position in the input file buffer, by
-//                      scanning forwrd until the next end-of-line.
+//                      scanning forward until the next end-of-line.
 //
 //                      Need to take into account all of the possible Unicode
 //                      line ending sequences.

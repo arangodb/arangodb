@@ -4,7 +4,7 @@
  * ICU <specials> source: <path>/common/main/root.xml
  */
 root{
-    Version{"2.1.30.58"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Asmera"{
             ec{"Asmara"}
@@ -81,6 +81,12 @@ root{
         "Asia:Katmandu"{
             ec{"Kathmandu"}
         }
+        "Asia:Macau"{
+            ec{"Macao"}
+        }
+        "Asia:Rangoon"{
+            ec{"Yangon"}
+        }
         "Asia:Saigon"{
             ec{"Ho Chi Minh"}
         }
@@ -89,6 +95,9 @@ root{
         }
         "Atlantic:St_Helena"{
             ec{"St. Helena"}
+        }
+        "Etc:UTC"{
+            ss{"UTC"}
         }
         "Etc:Unknown"{
             ec{"Unknown"}

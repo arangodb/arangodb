@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 lt{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidžanas"}
@@ -507,6 +507,9 @@ lt{
         "America:Puerto_Rico"{
             ec{"Puerto Rikas"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenasas"}
+        }
         "America:Rainy_River"{
             ec{"Reini Riveris"}
         }
@@ -657,6 +660,9 @@ lt{
         "Asia:Ashgabat"{
             ec{"Ašchabadas"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdadas"}
         }
@@ -707,6 +713,9 @@ lt{
         }
         "Asia:Dushanbe"{
             ec{"Dušanbė"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gazos ruožas"}
@@ -800,6 +809,9 @@ lt{
         }
         "Asia:Qatar"{
             ec{"Kataras"}
+        }
+        "Asia:Qostanay"{
+            ec{"Kostanajus"}
         }
         "Asia:Qyzylorda"{
             ec{"Kzyl-Orda"}
@@ -942,6 +954,9 @@ lt{
         "Australia:Sydney"{
             ec{"Sidnėjus"}
         }
+        "Etc:UTC"{
+            ls{"pasaulio suderintasis laikas"}
+        }
         "Etc:Unknown"{
             ec{"nežinomas miestas"}
         }
@@ -1072,6 +1087,9 @@ lt{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevas"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratovas"}
         }
         "Europe:Simferopol"{
             ec{"Simferopolis"}

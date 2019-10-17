@@ -8,11 +8,11 @@
 
 #include "src/builtins/builtins-iterator-gen.h"
 #include "src/builtins/builtins-utils-gen.h"
-#include "src/code-stub-assembler.h"
-#include "src/objects-inl.h"
-#include "src/objects.h"
+#include "src/codegen/code-stub-assembler.h"
 #include "src/objects/js-list-format-inl.h"
 #include "src/objects/js-list-format.h"
+#include "src/objects/objects-inl.h"
+#include "src/objects/objects.h"
 
 namespace v8 {
 namespace internal {
@@ -103,22 +103,19 @@ TF_BUILTIN(StringToLowerCaseIntl, IntlBuiltinsAssembler) {
   }
 
   // Call into C for case conversion. The signature is:
-  // Object* ConvertOneByteToLower(String* src, String* dst, Isolate* isolate);
+  // String ConvertOneByteToLower(String src, String dst);
   BIND(&call_c);
   {
     Node* const src = to_direct.string();
 
     Node* const function_addr =
         ExternalConstant(ExternalReference::intl_convert_one_byte_to_lower());
-    Node* const isolate_ptr =
-        ExternalConstant(ExternalReference::isolate_address(isolate()));
 
-    MachineType type_ptr = MachineType::Pointer();
     MachineType type_tagged = MachineType::AnyTagged();
 
-    Node* const result =
-        CallCFunction3(type_tagged, type_tagged, type_tagged, type_ptr,
-                       function_addr, src, dst, isolate_ptr);
+    Node* const result = CallCFunction(function_addr, type_tagged,
+                                       std::make_pair(type_tagged, src),
+                                       std::make_pair(type_tagged, dst));
 
     Return(result);
   }
@@ -135,10 +132,10 @@ TF_BUILTIN(StringToLowerCaseIntl, IntlBuiltinsAssembler) {
 }
 
 TF_BUILTIN(StringPrototypeToLowerCaseIntl, IntlBuiltinsAssembler) {
-  Node* const maybe_string = Parameter(Descriptor::kReceiver);
-  Node* const context = Parameter(Descriptor::kContext);
+  TNode<Object> maybe_string = CAST(Parameter(Descriptor::kReceiver));
+  TNode<Context> context = CAST(Parameter(Descriptor::kContext));
 
-  Node* const string =
+  TNode<String> string =
       ToThisString(context, maybe_string, "String.prototype.toLowerCase");
 
   Return(CallBuiltin(Builtins::kStringToLowerCaseIntl, context, string));
@@ -188,10 +185,10 @@ void IntlBuiltinsAssembler::ListFormatCommon(TNode<Context> context,
 
 TNode<JSArray> IntlBuiltinsAssembler::AllocateEmptyJSArray(
     TNode<Context> context) {
-  return CAST(CodeStubAssembler::AllocateJSArray(
+  return CodeStubAssembler::AllocateJSArray(
       PACKED_ELEMENTS,
       LoadJSArrayElementsMap(PACKED_ELEMENTS, LoadNativeContext(context)),
-      SmiConstant(0), SmiConstant(0)));
+      SmiConstant(0), SmiConstant(0));
 }
 
 TF_BUILTIN(ListFormatPrototypeFormat, IntlBuiltinsAssembler) {

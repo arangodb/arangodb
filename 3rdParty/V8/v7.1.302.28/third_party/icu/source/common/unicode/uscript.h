@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
  **********************************************************************
@@ -444,6 +444,37 @@ typedef enum UScriptCode {
       /** @stable ICU 58 */
       USCRIPT_SYMBOLS_EMOJI                 = 174,/* Zsye */
 
+      /** @stable ICU 60 */
+      USCRIPT_MASARAM_GONDI                 = 175,/* Gonm */
+      /** @stable ICU 60 */
+      USCRIPT_SOYOMBO                       = 176,/* Soyo */
+      /** @stable ICU 60 */
+      USCRIPT_ZANABAZAR_SQUARE              = 177,/* Zanb */
+
+      /** @stable ICU 62 */
+      USCRIPT_DOGRA                         = 178,/* Dogr */
+      /** @stable ICU 62 */
+      USCRIPT_GUNJALA_GONDI                 = 179,/* Gong */
+      /** @stable ICU 62 */
+      USCRIPT_MAKASAR                       = 180,/* Maka */
+      /** @stable ICU 62 */
+      USCRIPT_MEDEFAIDRIN                   = 181,/* Medf */
+      /** @stable ICU 62 */
+      USCRIPT_HANIFI_ROHINGYA               = 182,/* Rohg */
+      /** @stable ICU 62 */
+      USCRIPT_SOGDIAN                       = 183,/* Sogd */
+      /** @stable ICU 62 */
+      USCRIPT_OLD_SOGDIAN                   = 184,/* Sogo */
+
+      /** @stable ICU 64 */
+      USCRIPT_ELYMAIC                       = 185,/* Elym */
+      /** @stable ICU 64 */
+      USCRIPT_NYIAKENG_PUACHUE_HMONG        = 186,/* Hmnp */
+      /** @stable ICU 64 */
+      USCRIPT_NANDINAGARI                   = 187,/* Nand */
+      /** @stable ICU 64 */
+      USCRIPT_WANCHO                        = 188,/* Wcho */
+
 #ifndef U_HIDE_DEPRECATED_API
     /**
      * One more than the highest normal UScriptCode value.
@@ -451,7 +482,7 @@ typedef enum UScriptCode {
      *
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
      */
-    USCRIPT_CODE_LIMIT    = 175
+    USCRIPT_CODE_LIMIT    = 189
 #endif  // U_HIDE_DEPRECATED_API
 } UScriptCode;
 
@@ -469,7 +500,7 @@ typedef enum UScriptCode {
  * @param nameOrAbbrOrLocale name of the script, as given in
  * PropertyValueAliases.txt, or ISO 15924 code or locale
  * @param fillIn the UScriptCode buffer to fill in the script code
- * @param capacity the capacity (size) fo UScriptCode buffer passed in.
+ * @param capacity the capacity (size) of UScriptCode buffer passed in.
  * @param err the error status code.
  * @return The number of script codes filled in the buffer passed in
  * @stable ICU 2.4

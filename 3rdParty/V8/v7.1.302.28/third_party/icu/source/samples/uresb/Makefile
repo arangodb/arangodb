@@ -64,7 +64,7 @@ sr.res : sr.txt
 # Can change this to LINK.c if it is a C only program
 # Can add more libraries here. 
 $(TARGET): $(OBJECTS)
-	$(CC) -o $@ $^ $(LDFLAGS)
+	$(CC) -o $(TARGET) $(LDFLAGS)
 
 # Make check: simply runs the sample, logged to a file
 check: $(TARGET) $(RESOURCES)

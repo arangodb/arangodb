@@ -124,6 +124,10 @@ kln{
         }
         MRO{
             "MRO",
+            "Rabisiekab Mauritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Rabisiekab Mauritania",
         }
         MUR{
@@ -176,6 +180,10 @@ kln{
         }
         STD{
             "STD",
+            "Rabisiekab Sao Tome ak Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Rabisiekab Sao Tome ak Principe",
         }
         SZL{
@@ -223,5 +231,5 @@ kln{
             "Dolaitab ya Zimbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

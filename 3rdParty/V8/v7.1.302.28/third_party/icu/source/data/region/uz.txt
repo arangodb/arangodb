@@ -31,6 +31,7 @@ uz{
         151{"Sharqiy Yevropa"}
         154{"Shimoliy Yevropa"}
         155{"G‘arbiy Yevropa"}
+        202{"Sahro janubidagi Afrika"}
         419{"Lotin Amerikasi"}
         AC{"Me’roj oroli"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ uz{
         CW{"Kyurasao"}
         CX{"Rojdestvo oroli"}
         CY{"Kipr"}
-        CZ{"Chexiya Respublikasi"}
+        CZ{"Chexiya"}
         DE{"Germaniya"}
         DG{"Diyego-Garsiya"}
         DJ{"Jibuti"}
@@ -106,9 +107,10 @@ uz{
         ES{"Ispaniya"}
         ET{"Efiopiya"}
         EU{"Yevropa Ittifoqi"}
+        EZ{"yevrozona"}
         FI{"Finlandiya"}
         FJ{"Fiji"}
-        FK{"Folklend orollari"}
+        FK{"Folklend (Malvin) orollari"}
         FM{"Mikroneziya"}
         FO{"Farer orollari"}
         FR{"Fransiya"}
@@ -181,7 +183,7 @@ uz{
         MF{"Sent-Martin"}
         MG{"Madagaskar"}
         MH{"Marshall orollari"}
-        MK{"Makedoniya"}
+        MK{"Shimoliy Makedoniya"}
         ML{"Mali"}
         MM{"Myanma (Birma)"}
         MN{"Mongoliya"}
@@ -239,7 +241,7 @@ uz{
         SG{"Singapur"}
         SH{"Muqaddas Yelena oroli"}
         SI{"Sloveniya"}
-        SJ{"Svalbard va Yan-Mayen"}
+        SJ{"Shpitsbergen va Yan-Mayen"}
         SK{"Slovakiya"}
         SL{"Syerra-Leone"}
         SM{"San-Marino"}
@@ -302,10 +304,8 @@ uz{
         CD{"Kongo (KDR)"}
         CG{"Kongo (Respublika)"}
         CI{"Fil suyagi qirg‘og‘i"}
-        CZ{"Chexiya"}
-        FK{"Folklend (Malvin) orollari"}
-        MK{"Makedoniya (SYRM)"}
+        CZ{"Chexiya Respublikasi"}
         TL{"Sharqiy Timor"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.49.82"}
 }

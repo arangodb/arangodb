@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en_HK{
     %%Parent{"en_001"}
-    Version{"2.1.27.40"}
+    Version{"2.1.47.86"}
     zoneStrings{
         "meta:Hong_Kong"{
             sd{"HKST"}

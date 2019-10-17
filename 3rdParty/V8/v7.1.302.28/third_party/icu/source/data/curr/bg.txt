@@ -226,6 +226,10 @@ bg{
             "CLP",
             "Чилийско песо",
         }
+        CNH{
+            "CNH",
+            "Китайски ренминби юан (offshore)",
+        }
         CNY{
             "CNY",
             "Китайски юан",
@@ -596,6 +600,10 @@ bg{
         }
         MRO{
             "MRO",
+            "Мавританска угия (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Мавританска угия",
         }
         MTL{
@@ -688,11 +696,11 @@ bg{
         }
         PEN{
             "PEN",
-            "Перуански нов сол",
+            "Перуански сол",
         }
         PES{
             "PES",
-            "Перуански сол",
+            "Перуански сол (1863–1965)",
         }
         PGK{
             "PGK",
@@ -816,6 +824,10 @@ bg{
         }
         STD{
             "STD",
+            "Добра на Сао Томе и Принсипи (1977–2017)",
+        }
+        STN{
+            "STN",
             "Добра на Сао Томе и Принсипи",
         }
         SUR{
@@ -906,14 +918,6 @@ bg{
             "щ.д.",
             "Щатски долар",
         }
-        USN{
-            "USN",
-            "USN",
-        }
-        USS{
-            "USS",
-            "USS",
-        }
         UYI{
             "UYI",
             "Уругвайско песо (индекс на инфлацията)",
@@ -937,6 +941,10 @@ bg{
         VEF{
             "VEF",
             "Венецуелски боливар",
+        }
+        VES{
+            "VES",
+            "Венецуелски боливар (VES)",
         }
         VND{
             "VND",
@@ -1015,7 +1023,7 @@ bg{
             "Код резервиран за целите на тестване",
         }
         XXX{
-            "XXX",
+            "¤",
             "Непозната валута",
         }
         YDD{
@@ -1072,18 +1080,14 @@ bg{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
         ARS{"ARS"}
         AUD{"AUD"}
-        BAM{"KM"}
         BBD{"BBD"}
         BDT{"BDT"}
         BMD{"BMD"}
         BND{"BND"}
-        BOB{"Bs"}
         BRL{"BRL"}
         BSD{"BSD"}
-        BWP{"P"}
         BYN{"BYN"}
         BZD{"BZD"}
         CAD{"CAD"}
@@ -1091,83 +1095,43 @@ bg{
         CNY{"CNY"}
         COP{"COP"}
         CRC{"CRC"}
-        CUC{"$"}
         CUP{"CUP"}
-        CZK{"Kč"}
-        DKK{"kr"}
         DOP{"DOP"}
-        EGP{"E£"}
-        EUR{"€"}
         FJD{"FJD"}
-        GBP{"£"}
-        GEL{"₾"}
         GIP{"GIP"}
-        GNF{"FG"}
-        GTQ{"Q"}
         GYD{"GYD"}
         HKD{"HKD"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
         ILS{"ILS"}
         INR{"INR"}
-        ISK{"kr"}
         JMD{"JMD"}
-        JPY{"¥"}
         KHR{"KHR"}
-        KMF{"CF"}
-        KPW{"₩"}
         KRW{"KRW"}
         KYD{"KYD"}
         KZT{"KZT"}
         LAK{"LAK"}
-        LBP{"L£"}
-        LKR{"Rs"}
         LRD{"LRD"}
-        MGA{"Ar"}
-        MMK{"K"}
         MNT{"MNT"}
-        MUR{"Rs"}
         MXN{"MXN"}
-        MYR{"RM"}
         NAD{"NAD"}
         NGN{"NGN"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
         NZD{"NZD"}
         PHP{"PHP"}
-        PKR{"Rs"}
-        PLN{"zł"}
         PYG{"PYG"}
-        RUB{"₽"}
-        RWF{"RF"}
+        RON{"RON"}
         SBD{"SBD"}
-        SEK{"kr"}
         SGD{"SGD"}
-        SHP{"£"}
         SRD{"SRD"}
         SSP{"SSP"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
+        STN{"Db"}
         TRY{"TRY"}
         TTD{"TTD"}
         TWD{"TWD"}
         UAH{"UAH"}
-        USD{"$"}
         UYU{"UYU"}
-        VEF{"Bs"}
         VND{"VND"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1361,6 +1325,10 @@ bg{
         CLP{
             one{"чилийско песо"}
             other{"чилийски песо"}
+        }
+        CNH{
+            one{"китайски ренминби юан (offshore)"}
+            other{"китайски ренминби юан (offshore)"}
         }
         CNY{
             one{"китайски юан"}
@@ -1687,6 +1655,10 @@ bg{
             other{"патаки на Макао"}
         }
         MRO{
+            one{"мавританска угия (1973–2017)"}
+            other{"мавритански угии (1973–2017)"}
+        }
+        MRU{
             one{"мавританска угия"}
             other{"мавритански угии"}
         }
@@ -1771,8 +1743,8 @@ bg{
             other{"панамски балбоа"}
         }
         PEN{
-            one{"перуански нов сол"}
-            other{"перуански нови сола"}
+            one{"перуански сол"}
+            other{"перуански сола"}
         }
         PES{
             one{"перуански сол (1863–1965)"}
@@ -1895,6 +1867,10 @@ bg{
             other{"южносудански лири"}
         }
         STD{
+            one{"добра на Сао Томе и Принсипи (1977–2017)"}
+            other{"добра на Сао Томе и Принсипи (1977–2017)"}
+        }
+        STN{
             one{"добра на Сао Томе и Принсипи"}
             other{"добра на Сао Томе и Принсипи"}
         }
@@ -2006,6 +1982,10 @@ bg{
             one{"венецуелски боливар"}
             other{"венецуелски боливара"}
         }
+        VES{
+            one{"венецуелски боливар (VES)"}
+            other{"венецуелски боливара (VES)"}
+        }
         VND{
             one{"виетнамски донг"}
             other{"виетнамски донга"}
@@ -2095,5 +2075,5 @@ bg{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.30.6"}
+    Version{"2.1.48.42"}
 }

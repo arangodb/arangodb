@@ -429,7 +429,7 @@ mt{
         suk{"Sukuma"}
         sus{"Susu"}
         sux{"Sumerjan"}
-        sv{"Żvezja"}
+        sv{"Żvediż"}
         sw{"Swahili"}
         sw_CD{"Swahili tar-Repubblika Demokratika tal-Kongo"}
         swb{"Komorjan"}
@@ -473,7 +473,7 @@ mt{
         uk{"Ukren"}
         umb{"Umbundu"}
         und{"Lingwa Mhix Magħrufa"}
-        ur{"ur"}
+        ur{"Urdu"}
         uz{"Uzbek"}
         vai{"Vai"}
         ve{"Venda"}
@@ -559,7 +559,7 @@ mt{
     Variants{
         REVISED{"Ortografija Irriveda"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     codePatterns{
         language{"Lingwa: {0}"}
         script{"Skript: {0}"}

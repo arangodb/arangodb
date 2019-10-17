@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ne{
-    Version{"2.1.29.20"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"अविड्जान"}
@@ -169,7 +169,7 @@ ne{
             ec{"एङ्ग्विल्ला"}
         }
         "America:Antigua"{
-            ec{"एण्टिगुवा"}
+            ec{"एन्टिगुवा"}
         }
         "America:Araguaina"{
             ec{"आरागुवाना"}
@@ -196,7 +196,7 @@ ne{
             ec{"उशुआइआ"}
         }
         "America:Aruba"{
-            ec{"एरूवा"}
+            ec{"अरुबा"}
         }
         "America:Asuncion"{
             ec{"असन्सियन"}
@@ -205,16 +205,16 @@ ne{
             ec{"बाहिया"}
         }
         "America:Bahia_Banderas"{
-            ec{"बाहिअ बन्देर्स"}
+            ec{"बाहिया बान्डेराश"}
         }
         "America:Barbados"{
-            ec{"वार्वाडोस्"}
+            ec{"बार्बाडोस"}
         }
         "America:Belem"{
             ec{"बेलेम"}
         }
         "America:Belize"{
-            ec{"वेलिज"}
+            ec{"बेलिज"}
         }
         "America:Blanc-Sablon"{
             ec{"ब्लान्क-साब्लोन"}
@@ -256,10 +256,10 @@ ne{
             ec{"शिकागो"}
         }
         "America:Chihuahua"{
-            ec{"चिहुआहुआ"}
+            ec{"चिहुवाहुवा"}
         }
         "America:Coral_Harbour"{
-            ec{"कोराल बन्दरगाहा"}
+            ec{"एटिकोकान"}
         }
         "America:Cordoba"{
             ec{"कोरडोवा"}
@@ -280,10 +280,10 @@ ne{
             ec{"डान्मार्कशाभन"}
         }
         "America:Dawson"{
-            ec{"डेजन"}
+            ec{"डसन"}
         }
         "America:Dawson_Creek"{
-            ec{"डेजन क्रिक"}
+            ec{"डसन क्रिक"}
         }
         "America:Denver"{
             ec{"डेन्भर"}
@@ -340,13 +340,13 @@ ne{
             ec{"ह्यालिफ्याक्स"}
         }
         "America:Havana"{
-            ec{"हवाना"}
+            ec{"हभाना"}
         }
         "America:Hermosillo"{
             ec{"हेर्मोसिल्लो"}
         }
         "America:Indiana:Knox"{
-            ec{"नोक्स, इण्डियाना"}
+            ec{"नोक्स इन्डियाना"}
         }
         "America:Indiana:Marengo"{
             ec{"मारेन्गो, इन्डियाना"}
@@ -367,7 +367,7 @@ ne{
             ec{"विनामाक, इन्डियाना"}
         }
         "America:Indianapolis"{
-            ec{"इण्डियानापोलिस"}
+            ec{"इन्डियानापोलिस"}
         }
         "America:Inuvik"{
             ec{"इनुभिक"}
@@ -466,13 +466,13 @@ ne{
             ec{"निपिगन"}
         }
         "America:Nome"{
-            ec{"नोमे"}
+            ec{"नोम"}
         }
         "America:Noronha"{
             ec{"नोरोन्हा"}
         }
         "America:North_Dakota:Beulah"{
-            ec{"बेलुआ, उत्तर डोकोटा"}
+            ec{"बेउला, उत्तर डाकोटा"}
         }
         "America:North_Dakota:Center"{
             ec{"उत्तर डाकोटा, केन्द्र"}
@@ -481,7 +481,7 @@ ne{
             ec{"नयाँ सालेम, उत्तर डाकोटा"}
         }
         "America:Ojinaga"{
-            ec{"वोन्जिनागा"}
+            ec{"ओजिनागा"}
         }
         "America:Panama"{
             ec{"पानामा"}
@@ -493,7 +493,7 @@ ne{
             ec{"पारामारिवो"}
         }
         "America:Phoenix"{
-            ec{"फोनिक्स"}
+            ec{"फिनिक्स"}
         }
         "America:Port-au-Prince"{
             ec{"पोर्ट-अउ-प्रिन्स"}
@@ -506,6 +506,9 @@ ne{
         }
         "America:Puerto_Rico"{
             ec{"प्युर्टो रिको"}
+        }
+        "America:Punta_Arenas"{
+            ec{"पुन्टा अरिनाज"}
         }
         "America:Rainy_River"{
             ec{"रेनिरिभर"}
@@ -535,7 +538,7 @@ ne{
             ec{"सान्टिआगो"}
         }
         "America:Santo_Domingo"{
-            ec{"सान्टो डोमिन्गो"}
+            ec{"सान्टो डोमिङ्गो"}
         }
         "America:Sao_Paulo"{
             ec{"साओ पाउलो"}
@@ -544,7 +547,7 @@ ne{
             ec{"ईट्टोक्कोरटूर्मिट"}
         }
         "America:Sitka"{
-            ec{"सित्तका"}
+            ec{"सिट्का"}
         }
         "America:St_Barthelemy"{
             ec{"सेन्ट बार्थेलेमी"}
@@ -565,7 +568,7 @@ ne{
             ec{"सेन्ट भिन्सेन्ट"}
         }
         "America:Swift_Current"{
-            ec{"स्विफ्ट करेण्ट"}
+            ec{"स्विफ्ट करेन्ट"}
         }
         "America:Tegucigalpa"{
             ec{"टेगुसिगाल्पा"}
@@ -595,7 +598,7 @@ ne{
             ec{"विन्निपेग"}
         }
         "America:Yakutat"{
-            ec{"याकुतात"}
+            ec{"याकुटाट"}
         }
         "America:Yellowknife"{
             ec{"येल्लोनाइफ"}
@@ -657,6 +660,9 @@ ne{
         "Asia:Ashgabat"{
             ec{"अस्काबाट"}
         }
+        "Asia:Atyrau"{
+            ec{"अटिराउ"}
+        }
         "Asia:Baghdad"{
             ec{"बगदाद"}
         }
@@ -707,6 +713,9 @@ ne{
         }
         "Asia:Dushanbe"{
             ec{"दस्सान्बे"}
+        }
+        "Asia:Famagusta"{
+            ec{"फामागुस्ता"}
         }
         "Asia:Gaza"{
             ec{"गाजा"}
@@ -841,7 +850,7 @@ ne{
             ec{"तिबिलिसी"}
         }
         "Asia:Tehran"{
-            ec{"तेहेराण"}
+            ec{"तेहेरान"}
         }
         "Asia:Thimphu"{
             ec{"थिम्पु"}
@@ -904,7 +913,7 @@ ne{
             ec{"सेन्ट हेलेना"}
         }
         "Atlantic:Stanley"{
-            ec{"स्टान्ले"}
+            ec{"स्ट्यान्ली"}
         }
         "Australia:Adelaide"{
             ec{"एडेलेड"}
@@ -941,6 +950,9 @@ ne{
         }
         "Australia:Sydney"{
             ec{"सिड्नी"}
+        }
+        "Etc:UTC"{
+            ls{"समन्वित विश्व समय"}
         }
         "Etc:Unknown"{
             ec{"अज्ञात शहर"}
@@ -1072,6 +1084,9 @@ ne{
         }
         "Europe:Sarajevo"{
             ec{"साराजेभो"}
+        }
+        "Europe:Saratov"{
+            ec{"साराटोभ"}
         }
         "Europe:Simferopol"{
             ec{"सिम्फेरोपोल"}
@@ -1297,9 +1312,9 @@ ne{
             ls{"अलस्काको मानक समय"}
         }
         "meta:Amazon"{
-            ld{"अमेजन ग्रीष्मकालीन समय"}
-            lg{"अमेजन समय"}
-            ls{"अमेजन मानक समय"}
+            ld{"एमाजोन ग्रीष्मकालीन समय"}
+            lg{"एमाजोन समय"}
+            ls{"एमाजोन मानक समय"}
         }
         "meta:America_Central"{
             ld{"केन्द्रीय दिवा समय"}

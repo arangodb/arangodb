@@ -31,6 +31,7 @@ hr{
         151{"Istočna Europa"}
         154{"Sjeverna Europa"}
         155{"Zapadna Europa"}
+        202{"Subsaharska Afrika"}
         419{"Latinska Amerika"}
         AC{"Otok Ascension"}
         AD{"Andora"}
@@ -89,7 +90,7 @@ hr{
         CW{"Curaçao"}
         CX{"Božićni otok"}
         CY{"Cipar"}
-        CZ{"Češka Republika"}
+        CZ{"Češka"}
         DE{"Njemačka"}
         DG{"Diego Garcia"}
         DJ{"Džibuti"}
@@ -106,9 +107,10 @@ hr{
         ES{"Španjolska"}
         ET{"Etiopija"}
         EU{"Europska unija"}
+        EZ{"eurozona"}
         FI{"Finska"}
         FJ{"Fidži"}
-        FK{"Falklandski otoci"}
+        FK{"Falklandski otoci (Malvini)"}
         FM{"Mikronezija"}
         FO{"Farski otoci"}
         FR{"Francuska"}
@@ -181,7 +183,7 @@ hr{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Maršalovi Otoci"}
-        MK{"Makedonija"}
+        MK{"Sjeverna Makedonija"}
         ML{"Mali"}
         MM{"Mjanmar (Burma)"}
         MN{"Mongolija"}
@@ -217,7 +219,7 @@ hr{
         PH{"Filipini"}
         PK{"Pakistan"}
         PL{"Poljska"}
-        PM{"Saint-Pierre-et-Miquelon"}
+        PM{"Sveti Petar i Mikelon"}
         PN{"Otoci Pitcairn"}
         PR{"Portoriko"}
         PS{"Palestina"}
@@ -285,6 +287,8 @@ hr{
         VU{"Vanuatu"}
         WF{"Wallis i Futuna"}
         WS{"Samoa"}
+        XA{"pseudo naglasci"}
+        XB{"pseudo bidi"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -302,10 +306,8 @@ hr{
         CD{"Kongo (DRK)"}
         CG{"Kongo (RK)"}
         CI{"Bjelokosna Obala"}
-        CZ{"Češka"}
-        FK{"Falklandski otoci (Malvini)"}
-        MK{"Makedonija (BJRM)"}
+        CZ{"Češka Republika"}
         TL{"Istočni Timor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

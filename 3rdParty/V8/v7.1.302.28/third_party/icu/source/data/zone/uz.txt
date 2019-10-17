@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 uz{
-    Version{"2.1.29.44"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -507,6 +507,9 @@ uz{
         "America:Puerto_Rico"{
             ec{"Puerto-Riko"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta-Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Reyni-River"}
         }
@@ -657,6 +660,9 @@ uz{
         "Asia:Ashgabat"{
             ec{"Ashxobod"}
         }
+        "Asia:Atyrau"{
+            ec{"Atirau"}
+        }
         "Asia:Baghdad"{
             ec{"Bag‘dod"}
         }
@@ -664,7 +670,7 @@ uz{
             ec{"Bahrayn"}
         }
         "Asia:Baku"{
-            ec{"Baku"}
+            ec{"Boku"}
         }
         "Asia:Bangkok"{
             ec{"Bangkok"}
@@ -708,6 +714,9 @@ uz{
         "Asia:Dushanbe"{
             ec{"Dushanbe"}
         }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
+        }
         "Asia:Gaza"{
             ec{"G‘azo"}
         }
@@ -733,7 +742,7 @@ uz{
             ec{"Quddus"}
         }
         "Asia:Kabul"{
-            ec{"Kobul"}
+            ec{"Qobul"}
         }
         "Asia:Kamchatka"{
             ec{"Kamchatka"}
@@ -757,7 +766,7 @@ uz{
             ec{"Kuching"}
         }
         "Asia:Kuwait"{
-            ec{"Kuvayt"}
+            ec{"Quvayt"}
         }
         "Asia:Macau"{
             ec{"Makao"}
@@ -942,6 +951,9 @@ uz{
         "Australia:Sydney"{
             ec{"Sidney"}
         }
+        "Etc:UTC"{
+            ls{"Koordinatali universal vaqt"}
+        }
         "Etc:Unknown"{
             ec{"noma’lum shahar"}
         }
@@ -967,7 +979,7 @@ uz{
             ec{"Bratislava"}
         }
         "Europe:Brussels"{
-            ec{"Brussel"}
+            ec{"Bryussel"}
         }
         "Europe:Bucharest"{
             ec{"Buxarest"}
@@ -979,7 +991,7 @@ uz{
             ec{"Byuzingen"}
         }
         "Europe:Chisinau"{
-            ec{"Kishinev"}
+            ec{"Kishinyov"}
         }
         "Europe:Copenhagen"{
             ec{"Kopengagen"}
@@ -1072,6 +1084,9 @@ uz{
         }
         "Europe:Sarajevo"{
             ec{"Sarayevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1549,7 +1564,7 @@ uz{
             ls{"Xovd standart vaqti"}
         }
         "meta:India"{
-            ls{"Hindiston vaqti"}
+            ls{"Hindiston standart vaqti"}
         }
         "meta:Indian_Ocean"{
             ls{"Hind okeani vaqti"}

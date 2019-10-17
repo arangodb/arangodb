@@ -1,5 +1,7 @@
-CODE_REVIEW_SERVER: https://codereview.chromium.org
+# This file is used by git-cl to get repository specific information.
 CC_LIST: chromium-reviews@chromium.org
-VIEW_VC: https://chromium.googlesource.com/chromium/deps/icu/+/
-TRY_ON_UPLOAD: False
+CODE_REVIEW_SERVER: https://codereview.chromium.org
+GERRIT_HOST: True
 PROJECT: icu
+TRY_ON_UPLOAD: False
+VIEW_VC: https://chromium.googlesource.com/chromium/deps/icu/+/

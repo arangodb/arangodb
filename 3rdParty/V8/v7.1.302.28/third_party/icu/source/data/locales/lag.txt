@@ -3,7 +3,7 @@
 lag{
     ExemplarCharacters{"[a á b c d e é f g h i í ɨ j k l m n o ó p q r s t u ú ʉ v w x y z]"}
     ExemplarCharactersIndex{"[A B C D E F G H I Ɨ J K L M N O P Q R S T U Ʉ V W X Y Z]"}
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

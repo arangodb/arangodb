@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -6,7 +6,7 @@
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  patternprops.h
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -17,6 +17,7 @@
 #ifndef __PATTERNPROPS_H__
 #define __PATTERNPROPS_H__
 
+#include "unicode/unistr.h"
 #include "unicode/utypes.h"
 
 U_NAMESPACE_BEGIN
@@ -62,6 +63,12 @@ public:
      * @return The smallest pointer at or after s with a non-white space character.
      */
     static const UChar *skipWhiteSpace(const UChar *s, int32_t length);
+
+    /**
+     * Skips over Pattern_White_Space starting at index start in s.
+     * @return The smallest index at or after start with a non-white space character.
+     */
+    static int32_t skipWhiteSpace(const UnicodeString &s, int32_t start);
 
     /**
      * @return s except with leading and trailing Pattern_White_Space removed and length adjusted.

@@ -125,6 +125,10 @@ shi_Latn{
         }
         MRO{
             "MRO",
+            "uqiyya n muṛiṭanya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "uqiyya n muṛiṭanya",
         }
         MUR{
@@ -181,6 +185,10 @@ shi_Latn{
         }
         STD{
             "STD",
+            "adubra n sanṭumi (1977–2017)",
+        }
+        STN{
+            "STN",
             "adubra n sanṭumi",
         }
         SZL{
@@ -228,5 +236,5 @@ shi_Latn{
             "adular n zimbabwi",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

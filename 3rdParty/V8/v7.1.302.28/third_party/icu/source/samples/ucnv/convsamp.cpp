@@ -1,6 +1,6 @@
 /*************************************************************************
 *
-*   Copyright (C) 2016 and later: Unicode, Inc. and others.
+*   © 2016 and later: Unicode, Inc. and others.
 *   License & terms of use: http://www.unicode.org/copyright.html#License
 *
 **************************************************************************
@@ -39,7 +39,6 @@
 #include <string.h>
 #include <stdlib.h>  /* malloc */
 
-#include "cmemory.h"
 #include "unicode/utypes.h"   /* Basic ICU data types */
 #include "unicode/ucnv.h"     /* C   Converter API    */
 #include "unicode/ustring.h"  /* some more string fcns*/
@@ -50,6 +49,9 @@
 #include "flagcb.h"
 
 /* Some utility functions */
+#ifndef UPRV_LENGTHOF
+#define UPRV_LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+#endif
 
 static const UChar kNone[] = { 0x0000 };
 
@@ -128,7 +130,7 @@ void printBytes(const char  *name = "?",
   int32_t i;
 
   if( (len == -1) && (uch) ) {
-    len = strlen(uch);
+    len = static_cast<int32_t>(strlen(uch));
   }
 
   printf("%5s: ", name);
@@ -327,7 +329,7 @@ UErrorCode convsample_05()
 
   // grab another buffer's worth
   while((!feof(f)) && 
-        ((count=fread(inBuf, 1, BUFFERSIZE , f)) > 0) )
+        ((count=static_cast<int32_t>(fread(inBuf, 1, BUFFERSIZE , f))) > 0) )
   {
     // Convert bytes to unicode
     source = inBuf;
@@ -422,7 +424,7 @@ UErrorCode convsample_06()
   info = (CharFreqInfo*)malloc(sizeof(CharFreqInfo) * charCount);
   if(!info)
   {
-    fprintf(stderr, " Couldn't allocate %d bytes for freq counter\n", sizeof(CharFreqInfo)*charCount);
+    fprintf(stderr, " Couldn't allocate %d bytes for freq counter\n", static_cast<int>(sizeof(CharFreqInfo)*charCount));
   }
 
   /* reset frequencies */
@@ -442,7 +444,7 @@ UErrorCode convsample_06()
 
   // grab another buffer's worth
   while((!feof(f)) && 
-        ((count=fread(inBuf, 1, BUFFERSIZE , f)) > 0) )
+        ((count=static_cast<int32_t>(fread(inBuf, 1, BUFFERSIZE , f))) > 0) )
   {
     // Convert bytes to unicode
     source = inBuf;
@@ -543,7 +545,7 @@ UErrorCode convsample_12()
   // convert to Unicode
   // Note: we can use strlen, we know it's an 8 bit null terminated codepage
   target[6] = 0xFDCA;
-  len = ucnv_toUChars(conv, target, 100, source, strlen(source), &status);
+  len = ucnv_toUChars(conv, target, 100, source, static_cast<int32_t>(strlen(source)), &status);
   U_ASSERT(status);
   // close the converter
   ucnv_close(conv);
@@ -551,7 +553,7 @@ UErrorCode convsample_12()
   // ***************************** END SAMPLE ********************
   
   // Print it out
-  printBytes("src", source, strlen(source) );
+  printBytes("src", source, static_cast<int32_t>(strlen(source)) );
   printf("\n");
   printUChars("targ", target, len);
 
@@ -588,7 +590,7 @@ UErrorCode convsample_13()
   // **************************** START SAMPLE *******************
 
 
-  printBytes("src",source,sourceLimit-source);
+  printBytes("src", source, static_cast<int32_t>(sourceLimit - source));
 
   while(source < sourceLimit)
   {
@@ -638,7 +640,7 @@ UBool convsample_20_didSubstitute(const char *source)
   conv = ucnv_open("utf-8", &status);
   U_ASSERT(status);
 
-  len = ucnv_toUChars(conv, uchars, 100, source, strlen(source), &status);
+  len = ucnv_toUChars(conv, uchars, 100, source, static_cast<int32_t>(strlen(source)), &status);
   U_ASSERT(status);
  
   printUChars("uch", uchars, len);
@@ -717,7 +719,6 @@ UBool convsample_21_didSubstitute(const char *source)
   UConverter *conv = NULL, *cloneCnv = NULL;
   UErrorCode status = U_ZERO_ERROR;
   uint32_t len, len2;
-  int32_t  cloneLen;
   UBool  flagVal = FALSE;
   UConverterFromUCallback junkCB;
   
@@ -739,7 +740,7 @@ UBool convsample_21_didSubstitute(const char *source)
   conv = ucnv_open("utf-8", &status);
   U_ASSERT(status);
 
-  len = ucnv_toUChars(conv, uchars, 100, source, strlen(source), &status);
+  len = ucnv_toUChars(conv, uchars, 100, source, static_cast<int32_t>(strlen(source)), &status);
   U_ASSERT(status);
  
   printUChars("uch", uchars, len);
@@ -914,7 +915,7 @@ UErrorCode convsample_40()
 
   // grab another buffer's worth
   while((!feof(f)) && 
-        ((count=fread(inBuf, 1, BUFFERSIZE , f)) > 0) )
+        ((count=static_cast<int32_t>(fread(inBuf, 1, BUFFERSIZE , f))) > 0) )
   {
     inbytes += count;
 
@@ -948,9 +949,8 @@ UErrorCode convsample_40()
 
         // Process the Unicode
         // Todo: handle UTF-16/surrogates
-        assert(fwrite(uBuf, sizeof(uBuf[0]), (target-uBuf), out) ==
-               (size_t)(target-uBuf));
-        total += (target-uBuf);
+        assert(fwrite(uBuf, sizeof(uBuf[0]), (target-uBuf), out) == (size_t)(target-uBuf));
+        total += static_cast<uint32_t>((target-uBuf));
     } while (source < sourceLimit); // while simply out of space
   }
 
@@ -1020,7 +1020,7 @@ UErrorCode convsample_46()
 
   // grab another buffer's worth
   while((!feof(f)) && 
-        ((count=fread(inBuf, sizeof(UChar), BUFFERSIZE , f)) > 0) )
+        ((count=static_cast<int32_t>(fread(inBuf, sizeof(UChar), BUFFERSIZE , f))) > 0) )
   {
     inchars += count;
 
@@ -1053,13 +1053,12 @@ UErrorCode convsample_46()
         }
 
         // Process the Unicode
-        assert(fwrite(buf, sizeof(buf[0]), (target-buf), out) ==
-               (size_t)(target-buf));
-        total += (target-buf);
+        assert(fwrite(buf, sizeof(buf[0]), (target-buf), out) == (size_t)(target-buf));
+        total += static_cast<uint32_t>((target-buf));
     } while (source < sourceLimit); // while simply out of space
   }
 
-  printf("%d Uchars (%d bytes) in, %d chars out.\n", inchars, inchars * sizeof(UChar), total);
+  printf("%d Uchars (%d bytes) in, %d chars out.\n", inchars, static_cast<int>(inchars * sizeof(UChar)), total);
   
   // ***************************** END SAMPLE ********************
   ucnv_close(conv);

@@ -9,7 +9,7 @@ bn{
                 "[reorder Beng Deva Guru Gujr Orya Taml Telu Knda Mlym Sinh]"
                 "&ঔ<ং<ঃ<ঁ"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -629,7 +629,7 @@ bn{
                 "&যৌ<<<য়ৌ"
                 "&য্<<<য়্"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 es_AR{
     %%Parent{"es_419"}
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     units{
         duration{
             year{
@@ -75,6 +75,7 @@ es_AR{
                 dnam{"años"}
                 one{"{0} año"}
                 other{"{0} años"}
+                per{"{0}/a"}
             }
         }
         electric{

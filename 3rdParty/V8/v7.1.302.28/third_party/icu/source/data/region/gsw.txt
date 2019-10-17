@@ -284,5 +284,5 @@ gsw{
     Countries%variant{
         MK{"Mazedoonie (EJRM)"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

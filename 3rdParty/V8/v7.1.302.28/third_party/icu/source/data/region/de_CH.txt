@@ -9,7 +9,8 @@ de_CH{
         GB{"Grossbritannien"}
         QO{"Äusseres Ozeanien"}
         SB{"Salomon-Inseln"}
+        TL{"Osttimor"}
         ZW{"Zimbabwe"}
     }
-    Version{"2.1.29.33"}
+    Version{"2.1.47.86"}
 }

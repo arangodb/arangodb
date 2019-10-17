@@ -171,7 +171,7 @@ fr{
             "cruzeiro",
         }
         BSD{
-            "$BS",
+            "BSD",
             "dollar bahaméen",
         }
         BTN{
@@ -229,6 +229,10 @@ fr{
         CLP{
             "$CL",
             "peso chilien",
+        }
+        CNH{
+            "CNH",
+            "yuan chinois (zone extracôtière)",
         }
         CNY{
             "CNY",
@@ -464,7 +468,7 @@ fr{
         }
         IRR{
             "IRR",
-            "rial iranien",
+            "riyal iranien",
         }
         ISK{
             "ISK",
@@ -616,6 +620,10 @@ fr{
         }
         MRO{
             "MRO",
+            "ouguiya mauritanien (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ouguiya mauritanien",
         }
         MTL{
@@ -700,7 +708,7 @@ fr{
         }
         OMR{
             "OMR",
-            "rial omanais",
+            "riyal omanais",
         }
         PAB{
             "PAB",
@@ -712,11 +720,11 @@ fr{
         }
         PEN{
             "PEN",
-            "nouveau sol péruvien",
+            "sol péruvien",
         }
         PES{
             "PES",
-            "sol péruvien",
+            "sol péruvien (1863–1985)",
         }
         PGK{
             "PGK",
@@ -748,7 +756,7 @@ fr{
         }
         QAR{
             "QAR",
-            "rial qatari",
+            "riyal qatari",
         }
         RHD{
             "$RH",
@@ -780,7 +788,7 @@ fr{
         }
         SAR{
             "SAR",
-            "rial saoudien",
+            "riyal saoudien",
         }
         SBD{
             "$SB",
@@ -844,6 +852,10 @@ fr{
         }
         STD{
             "STD",
+            "dobra santoméen (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra santoméen",
         }
         SUR{
@@ -964,6 +976,10 @@ fr{
         }
         VEF{
             "VEF",
+            "bolivar vénézuélien (2008–2018)",
+        }
+        VES{
+            "VES",
             "bolivar vénézuélien",
         }
         VND{
@@ -1051,7 +1067,7 @@ fr{
             "(devise de test)",
         }
         XXX{
-            "XXX",
+            "¤",
             "devise inconnue ou non valide",
         }
         YDD{
@@ -1060,7 +1076,7 @@ fr{
         }
         YER{
             "YER",
-            "rial yéménite",
+            "riyal yéménite",
         }
         YUD{
             "YUD",
@@ -1191,7 +1207,7 @@ fr{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1440,6 +1456,10 @@ fr{
             one{"peso chilien"}
             other{"pesos chiliens"}
         }
+        CNH{
+            one{"yuan chinois (zone extracôtière)"}
+            other{"yuans chinois (zone extracôtière)"}
+        }
         CNY{
             one{"yuan renminbi chinois"}
             other{"yuans renminbi chinois"}
@@ -1673,8 +1693,8 @@ fr{
             other{"dinars irakiens"}
         }
         IRR{
-            one{"rial iranien"}
-            other{"rials iraniens"}
+            one{"riyal iranien"}
+            other{"riyals iraniens"}
         }
         ISK{
             one{"couronne islandaise"}
@@ -1825,6 +1845,10 @@ fr{
             other{"patacas macanaises"}
         }
         MRO{
+            one{"ouguiya mauritanien (1973–2017)"}
+            other{"ouguiyas mauritaniens (1973–2017)"}
+        }
+        MRU{
             one{"ouguiya mauritanien"}
             other{"ouguiyas mauritaniens"}
         }
@@ -1909,8 +1933,8 @@ fr{
             other{"dollars néo-zélandais"}
         }
         OMR{
-            one{"rial omanais"}
-            other{"rials omanis"}
+            one{"riyal omanais"}
+            other{"riyals omanis"}
         }
         PAB{
             one{"balboa panaméen"}
@@ -1921,8 +1945,8 @@ fr{
             other{"intis péruviens"}
         }
         PEN{
-            one{"nouveau sol péruvien"}
-            other{"nouveaux sols péruviens"}
+            one{"sol péruvien"}
+            other{"sols péruviens"}
         }
         PES{
             one{"sol péruvien (1863–1985)"}
@@ -1957,8 +1981,8 @@ fr{
             other{"guaranís paraguayens"}
         }
         QAR{
-            one{"rial qatari"}
-            other{"rials qataris"}
+            one{"riyal qatari"}
+            other{"riyals qataris"}
         }
         RHD{
             one{"dollar rhodésien"}
@@ -1989,8 +2013,8 @@ fr{
             other{"francs rwandais"}
         }
         SAR{
-            one{"rial saoudien"}
-            other{"rials saoudiens"}
+            one{"riyal saoudien"}
+            other{"riyals saoudiens"}
         }
         SBD{
             one{"dollar des îles Salomon"}
@@ -2053,6 +2077,10 @@ fr{
             other{"livres sud-soudanaises"}
         }
         STD{
+            one{"dobra santoméen (1977–2017)"}
+            other{"dobras santoméens (1977–2017)"}
+        }
+        STN{
             one{"dobra santoméen"}
             other{"dobras santoméens"}
         }
@@ -2173,6 +2201,10 @@ fr{
             other{"bolivar vénézuélien (1871–2008)"}
         }
         VEF{
+            one{"bolivar vénézuélien (2008–2018)"}
+            other{"bolivars vénézuéliens (2008–2018)"}
+        }
+        VES{
             one{"bolivar vénézuélien"}
             other{"bolivars vénézuéliens"}
         }
@@ -2265,8 +2297,8 @@ fr{
             other{"dinars nord-yéménites"}
         }
         YER{
-            one{"rial yéménite"}
-            other{"rials yéménites"}
+            one{"riyal yéménite"}
+            other{"riyals yéménites"}
         }
         YUD{
             one{"dinar fort yougoslave (1966–1989)"}
@@ -2321,5 +2353,5 @@ fr{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

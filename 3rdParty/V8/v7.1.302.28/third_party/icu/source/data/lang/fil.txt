@@ -14,7 +14,7 @@ fil{
         collation{"Pagkakasunud-sunod ng Ayos"}
         currency{"Pera"}
         hc{"Siklo ng Oras (12 laban sa 24)"}
-        lb{"Estilo ng Putol ng Linya"}
+        lb{"Istilo ng Putol ng Linya"}
         ms{"Sistema ng Pagsukat"}
         numbers{"Mga Numero"}
         timezone{"Time Zone"}
@@ -69,6 +69,7 @@ fil{
         bug{"Buginese"}
         byn{"Blin"}
         ca{"Catalan"}
+        ccp{"Chakma"}
         ce{"Chechen"}
         ceb{"Cebuano"}
         cgg{"Chiga"}
@@ -128,12 +129,13 @@ fil{
         fr{"French"}
         fr_CA{"French sa Canada"}
         fr_CH{"Swiss na French"}
+        frc{"Cajun French"}
         fur{"Friulian"}
         fy{"Kanlurang Frisian"}
         ga{"Irish"}
         gaa{"Ga"}
         gag{"Gagauz"}
-        gd{"Scots Gaelic"}
+        gd{"Scottish Gaelic"}
         gez{"Geez"}
         gil{"Gilbertese"}
         gl{"Galician"}
@@ -224,6 +226,7 @@ fil{
         lkt{"Lakota"}
         ln{"Lingala"}
         lo{"Lao"}
+        lou{"Louisiana Creole"}
         loz{"Lozi"}
         lrc{"Hilagang Luri"}
         lt{"Lithuanian"}
@@ -501,6 +504,9 @@ fil{
             indian{"Pambansang Kalendaryong Indian"}
             islamic{"Kalendaryong Islamic"}
             islamic-civil{"Kalendaryong Islamic-Civil"}
+            islamic-rgsa{"Kalendaryong Islamiko (Saudi Arabia, sighting)"}
+            islamic-tbla{"Kalendaryong Islamiko (tabular, astronomikal na epoch)"}
+            islamic-umalqura{"Kalendaryong Islamiko (Umm al-Qura)"}
             iso8601{"ISO-8601 na Kalendaryo"}
             japanese{"Kalendaryong Japanese"}
             persian{"Kalendaryong Persian"}
@@ -544,8 +550,11 @@ fil{
         }
         collation{
             big5han{"Pagkakasunod-sunod ng Pag-uuri ng Tradisyunal na Chinese - Big5"}
+            compat{"Nakaraang Pagkakasunud-sunod ng Pag-uuri, para sa compatibility"}
             dictionary{"Pagkakasunud-sunod ng Pag-uuri ng Diksyunaryo"}
             ducet{"Default na Pagkakasunud-sunod ng Ayos ng Unicode"}
+            emoji{"Pagkakasunud-sunod ng Pag-uuri ng Emoji"}
+            eor{"Mga Tuntunin ng European na Pagkakasunud-sunod"}
             gb2312han{"Pagkakasunud-sunod ng Pag-uuri ng Pinasimpleng Chinese - GB2312"}
             phonebook{"Pagkakasunud-sunod ng Pag-uuri ng Phonebook"}
             phonetic{"Phonetic na Ayos ng Pag-uuri-uri"}
@@ -557,10 +566,11 @@ fil{
             stroke{"Pagkakasunud-sunod ng Pag-uuri ng Stroke"}
             traditional{"Tradisyunal na Pagkakasunud-sunod ng Pag-uuri"}
             unihan{"Pagkakasunud-sunod ng Pag-uuri ng Radical-Stroke"}
+            zhuyin{"Zhuyin na Pagkakasunud-sunod ng Pag-uuri"}
         }
         d0{
-            fwidth{"Fullwidth"}
-            hwidth{"Halfwidth"}
+            fwidth{"Hanggang sa Fullwidth"}
+            hwidth{"Hanggang sa Halfwidth"}
             npinyin{"Numeric"}
         }
         hc{
@@ -570,13 +580,13 @@ fil{
             h24{"24 na Oras na Sistema (1–24)"}
         }
         lb{
-            loose{"Loose na Estilo ng Putol ng Linya"}
-            normal{"Normal na Estilo ng Putol ng Linya"}
-            strict{"Mahigpit na Estilo ng Putol ng Linya"}
+            loose{"Loose na Istilo ng Line Break"}
+            normal{"Normal na Istilo ng Line Break"}
+            strict{"Mahigpit na Istilo ng Line Break"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"US BGN na Transliteration"}
+            ungegn{"UN GEGN na Transliteration"}
         }
         ms{
             metric{"Metrikong Sistema"}
@@ -584,18 +594,25 @@ fil{
             ussystem{"Sistema ng Pagsukat sa US"}
         }
         numbers{
+            ahom{"Ahom na mga Digit"}
             arab{"Arabic-Indic na Mga Digit"}
             arabext{"Extendend Arabic-Indic na Mga Digit"}
             armn{"Mga Armenian Numeral"}
             armnlow{"Armenian Lowercase Numerals"}
+            bali{"Balinese na Mga Digit"}
             beng{"Mga Bengali Digit"}
+            brah{"Brahmi na Mga Digit"}
+            cakm{"Chakma na Mga Digit"}
+            cham{"Cham na Mga Digit"}
+            cyrl{"Cyrillic na Mga Numero"}
             deva{"Mga Devanagari Digit"}
             ethi{"Mga Ethiopic Numeral"}
             finance{"Mga Pampinansyang Numeral"}
             fullwide{"Mga Full-Width Digit"}
             geor{"Georgian na Mga Numeral"}
+            gonm{"Masaram Gondi na mga digit"}
             grek{"Greek na Mga Numeral"}
-            greklow{"Greek Lowercase Numerals"}
+            greklow{"Greek Lowercase na Mga Numeral"}
             gujr{"Mga Gujarati Digit"}
             guru{"Mga Gurmukhi Digit"}
             hanidec{"Mga Chinese Decimal na Numeral"}
@@ -604,19 +621,37 @@ fil{
             hant{"Traditional Chinese na Mga Numeral"}
             hantfin{"Traditional Chinese na Mga Numeral para sa Pananalapi"}
             hebr{"Mga Hebrew Numeral"}
+            hmng{"Pahawh Hmong na Mga Digit"}
+            java{"Javanese na Mga Digit"}
             jpan{"Mga Japanese Numeral"}
             jpanfin{"Mga Japanese Numeral sa Pananalapi"}
+            kali{"Kayah Li na Mga Digit"}
             khmr{"Mga Khmer na Digit"}
             knda{"Mga Kannada na Digit"}
+            lana{"Tai Tham Hora na Mga Digit"}
+            lanatham{"Tai Tham Tham na Mga Digit"}
             laoo{"Mga Lao na Digit"}
             latn{"Mga Kanluraning Digit"}
+            lepc{"Lepcha Mga Digit"}
+            limb{"Limbu na Mga Digit"}
+            mathbold{"Matematikal na Bold na Mga Digit"}
+            mathdbl{"Matematikal na Dobleng-Struck na Mga Digit"}
+            mathmono{"Matematikal na Mga Digit na May Isang Puwang"}
+            mathsanb{"Matematikal na Sans-Serif Bold na Mga Digit"}
+            mathsans{"Matematikal na Sans-Serif na Mga Digit"}
             mlym{"Mga Malayalam na Digit"}
+            modi{"Modi na Mga Digit"}
             mong{"Mongolian Digits"}
+            mroo{"Mro na Mga Digit"}
+            mtei{"Meetei Mayek na Mga Digit"}
             mymr{"Mga Myanmar na Digit"}
+            mymrshan{"Maynmar Shan na Mga Digit"}
+            mymrtlng{"Myanmar Tai Laing na Mga Digit"}
             native{"Mga Native na Digit"}
+            nkoo{"N’Ko na Mga Digit"}
             orya{"Mga Oriya na Digit"}
             roman{"Mga Roman Numeral"}
-            romanlow{"Roman Lowercase Numerals"}
+            romanlow{"Roman Lowercase na Mga Numeral"}
             taml{"Tamil na Mga Numeral"}
             tamldec{"Mga Tamil na Digit"}
             telu{"Mga Telugu na Digit"}
@@ -630,20 +665,20 @@ fil{
         PINYIN{"Pinyin Romanization"}
         WADEGILE{"Wade-Giles Romanization"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
-        all{"{0} — Lahat"}
+        all{"{0} — lahat"}
         category-list{"{0}: {1}"}
-        compatibility{"{0} — Pagiging Nababagay"}
-        enclosed{"{0} — Enclosed"}
-        extended{"{0} — Extended"}
-        historic{"{0} — Historic"}
-        miscellaneous{"{0} — Miscellaneous"}
-        other{"{0} — Other"}
-        scripts{"Scripts — {0}"}
+        compatibility{"{0} — pagiging nababagay"}
+        enclosed{"{0} — naka-enclose"}
+        extended{"{0} — pinahaba"}
+        historic{"{0} — makasaysayan"}
+        miscellaneous{"{0} — miscellaneous"}
+        other{"{0} — iba pa"}
+        scripts{"mga script — {0}"}
         strokes{
-            one{"{0} Strokes"}
-            other{"{0} Stroke"}
+            one{"{0} stroke"}
+            other{"{0} strokes"}
         }
     }
     codePatterns{

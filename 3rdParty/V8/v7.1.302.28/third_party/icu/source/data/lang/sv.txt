@@ -51,6 +51,7 @@ sv{
         aro{"araoniska"}
         arp{"arapaho"}
         arq{"algerisk arabiska"}
+        ars{"najdiarabiska"}
         arw{"arawakiska"}
         ary{"marockansk arabiska"}
         arz{"egyptisk arabiska"}
@@ -108,6 +109,7 @@ sv{
         car{"karibiska"}
         cay{"cayuga"}
         cch{"atsam"}
+        ccp{"chakma"}
         ce{"tjetjenska"}
         ceb{"cebuano"}
         cgg{"chiga"}
@@ -339,6 +341,7 @@ sv{
         ln{"lingala"}
         lo{"laotiska"}
         lol{"mongo"}
+        lou{"louisiana-kreol"}
         loz{"lozi"}
         lrc{"nordluri"}
         lt{"litauiska"}
@@ -395,11 +398,11 @@ sv{
         mye{"myene"}
         myv{"erjya"}
         mzn{"mazanderani"}
-        na{"nauru"}
+        na{"nauruanska"}
         nan{"min nan"}
         nap{"napolitanska"}
         naq{"nama"}
-        nb{"bokmål"}
+        nb{"norskt bokmål"}
         nd{"nordndebele"}
         nds{"lågtyska"}
         nds_NL{"lågsaxiska"}
@@ -645,6 +648,7 @@ sv{
         ug{"östturkiska"}
     }
     Scripts{
+        Adlm{"adlamiska"}
         Afak{"afakiska"}
         Aghb{"kaukasiska albanska"}
         Ahom{"ahom"}
@@ -681,15 +685,18 @@ sv{
         Egyh{"hieratiska"}
         Egyp{"egyptiska hieroglyfer"}
         Elba{"elbasiska"}
+        Elym{"elymaiska"}
         Ethi{"etiopiska"}
         Geok{"kutsuri"}
         Geor{"georgiska"}
         Glag{"glagolitiska"}
+        Gong{"gunjalgondiska"}
+        Gonm{"masaram-gondi"}
         Goth{"gotiska"}
         Gran{"gammaltamilska"}
         Grek{"grekiska"}
         Gujr{"gujarati"}
-        Guru{"gurmukhi"}
+        Guru{"gurmukhiska"}
         Hanb{"han med bopomofo"}
         Hang{"hangul"}
         Hani{"han"}
@@ -701,6 +708,7 @@ sv{
         Hira{"hiragana"}
         Hluw{"hittitiska hieroglyfer"}
         Hmng{"pahaw mong"}
+        Hmnp{"nyiakeng puachue hmong"}
         Hrkt{"katakana/hiragana"}
         Hung{"fornungerska"}
         Inds{"indus"}
@@ -747,6 +755,7 @@ sv{
         Mtei{"meitei-mayek"}
         Mult{"multaniska"}
         Mymr{"burmesiska"}
+        Nand{"nandinagari"}
         Narb{"fornnordarabiska"}
         Nbat{"nabateiska"}
         Newa{"newariska"}
@@ -757,6 +766,7 @@ sv{
         Olck{"ol-chiki"}
         Orkh{"orkon"}
         Orya{"oriya"}
+        Osge{"osage"}
         Osma{"osmanja"}
         Palm{"palmyreniska"}
         Pauc{"Pau Cin Hau-skrift"}
@@ -769,6 +779,7 @@ sv{
         Plrd{"pollardtecken"}
         Prti{"tidig parthianska"}
         Rjng{"rejang"}
+        Rohg{"hanifiska"}
         Roro{"rongo-rongo"}
         Runr{"runor"}
         Samr{"samaritiska"}
@@ -781,7 +792,10 @@ sv{
         Sidd{"siddhamska"}
         Sind{"sindhiska"}
         Sinh{"singalesiska"}
+        Sogd{"sogdiska"}
+        Sogo{"gammalsogdiska"}
         Sora{"sora sompeng"}
+        Soyo{"soyombo"}
         Sund{"sundanesiska"}
         Sylo{"syloti nagri"}
         Syrc{"syriska"}
@@ -807,10 +821,12 @@ sv{
         Vaii{"vaj"}
         Visp{"synligt tal"}
         Wara{"varang kshiti"}
+        Wcho{"wancho"}
         Wole{"woleai"}
         Xpeo{"fornpersiska"}
         Xsux{"sumero-akkadisk kilskrift"}
         Yiii{"yi"}
+        Zanb{"zanabazar kvadratisk skrift"}
         Zinh{"ärvda"}
         Zmth{"matematisk notation"}
         Zsye{"emoji"}
@@ -901,8 +917,8 @@ sv{
             zhuyin{"zhuyin-sorteringsordning"}
         }
         d0{
-            fwidth{"Helbreda"}
-            hwidth{"Halvbreda"}
+            fwidth{"till helbreda"}
+            hwidth{"till halvbreda"}
             npinyin{"Numerisk"}
         }
         hc{
@@ -917,8 +933,8 @@ sv{
             strict{"strikt radbrytning"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"enligt USA:s geografiska namnkommitté"}
+            ungegn{"enligt FN:s geografiska namnkommitté"}
         }
         ms{
             metric{"SI-enheter"}
@@ -930,17 +946,20 @@ sv{
             arab{"indo-arabiska siffror"}
             arabext{"utökade indo-arabiska siffror"}
             armn{"armeniska taltecken"}
-            armnlow{"gemena armeniska numeraler"}
+            armnlow{"gemena armeniska taltecken"}
             bali{"balinesiska siffror"}
             beng{"bengaliska siffror"}
             brah{"brahmiska siffror"}
             cakm{"chakma-siffror"}
             cham{"chamiska siffror"}
+            cyrl{"kyrilliska taltecken"}
             deva{"devanagariska siffror"}
             ethi{"etiopiska taltecken"}
-            finance{"Finansiella siffror"}
+            finance{"finansiella siffror"}
             fullwide{"fullbreddssiffror"}
             geor{"georgiska taltecken"}
+            gong{"gunjalagondiska siffror"}
+            gonm{"masaramgondiska siffror"}
             grek{"grekiska taltecken"}
             greklow{"små grekiska taltecken"}
             gujr{"gujaratiska siffror"}
@@ -952,6 +971,7 @@ sv{
             hantfin{"traditionellt kinesiskt finansiellt stavade tal"}
             hebr{"hebreiska taltecken"}
             hmng{"pahawh hmong-siffror"}
+            hmnp{"nyiakeng puachue hmong-siffror"}
             java{"javanesiska siffror"}
             jpan{"japanskt stavade tal"}
             jpanfin{"japanskt finansiellt stavade tal"}
@@ -982,6 +1002,7 @@ sv{
             olck{"ol chiki-siffror"}
             orya{"oriyiska siffror"}
             osma{"osmanya-siffror"}
+            rohg{"hanifisiffror"}
             roman{"romerska taltecken"}
             romanlow{"små romerska taltecken"}
             saur{"saurashtra-siffror"}
@@ -1001,6 +1022,7 @@ sv{
             traditional{"Traditionella siffror"}
             vaii{"vai-siffror"}
             wara{"varang kshiti-siffror"}
+            wcho{"wanchosiffror"}
         }
     }
     Variants{
@@ -1010,6 +1032,7 @@ sv{
         1959ACAD{"1959 års stavning"}
         1994{"1994 års resisk stavning"}
         1996{"1996 års reformerad tysk stavning"}
+        ABL1943{"1943 års stavning"}
         ALALC97{"1997 års ALA-LC"}
         ALUKU{"Aluku-dialekt"}
         AO1990{"stavning enligt 1990 års överenskommelse"}
@@ -1034,8 +1057,10 @@ sv{
         FONXSAMP{"X-SAMPA fonetisk notation"}
         HEPBURN{"Hepburn"}
         HOGNORSK{"högnorsk dialekt"}
+        HSISTEMO{"h-system"}
         IJEKAVSK{"ijekavisk dialekt"}
         ITIHASA{"itihasa-dialekt"}
+        IVANCHOV{"bulgariska i 1899 års stavning"}
         JAUER{"jauer-dialekt"}
         JYUTPING{"jyutping"}
         KKCOR{"vanlig stavning"}
@@ -1053,6 +1078,9 @@ sv{
         NULIK{"nulik-stavning"}
         OSOJS{"Osojane-dialekt"}
         OXENDICT{"Oxford-stavning"}
+        PAHAWH2{"pahawh hmong andra steget reducerad stavning"}
+        PAHAWH3{"pahawh hmong tredje steget reducerad stavning"}
+        PAHAWH4{"pahawh hmong sista steget reducerad stavning"}
         PAMAKA{"Pamaka-dialekt"}
         PETR1708{"1708 års stavning"}
         PINYIN{"pinyin"}
@@ -1060,14 +1088,16 @@ sv{
         POSIX{"Posix"}
         PUTER{"puter-dialekt"}
         REVISED{"reformerad stavning"}
-        RIGIK{"rigik-stavning"}
+        RIGIK{"klassisk volapük"}
         ROZAJ{"resisk dialekt"}
         RUMGR{"grischun-dialekt"}
         SAAHO{"saho-dialekt"}
-        SCOTLAND{"skotska"}
+        SCOTLAND{"skotsk engelska"}
         SCOUSE{"scouse"}
+        SIMPLE{"lätt"}
         SOLBA{"Solbica-dialekt"}
         SOTAV{"sotavento-dialekt"}
+        SPANGLIS{"spangelska"}
         SURMIRAN{"surmiran-dialekt"}
         SURSILV{"sursilvan-dialekt"}
         SUTSILV{"sutsilvan-dialekt"}
@@ -1080,18 +1110,19 @@ sv{
         VALENCIA{"valensisk dialekt"}
         VALLADER{"vallader-dialekt"}
         WADEGILE{"Wade-Giles"}
+        XSISTEMO{"x-system"}
     }
-    Version{"2.1.30.7"}
+    Version{"2.1.48.90"}
     characterLabelPattern{
-        all{"{0} — alla"}
+        all{"{0} – alla"}
         category-list{"{0}: {1}"}
-        compatibility{"{0} — kompatibilitet"}
-        enclosed{"{0} — omringande"}
-        extended{"{0} — utvidgat"}
+        compatibility{"{0} – kompatibilitet"}
+        enclosed{"{0} – omringande"}
+        extended{"{0} – utvidgat"}
         historic{"{0} — historiska"}
-        miscellaneous{"{0} — diverse"}
-        other{"{0} — övriga"}
-        scripts{"skrift — {0}"}
+        miscellaneous{"{0} – diverse"}
+        other{"{0} – övriga"}
+        scripts{"{0} – övriga"}
         strokes{
             one{"{0} streck"}
             other{"{0} streck"}

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ast{
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -941,6 +941,9 @@ ast{
         }
         "Australia:Sydney"{
             ec{"Sydney"}
+        }
+        "Etc:UTC"{
+            ls{"Hora coordinada universal"}
         }
         "Etc:Unknown"{
             ec{"Ciudá desconocida"}

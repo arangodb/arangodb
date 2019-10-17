@@ -23,5 +23,5 @@ es_CL{
             phonebook{"orden de directorio telefónico"}
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
 }

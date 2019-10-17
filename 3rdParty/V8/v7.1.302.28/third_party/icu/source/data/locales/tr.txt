@@ -15,6 +15,7 @@ tr{
     }
     ExemplarCharacters{"[a b c ç d e f g ğ h ı i İ j k l m n o ö p r s ş t u ü v y z]"}
     ExemplarCharactersIndex{"[A B C Ç D E F G H I İ J K L M N O Ö P Q R S Ş T U Ü V W X Y Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
         "″]"
@@ -24,13 +25,14 @@ tr{
         default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"%#,##0"}
                 scientificFormat{"#E0"}
             }
@@ -194,30 +196,77 @@ tr{
                 group{"."}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"{0}. sağdan dönün."}
+            }
+            plural{
+                one{"Sepetinizde {0} X var. Bunu almak istiyor musunuz?"}
+                other{"Sepetinizde {0} X var. Bunları almak istiyor musunuz?"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     calendar{
-        buddhist{
-            eras{
-                abbreviated{
-                    "BE",
-                }
-            }
-        }
         coptic{
             monthNames{
                 format{
+                    abbreviated{
+                        "Tût",
+                        "Bâbe",
+                        "Hatur",
+                        "Keyhek",
+                        "Tûbe",
+                        "Imşir",
+                        "Bermuhat",
+                        "Bermude",
+                        "Peyştes",
+                        "Bune",
+                        "Ebip",
+                        "Mısrî",
+                        "Nesî",
+                    }
+                    wide{
+                        "Tût",
+                        "Bâbe",
+                        "Hatur",
+                        "Keyhek",
+                        "Tûbe",
+                        "Imşir",
+                        "Bermuhat",
+                        "Bermude",
+                        "Peyştes",
+                        "Bune",
+                        "Ebip",
+                        "Mısrî",
+                        "Nesî",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Tût",
+                        "Bâbe",
+                        "Hatur",
+                        "Keyhek",
+                        "Tûbe",
+                        "Imşir",
+                        "Bermuhat",
+                        "Bermude",
+                        "Peyştes",
+                        "Bune",
+                        "Ebip",
+                        "Mısrî",
+                        "Nesî",
+                    }
                     wide{
                         "Tût",
                         "Bâbe",
@@ -255,6 +304,23 @@ tr{
                         "Pagumiene",
                     }
                 }
+                stand-alone{
+                    wide{
+                        "Meskerem",
+                        "Tikimt",
+                        "Hidar",
+                        "Tahsas",
+                        "Tir",
+                        "Yakatit",
+                        "Magabit",
+                        "Miyazya",
+                        "Ginbot",
+                        "Sene",
+                        "Hamle",
+                        "Nehasa",
+                        "Pagumiene",
+                    }
+                }
             }
         }
         generic{
@@ -274,8 +340,17 @@ tr{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"G y"}
                 GyMMM{"G MMM y"}
                 GyMMMEd{"G d MMM y E"}
@@ -311,19 +386,52 @@ tr{
                 yyyyQQQQ{"G y/QQQQ"}
             }
             intervalFormats{
-                H{
-                    H{"HH–HH"}
+                Bh{
+                    B{"B h – B h"}
+                    h{"B h–h"}
                 }
-                Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
+                Bhm{
+                    B{"B h:mm – B h:mm"}
+                    h{"B h:mm–h:mm"}
+                    m{"B h:mm–h:mm"}
                 }
-                Hmv{
-                    H{"HH:mm–HH:mm v"}
-                    m{"HH:mm–HH:mm v"}
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
                 }
-                Hv{
-                    H{"HH–HH v"}
+                GyM{
+                    G{"GGGGG MM.y – GGGGG MM.y"}
+                    M{"GGGGG MM.y – MM.y"}
+                    y{"GGGGG MM.y – MM.y"}
+                }
+                GyMEd{
+                    G{"GGGGG dd.MM.y E – GGGGG dd.MM.y E"}
+                    M{"GGGGG dd.MM.y E – dd.MM.y E"}
+                    d{"GGGGG dd.MM.y E – dd.MM.y E"}
+                    y{"GGGGG dd.MM.y E – dd.MM.y E"}
+                }
+                GyMMM{
+                    G{"G MMM y G – G MMM y"}
+                    M{"G MMM – MMM y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"d MMM y E – d MMM y E"}
+                    M{"G d MMM E – d MMM E y"}
+                    d{"G d MMM E – d MMM E y"}
+                    y{"G d MMM y E – d MMM y E"}
+                }
+                GyMMMd{
+                    G{"G d MMM y – G d MMM y"}
+                    M{"G d MMM – d MMM y"}
+                    d{"G d–d MMM y"}
+                    y{"G d MMM y – d MMM y"}
+                }
+                GyMd{
+                    G{"GGGGG dd.MM.y GGGGG – dd.MM.y"}
+                    M{"GGGGG dd.MM.y – dd.MM.y"}
+                    d{"GGGGG dd.MM.y – dd.MM.y"}
+                    y{"GGGGG dd.MM.y – dd.MM.y"}
                 }
                 M{
                     M{"MM–MM"}
@@ -438,7 +546,12 @@ tr{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -485,8 +598,8 @@ tr{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    one{"y 'yılının' w. 'haftası'"}
-                    other{"y 'yılının' w. 'haftası'"}
+                    one{"Y 'yılının' w. 'haftası'"}
+                    other{"Y 'yılının' w. 'haftası'"}
                 }
             }
             dayNames{
@@ -658,6 +771,53 @@ tr{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"B h – B h"}
+                    h{"B h–h"}
+                }
+                Bhm{
+                    B{"B h:mm – B h:mm"}
+                    h{"B h:mm–h:mm"}
+                    m{"B h:mm–h:mm"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG MM.y – GGGGG MM.y"}
+                    M{"GGGGG MM.y – MM.y"}
+                    y{"GGGGG MM.y – MM.y"}
+                }
+                GyMEd{
+                    G{"GGGGG dd.MM.y E – GGGGG dd.MM.y E"}
+                    M{"GGGGG dd.MM.y E – dd.MM.y E"}
+                    d{"GGGGG dd.MM.y E – dd.MM.y E"}
+                    y{"GGGGG dd.MM.y E – dd.MM.y E"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM–MMM y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G d MMM y E – G d MMM y E"}
+                    M{"G d MMM E – d MMM E y"}
+                    d{"G d MMM E – d MMM E y"}
+                    y{"G d MMM y E – d MMM y E"}
+                }
+                GyMMMd{
+                    G{"G d MMM y – G d MMM y"}
+                    M{"G d MMM – d MMM y"}
+                    d{"G d–d MMM y"}
+                    y{"G d MMM y – d MMM y"}
+                }
+                GyMd{
+                    G{"GGGGG dd.MM.y – GGGGG dd.MM.y"}
+                    M{"GGGGG dd.MM.y – dd.MM.y"}
+                    d{"GGGGG dd.MM.y – dd.MM.y"}
+                    y{"GGGGG dd.MM.y – dd.MM.y"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -673,11 +833,11 @@ tr{
                     H{"HH–HH v"}
                 }
                 M{
-                    M{"MM–MM"}
+                    M{"M – M"}
                 }
                 MEd{
-                    M{"dd/MM E – dd/MM E"}
-                    d{"dd/MM E – dd/MM E"}
+                    M{"d.M E – d.M E"}
+                    d{"d.M E – d.M E"}
                 }
                 MMM{
                     M{"MMM–MMM"}
@@ -691,8 +851,8 @@ tr{
                     d{"d – d MMM"}
                 }
                 Md{
-                    M{"dd/MM – dd/MM"}
-                    d{"dd/MM – dd/MM"}
+                    M{"d.M – d.M"}
+                    d{"d.M – d.M"}
                 }
                 d{
                     d{"d–d"}
@@ -720,8 +880,8 @@ tr{
                     y{"y–y"}
                 }
                 yM{
-                    M{"MM/y – MM/y"}
-                    y{"MM/y – MM/y"}
+                    M{"MM.y – MM.y"}
+                    y{"MM.y – MM.y"}
                 }
                 yMEd{
                     M{"dd.MM.y E – dd.MM.y E"}
@@ -888,13 +1048,13 @@ tr{
         hebrew{
             monthNames{
                 format{
-                    wide{
+                    abbreviated{
                         "Tişri",
                         "Heşvan",
                         "Kislev",
                         "Tevet",
                         "Şevat",
-                        "Veadar",
+                        "Adar Rişon",
                         "Adar",
                         "Nisan",
                         "İyar",
@@ -902,7 +1062,57 @@ tr{
                         "Tamuz",
                         "Av",
                         "Elul",
-                        "Adar II",
+                        "Veadar",
+                    }
+                    wide{
+                        "Tişri",
+                        "Heşvan",
+                        "Kislev",
+                        "Tevet",
+                        "Şevat",
+                        "Adar Rişon",
+                        "Adar",
+                        "Nisan",
+                        "İyar",
+                        "Sivan",
+                        "Tamuz",
+                        "Av",
+                        "Elul",
+                        "Veadar",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Tişri",
+                        "Heşvan",
+                        "Kislev",
+                        "Tevet",
+                        "Şevat",
+                        "Adar Rişon",
+                        "Adar",
+                        "Nisan",
+                        "İyar",
+                        "Sivan",
+                        "Tamuz",
+                        "Av",
+                        "Elul",
+                        "Veadar",
+                    }
+                    wide{
+                        "Tişri",
+                        "Heşvan",
+                        "Kislev",
+                        "Tevet",
+                        "Şevat",
+                        "Adar Rişon",
+                        "Adar",
+                        "Nisan",
+                        "İyar",
+                        "Sivan",
+                        "Tamuz",
+                        "Av",
+                        "Elul",
+                        "Veadar",
                     }
                 }
             }
@@ -912,19 +1122,25 @@ tr{
                 abbreviated{
                     "Hicri",
                 }
+                narrow{
+                    "Hicri",
+                }
+                wide{
+                    "Hicri",
+                }
             }
             monthNames{
                 format{
                     abbreviated{
-                        "Muharrem",
+                        "Muhar.",
                         "Safer",
-                        "Rebiülevvel",
-                        "Rebiülahir",
-                        "Cemaziyelevvel",
-                        "Cemaziyelahir",
+                        "R.evvel",
+                        "R.ahir",
+                        "C.evvel",
+                        "C.ahir",
                         "Recep",
                         "Şaban",
-                        "Ramazan",
+                        "Ram.",
                         "Şevval",
                         "Zilkade",
                         "Zilhicce",
@@ -945,19 +1161,19 @@ tr{
                     }
                 }
                 stand-alone{
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
+                    abbreviated{
+                        "Muhar.",
+                        "Safer",
+                        "R.evvel",
+                        "R.ahir",
+                        "C.evvel",
+                        "C.ahir",
+                        "Recep",
+                        "Şaban",
+                        "Ram.",
+                        "Şevval",
+                        "Zilkade",
+                        "Zilhicce",
                     }
                     wide{
                         "Muharrem",
@@ -1019,99 +1235,107 @@ tr{
                     "Before R.O.C.",
                     "Minguo",
                 }
+                wide{
+                    "R.O.C. Öncesi",
+                    "Minguo",
+                }
             }
         }
     }
     characterLabel{
-        activities{"Aktivite"}
-        african_scripts{"Afrika Alfabeleri"}
-        american_scripts{"Amerikan Alfabeleri"}
+        activities{"aktivite"}
+        african_scripts{"Afrika alfabesi"}
+        american_scripts{"Amerikan alfabesi"}
         animal{"hayvan"}
-        animals_nature{"Hayvanlar ve Doğa"}
-        arrows{"Oklar"}
+        animals_nature{"hayvanlar ve doğa"}
+        arrows{"ok"}
         body{"beden"}
-        box_drawing{"Kutu Çizimi"}
+        box_drawing{"kutu çizimi"}
         braille{"Braille"}
         building{"bina"}
-        bullets_stars{"Madde İmleri/Yıldızlar"}
-        consonantal_jamo{"Sessiz Jamo"}
-        currency_symbols{"Para Birimleri"}
-        dash_connector{"Tire/Bağlayıcı"}
-        digits{"Rakamlar"}
-        dingbats{"Dingbat"}
-        divination_symbols{"Kehanet Sembolleri"}
-        downwards_arrows{"Aşağıya Oklar"}
-        downwards_upwards_arrows{"Aşağıya Yukarıya Oklar"}
-        east_asian_scripts{"Doğu Asya Alfabeleri"}
-        emoji{"Emoji"}
-        european_scripts{"Avrupa Alfabeleri"}
+        bullets_stars{"madde imi veya yıldız"}
+        consonantal_jamo{"sessiz jamo"}
+        currency_symbols{"para birimi simgesi"}
+        dash_connector{"tire veya bağlayıcı"}
+        digits{"rakam"}
+        dingbats{"dingbat"}
+        divination_symbols{"kehanet sembolü"}
+        downwards_arrows{"aşağı ok"}
+        downwards_upwards_arrows{"aşağı yukarı ok"}
+        east_asian_scripts{"Doğu Asya alfabesi"}
+        emoji{"emoji"}
+        european_scripts{"Avrupa alfabesi"}
         female{"kadın"}
         flag{"bayrak"}
-        flags{"Bayraklar"}
-        food_drink{"Yiyecek ve İçecek"}
-        format{"Biçim"}
-        format_whitespace{"Biçim ve Boşluk"}
-        full_width_form_variant{"Tam Genişlikteki Form Varyantı"}
-        geometric_shapes{"Geometrik Şekiller"}
-        half_width_form_variant{"Yarı Genişlikteki Form Varyantı"}
-        han_characters{"Han Karakterleri"}
-        han_radicals{"Han Kökleri"}
+        flags{"bayraklar"}
+        food_drink{"yiyecek ve içecek"}
+        format{"biçim"}
+        format_whitespace{"biçim ve boşluk"}
+        full_width_form_variant{"tam genişlikli varyant"}
+        geometric_shapes{"geometrik şekil"}
+        half_width_form_variant{"yarı genişlikli varyant"}
+        han_characters{"Han karakteri"}
+        han_radicals{"Han kökü"}
         hanja{"Hanja"}
         hanzi_simplified{"Hanzi (Basitleştirilmiş)"}
         hanzi_traditional{"Hanzi (Geleneksel)"}
         heart{"kalp"}
-        historic_scripts{"Tarihi Alfabeler"}
-        ideographic_desc_characters{"İdeo Grafik Tanımlı Karakterler"}
+        historic_scripts{"tarihi alfabe"}
+        ideographic_desc_characters{"ideografik tanımlı karakter"}
         japanese_kana{"Japonca Kana"}
         kanbun{"Kanbun"}
         kanji{"Kanji"}
         keycap{"tuş"}
-        leftwards_arrows{"Sola Oklar"}
-        leftwards_rightwards_arrows{"Sola Sağa Oklar"}
-        letterlike_symbols{"Harf Gibi Semboller"}
-        limited_use{"Sınırlı Kullanım"}
+        leftwards_arrows{"sola ok"}
+        leftwards_rightwards_arrows{"sola sağa ok"}
+        letterlike_symbols{"harfe benzer sembol"}
+        limited_use{"sınırlı kullanım"}
         male{"erkek"}
-        math_symbols{"Matematik Sembolleri"}
-        middle_eastern_scripts{"Orta Doğu Alfabeleri"}
-        miscellaneous{"Çeşitli"}
-        modern_scripts{"Modern Alfabeler"}
-        modifier{"Değiştirici"}
-        musical_symbols{"Müzik Sembolleri"}
+        math_symbols{"matematik sembolü"}
+        middle_eastern_scripts{"Orta Doğu alfabesi"}
+        miscellaneous{"çeşitli"}
+        modern_scripts{"modern alfabe"}
+        modifier{"değiştirici"}
+        musical_symbols{"müzik sembolü"}
         nature{"doğa"}
-        nonspacing{"Boşluksuz"}
-        numbers{"Rakamlar"}
-        objects{"Nesneler"}
-        other{"Diğer"}
-        paired{"Eşli"}
+        nonspacing{"boşluksuz"}
+        numbers{"rakamlar"}
+        objects{"nesne"}
+        other{"diğer"}
+        paired{"eşli"}
         person{"kişi"}
-        phonetic_alphabet{"Fonetik Alfabe"}
-        pictographs{"Piktograflar"}
+        phonetic_alphabet{"fonetik alfabe"}
+        pictographs{"piktograf"}
         place{"yer"}
         plant{"bitki"}
-        punctuation{"Noktalama"}
-        rightwards_arrows{"Sağa Oklar"}
-        sign_standard_symbols{"İşaretler/Standart Semboller"}
-        small_form_variant{"Küçük Form Varyantları"}
+        punctuation{"noktalama"}
+        rightwards_arrows{"sağa ok"}
+        sign_standard_symbols{"işaret veya sembol"}
+        small_form_variant{"küçük varyantlar"}
         smiley{"gülen yüz"}
-        smileys_people{"Yüz İfadeleri ve Kişiler"}
-        south_asian_scripts{"Güney Asya Alfabeleri"}
-        southeast_asian_scripts{"Güneydoğu Asya Alfabeleri"}
-        spacing{"Boşluk"}
+        smileys_people{"gülen yüz veya kişi"}
+        south_asian_scripts{"Güney Asya alfabesi"}
+        southeast_asian_scripts{"Güneydoğu Asya alfabesi"}
+        spacing{"boşluk"}
         sport{"spor"}
-        symbols{"Simgeler"}
-        technical_symbols{"Teknik Simgeler"}
-        tone_marks{"Ton İşaretleri"}
+        symbols{"simge"}
+        technical_symbols{"teknik simge"}
+        tone_marks{"ton işareti"}
         travel{"seyahat"}
-        travel_places{"Seyahat ve Yerler"}
-        upwards_arrows{"Yukarıya Oklar"}
-        variant_forms{"Varyant Formları"}
-        vocalic_jamo{"Sesli Jamo"}
+        travel_places{"seyahat veya yer"}
+        upwards_arrows{"yukarı ok"}
+        variant_forms{"varyant"}
+        vocalic_jamo{"sesli jamo"}
         weather{"hava durumu"}
-        western_asian_scripts{"Batı Asya Alfabeleri"}
-        whitespace{"Boşluk"}
+        western_asian_scripts{"Batı Asya alfabesi"}
+        whitespace{"boşluk"}
     }
     contextTransforms{
         relative:intvector{
+            1,
+            1,
+        }
+        typographicNames:intvector{
             1,
             1,
         }
@@ -1183,11 +1407,32 @@ tr{
                 }
             }
         }
+        dayOfYear{
+            dn{"yılın günü"}
+        }
+        dayOfYear-narrow{
+            dn{"yılın günü"}
+        }
+        dayOfYear-short{
+            dn{"yılın günü"}
+        }
         dayperiod{
             dn{"ÖÖ/ÖS"}
         }
+        dayperiod-narrow{
+            dn{"ÖÖ/ÖS"}
+        }
+        dayperiod-short{
+            dn{"ÖÖ/ÖS"}
+        }
         era{
-            dn{"Miladi Dönem"}
+            dn{"çağ"}
+        }
+        era-narrow{
+            dn{"çağ"}
+        }
+        era-short{
+            dn{"çağ"}
         }
         fri{
             relative{
@@ -1817,8 +2062,32 @@ tr{
                 }
             }
         }
+        weekOfMonth{
+            dn{"ayın haftası"}
+        }
+        weekOfMonth-narrow{
+            dn{"ayın haftası"}
+        }
+        weekOfMonth-short{
+            dn{"ayın haftası"}
+        }
         weekday{
             dn{"haftanın günü"}
+        }
+        weekday-narrow{
+            dn{"haftanın günü"}
+        }
+        weekday-short{
+            dn{"haftanın günü"}
+        }
+        weekdayOfMonth{
+            dn{"ayın günü"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ayın günü"}
+        }
+        weekdayOfMonth-short{
+            dn{"ayın günü"}
         }
         year{
             dn{"yıl"}
@@ -1877,11 +2146,29 @@ tr{
         zone{
             dn{"saat dilimi"}
         }
+        zone-narrow{
+            dn{"dilim"}
+        }
+        zone-short{
+            dn{"dilim"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} veya {1}"}
+            end{"{0} veya {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} ve {1}"}
             end{"{0} ve {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
@@ -1914,5 +2201,37 @@ tr{
         UK{"İngiliz"}
         US{"Amerikan"}
         metric{"Metrik"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

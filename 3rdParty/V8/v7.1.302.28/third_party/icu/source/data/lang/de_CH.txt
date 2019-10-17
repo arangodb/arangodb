@@ -9,6 +9,7 @@ de_CH{
     Languages{
         ace{"Aceh-Sprache"}
         ach{"Acholi-Sprache"}
+        ars{"Nadschd-Arabisch"}
         bas{"Basaa-Sprache"}
         be{"Weissrussisch"}
         bik{"Bikol-Sprache"}
@@ -34,5 +35,5 @@ de_CH{
             ussystem{"US Mass-System"}
         }
     }
-    Version{"2.1.29.33"}
+    Version{"2.1.47.86"}
 }

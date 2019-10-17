@@ -20,7 +20,7 @@ ms{
         }
         ANG{
             "ANG",
-            "Guilder Antillean Netherland",
+            "Guilder Antillen Belanda",
         }
         AOA{
             "AOA",
@@ -64,7 +64,7 @@ ms{
         }
         BIF{
             "BIF",
-            "Franc Burundia",
+            "Franc Burundi",
         }
         BMD{
             "BMD",
@@ -96,7 +96,7 @@ ms{
         }
         BYN{
             "BYN",
-            "Rubel Belarus",
+            "Rubel Belarus baharu",
         }
         BYR{
             "BYR",
@@ -121,6 +121,10 @@ ms{
         CLP{
             "CLP",
             "Peso Chile",
+        }
+        CNH{
+            "CNH",
+            "Yuan China (luar pesisir)",
         }
         CNY{
             "CN¥",
@@ -248,7 +252,7 @@ ms{
         }
         ILS{
             "₪",
-            "Sheqel Baru Israel",
+            "Syekel Baharu Israel",
         }
         INR{
             "₹",
@@ -376,11 +380,15 @@ ms{
         }
         MRO{
             "MRO",
+            "Ouguiya Mauritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ouguiya Mauritania",
         }
         MUR{
             "MUR",
-            "Rupee Mauritia",
+            "Rupee Mauritius",
         }
         MVR{
             "MVR",
@@ -436,7 +444,7 @@ ms{
         }
         PEN{
             "PEN",
-            "Nuevo Sol Peru",
+            "Sol Peru",
         }
         PGK{
             "PGK",
@@ -524,6 +532,10 @@ ms{
         }
         STD{
             "STD",
+            "Dobra Sao Tome dan Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra Sao Tome dan Principe",
         }
         SYP{
@@ -552,7 +564,7 @@ ms{
         }
         TOP{
             "TOP",
-            "Tongan Paʻanga",
+            "Pa’anga Tonga",
         }
         TRY{
             "TRY",
@@ -584,7 +596,7 @@ ms{
         }
         UYU{
             "UYU",
-            "UYU",
+            "Peso Uruguay",
         }
         UZS{
             "UZS",
@@ -592,6 +604,10 @@ ms{
         }
         VEF{
             "VEF",
+            "Bolivar Venezuela (2008–2018)",
+        }
+        VES{
+            "VES",
             "Bolivar Venezuela",
         }
         VND{
@@ -623,7 +639,7 @@ ms{
             "Franc CFP",
         }
         XXX{
-            "XXX",
+            "¤",
             "Mata Wang Tidak Diketahui",
         }
         YER{
@@ -723,7 +739,6 @@ ms{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -744,7 +759,7 @@ ms{
     }
     CurrencyPlurals{
         AED{
-            other{"Dirham Emiriah Arab Bersatu"}
+            other{"Dirham UAE"}
         }
         AFN{
             other{"Afghani Afghanistan"}
@@ -756,7 +771,7 @@ ms{
             other{"Dram Armenia"}
         }
         ANG{
-            other{"Guilder Antillean Netherland"}
+            other{"Guilder Antillen Belanda"}
         }
         AOA{
             other{"Kwanza Angola"}
@@ -789,7 +804,7 @@ ms{
             other{"Dinar Bahrain"}
         }
         BIF{
-            other{"Franc Burundia"}
+            other{"Franc Burundi"}
         }
         BMD{
             other{"Dolar Bermuda"}
@@ -813,10 +828,10 @@ ms{
             other{"Pula Botswana"}
         }
         BYN{
-            other{"Rubel Belarus"}
+            other{"rubel lama Belarus"}
         }
         BYR{
-            other{"Rubel Belarus (2000–2016)"}
+            other{"Rubel Belarus"}
         }
         BZD{
             other{"Dolar Belize"}
@@ -832,6 +847,9 @@ ms{
         }
         CLP{
             other{"Peso Chile"}
+        }
+        CNH{
+            other{"Yuan China (luar pesisir)"}
         }
         CNY{
             other{"Yuan Cina"}
@@ -927,7 +945,7 @@ ms{
             other{"Rupiah Indonesia"}
         }
         ILS{
-            other{"Sheqel Baru Israel"}
+            other{"Syekel baharu Israel"}
         }
         INR{
             other{"Rupee India"}
@@ -1020,10 +1038,13 @@ ms{
             other{"Pataca Macau"}
         }
         MRO{
+            other{"Ouguiya Mauritania (1973–2017)"}
+        }
+        MRU{
             other{"Ouguiya Mauritania"}
         }
         MUR{
-            other{"Rupee Mauritia"}
+            other{"Rupee Mauritius"}
         }
         MVR{
             other{"Rufiyaa Maldives"}
@@ -1065,7 +1086,7 @@ ms{
             other{"Balboa Panama"}
         }
         PEN{
-            other{"Nuevo Sol Peru"}
+            other{"Sol Peru"}
         }
         PGK{
             other{"Kina Papua New Guinea"}
@@ -1131,6 +1152,9 @@ ms{
             other{"Paun Sudan selatan"}
         }
         STD{
+            other{"Dobra Sao Tome dan Principe (1977–2017)"}
+        }
+        STN{
             other{"Dobra Sao Tome dan Principe"}
         }
         SYP{
@@ -1152,7 +1176,7 @@ ms{
             other{"Dinar Tunisia"}
         }
         TOP{
-            other{"Tongan Paʻanga"}
+            other{"Pa’anga Tonga"}
         }
         TRY{
             other{"Lira Turki"}
@@ -1182,6 +1206,9 @@ ms{
             other{"Som Uzbekistan"}
         }
         VEF{
+            other{"Bolivar Venezuela (2008–2018)"}
+        }
+        VES{
             other{"Bolivar Venezuela"}
         }
         VND{
@@ -1221,5 +1248,5 @@ ms{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.2"}
 }

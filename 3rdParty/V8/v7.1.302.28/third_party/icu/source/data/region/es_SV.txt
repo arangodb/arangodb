@@ -5,8 +5,5 @@ es_SV{
     Countries{
         UM{"Islas menores alejadas de EE. UU."}
     }
-    Countries%short{
-        US{"EE. UU."}
-    }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /********************************************************************
  * COPYRIGHT: 
@@ -32,17 +32,31 @@ public:
 
 class T_CTEST_EXPORT_API IcuTestErrorCode : public ErrorCode {
 public:
-    IcuTestErrorCode(TestLog &callingTestClass, const char *callingTestName) :
-        testClass(callingTestClass), testName(callingTestName) {}
+    IcuTestErrorCode(TestLog &callingTestClass, const char *callingTestName)
+            : testClass(callingTestClass), testName(callingTestName), scopeMessage() {}
     virtual ~IcuTestErrorCode();
+
     // Returns TRUE if isFailure().
-    UBool logIfFailureAndReset(const char *fmt, ...);
-    UBool logDataIfFailureAndReset(const char *fmt, ...);
+    UBool errIfFailureAndReset();
+    UBool errIfFailureAndReset(const char *fmt, ...);
+    UBool errDataIfFailureAndReset();
+    UBool errDataIfFailureAndReset(const char *fmt, ...);
+    UBool expectErrorAndReset(UErrorCode expectedError);
+    UBool expectErrorAndReset(UErrorCode expectedError, const char *fmt, ...);
+
+    /** Sets an additional message string to be appended to failure output. */
+    void setScope(const char* message);
+    void setScope(const UnicodeString& message);
+
 protected:
     virtual void handleFailure() const;
+
 private:
     TestLog &testClass;
     const char *const testName;
+    UnicodeString scopeMessage;
+
+    void errlog(UBool dataErr, const UnicodeString& mainMessage, const char* extraMessage) const;
 };
 
 #endif

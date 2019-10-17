@@ -1,5 +1,5 @@
 /*************************************************************************
- *   Copyright (C) 2016 and later: Unicode, Inc. and others.
+ *   © 2016 and later: Unicode, Inc. and others.
  *   License & terms of use: http://www.unicode.org/copyright.html#License
  *************************************************************************
  *************************************************************************
@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "util.h"
+
+using namespace icu;
 
 /**
  * If the ID supplied to TimeZone is not a valid system ID,
@@ -46,13 +48,13 @@ int main(int argc, char **argv) {
     UDate date;
 
     // The languages in which we will display the date
-    static char* LANGUAGE[] = {
+    static const char* LANGUAGE[] = {
         "en", "de", "fr"
     };
     static const int32_t N_LANGUAGE = sizeof(LANGUAGE)/sizeof(LANGUAGE[0]);
 
     // The time zones in which we will display the time
-    static char* TIMEZONE[] = {
+    static const char* TIMEZONE[] = {
         "America/Los_Angeles",
         "America/New_York",
         "Europe/Paris",

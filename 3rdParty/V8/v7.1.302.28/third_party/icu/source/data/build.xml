@@ -27,7 +27,7 @@
     	<condition property="is.cldr.dir.set" >
             <isset property="env.CLDR_DIR" />
         </condition >
-        <fail unless="is.cldr.dir.set" message="Please set the CLDR_DIR environment variable to the top level ICU source dir (containing 'common')."/>
+        <fail unless="is.cldr.dir.set" message="Please set the CLDR_DIR environment variable to the top level CLDR source dir (containing 'common')."/>
 
         <available property="cldrtools.dir" value="${env.CLDR_DIR}/cldr-tools" file="${env.CLDR_DIR}/cldr-tools" type="dir"/>
         <available property="cldrtools.dir" value="${env.CLDR_DIR}/tools/java" file="${env.CLDR_DIR}/tools/java" type="dir"/>
@@ -47,8 +47,11 @@
         <echo message="java version: ${java.version}"/>
         <echo message="ant java version: ${ant.java.version}"/>
         <echo message="${ant.version}"/>
+        <echo message="cldr tools dir: ${cldrtools.dir}"/>
+        <echo message="cldr tools jar: ${cldrtools.jar}"/>
+        <echo message="cldr tools classes: ${env.CLDR_CLASSES}"/>
     </target>
-    <target name="setup">
+    <target name="setup" depends="init">
         <taskdef name="cldr-build" classname="org.unicode.cldr.ant.CLDRBuild">
             <classpath>
                 <pathelement path="${java.class.path}/"/>
@@ -59,7 +62,7 @@
         </taskdef>
     </target>
     <!-- target for generating ICU data -->
-    <target name="all" depends="locales, collation, rbnf, supplementalData, metadata, metaZones, windowsZones, likelySubtags, plurals, numberingSystems, translit, brkitr, keyTypeData, genderList, dayPeriods" />
+    <target name="all" depends="locales, collation, rbnf, supplementalData, metadata, metaZones, windowsZones, likelySubtags, plurals, pluralRanges, numberingSystems, translit, brkitr, keyTypeData, genderList, dayPeriods" />
     <!-- parallel target -->
     <target name="pall" depends="init">
         <parallel threadsPerProcessor ="1">
@@ -108,7 +111,7 @@
                     <arg name="--specialsdir"     value="${env.ICU4C_DIR}/source/data/xml/main"/>
                     <arg name="--supplementaldir" value="${env.CLDR_DIR}/common/supplemental" />
                     <arg name="--type" value="locales"/>
-                    <arg name="--makefile" value="resfiles.mk"/>
+                    <arg name="--depgraphfile" value="../buildtool/locale_dependencies.py"/>
                 </args>
 		<remapper>
 		  <remap sourcePath="/Keys" targetDir="lang" />
@@ -133,6 +136,7 @@
 		  <remap sourcePath="/Countries%variant" targetDir="region" />
 		  <remap sourcePath="/Countries%short" targetDir="region" />
 		  <remap sourcePath="/Currencies" targetDir="curr" />
+		  <remap sourcePath="/Currencies%formal" targetDir="curr" />
 		  <remap sourcePath="/Currencies%narrow" targetDir="curr" />
 		  <remap sourcePath="/Currencies%variant" targetDir="curr" />
 		  <remap sourcePath="/CurrencyPlurals" targetDir="curr" />
@@ -158,7 +162,6 @@
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/coll"/>
                     <arg name="--specialsdir"     value="${env.ICU4C_DIR}/source/data/xml/collation"/>
                     <arg name="--type"            value="collation"/>
-                    <arg name="--makefile" value="colfiles.mk"/>
                 </args>
                 <!-- http://ant.apache.org/faq.html#xml-entity-include -->
                 &icu-config;
@@ -174,7 +177,6 @@
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/rbnf"/>
                     <arg name="--specialsdir"     value="${env.ICU4C_DIR}/source/data/xml/rbnf"/>
                     <arg name="--type" value="rbnf" />
-                    <arg name="--makefile" value="rbnffiles.mk"/>
                 </args>
                 <!-- http://ant.apache.org/faq.html#xml-entity-include -->
                 &icu-config;
@@ -258,6 +260,18 @@
             </run>
         </cldr-build>
     </target>
+    <target name="pluralRanges" depends="init,setup" description="builds pluralRanges.txt from pluralRanges.xml">
+        <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="pluralRanges.txt" noArgs="true">
+            <!-- launch the tool and generate the data after reading the config file -->
+            <run>
+                <args>
+                    <arg name="-s" value="${env.CLDR_DIR}/common/supplemental" />
+                    <arg name="-d" value="${env.ICU4C_DIR}/source/data/misc"/>
+                    <arg name="-t" value="pluralRanges"/>
+                </args>
+            </run>
+        </cldr-build>
+    </target>
     <target name="numberingSystems" depends="init,setup" description="builds numberingSystems.txt from numberingSystems.xml">
         <cldr-build toolName="org.unicode.cldr.icu.NewLdml2IcuConverter" destFile="numberingSystems.txt" noArgs="true">
             <!-- launch the tool and generate the data after reading the config file -->
@@ -302,7 +316,6 @@
 					<arg name="--specialsdir"       value="${env.ICU4C_DIR}/source/data/xml/brkitr"/>
                     <arg name="--destdir"         value="${env.ICU4C_DIR}/source/data/brkitr"/>
                     <arg name="--type" value="brkitr" />
-                    <arg name="--makefile" value="brkfiles.mk"/>
                 </args>
                 <!-- The entity include is not required for this target -->
                 <!-- http://ant.apache.org/faq.html#xml-entity-include
@@ -332,6 +345,7 @@
                     <arg name="--sourcedir" value="${env.CLDR_DIR}/common/transforms" />
                     <arg name="--destdir"   value="${env.ICU4C_DIR}/source/data/translit"/>
                     <arg name="--commentSkip"/>
+                    <arg name="--approvedOnly"/>
                 </args>
                 <!-- http://ant.apache.org/faq.html#xml-entity-include -->
 
@@ -359,6 +373,9 @@
             </fileset>
             <fileset id="resfiles" dir="${env.ICU4C_DIR}/source/data/locales">
                 <include name="resfiles.mk" />
+            </fileset>
+            <fileset id="dependencies_py" dir="${env.ICU4C_DIR}/source/data/buildtool">
+                <include name="locale_dependencies.py" />
             </fileset>
             <fileset id="locales_split" dir="${env.ICU4C_DIR}/source/data">
                <include name="curr/*.txt" /> 
@@ -412,6 +429,9 @@
             </fileset>
             <fileset id="plurals" dir="${env.ICU4C_DIR}/source/data/misc">
                 <include name="plurals.txt" />
+            </fileset>
+            <fileset id="pluralRanges" dir="${env.ICU4C_DIR}/source/data/misc">
+                <include name="pluralRanges.txt" />
             </fileset>
             <fileset id="numberingSystems" dir="${env.ICU4C_DIR}/source/data/misc">
                 <include name="numberingSystems.txt" />

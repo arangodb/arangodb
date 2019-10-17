@@ -71,3 +71,9 @@ Link America/Los_Angeles PST
 Link Pacific/Guadalcanal SST
 #Link Etc/UTC UTC # Olson LINK
 Link Asia/Ho_Chi_Minh VST
+
+#
+# Aliases already dropped from the TZ database.
+# ICU may also remove these aliases.
+#
+Link America/Regina Canada/East-Saskatchewan # removed from backward in 2017c

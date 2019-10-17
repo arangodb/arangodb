@@ -4,5 +4,5 @@ ar_EG{
     Languages{
         da{"الدنماركية"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.49.36"}
 }

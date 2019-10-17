@@ -9,7 +9,7 @@ hi{
                 "[reorder Deva Beng Guru Gujr Orya Taml Telu Knda Mlym Sinh]"
                 "&ॐ<ं<<ँ<ः"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

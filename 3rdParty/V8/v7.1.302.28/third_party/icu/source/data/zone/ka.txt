@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ka{
-    Version{"2.1.29.20"}
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"აბიჯანი"}
@@ -507,6 +507,9 @@ ka{
         "America:Puerto_Rico"{
             ec{"პუერტო-რიკო"}
         }
+        "America:Punta_Arenas"{
+            ec{"პუნტა-არენასი"}
+        }
         "America:Rainy_River"{
             ec{"რეინი რივერი"}
         }
@@ -657,6 +660,9 @@ ka{
         "Asia:Ashgabat"{
             ec{"აშხაბადი"}
         }
+        "Asia:Atyrau"{
+            ec{"ატირაუ"}
+        }
         "Asia:Baghdad"{
             ec{"ბაღდადი"}
         }
@@ -707,6 +713,9 @@ ka{
         }
         "Asia:Dushanbe"{
             ec{"დუშანბე"}
+        }
+        "Asia:Famagusta"{
+            ec{"ფამაგუსტა"}
         }
         "Asia:Gaza"{
             ec{"გაზა"}
@@ -801,6 +810,9 @@ ka{
         "Asia:Qatar"{
             ec{"კატარი"}
         }
+        "Asia:Qostanay"{
+            ec{"კოსტანაი"}
+        }
         "Asia:Qyzylorda"{
             ec{"ყიზილორდა"}
         }
@@ -880,7 +892,7 @@ ka{
             ec{"აზორის კუნძულები"}
         }
         "Atlantic:Bermuda"{
-            ec{"ბერმუდი"}
+            ec{"ბერმუდა"}
         }
         "Atlantic:Canary"{
             ec{"კანარი"}
@@ -941,6 +953,9 @@ ka{
         }
         "Australia:Sydney"{
             ec{"სიდნეი"}
+        }
+        "Etc:UTC"{
+            ls{"მსოფლიო კოორდინირებული დრო"}
         }
         "Etc:Unknown"{
             ec{"უცნობი ქალაქი"}
@@ -1072,6 +1087,9 @@ ka{
         }
         "Europe:Sarajevo"{
             ec{"სარაევო"}
+        }
+        "Europe:Saratov"{
+            ec{"სარატოვი"}
         }
         "Europe:Simferopol"{
             ec{"სიმფეროპოლი"}

@@ -228,5 +228,5 @@ shi_Latn{
         ZM{"zambya"}
         ZW{"zimbabwi"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

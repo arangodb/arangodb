@@ -7,6 +7,7 @@ uz_Arab{
         "[\u064B \u064C \u064D \u064E \u064F \u0650 \u0651 \u0652 \u0654 \u0670 ء آ أ"
         " ؤ ئ ا ب پ ة ت ث ج چ ح خ د ذ ر ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ه و ۇ ۉ ی]"
     }
+    ExemplarCharactersNumbers{"[\u200E \\- , ٫ ٬ . % ٪ ‰ ؉ + − 0۰ 1۱ 2۲ 3۳ 4۴ 5۵ 6۶ 7۷ 8۸ 9۹]"}
     NumberElements{
         arabext{
             symbols{
@@ -14,6 +15,7 @@ uz_Arab{
                 exponential{"×۱۰^"}
                 group{"٬"}
                 percentSign{"٪"}
+                timeSeparator{":"}
             }
         }
         default{"arabext"}
@@ -27,7 +29,7 @@ uz_Arab{
         }
         native{"arabext"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         gregorian{
             dayNames{

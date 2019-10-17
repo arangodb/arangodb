@@ -48,5 +48,5 @@ twq{
         zh{"Sinuwa senni, Mandareŋ"}
         zu{"Zulu senni"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

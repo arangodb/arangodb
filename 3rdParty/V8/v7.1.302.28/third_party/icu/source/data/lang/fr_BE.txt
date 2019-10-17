@@ -4,14 +4,8 @@ fr_BE{
     Languages{
         frp{"franco-provençal"}
         goh{"ancien haut-allemand"}
-        got{"gotique"}
         gu{"gujarati"}
         njo{"ao"}
-        se{"same du Nord"}
-        sma{"same du Sud"}
-        smj{"same de Lule"}
-        smn{"same d’Inari"}
-        sms{"same skolt"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
 }

@@ -265,8 +265,8 @@ case $platform in
         CXX=cl; export CXX
         RELEASE_CFLAGS='-Gy -MD'
         RELEASE_CXXFLAGS='-Gy -MD'
-        DEBUG_CFLAGS='-Zi -MDd'
-        DEBUG_CXXFLAGS='-Zi -MDd'
+        DEBUG_CFLAGS='-FS -Zi -MDd'
+        DEBUG_CXXFLAGS='-FS -Zi -MDd'
         DEBUG_LDFLAGS='-DEBUG'
         ;;
     Cygwin/MSVC2005)
@@ -315,7 +315,6 @@ case $platform in
         THE_COMP="the GNU C++"
         RELEASE_CFLAGS='-O3'
         RELEASE_CXXFLAGS='-O3'
-        CXXFLAGS="--std=c++03"
         export CXXFLAGS
         ;;
     MSYS/MSVC)
@@ -325,8 +324,8 @@ case $platform in
         CXX=cl; export CXX
         RELEASE_CFLAGS='-Gy -MD'
         RELEASE_CXXFLAGS='-Gy -MD'
-        DEBUG_CFLAGS='-Zi -MDd'
-        DEBUG_CXXFLAGS='-Zi -MDd'
+        DEBUG_CFLAGS='-FS -Zi -MDd'
+        DEBUG_CXXFLAGS='-FS -Zi -MDd'
         DEBUG_LDFLAGS='-DEBUG'
         ;;
     *BSD)

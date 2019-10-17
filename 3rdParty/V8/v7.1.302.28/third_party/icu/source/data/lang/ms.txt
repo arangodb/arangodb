@@ -11,7 +11,7 @@ ms{
         colNormalization{"Pengisihan Ternormal"}
         colNumeric{"Pengisihan Berangka"}
         colStrength{"Kekuatan Pengisihan"}
-        collation{"Urutan Isihan"}
+        collation{"Tertib Isihan"}
         currency{"Mata wang"}
         hc{"Kitaran Jam (12 berbanding 24)"}
         lb{"Gaya Pemisah Baris"}
@@ -22,7 +22,7 @@ ms{
         x{"Penggunaan Peribadi"}
     }
     Languages{
-        aa{"aa"}
+        aa{"Afar"}
         ab{"Abkhazia"}
         ace{"Aceh"}
         ach{"Akoli"}
@@ -34,16 +34,17 @@ ms{
         agq{"Aghem"}
         ain{"Ainu"}
         ak{"Akan"}
-        ale{"ale"}
+        ale{"Aleut"}
         alt{"Altai Selatan"}
         am{"Amharic"}
         an{"Aragon"}
-        anp{"anp"}
+        anp{"Angika"}
         ar{"Arab"}
         ar_001{"Arab Standard Moden"}
         arn{"Mapuche"}
         arp{"Arapaho"}
         arq{"Arab Algeria"}
+        ars{"Arab Najdi"}
         ary{"Arab Maghribi"}
         arz{"Arab Mesir"}
         as{"Assam"}
@@ -87,6 +88,7 @@ ms{
         byv{"Medumba"}
         ca{"Catalonia"}
         cay{"Cayuga"}
+        ccp{"Chakma"}
         ce{"Chechen"}
         ceb{"Cebuano"}
         cgg{"Chiga"}
@@ -149,6 +151,7 @@ ms{
         fr{"Perancis"}
         fr_CA{"Perancis Kanada"}
         fr_CH{"Perancis Switzerland"}
+        frc{"Perancis Cajun"}
         fur{"Friulian"}
         fy{"Frisian Barat"}
         ga{"Ireland"}
@@ -208,7 +211,7 @@ ms{
         kac{"Kachin"}
         kaj{"Jju"}
         kam{"Kamba"}
-        kbd{"Kabardian"}
+        kbd{"Kabardia"}
         kbl{"Kanembu"}
         kcg{"Tyap"}
         kde{"Makonde"}
@@ -255,6 +258,7 @@ ms{
         lkt{"Lakota"}
         ln{"Lingala"}
         lo{"Laos"}
+        lou{"Kreol Louisiana"}
         loz{"Lozi"}
         lrc{"Luri Utara"}
         lt{"Lithuania"}
@@ -290,7 +294,7 @@ ms{
         moh{"Mohawk"}
         mos{"Mossi"}
         mr{"Marathi"}
-        ms{"Bahasa Melayu"}
+        ms{"Melayu"}
         mt{"Malta"}
         mua{"Mundang"}
         mul{"Pelbagai Bahasa"}
@@ -329,7 +333,7 @@ ms{
         nyn{"Nyankole"}
         oc{"Occitania"}
         om{"Oromo"}
-        or{"Oriya"}
+        or{"Odia"}
         os{"Ossete"}
         pa{"Punjabi"}
         pag{"Pangasinan"}
@@ -338,7 +342,7 @@ ms{
         pau{"Palauan"}
         pcm{"Nigerian Pidgin"}
         pl{"Poland"}
-        prg{"Prussian"}
+        prg{"Prusia"}
         ps{"Pashto"}
         pt{"Portugis"}
         pt_BR{"Portugis Brazil"}
@@ -476,12 +480,9 @@ ms{
     Scripts{
         Arab{"Arab"}
         Armn{"Armenia"}
-        Bali{"Bali"}
-        Bamu{"Bamu"}
         Beng{"Benggala"}
         Bopo{"Bopomofo"}
         Brai{"Braille"}
-        Cans{"Cans"}
         Cyrl{"Cyril"}
         Deva{"Devanagari"}
         Ethi{"Ethiopia"}
@@ -489,7 +490,7 @@ ms{
         Grek{"Greek"}
         Gujr{"Gujarat"}
         Guru{"Gurmukhi"}
-        Hanb{"Hanb"}
+        Hanb{"Han dengan Bopomofo"}
         Hang{"Hangul"}
         Hani{"Han"}
         Hans{"Ringkas"}
@@ -542,14 +543,17 @@ ms{
             indian{"Kalendar Kebangsaan India"}
             islamic{"Kalendar Islam"}
             islamic-civil{"Kalendar Sivil Islam"}
+            islamic-rgsa{"Kalendar Islam (Arab Saudi, cerapan)"}
+            islamic-tbla{"Kalendar Islam (jadual, zaman astronomi)"}
+            islamic-umalqura{"Kalendar Islam (Umm Al-Quran)"}
             iso8601{"Kalendar ISO-8601"}
             japanese{"Kalendar Jepun"}
             persian{"Kalendar Parsi"}
             roc{"Kalendar Minguo"}
         }
         cf{
-            account{"Format Mata wang Perakaunan"}
-            standard{"Format Mata wang Standard"}
+            account{"Format Mata Wang Perakaunan"}
+            standard{"Format Mata Wang Standard"}
         }
         colAlternate{
             non-ignorable{"Isih Simbol"}
@@ -585,8 +589,11 @@ ms{
         }
         collation{
             big5han{"Aturan Isih Cina Tradisional - Big5"}
+            compat{"Tertib Isihan Sebelumnya"}
             dictionary{"Aturan Isih Kamus"}
-            ducet{"Aturan Isih Unikod Lalai"}
+            ducet{"Tertib Isih Unikod Lalai"}
+            emoji{"Aturan Isih Emoji"}
+            eor{"Peraturan Isihan Eropah"}
             gb2312han{"Aturan Isih Bahasa Cina Ringkas - GB2312"}
             phonebook{"Aturan Isih Buku Telefon"}
             phonetic{"Urutan Isih Fonetik"}
@@ -594,14 +601,15 @@ ms{
             reformed{"Aturan Isih Pembaharuan"}
             search{"Carian Tujuan Umum"}
             searchjl{"Cari Mengikut Konsonan Awal Hangul"}
-            standard{"Urutan Isihan Standard"}
+            standard{"Tertib Isih Standard"}
             stroke{"Aturan Isih Coretan"}
             traditional{"Aturan Isih Tradisional"}
             unihan{"Aturan Isih Coretan Radikal"}
+            zhuyin{"Aturan Isih Zhuyin"}
         }
         d0{
-            fwidth{"Kelebaran penuh"}
-            hwidth{"Kelebaran separa"}
+            fwidth{"Ke Kelebaran Penuh"}
+            hwidth{"Ke Kelebaran Separa"}
             npinyin{"Bernombor"}
         }
         hc{
@@ -616,8 +624,8 @@ ms{
             strict{"Gaya Pemisah Baris Ketat"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"Transliterasi BGN AS"}
+            ungegn{"Transliterasi UN GEGN"}
         }
         ms{
             metric{"Sistem Metrik"}
@@ -625,16 +633,23 @@ ms{
             ussystem{"Sistem Ukuran AS"}
         }
         numbers{
+            ahom{"Digit Ahom"}
             arab{"Digit Indi-Arab"}
             arabext{"Digit Indi Arab Lanjutan"}
             armn{"Angka Armenia"}
             armnlow{"Angka Kecil Armenia"}
+            bali{"Digit Bali"}
             beng{"Digit Benggali"}
+            brah{"Digit Brahmi"}
+            cakm{"Digit Chakma"}
+            cham{"Digit Cham"}
+            cyrl{"Digit Cyril"}
             deva{"Digit Devanagari"}
             ethi{"Angka Ethiopia"}
             finance{"Angka Kewangan"}
             fullwide{"Digit Lebar Penuh"}
             geor{"Angka Georgia"}
+            gonm{"Digit Masaram Gondi"}
             grek{"Angka Greek"}
             greklow{"Angka Huruf Kecil Greek"}
             gujr{"Digit Gujarat"}
@@ -645,29 +660,63 @@ ms{
             hant{"Angka Cina Tradisional"}
             hantfin{"Angka Kewangan Cina Tradisional"}
             hebr{"Angka Ibrani"}
+            hmng{"Digit Pahawh Hmong"}
+            java{"Digit Jawa"}
             jpan{"Angka Jepun"}
             jpanfin{"Angka Kewangan Jepun"}
+            kali{"Digit Kayah Li"}
             khmr{"Digit Khmer"}
             knda{"Digit Kannada"}
+            lana{"Digit Tai Tham Hora"}
+            lanatham{"Digit Tai Tham Tham"}
             laoo{"Digit Lao"}
             latn{"Digit Barat"}
+            lepc{"Digit Lepcha"}
+            limb{"Digit Limbu"}
+            mathbold{"Digit Matematik Tebal"}
+            mathdbl{"Digit Matematik Dwilejang"}
+            mathmono{"Digit Matematik Monospace"}
+            mathsanb{"Digit Matematik San Serif Tebal"}
+            mathsans{"Digit Matematik San Serif"}
             mlym{"Digit Malayalam"}
+            modi{"Digit Modi"}
             mong{"Digit Mongolia"}
+            mroo{"Digit Mro"}
+            mtei{"Digit Meetei Mayek"}
             mymr{"Digit Myammar"}
+            mymrshan{"Digit Myanmar Shan"}
+            mymrtlng{"Digit Myanmar Tai Laing"}
             native{"Digit Asal"}
+            nkoo{"Digit N’Ko"}
+            olck{"Digit Ol Chiki"}
             orya{"Digit Oriya"}
+            osma{"Digit Osmanya"}
             roman{"Angka Roman"}
             romanlow{"Angka Huruf Kecil Roman"}
+            saur{"Digit Saurashtra"}
+            shrd{"Digit Sharada"}
+            sind{"Digit Khudawadi"}
+            sinh{"Digit Sinhala Lith"}
+            sora{"Digit Sora Sompeng"}
+            sund{"Digit Sunda"}
+            takr{"Digit Takri"}
+            talu{"Digit Tai Lue Baru"}
             taml{"Angka Tamil Tradisional"}
             tamldec{"Digit Tamil"}
             telu{"Digit Telugu"}
             thai{"Digit Thai"}
             tibt{"Digit Tibet"}
+            tirh{"Digit Tirhuta"}
             traditional{"Angka Tradisional"}
             vaii{"Digit Vai"}
+            wara{"Digit Warang Citi"}
         }
     }
-    Version{"2.1.28.79"}
+    Variants{
+        POSIX{"Komputer"}
+        SCOTLAND{"Inggeris Standard Scotland"}
+    }
+    Version{"2.1.49.2"}
     characterLabelPattern{
         all{"{0} — Semua"}
         category-list{"{0}: {1}"}

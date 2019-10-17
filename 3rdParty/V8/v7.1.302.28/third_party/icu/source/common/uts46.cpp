@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -6,7 +6,7 @@
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  uts46.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -557,7 +557,10 @@ UTS46::processUnicode(const UnicodeString &src,
             destArray=dest.getBuffer();
             destLength+=newLength-labelLength;
             labelLimit=labelStart+=newLength+1;
-        } else if(0xdf<=c && c<=0x200d && (c==0xdf || c==0x3c2 || c>=0x200c)) {
+            continue;
+        } else if(c<0xdf) {
+            // pass
+        } else if(c<=0x200d && (c==0xdf || c==0x3c2 || c>=0x200c)) {
             info.isTransDiff=TRUE;
             if(doMapDevChars) {
                 destLength=mapDevChars(dest, labelStart, labelLimit, errorCode);
@@ -565,15 +568,23 @@ UTS46::processUnicode(const UnicodeString &src,
                     return dest;
                 }
                 destArray=dest.getBuffer();
-                // Do not increment labelLimit in case c was removed.
                 // All deviation characters have been mapped, no need to check for them again.
                 doMapDevChars=FALSE;
-            } else {
-                ++labelLimit;
+                // Do not increment labelLimit in case c was removed.
+                continue;
             }
-        } else {
-            ++labelLimit;
+        } else if(U16_IS_SURROGATE(c)) {
+            if(U16_IS_SURROGATE_LEAD(c) ?
+                    (labelLimit+1)==destLength || !U16_IS_TRAIL(destArray[labelLimit+1]) :
+                    labelLimit==labelStart || !U16_IS_LEAD(destArray[labelLimit-1])) {
+                // Map an unpaired surrogate to U+FFFD before normalization so that when
+                // that removes characters we do not turn two unpaired ones into a pair.
+                info.labelErrors|=UIDNA_ERROR_DISALLOWED;
+                dest.setCharAt(labelLimit, 0xfffd);
+                destArray=dest.getBuffer();
+            }
         }
+        ++labelLimit;
     }
     // Permit an empty label at the end (0<labelStart==labelLimit==destLength is ok)
     // but not an empty label elsewhere nor a completely empty domain name.
@@ -1015,8 +1026,8 @@ UTS46::checkLabelBiDi(const UChar *label, int32_t labelLength, IDNAInfo &info) c
     ) {
         info.isOkBiDi=FALSE;
     }
-    // Get the directionalities of the intervening characters.
-    uint32_t mask=0;
+    // Add the directionalities of the intervening characters.
+    uint32_t mask=firstMask|lastMask;
     while(i<labelLength) {
         U16_NEXT_UNSAFE(label, i, c);
         mask|=U_MASK(u_charDirection(c));
@@ -1045,7 +1056,7 @@ UTS46::checkLabelBiDi(const UChar *label, int32_t labelLength, IDNAInfo &info) c
     // label. [...]
     // The following rule, consisting of six conditions, applies to labels
     // in BIDI domain names.
-    if(((firstMask|mask|lastMask)&R_AL_AN_MASK)!=0) {
+    if((mask&R_AL_AN_MASK)!=0) {
         info.isBiDi=TRUE;
     }
 }
@@ -1126,7 +1137,6 @@ isASCIIOkBiDi(const char *s, int32_t length) {
 
 UBool
 UTS46::isLabelOkContextJ(const UChar *label, int32_t labelLength) const {
-    const UBiDiProps *bdp=ubidi_getSingleton();
     // [IDNA2008-Tables]
     // 200C..200D  ; CONTEXTJ    # ZERO WIDTH NON-JOINER..ZERO WIDTH JOINER
     for(int32_t i=0; i<labelLength; ++i) {
@@ -1148,7 +1158,7 @@ UTS46::isLabelOkContextJ(const UChar *label, int32_t labelLength) const {
             }
             // check precontext (Joining_Type:{L,D})(Joining_Type:T)*
             for(;;) {
-                UJoiningType type=ubidi_getJoiningType(bdp, c);
+                UJoiningType type=ubidi_getJoiningType(c);
                 if(type==U_JT_TRANSPARENT) {
                     if(j==0) {
                         return FALSE;
@@ -1166,7 +1176,7 @@ UTS46::isLabelOkContextJ(const UChar *label, int32_t labelLength) const {
                     return FALSE;
                 }
                 U16_NEXT_UNSAFE(label, j, c);
-                UJoiningType type=ubidi_getJoiningType(bdp, c);
+                UJoiningType type=ubidi_getJoiningType(c);
                 if(type==U_JT_TRANSPARENT) {
                     // just skip this character
                 } else if(type==U_JT_RIGHT_JOINING || type==U_JT_DUAL_JOINING) {
@@ -1415,7 +1425,7 @@ uidna_labelToASCII_UTF8(const UIDNA *idna,
     if(!checkArgs(label, length, dest, capacity, pInfo, pErrorCode)) {
         return 0;
     }
-    StringPiece src(label, length<0 ? uprv_strlen(label) : length);
+    StringPiece src(label, length<0 ? static_cast<int32_t>(uprv_strlen(label)) : length);
     CheckedArrayByteSink sink(dest, capacity);
     IDNAInfo info;
     reinterpret_cast<const IDNA *>(idna)->labelToASCII_UTF8(src, sink, info, *pErrorCode);
@@ -1431,7 +1441,7 @@ uidna_labelToUnicodeUTF8(const UIDNA *idna,
     if(!checkArgs(label, length, dest, capacity, pInfo, pErrorCode)) {
         return 0;
     }
-    StringPiece src(label, length<0 ? uprv_strlen(label) : length);
+    StringPiece src(label, length<0 ? static_cast<int32_t>(uprv_strlen(label)) : length);
     CheckedArrayByteSink sink(dest, capacity);
     IDNAInfo info;
     reinterpret_cast<const IDNA *>(idna)->labelToUnicodeUTF8(src, sink, info, *pErrorCode);
@@ -1447,7 +1457,7 @@ uidna_nameToASCII_UTF8(const UIDNA *idna,
     if(!checkArgs(name, length, dest, capacity, pInfo, pErrorCode)) {
         return 0;
     }
-    StringPiece src(name, length<0 ? uprv_strlen(name) : length);
+    StringPiece src(name, length<0 ? static_cast<int32_t>(uprv_strlen(name)) : length);
     CheckedArrayByteSink sink(dest, capacity);
     IDNAInfo info;
     reinterpret_cast<const IDNA *>(idna)->nameToASCII_UTF8(src, sink, info, *pErrorCode);
@@ -1463,7 +1473,7 @@ uidna_nameToUnicodeUTF8(const UIDNA *idna,
     if(!checkArgs(name, length, dest, capacity, pInfo, pErrorCode)) {
         return 0;
     }
-    StringPiece src(name, length<0 ? uprv_strlen(name) : length);
+    StringPiece src(name, length<0 ? static_cast<int32_t>(uprv_strlen(name)) : length);
     CheckedArrayByteSink sink(dest, capacity);
     IDNAInfo info;
     reinterpret_cast<const IDNA *>(idna)->nameToUnicodeUTF8(src, sink, info, *pErrorCode);

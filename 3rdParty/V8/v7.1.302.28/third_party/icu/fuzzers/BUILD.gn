@@ -41,7 +41,6 @@ fuzzer_test("icu_unicode_string_codepage_create_fuzzer") {
   deps = [
     ":fuzzer_support",
   ]
-  seed_corpus = "//third_party/icu/source/test/testdata"
   libfuzzer_options = [ "max_len=10240" ]
 }
 
@@ -52,7 +51,6 @@ fuzzer_test("icu_number_format_fuzzer") {
   deps = [
     ":fuzzer_support",
   ]
-  seed_corpus = "//third_party/icu/source/test/testdata"
   libfuzzer_options = [ "max_len=10240" ]
 }
 
@@ -63,7 +61,6 @@ fuzzer_test("icu_break_iterator_fuzzer") {
   deps = [
     ":fuzzer_support",
   ]
-  seed_corpus = "//third_party/icu/source/test/testdata"
   libfuzzer_options = [ "max_len=10240" ]
 }
 
@@ -74,7 +71,6 @@ fuzzer_test("icu_break_iterator_utf32_fuzzer") {
   deps = [
     ":fuzzer_support",
   ]
-  seed_corpus = "//third_party/icu/source/test/testdata"
   libfuzzer_options = [ "max_len=10240" ]
 }
 
@@ -85,7 +81,6 @@ fuzzer_test("icu_ucasemap_fuzzer") {
   deps = [
     ":fuzzer_support",
   ]
-  seed_corpus = "//third_party/icu/source/test/testdata"
   libfuzzer_options = [ "max_len=10240" ]
 }
 
@@ -96,6 +91,5 @@ fuzzer_test("icu_converter_fuzzer") {
   deps = [
     ":fuzzer_support",
   ]
-  seed_corpus = "//third_party/icu/source/test/testdata"
   libfuzzer_options = [ "max_len=10240" ]
 }

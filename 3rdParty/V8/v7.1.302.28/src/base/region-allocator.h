@@ -25,7 +25,7 @@ namespace base {
 // Not thread-safe.
 class V8_BASE_EXPORT RegionAllocator final {
  public:
-  typedef uintptr_t Address;
+  using Address = uintptr_t;
 
   static constexpr Address kAllocationFailure = static_cast<Address>(-1);
 
@@ -59,6 +59,9 @@ class V8_BASE_EXPORT RegionAllocator final {
   // If there is a used region starting at given address returns its size
   // otherwise 0.
   size_t CheckRegion(Address address);
+
+  // Returns true if there are no pages allocated in given region.
+  bool IsFree(Address address, size_t size);
 
   Address begin() const { return whole_region_.begin(); }
   Address end() const { return whole_region_.end(); }
@@ -118,7 +121,7 @@ class V8_BASE_EXPORT RegionAllocator final {
     }
   };
   // All regions ordered by addresses.
-  typedef std::set<Region*, AddressEndOrder> AllRegionsSet;
+  using AllRegionsSet = std::set<Region*, AddressEndOrder>;
   AllRegionsSet all_regions_;
 
   struct SizeAddressOrder {

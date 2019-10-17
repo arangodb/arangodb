@@ -52,6 +52,7 @@ zh_Hant{
         aro{"阿拉奧納文"}
         arp{"阿拉帕霍文"}
         arq{"阿爾及利亞阿拉伯文"}
+        ars{"納吉迪阿拉伯文"}
         arw{"阿拉瓦克文"}
         ary{"摩洛哥阿拉伯文"}
         arz{"埃及阿拉伯文"}
@@ -109,6 +110,7 @@ zh_Hant{
         car{"加勒比文"}
         cay{"卡尤加文"}
         cch{"阿燦文"}
+        ccp{"查克馬文"}
         ce{"車臣文"}
         ceb{"宿霧文"}
         cgg{"奇加文"}
@@ -330,6 +332,7 @@ zh_Hant{
         ln{"林加拉文"}
         lo{"寮文"}
         lol{"芒戈文"}
+        lou{"路易斯安那克里奧爾文"}
         loz{"洛齊文"}
         lrc{"北盧爾文"}
         lt{"立陶宛文"}
@@ -357,7 +360,7 @@ zh_Hant{
         men{"門德文"}
         mer{"梅魯文"}
         mfe{"克里奧文（模里西斯）"}
-        mg{"馬拉加什文"}
+        mg{"馬達加斯加文"}
         mga{"中古愛爾蘭文"}
         mgh{"馬夸文"}
         mgo{"美塔文"}
@@ -477,7 +480,7 @@ zh_Hant{
         sam{"薩瑪利亞阿拉姆文"}
         saq{"薩布魯文"}
         sas{"撒撒克文"}
-        sat{"散塔利文"}
+        sat{"桑塔利文"}
         saz{"索拉什特拉文"}
         sba{"甘拜文"}
         sbp{"桑古文"}
@@ -554,7 +557,7 @@ zh_Hant{
         tli{"特林基特文"}
         tly{"塔里什文"}
         tmh{"塔馬奇克文"}
-        tn{"突尼西亞文"}
+        tn{"塞茲瓦納文"}
         to{"東加文"}
         tog{"東加文（尼亞薩）"}
         tpi{"托比辛文"}
@@ -630,8 +633,10 @@ zh_Hant{
         az{"亞塞拜然文"}
     }
     Scripts{
+        Adlm{"富拉文"}
         Afak{"阿法卡文字"}
         Aghb{"高加索阿爾巴尼亞文"}
+        Ahom{"阿洪姆文"}
         Arab{"阿拉伯文"}
         Armi{"皇室亞美尼亞文"}
         Armn{"亞美尼亞文"}
@@ -641,6 +646,7 @@ zh_Hant{
         Bass{"巴薩文"}
         Batk{"巴塔克文"}
         Beng{"孟加拉文"}
+        Bhks{"梵文"}
         Blis{"布列斯文"}
         Bopo{"注音符號"}
         Brah{"婆羅米文"}
@@ -668,6 +674,7 @@ zh_Hant{
         Geok{"喬治亞語系（阿索他路里和努斯克胡里文）"}
         Geor{"喬治亞文"}
         Glag{"格拉哥里文"}
+        Gonm{"岡德文"}
         Goth{"歌德文"}
         Gran{"格蘭他文字"}
         Grek{"希臘文"}
@@ -679,6 +686,7 @@ zh_Hant{
         Hano{"哈努諾文"}
         Hans{"簡體"}
         Hant{"繁體"}
+        Hatr{"哈特拉文"}
         Hebr{"希伯來文"}
         Hira{"平假名"}
         Hluw{"安那托利亞象形文字"}
@@ -713,20 +721,25 @@ zh_Hant{
         Loma{"洛馬文"}
         Lyci{"呂西亞語"}
         Lydi{"里底亞語"}
+        Mahj{"印地文"}
         Mand{"曼底安文"}
         Mani{"摩尼教文"}
+        Marc{"藏文"}
         Maya{"瑪雅象形文字"}
         Mend{"門德文"}
         Merc{"麥羅埃文（曲線字體）"}
         Mero{"麥羅埃文"}
         Mlym{"馬來亞拉姆文"}
+        Modi{"馬拉地文"}
         Mong{"蒙古文"}
         Moon{"蒙氏點字"}
         Mroo{"謬文"}
         Mtei{"曼尼普爾文"}
+        Mult{"木爾坦文"}
         Mymr{"緬甸文"}
         Narb{"古北阿拉伯文"}
         Nbat{"納巴泰文字"}
+        Newa{"Vote 尼瓦爾文"}
         Nkgb{"納西格巴文"}
         Nkoo{"西非書面語言 (N’Ko)"}
         Nshu{"女書文字"}
@@ -734,8 +747,10 @@ zh_Hant{
         Olck{"桑塔利文"}
         Orkh{"鄂爾渾文"}
         Orya{"歐利亞文"}
+        Osge{"歐塞奇文"}
         Osma{"歐斯曼亞文"}
         Palm{"帕米瑞拉文字"}
+        Pauc{"鮑欽豪文"}
         Perm{"古彼爾姆諸文"}
         Phag{"八思巴文"}
         Phli{"巴列維文（碑銘體）"}
@@ -758,6 +773,7 @@ zh_Hant{
         Sind{"信德文"}
         Sinh{"錫蘭文"}
         Sora{"索朗桑朋文字"}
+        Soyo{"索永布文字"}
         Sund{"巽他文"}
         Sylo{"希洛弟納格里文"}
         Syrc{"敍利亞文"}
@@ -787,6 +803,7 @@ zh_Hant{
         Xpeo{"古波斯文"}
         Xsux{"蘇米魯亞甲文楔形文字"}
         Yiii{"彞文"}
+        Zanb{"札那巴札爾文字"}
         Zinh{"繼承文字（Unicode）"}
         Zmth{"數學符號"}
         Zsye{"表情符號"}
@@ -861,8 +878,10 @@ zh_Hant{
         }
         collation{
             big5han{"繁體中文排序 - Big5"}
+            compat{"舊制排序"}
             dictionary{"字典排序"}
             ducet{"預設 Unicode 排序"}
+            emoji{"表情符號"}
             eor{"歐洲排序規則"}
             gb2312han{"簡體中文排序 - GB2312"}
             phonebook{"電話簿排序"}
@@ -903,6 +922,7 @@ zh_Hant{
             ussystem{"美制度量單位系統"}
         }
         numbers{
+            ahom{"阿洪姆數字"}
             arab{"阿拉伯-印度數字"}
             arabext{"阿拉伯-印度擴充數字"}
             armn{"亞美尼亞數字"}
@@ -912,11 +932,13 @@ zh_Hant{
             brah{"婆羅米數字"}
             cakm{"查克馬數字"}
             cham{"占文數字"}
+            cyrl{"西里爾數字"}
             deva{"梵文數字"}
             ethi{"衣索比亞數字"}
             finance{"金融數字"}
             fullwide{"全形數字"}
             geor{"喬治亞數字"}
+            gonm{"馬薩拉姆貢地數字"}
             grek{"希臘數字"}
             greklow{"小寫希臘數字"}
             gujr{"古吉拉特數字"}
@@ -927,6 +949,7 @@ zh_Hant{
             hant{"小寫繁體中文數字"}
             hantfin{"大寫繁體中文數字"}
             hebr{"希伯來數字"}
+            hmng{"帕哈苗數字"}
             java{"爪哇文數字"}
             jpan{"小寫日文數字"}
             jpanfin{"大寫日文數字"}
@@ -939,11 +962,19 @@ zh_Hant{
             latn{"阿拉伯數字"}
             lepc{"西納文數字"}
             limb{"林布文數字"}
+            mathbold{"數學粗體數字"}
+            mathdbl{"數學雙重數字"}
+            mathmono{"數學等寬數字"}
+            mathsanb{"數學無襯線粗體數字"}
+            mathsans{"數學無襯線數字"}
             mlym{"馬來亞拉姆數字"}
+            modi{"莫笛數字"}
             mong{"蒙古數字"}
+            mroo{"默文數字"}
             mtei{"曼尼普爾數字"}
             mymr{"緬甸數字"}
             mymrshan{"緬甸撣文數字"}
+            mymrtlng{"緬甸傣族數字"}
             native{"原始數字"}
             nkoo{"曼德數字"}
             olck{"桑塔利文數字"}
@@ -953,6 +984,8 @@ zh_Hant{
             romanlow{"小寫羅馬數字"}
             saur{"索拉什特拉文數字"}
             shrd{"夏拉達數字"}
+            sind{"信德數字"}
+            sinh{"僧伽羅數字"}
             sora{"索朗桑朋數字"}
             sund{"巽他數字"}
             takr{"塔卡里數字"}
@@ -962,8 +995,10 @@ zh_Hant{
             telu{"泰盧固數字"}
             thai{"泰文數字"}
             tibt{"西藏數字"}
+            tirh{"提爾胡塔數字"}
             traditional{"傳統數字"}
             vaii{"瓦伊文數字"}
+            wara{"瓦蘭齊地數字"}
         }
     }
     Variants{
@@ -973,33 +1008,46 @@ zh_Hant{
         1959ACAD{"白俄羅斯文（學術）"}
         1994{"標準雷西亞拼字"}
         1996{"1996 年的德語拼字學"}
+        ABL1943{"1943 年拼字標準"}
         ALALC97{"美國國會圖書館標準方案羅馬化（1997年版）"}
         ALUKU{"阿魯庫方言"}
+        AO1990{"1990 年葡語書寫協議的拼寫"}
         AREVELA{"亞美尼亞東部"}
         AREVMDA{"亞美尼亞西部"}
         BAKU1926{"統一土耳其拉丁字母"}
+        BALANKA{"安尼巴朗卡方言"}
+        BARLA{"卡布佛得鲁向風群島方言"}
         BAUDDHA{"佛教混合梵文"}
         BISCAYAN{"比斯開方言"}
         BISKE{"聖喬治/比拉方言"}
+        BOHORIC{"波赫力字母"}
         BOONT{"布恩特林方言"}
+        COLB1945{"1945 年巴西葡萄牙文拼字標準"}
+        DAJNKO{"謙柯字母"}
+        EKAVSK{"易卡發音塞爾維亞文"}
         EMODENG{"早期現代英語"}
         FONIPA{"IPA 拼音"}
         FONUPA{"UPA 拼音"}
         FONXSAMP{"X-SAMPA 音標"}
         HEPBURN{"平文式羅馬字"}
         HOGNORSK{"高地挪威文"}
+        IJEKAVSK{"耶卡發音塞爾維亞文"}
         ITIHASA{"史詩梵文"}
         JAUER{"米茲泰爾方言"}
         JYUTPING{"香港語言學學會粵語拼音"}
         KKCOR{"通用康沃爾文拼字"}
+        KSCOR{"標準拼寫"}
         LAUKIKA{"傳統梵文"}
         LIPAW{"雷西亞利波瓦方言"}
         LUNA1918{"俄羅斯文拼字（1917年後）"}
+        METELKO{"梅泰爾科字母"}
         MONOTON{"希臘文單調正字法"}
         NDYUKA{"蘇利南恩都卡方言"}
         NEDIS{"那提松尼方言"}
         NJIVA{"雷西亞尼瓦方言"}
+        NULIK{"現代沃拉普克文"}
         OSOJS{"雷西亞歐西亞柯方言"}
+        OXENDICT{"牛津英文字典拼音"}
         PAMAKA{"蘇利南帕馬卡方言"}
         PETR1708{"俄羅斯文拼字（1708 年）"}
         PINYIN{"漢語拼音"}
@@ -1007,12 +1055,14 @@ zh_Hant{
         POSIX{"電腦"}
         PUTER{"瑞士普特爾方言"}
         REVISED{"已修訂的拼字學"}
+        RIGIK{"古典沃拉普克文"}
         ROZAJ{"雷西亞方言"}
         RUMGR{"羅曼什文"}
         SAAHO{"薩霍文"}
-        SCOTLAND{"英文（蘇格蘭）"}
+        SCOTLAND{"蘇格蘭標準英文"}
         SCOUSE{"利物浦方言"}
         SOLBA{"雷西亞史托維薩方言"}
+        SOTAV{"卡布佛得鲁背風群島方言"}
         SURMIRAN{"瑞士蘇邁拉方言"}
         SURSILV{"瑞士蘇瑟瓦方言"}
         SUTSILV{"瑞士蘇希瓦方言"}
@@ -1025,7 +1075,7 @@ zh_Hant{
         VALLADER{"瑞士瓦勒德方言"}
         WADEGILE{"威妥瑪式拼音"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — 全部"}
         category-list{"{0}: {1}"}

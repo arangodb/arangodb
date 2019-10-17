@@ -5,8 +5,8 @@
 #ifndef V8_IC_KEYED_STORE_GENERIC_H_
 #define V8_IC_KEYED_STORE_GENERIC_H_
 
+#include "src/common/globals.h"
 #include "src/compiler/code-assembler.h"
-#include "src/globals.h"
 
 namespace v8 {
 namespace internal {
@@ -33,7 +33,7 @@ class KeyedStoreGenericGenerator {
 
   static void SetPropertyInLiteral(compiler::CodeAssemblerState* state,
                                    TNode<Context> context,
-                                   TNode<JSObject> receiver, TNode<Name> key,
+                                   TNode<JSObject> receiver, TNode<Object> key,
                                    TNode<Object> value);
 };
 

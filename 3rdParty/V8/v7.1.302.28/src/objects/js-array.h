@@ -8,6 +8,7 @@
 #include "src/objects/allocation-site.h"
 #include "src/objects/fixed-array.h"
 #include "src/objects/js-objects.h"
+#include "torque-generated/field-offsets-tq.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -27,7 +28,7 @@ class JSArray : public JSObject {
 
   // Overload the length setter to skip write barrier when the length
   // is set to a smi. This matches the set function on FixedArray.
-  inline void set_length(Smi* length);
+  inline void set_length(Smi length);
 
   static bool HasReadOnlyLength(Handle<JSArray> array);
   static bool WouldChangeReadOnlyLength(Handle<JSArray> array, uint32_t index);
@@ -35,7 +36,8 @@ class JSArray : public JSObject {
   // Initialize the array with the given capacity. The function may
   // fail due to out-of-memory situations, but only if the requested
   // capacity is non-zero.
-  static void Initialize(Handle<JSArray> array, int capacity, int length = 0);
+  V8_EXPORT_PRIVATE static void Initialize(Handle<JSArray> array, int capacity,
+                                           int length = 0);
 
   // If the JSArray has fast elements, and new_length would result in
   // normalization, returns true.
@@ -45,7 +47,8 @@ class JSArray : public JSObject {
   // Initializes the array to a certain length.
   inline bool AllowsSetLength();
 
-  static void SetLength(Handle<JSArray> array, uint32_t length);
+  V8_EXPORT_PRIVATE static void SetLength(Handle<JSArray> array,
+                                          uint32_t length);
 
   // Set the content of the array to the content of storage.
   static inline void SetContent(Handle<JSArray> array,
@@ -54,14 +57,40 @@ class JSArray : public JSObject {
   // ES6 9.4.2.1
   V8_WARN_UNUSED_RESULT static Maybe<bool> DefineOwnProperty(
       Isolate* isolate, Handle<JSArray> o, Handle<Object> name,
-      PropertyDescriptor* desc, ShouldThrow should_throw);
+      PropertyDescriptor* desc, Maybe<ShouldThrow> should_throw);
 
   static bool AnythingToArrayLength(Isolate* isolate,
                                     Handle<Object> length_object,
                                     uint32_t* output);
   V8_WARN_UNUSED_RESULT static Maybe<bool> ArraySetLength(
       Isolate* isolate, Handle<JSArray> a, PropertyDescriptor* desc,
-      ShouldThrow should_throw);
+      Maybe<ShouldThrow> should_throw);
+
+  // Support for Array.prototype.join().
+  // Writes a fixed array of strings and separators to a single destination
+  // string. This helpers assumes the fixed array encodes separators in two
+  // ways:
+  //   1) Explicitly with a smi, whos value represents the number of repeated
+  //      separators.
+  //   2) Implicitly between two consecutive strings a single separator.
+  //
+  // Here are some input/output examples given the separator string is ',':
+  //
+  //   [1, 'hello', 2, 'world', 1] => ',hello,,world,'
+  //   ['hello', 'world']          => 'hello,world'
+  //
+  // To avoid any allocations, this helper assumes the destination string is the
+  // exact length necessary to write the strings and separators from the fixed
+  // array.
+  // Since this is called via ExternalReferences, it uses raw Address values:
+  // - {raw_fixed_array} is a tagged FixedArray pointer.
+  // - {raw_separator} and {raw_dest} are tagged String pointers.
+  // - Returns a tagged String pointer.
+  static Address ArrayJoinConcatToSequentialString(Isolate* isolate,
+                                                   Address raw_fixed_array,
+                                                   intptr_t length,
+                                                   Address raw_separator,
+                                                   Address raw_dest);
 
   // Checks whether the Array has the current realm's Array.prototype as its
   // prototype. This function is best-effort and only gives a conservative
@@ -78,9 +107,8 @@ class JSArray : public JSObject {
   // Number of element slots to pre-allocate for an empty array.
   static const int kPreallocatedArrayElements = 4;
 
-  // Layout description.
-  static const int kLengthOffset = JSObject::kHeaderSize;
-  static const int kSize = kLengthOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(JSObject::kHeaderSize,
+                                TORQUE_GENERATED_JSARRAY_FIELDS)
 
   static const int kLengthDescriptorIndex = 0;
 
@@ -90,6 +118,9 @@ class JSArray : public JSObject {
   // This constant is somewhat arbitrary. Any large enough value would work.
   static const uint32_t kMaxFastArrayLength = 32 * 1024 * 1024;
 
+  // Min. stack size for detecting an Array.prototype.join() call cycle.
+  static const uint32_t kMinJoinStackSize = 2;
+
   static const int kInitialMaxFastElementArray =
       (kMaxRegularHeapObjectSize - FixedArray::kHeaderSize - kSize -
        AllocationMemento::kSize) >>
@@ -98,11 +129,11 @@ class JSArray : public JSObject {
   // Valid array indices range from +0 <= i < 2^32 - 1 (kMaxUInt32).
   static const uint32_t kMaxArrayIndex = kMaxUInt32 - 1;
 
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSArray);
+  OBJECT_CONSTRUCTORS(JSArray, JSObject);
 };
 
-Handle<Object> CacheInitialJSArrayMaps(Handle<Context> native_context,
+Handle<Object> CacheInitialJSArrayMaps(Isolate* isolate,
+                                       Handle<Context> native_context,
                                        Handle<Map> initial_map);
 
 // The JSArrayIterator describes JavaScript Array Iterators Objects, as
@@ -146,13 +177,13 @@ class JSArrayIterator : public JSObject {
   inline IterationKind kind() const;
   inline void set_kind(IterationKind kind);
 
-  static const int kIteratedObjectOffset = JSObject::kHeaderSize;
-  static const int kNextIndexOffset = kIteratedObjectOffset + kPointerSize;
-  static const int kKindOffset = kNextIndexOffset + kPointerSize;
-  static const int kSize = kKindOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(JSObject::kHeaderSize,
+                                TORQUE_GENERATED_JSARRAY_ITERATOR_FIELDS)
 
  private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSArrayIterator);
+  DECL_INT_ACCESSORS(raw_kind)
+
+  OBJECT_CONSTRUCTORS(JSArrayIterator, JSObject);
 };
 
 }  // namespace internal

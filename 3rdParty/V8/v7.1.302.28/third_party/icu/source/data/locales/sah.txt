@@ -12,13 +12,14 @@ sah{
     }
     ExemplarCharacters{"[а б г ҕ д {дь} и й к л м н {нь} ҥ о ө п р с т у ү х һ ч ы э]"}
     ExemplarCharactersIndex{"[А Б Г Ҕ Д {Дь} И Й К Л М Н {Нь} Ҥ О Ө П Р С Т У Ү Х Һ Ч Ы Э]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[\\:]"}
     MoreInformation{"?"}
     NumberElements{
         default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -163,7 +164,7 @@ sah{
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.27.87"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -234,7 +235,7 @@ sah{
                 MMM{"LLL"}
                 MMMEd{"MMM d, E"}
                 MMMMW{
-                    other{"MMM W 'нэдиэлэтэ'"}
+                    other{"MMMM W 'нэдиэлэтэ'"}
                 }
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
@@ -257,7 +258,7 @@ sah{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    other{"y 'сыл' w 'нэдиэлэтэ'"}
+                    other{"Y 'сыл' w 'нэдиэлэтэ'"}
                 }
             }
             dayNames{

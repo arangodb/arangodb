@@ -31,6 +31,7 @@ id{
         151{"Eropa Bagian Timur"}
         154{"Eropa Bagian Utara"}
         155{"Eropa Bagian Barat"}
+        202{"Afrika Sub-Sahara"}
         419{"Amerika Latin"}
         AC{"Pulau Ascension"}
         AD{"Andorra"}
@@ -62,7 +63,7 @@ id{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
-        BQ{"Karibia Belanda"}
+        BQ{"Belanda Karibia"}
         BR{"Brasil"}
         BS{"Bahama"}
         BT{"Bhutan"}
@@ -76,7 +77,7 @@ id{
         CF{"Republik Afrika Tengah"}
         CG{"Kongo - Brazzaville"}
         CH{"Swiss"}
-        CI{"Cote d’Ivoire"}
+        CI{"Pantai Gading"}
         CK{"Kepulauan Cook"}
         CL{"Cile"}
         CM{"Kamerun"}
@@ -89,7 +90,7 @@ id{
         CW{"Curaçao"}
         CX{"Pulau Christmas"}
         CY{"Siprus"}
-        CZ{"Republik Cheska"}
+        CZ{"Ceko"}
         DE{"Jerman"}
         DG{"Diego Garcia"}
         DJ{"Jibuti"}
@@ -106,9 +107,10 @@ id{
         ES{"Spanyol"}
         ET{"Etiopia"}
         EU{"Uni Eropa"}
+        EZ{"Zona Euro"}
         FI{"Finlandia"}
         FJ{"Fiji"}
-        FK{"Kepulauan Malvinas"}
+        FK{"Kepulauan Malvinas (Falkland)"}
         FM{"Mikronesia"}
         FO{"Kepulauan Faroe"}
         FR{"Prancis"}
@@ -181,7 +183,7 @@ id{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Kepulauan Marshall"}
-        MK{"Makedonia"}
+        MK{"Makedonia Utara"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -251,7 +253,7 @@ id{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Suriah"}
-        SZ{"Swaziland"}
+        SZ{"eSwatini"}
         TA{"Tristan da Cunha"}
         TC{"Kepulauan Turks dan Caicos"}
         TD{"Cad"}
@@ -285,6 +287,8 @@ id{
         VU{"Vanuatu"}
         WF{"Kepulauan Wallis dan Futuna"}
         WS{"Samoa"}
+        XA{"Aksen Asing"}
+        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Yaman"}
         YT{"Mayotte"}
@@ -301,11 +305,10 @@ id{
     Countries%variant{
         CD{"Kongo (RDK)"}
         CG{"Kongo (Republik)"}
-        CI{"Ivory Coast"}
-        CZ{"Cheska"}
-        FK{"Kepulauan Malvinas (Falkland)"}
-        MK{"Makedonia (BRY)"}
-        TL{"Timor Timur"}
+        CI{"Pantai Gading (Ivory Coast)"}
+        CZ{"Republik Ceko"}
+        SZ{"Swaziland"}
+        TL{"TL"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

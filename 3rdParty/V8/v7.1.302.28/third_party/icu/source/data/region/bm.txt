@@ -227,5 +227,5 @@ bm{
         ZM{"Zanbi"}
         ZW{"Zimbabuwe"}
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

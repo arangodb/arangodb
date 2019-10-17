@@ -124,6 +124,10 @@ nd{
         }
         MRO{
             "MRO",
+            "Ugwiya yase Moritaniya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ugwiya yase Moritaniya",
         }
         MUR{
@@ -180,6 +184,10 @@ nd{
         }
         STD{
             "STD",
+            "Dobra yase Sao Tome lo Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra yase Sao Tome lo Principe",
         }
         SZL{
@@ -227,5 +235,5 @@ nd{
             "Dola yase Zimbabwe",
         }
     }
-    Version{"2.1.27.65"}
+    Version{"2.1.47.82"}
 }

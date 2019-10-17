@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 hy{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Աբիջան"}
@@ -166,7 +166,7 @@ hy{
             ec{"Անքորիջ"}
         }
         "America:Anguilla"{
-            ec{"Անգիլյա"}
+            ec{"Անգուիլա"}
         }
         "America:Antigua"{
             ec{"Անտիգուա"}
@@ -250,7 +250,7 @@ hy{
             ec{"Կայեն"}
         }
         "America:Cayman"{
-            ec{"Կայմանի կղզիներ"}
+            ec{"Կայման կղզիներ"}
         }
         "America:Chicago"{
             ec{"Չիկագո"}
@@ -507,6 +507,9 @@ hy{
         "America:Puerto_Rico"{
             ec{"Պուերտո Ռիկո"}
         }
+        "America:Punta_Arenas"{
+            ec{"Պունտա Արենաս"}
+        }
         "America:Rainy_River"{
             ec{"Ռեյնի Ռիվեր"}
         }
@@ -657,6 +660,9 @@ hy{
         "Asia:Ashgabat"{
             ec{"Աշխաբադ"}
         }
+        "Asia:Atyrau"{
+            ec{"Ատիրաու"}
+        }
         "Asia:Baghdad"{
             ec{"Բաղդադ"}
         }
@@ -707,6 +713,9 @@ hy{
         }
         "Asia:Dushanbe"{
             ec{"Դուշանբե"}
+        }
+        "Asia:Famagusta"{
+            ec{"Ֆամագուստա"}
         }
         "Asia:Gaza"{
             ec{"Գազա"}
@@ -760,7 +769,7 @@ hy{
             ec{"Քուվեյթ"}
         }
         "Asia:Macau"{
-            ec{"Մակաու"}
+            ec{"Մակաո"}
         }
         "Asia:Magadan"{
             ec{"Մագադան"}
@@ -880,7 +889,7 @@ hy{
             ec{"Ազորյան կղզիներ"}
         }
         "Atlantic:Bermuda"{
-            ec{"Բերմուդաներ"}
+            ec{"Բերմուդներ"}
         }
         "Atlantic:Canary"{
             ec{"Կանարյան կղզիներ"}
@@ -941,6 +950,9 @@ hy{
         }
         "Australia:Sydney"{
             ec{"Սիդնեյ"}
+        }
+        "Etc:UTC"{
+            ls{"Համաշխարհային կոորդինացված ժամանակ"}
         }
         "Etc:Unknown"{
             ec{"Անհայտ քաղաք"}
@@ -1072,6 +1084,9 @@ hy{
         }
         "Europe:Sarajevo"{
             ec{"Սարաևո"}
+        }
+        "Europe:Saratov"{
+            ec{"Սարատով"}
         }
         "Europe:Simferopol"{
             ec{"Սիմֆերոպոլ"}

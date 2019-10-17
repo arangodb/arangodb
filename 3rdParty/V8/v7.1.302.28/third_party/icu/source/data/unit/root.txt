@@ -4,7 +4,7 @@
  * ICU <specials> source: <path>/common/main/root.xml
  */
 root{
-    Version{"2.1.30.58"}
+    Version{"2.1.49.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -49,6 +49,10 @@ root{
             acre{
                 dnam{"acre"}
                 other{"{0} ac"}
+            }
+            dunam{
+                dnam{"dunam"}
+                other{"{0} dunam"}
             }
             hectare{
                 dnam{"hectare"}
@@ -104,9 +108,25 @@ root{
                 dnam{"mmol/L"}
                 other{"{0} mmol/L"}
             }
+            mole{
+                dnam{"mol"}
+                other{"{0} mol"}
+            }
             part-per-million{
                 dnam{"ppm"}
                 other{"{0} ppm"}
+            }
+            percent{
+                dnam{"%"}
+                other{"{0}%"}
+            }
+            permille{
+                dnam{"‰"}
+                other{"{0}‰"}
+            }
+            permyriad{
+                dnam{"‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
@@ -128,6 +148,7 @@ root{
             }
         }
         coordinate{
+            dnam{"direction"}
             east{"{0}E"}
             north{"{0}N"}
             south{"{0}S"}
@@ -166,6 +187,10 @@ root{
                 dnam{"MB"}
                 other{"{0} MB"}
             }
+            petabyte{
+                dnam{"PB"}
+                other{"{0} PB"}
+            }
             terabit{
                 dnam{"Tb"}
                 other{"{0} Tb"}
@@ -185,6 +210,7 @@ root{
                 other{"{0} d"}
                 per{"{0}/d"}
             }
+            day-person:alias{"/LOCALE/unitsShort/duration/day"}
             hour{
                 dnam{"hr"}
                 other{"{0} h"}
@@ -208,6 +234,7 @@ root{
                 other{"{0} m"}
                 per{"{0}/m"}
             }
+            month-person:alias{"/LOCALE/unitsShort/duration/month"}
             nanosecond{
                 dnam{"ns"}
                 other{"{0} ns"}
@@ -222,11 +249,13 @@ root{
                 other{"{0} w"}
                 per{"{0}/w"}
             }
+            week-person:alias{"/LOCALE/unitsShort/duration/week"}
             year{
                 dnam{"yr"}
                 other{"{0} y"}
                 per{"{0}/y"}
             }
+            year-person:alias{"/LOCALE/unitsShort/duration/year"}
         }
         electric{
             ampere{
@@ -247,9 +276,17 @@ root{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"cal"}
                 other{"{0} cal"}
+            }
+            electronvolt{
+                dnam{"eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"Cal"}
@@ -270,6 +307,16 @@ root{
             kilowatt-hour{
                 dnam{"kWh"}
                 other{"{0} kWh"}
+            }
+        }
+        force{
+            newton{
+                dnam{"N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                other{"{0} lbf"}
             }
         }
         frequency{
@@ -306,7 +353,7 @@ root{
             }
             fathom{
                 dnam{"fm"}
-                other{"{0} fm"}
+                other{"{0} fth"}
             }
             foot{
                 dnam{"ft"}
@@ -368,6 +415,14 @@ root{
                 dnam{"pm"}
                 other{"{0} pm"}
             }
+            point{
+                dnam{"pt"}
+                other{"{0} pt"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                other{"{0} R☉"}
+            }
             yard{
                 dnam{"yd"}
                 other{"{0} yd"}
@@ -378,11 +433,23 @@ root{
                 dnam{"lx"}
                 other{"{0} lx"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"CD"}
                 other{"{0} CD"}
+            }
+            dalton{
+                dnam{"Da"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"gram"}
@@ -420,6 +487,10 @@ root{
                 other{"{0} lb"}
                 per{"{0}/lb"}
             }
+            solar-mass{
+                dnam{"M☉"}
+                other{"{0} M☉"}
+            }
             stone{
                 dnam{"st"}
                 other{"{0} st"}
@@ -456,6 +527,10 @@ root{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"atm"}
+                other{"{0} atm"}
+            }
             hectopascal{
                 dnam{"hPa"}
                 other{"{0} hPa"}
@@ -463,6 +538,14 @@ root{
             inch-hg{
                 dnam{"inHg"}
                 other{"{0} inHg"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                other{"{0} MPa"}
             }
             millibar{
                 dnam{"mbar"}
@@ -513,10 +596,24 @@ root{
                 other{"{0} K"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"ac ft"}
                 other{"{0} ac ft"}
+            }
+            barrel{
+                dnam{"bbl"}
+                other{"{0} bbl"}
             }
             bushel{
                 dnam{"bu"}
@@ -569,8 +666,12 @@ root{
                 other{"{0} dL"}
             }
             fluid-ounce{
-                dnam{"fl oz"}
-                other{"{0} fl oz"}
+                dnam{"US fl oz"}
+                other{"{0} fl oz US"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"US gal"}

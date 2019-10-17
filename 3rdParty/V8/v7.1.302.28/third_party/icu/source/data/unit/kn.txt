@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 kn{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.17"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -52,6 +52,11 @@ kn{
                 dnam{"ಎಕರೆಗಳು"}
                 one{"{0} ಎಕರೆ"}
                 other{"{0} ಎಕರೆಗಳು"}
+            }
+            dunam{
+                dnam{"ಡುನಮ್ಸ್‌"}
+                one{"{0} ಡುನಮ್‌"}
+                other{"{0} ಡುನಮ್‌ಗಳು"}
             }
             hectare{
                 dnam{"ಹೆಕ್ಟೇರುಗಳು"}
@@ -118,15 +123,35 @@ kn{
                 one{"{0} ಪ್ರತಿ ಲೀಟರ್ ಮಿಲ್ಲಿಮೋಲ್ಸ್"}
                 other{"{0} ಪ್ರತಿ ಲೀಟರ್ ಮಿಲ್ಲಿಮೋಲ್ಸ್"}
             }
+            mole{
+                dnam{"mol"}
+                one{"{0} mol"}
+                other{"{0} mol"}
+            }
             part-per-million{
                 dnam{"ಪ್ರತಿ ಮಿಲಿಯನ್ ಭಾಗಗಳು"}
                 one{"{0} ಪ್ರತಿ ಮಿಲಿಯನ್ ಭಾಗ"}
                 other{"{0} ಪ್ರತಿ ಮಿಲಿಯನ್ ಭಾಗಗಳು"}
             }
+            percent{
+                dnam{"ಶೇಕಡಾ"}
+                one{"{0} ಶೇಕಡಾ"}
+                other{"{0} ಶೇಕಡಾ"}
+            }
+            permille{
+                dnam{"ಪ್ರತಿ ಸಾವಿರಕ್ಕೆ"}
+                one{"{0} ಪ್ರತಿ ಸಾವಿರಕ್ಕೆ"}
+                other{"{0} ಪ್ರತಿ ಸಾವಿರಕ್ಕೆ"}
+            }
+            permyriad{
+                dnam{"‱"}
+                one{"{0}‱"}
+                other{"{0}‱"}
+            }
         }
         consumption{
             liter-per-100kilometers{
-                dnam{"L/100km"}
+                dnam{"ಲೀ/100ಕಿಮೀ"}
                 one{"{0} ಲೀಟರ್‌ಗಳು ಪ್ರತಿ 100 ಕಿಲೋಮೀಟರ್‌ಗಳಿಗೆ"}
                 other{"{0} ಲೀಟರ್‌ಗಳು ಪ್ರತಿ 100 ಕಿಲೋಮೀಟರ್‌ಗಳಿಗೆ"}
             }
@@ -147,10 +172,11 @@ kn{
             }
         }
         coordinate{
-            east{"{0}ಪೂ"}
-            north{"{0}ಉ"}
-            south{"{0}ದ"}
-            west{"{0}ಪ"}
+            dnam{"ಕಾರ್ಡಿನಲ್ ನಿರ್ದೇಶನ"}
+            east{"{0} ಪೂರ್ವ"}
+            north{"{0}ಉತ್ತರ"}
+            south{"{0}ದಕ್ಷಿಣ"}
+            west{"{0}ಪಶ್ಚಿಮ"}
         }
         digital{
             bit{
@@ -192,6 +218,11 @@ kn{
                 dnam{"ಮೆಗಾಬೈಟ್‌ಗಳು"}
                 one{"{0} ಮೆಗಾಬೈಟ್‌"}
                 other{"{0} ಮೆಗಾಬೈಟ್‌ಗಳು"}
+            }
+            petabyte{
+                dnam{"ಪೆಟಾಬೈಟ್‌ಗಳು"}
+                one{"{0} ಪೆಟಾಬೈಟ್‌"}
+                other{"{0} ಪೆಟಾಬೈಟ್‌ಗಳು"}
             }
             terabit{
                 dnam{"ಟೆರಾಬಿಟ್‌ಗಳು"}
@@ -257,7 +288,7 @@ kn{
             }
             week{
                 dnam{"ವಾರಗಳು"}
-                one{"{0} ವಾರಗಳು"}
+                one{"{0} ವಾರ"}
                 other{"{0} ವಾರಗಳು"}
                 per{"{0} ಪ್ರತಿ ವಾರಕ್ಕೆ"}
             }
@@ -291,10 +322,20 @@ kn{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"ಕ್ಯಾಲೋರಿಗಳು"}
                 one{"{0} ಕ್ಯಾಲೋರಿ"}
                 other{"{0} ಕ್ಯಾಲೋರಿಗಳು"}
+            }
+            electronvolt{
+                dnam{"eV"}
+                one{"{0} eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"ಕ್ಯಾಲೋರಿಗಳು"}
@@ -320,6 +361,18 @@ kn{
                 dnam{"ಕಿಲೋವ್ಯಾಟ್‌-ಗಂಟೆಗಳು"}
                 one{"{0} ಕಿಲೋವ್ಯಾಟ್‌-ಗಂಟೆ"}
                 other{"{0} ಕಿಲೋವ್ಯಾಟ್‌-ಗಂಟೆಗಳು"}
+            }
+        }
+        force{
+            newton{
+                dnam{"N"}
+                one{"{0} N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                one{"{0} lbf"}
+                other{"{0} lbf"}
             }
         }
         frequency{
@@ -430,6 +483,16 @@ kn{
                 one{"{0} ಪಿಕೋಮೀಟರ್"}
                 other{"{0} ಪಿಕೋಮೀಟರ್‌ಗಳು"}
             }
+            point{
+                dnam{"ಪಾಯಿಂಟ್ಸ್"}
+                one{"{0} ಪಾಯಿಂಟ್"}
+                other{"{0} ಪಾಯಿಂಟ್‌ಗಳು"}
+            }
+            solar-radius{
+                dnam{"ಸೋಲಾರ್‌ ರೇಡಿ"}
+                one{"{0} ಸೋಲಾರ್‌ ರೇಡಿಯಸ್‌"}
+                other{"{0} ಸೋಲಾರ್‌ ರೇಡಿ"}
+            }
             yard{
                 dnam{"ಗಜಗಳು"}
                 one{"{0} ಗಜ"}
@@ -442,12 +505,27 @@ kn{
                 one{"{0} ಲಕ್ಸ್‌‌"}
                 other{"{0} ಲಕ್ಸ್‌‌"}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"ಕ್ಯಾರೆಟ್‌ಗಳು"}
                 one{"{0} ಕ್ಯಾರೆಟ್‌"}
                 other{"{0} ಕ್ಯಾರೆಟ್‌ಗಳು"}
+            }
+            dalton{
+                dnam{"ಡಿಎ"}
+                one{"{0} ಡಿಎ"}
+                other{"{0} ಡಿಎ"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"ಗ್ರಾಂಗಳು"}
@@ -493,6 +571,16 @@ kn{
                 other{"{0} ಪೌಂಡ್‌ಗಳು"}
                 per{"{0} ಪ್ರತಿ ಪೌಂಡ್‌ಗೆ"}
             }
+            solar-mass{
+                dnam{"ಸೋಲಾರ್‌ ಮಾಸ್‌"}
+                one{"{0} ಸೋಲಾರ್‌ ಮಾಸ್‌"}
+                other{"{0} ಸೋಲಾರ್‌ ಮಾಸಸ್‌"}
+            }
+            stone{
+                dnam{"ಕಲ್ಲುಗಳು"}
+                one{"{0} ಕಲ್ಲು"}
+                other{"{0} ಕಲ್ಲುಗಳು"}
+            }
             ton{
                 dnam{"ಟನ್‌ಗಳು"}
                 one{"{0} ಟನ್‌"}
@@ -532,6 +620,11 @@ kn{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"ವಾತಾವರಣಗಳು"}
+                one{"{0} ವಾತಾವರಣ"}
+                other{"{0} ವಾತಾವರಣಗಳು"}
+            }
             hectopascal{
                 dnam{"ಹೆಕ್ಟೋಪ್ಯಾಸ್ಕಲ್‌ಗಳು"}
                 one{"{0} ಹೆಕ್ಟೋಪ್ಯಾಸ್ಕಲ್"}
@@ -541,6 +634,16 @@ kn{
                 dnam{"ಮರ್ಕ್ಯುರಿ ಅಂಗುಲಗಳು"}
                 one{"{0} ಮರ್ಕ್ಯುರಿ ಅಂಗುಲ"}
                 other{"{0} ಮರ್ಕ್ಯುರಿ ಅಂಗುಲಗಳು"}
+            }
+            kilopascal{
+                dnam{"ಕಿಲೋಪಾಸ್ಕಲ್‌ಗಳು"}
+                one{"{0} ಕಿಲೋಪಾಸ್ಕಲ್‌"}
+                other{"{0} ಕಿಲೋಪಾಸ್ಕಲ್‌ಗಳು"}
+            }
+            megapascal{
+                dnam{"ಮೆಗಾಪಾಸ್ಕಲ್‌ಗಳು"}
+                one{"{0} ಮೆಗಾಪಾಸ್ಕಲ್‌"}
+                other{"{0} ಮೆಗಾಪಾಸ್ಕಲ್‌ಗಳು"}
             }
             millibar{
                 dnam{"ಮಿಲಿಬಾರ್‌ಗಳು"}
@@ -565,7 +668,7 @@ kn{
                 other{"{0} ಕಿಲೋಮಿಟರ್‌ಗಳು ಪ್ರತಿ ಗಂಟೆಗೆ"}
             }
             knot{
-                dnam{"ನಾಟ್"}
+                dnam{"ನಾಟ್‌ಗಳು"}
                 one{"{0} ನಾಟ್"}
                 other{"{0} ನಾಟ್‌ಗಳು"}
             }
@@ -602,11 +705,28 @@ kn{
                 other{"{0} ಕೆಲ್ವಿನ್‍ಗಳು"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                one{"{0} N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                one{"{0} lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"ಎಕರೆ-ಅಡಿ"}
                 one{"{0} ಎಕರೆ-ಅಡಿ"}
                 other{"{0} ಎಕರೆ-ಅಡಿ"}
+            }
+            barrel{
+                dnam{"bbl"}
+                one{"{0} bbl"}
+                other{"{0} bbl"}
             }
             centiliter{
                 dnam{"ಸೆಂಟಿಲೀಟರ್‌ಗಳು"}
@@ -656,7 +776,7 @@ kn{
                 other{"{0} ಕಪ್‍ಗಳು"}
             }
             cup-metric{
-                dnam{"ಮೆಟ್ರಿಕ್‌ ಕಪ್‌"}
+                dnam{"ಮೆಟ್ರಿಕ್‌ ಕಪ್‌ಗಳು"}
                 one{"{0} ಮೆಟ್ರಿಕ್‌ ಕಪ್‌"}
                 other{"{0} ಮೆಟ್ರಿಕ್‌ ಕಪ್‌ಗಳು"}
             }
@@ -669,6 +789,11 @@ kn{
                 dnam{"ಫ್ಲೂಡ್ ಔನ್ಸ್‌ಗಳು"}
                 one{"{0} ಫ್ಲೂಡ್ ಔನ್ಸ್‌"}
                 other{"{0} ಫ್ಲೂಡ್ ಔನ್ಸ್‌ಗಳು"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"ಗ್ಯಾಲನ್‌‌ಗಳು"}
@@ -746,10 +871,6 @@ kn{
                 one{"{0}ಸೆಕೆಂ"}
                 other{"{0}ಸೆಕೆಂ"}
             }
-            degree{
-                one{"{0}°"}
-                other{"{0}°"}
-            }
         }
         area{
             acre{
@@ -788,6 +909,7 @@ kn{
             }
         }
         coordinate{
+            dnam{"ದಿಕ್ಕು"}
             east{"{0}ಪೂ"}
             north{"{0}ಉ"}
             south{"{0}ದ"}
@@ -798,11 +920,13 @@ kn{
                 dnam{"ದಿನ"}
                 one{"{0}ದಿನ"}
                 other{"{0}ದಿನ"}
+                per{"{0}/ದಿ"}
             }
             hour{
                 dnam{"ಗಂಟೆ"}
                 one{"{0}ಗಂ."}
                 other{"{0}ಗಂ."}
+                per{"{0}/ಗಂ"}
             }
             millisecond{
                 dnam{"ಮಿ.ಸೆ."}
@@ -813,16 +937,19 @@ kn{
                 dnam{"ನಿಮಿಷ"}
                 one{"{0}ನಿಮಿ"}
                 other{"{0}ನಿಮಿ"}
+                per{"{0}/ನಿಮಿ"}
             }
             month{
                 dnam{"ತಿಂಗಳು"}
                 one{"{0}ತಿಂ."}
                 other{"{0}ತಿಂ."}
+                per{"{0}/ತಿ"}
             }
             second{
                 dnam{"ಸೆಕೆಂ"}
                 one{"{0}ಸೆಕೆಂ"}
                 other{"{0} ಸೆಕೆಂ"}
+                per{"{0}/ಸೆ"}
             }
             week{
                 dnam{"ವಾರ"}
@@ -840,19 +967,30 @@ kn{
                 dnam{"ಸೆಮೀ"}
                 one{"{0} ಸೆಮೀ"}
                 other{"{0} ಸೆಮೀ"}
+                per{"{0}/ಸೆಂಮೀ"}
+            }
+            decimeter{
+                dnam{"ಡೆಮೀ"}
+                one{"{0} ಡೆಮೀ"}
+                other{"{0} ಡೆಮೀ"}
             }
             foot{
+                dnam{"ಅಡಿ"}
                 one{"{0} ′"}
                 other{"{0} ′"}
+                per{"{0}/ಅ"}
             }
             inch{
+                dnam{"ಅಂಗುಲಗಳು"}
                 one{"{0} ″"}
                 other{"{0} ″"}
+                per{"{0}/ಅಂ"}
             }
             kilometer{
                 dnam{"ಕಿಮೀ"}
                 one{"{0}ಕಿಮೀ"}
                 other{"{0}ಕಿಮೀ"}
+                per{"{0}/ಕಿ.ಮೀ"}
             }
             light-year{
                 one{"{0}ಹಗು. ವ."}
@@ -862,10 +1000,17 @@ kn{
                 dnam{"ಮೀಟರ್‌ಗಳು"}
                 one{"{0}ಮೀ"}
                 other{"{0}ಮೀ"}
+                per{"{0}/ಮೀ"}
             }
             mile{
+                dnam{"ಮೈಲುಗಳು"}
                 one{"{0}ಮೈ."}
                 other{"{0}ಮೈ."}
+            }
+            mile-scandinavian{
+                dnam{"ಸ್ಕ್ಯಾಂ.ಮೈ"}
+                one{"{0}smi"}
+                other{"{0}smi"}
             }
             millimeter{
                 dnam{"ಮಿಮೀ"}
@@ -877,6 +1022,7 @@ kn{
                 other{"{0}ಪಿಎಂ"}
             }
             yard{
+                dnam{"ಗಜಗಳು"}
                 one{"{0}ಗ"}
                 other{"{0} ಗ"}
             }
@@ -886,19 +1032,30 @@ kn{
                 dnam{"ಗ್ರಾಂ"}
                 one{"{0}ಗ್ರಾ"}
                 other{"{0}ಗ್ರಾ"}
+                per{"{0}/ಗ್ರಾ"}
             }
             kilogram{
                 dnam{"ಕೆಜಿ"}
                 one{"{0}ಕೆಜಿ"}
                 other{"{0}ಕೆಜಿ"}
+                per{"{0}/ಕೆಜಿ"}
             }
             ounce{
+                dnam{"ಔ"}
                 one{"{0}ಔ"}
                 other{"{0}ಔ"}
+                per{"{0}/ ಔ"}
             }
             pound{
+                dnam{"ಪೌಂ"}
                 one{"{0}#"}
                 other{"{0}#"}
+                per{"{0}/ಪೌಂ"}
+            }
+            stone{
+                dnam{"ಕಲ್ಲು"}
+                one{"{0} ಕಲ್ಲು"}
+                other{"{0} ಕಲ್ಲು"}
             }
         }
         power{
@@ -917,16 +1074,29 @@ kn{
         }
         pressure{
             hectopascal{
+                dnam{"ಹೆ.ಪ್ಯಾ."}
                 one{"{0}ಹೆ.ಪ್ಯಾ"}
                 other{"{0}ಹೆ.ಪ್ಯಾ"}
             }
             inch-hg{
+                dnam{"ಮರ್ಕ್ಯು.ಅಂ."}
                 one{"{0}\u0022 Hg"}
                 other{"{0}\u0022 Hg"}
             }
             millibar{
+                dnam{"ಮಿ.ಬಾರ್‌"}
                 one{"{0}ಮಿ.ಬಾ."}
                 other{"{0}ಮಿ.ಬಾ."}
+            }
+            millimeter-of-mercury{
+                dnam{"ಮರ್ಕ್ಯು.ಮಿ.ಮೀ."}
+                one{"{0}mmHg"}
+                other{"{0}mmHg"}
+            }
+            pound-per-square-inch{
+                dnam{"ಪ್ರ.ಚ.ಇಂ.ಪೌಂ."}
+                one{"{0}psi"}
+                other{"{0}psi"}
             }
         }
         speed{
@@ -936,10 +1106,12 @@ kn{
                 other{"{0}ಕಿ.ಮೀ.ಗಂ"}
             }
             meter-per-second{
+                dnam{"ಮೀ.ಗಳು/ಸೆ"}
                 one{"{0}ಮೀ/ಸೆ."}
                 other{"{0}ಮೀ/ಸೆ."}
             }
             mile-per-hour{
+                dnam{"ಮೈ/ಗಂ"}
                 one{"{0}ಮೈ/ಗಂ"}
                 other{"{0}ಮೈ/ಗಂ"}
             }
@@ -951,8 +1123,14 @@ kn{
                 other{"{0}°ಸೆ"}
             }
             fahrenheit{
+                dnam{"ಡಿ.ಫ್ಯಾ."}
                 one{"{0}°ಫ್ಯಾ"}
                 other{"{0}°ಫ್ಯಾ"}
+            }
+            kelvin{
+                dnam{"ಕೆ"}
+                one{"{0} ಕೆ"}
+                other{"{0} ಕೆ"}
             }
         }
         volume{
@@ -1016,6 +1194,11 @@ kn{
                 dnam{"ಎಕರೆಗಳು"}
                 one{"{0} ಎಕ."}
                 other{"{0} ಎಕ."}
+            }
+            dunam{
+                dnam{"ಡುನಮ್‌"}
+                one{"{0} ಡುನಮ್"}
+                other{"{0} ಡುನಮ್"}
             }
             hectare{
                 dnam{"ಹೆಕ್ಟೇರುಗಳು"}
@@ -1082,15 +1265,31 @@ kn{
                 one{"{0} ಮಿಮೊಲ್/ಲೀ"}
                 other{"{0} ಮಿಮೋಲ್/ಲೀ"}
             }
+            mole{
+                dnam{"mol"}
+                one{"{0} mol"}
+                other{"{0} mol"}
+            }
             part-per-million{
                 dnam{"ಭಾಗಗಳು/ಮಿಲಿಯನ್"}
                 one{"{0} ಭಾಪ್ರಮಿ"}
                 other{"{0} ಭಾಪ್ರಮಿ"}
             }
+            percent{
+                dnam{"ಶೇಕಡಾ"}
+            }
+            permille{
+                dnam{"ಪ್ರತಿ ಸಾವಿರಕ್ಕೆ"}
+            }
+            permyriad{
+                dnam{"‱"}
+                one{"{0}‱"}
+                other{"{0}‱"}
+            }
         }
         consumption{
             liter-per-100kilometers{
-                dnam{"L/100km"}
+                dnam{"ಲೀ/100ಕಿಮೀ"}
                 one{"{0} ಲೀ/100ಕಿಮೀ"}
                 other{"{0} ಲೀ/100ಕಿ.ಮೀ"}
             }
@@ -1111,6 +1310,7 @@ kn{
             }
         }
         coordinate{
+            dnam{"ದಿಕ್ಕು"}
             east{"{0}ಪೂ"}
             north{"{0}ಉ"}
             south{"{0}ದ"}
@@ -1118,7 +1318,7 @@ kn{
         }
         digital{
             bit{
-                dnam{"ಬಿ."}
+                dnam{"ಬಿಟ್‌"}
                 one{"{0} ಬಿ."}
                 other{"{0} ಬಿ."}
             }
@@ -1156,6 +1356,11 @@ kn{
                 dnam{"ಮೆ.ಬೈ."}
                 one{"{0} ಮೆ.ಬೈ."}
                 other{"{0} ಮೆ.ಬೈ."}
+            }
+            petabyte{
+                dnam{"ಪೆಬೈ"}
+                one{"{0} ಪೆಬೈ"}
+                other{"{0} ಪೆಬೈ"}
             }
             terabit{
                 dnam{"ಟೆ.ಬಿ."}
@@ -1255,10 +1460,20 @@ kn{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"ಕ್ಯಾಲೊ"}
                 one{"{0} ಕ್ಯಾಲೊ"}
                 other{"{0} ಕ್ಯಾಲೊ"}
+            }
+            electronvolt{
+                dnam{"eV"}
+                one{"{0} eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"ಕ್ಯಾ"}
@@ -1284,6 +1499,18 @@ kn{
                 dnam{"ಕಿ.ವ್ಯಾ-ಗಂ"}
                 one{"{0} ಕಿವ್ಯಾಗಂ"}
                 other{"{0} ಕಿವ್ಯಾಗಂ"}
+            }
+        }
+        force{
+            newton{
+                dnam{"N"}
+                one{"{0} N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                one{"{0} lbf"}
+                other{"{0} lbf"}
             }
         }
         frequency{
@@ -1394,6 +1621,16 @@ kn{
                 one{"{0} ಪಿ.ಮೀ"}
                 other{"{0} ಪಿ.ಮೀ"}
             }
+            point{
+                dnam{"ಪಾಯಿಂಟ್‌ಗಳು"}
+                one{"{0} ಪಾಯಿಂಟ್"}
+                other{"{0} ಪಾಯಿಂಟ್‌ಗಳು"}
+            }
+            solar-radius{
+                dnam{"ಸೋಲಾರ್‌ ರೇಡಿ"}
+                one{"{0} R☉"}
+                other{"{0} R☉"}
+            }
             yard{
                 dnam{"ಗಜಗಳು"}
                 one{"{0} ಗ"}
@@ -1406,12 +1643,27 @@ kn{
                 one{"{0} ಲ."}
                 other{"{0} ಲ."}
             }
+            solar-luminosity{
+                dnam{"L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+            }
         }
         mass{
             carat{
                 dnam{"ಕ್ಯಾರೆಟ್‌ಗಳು"}
                 one{"{0} ಕ್ಯಾರೆ"}
                 other{"{0} ಕ್ಯಾರೆ"}
+            }
+            dalton{
+                dnam{"ಡಿಎ"}
+                one{"{0} ಡಿಎ"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"ಗ್ರಾಂಗಳು"}
@@ -1457,6 +1709,16 @@ kn{
                 other{"{0} ಪೌಂ"}
                 per{"{0}/ಪೌಂ"}
             }
+            solar-mass{
+                dnam{"ಸೋಲಾರ್‌ ಮಾಸ್‌ಗಳು"}
+                one{"{0} M☉"}
+                other{"{0} M☉"}
+            }
+            stone{
+                dnam{"ಕಲ್ಲುಗಳು"}
+                one{"{0} ಕಲ್ಲು"}
+                other{"{0} ಕಲ್ಲು"}
+            }
             ton{
                 dnam{"ಟನ್‍ಗಳು"}
                 one{"{0} ಟನ್‌"}
@@ -1496,6 +1758,11 @@ kn{
             }
         }
         pressure{
+            atmosphere{
+                dnam{"ವಾತಾವರಣಗಳು"}
+                one{"{0} ವಾತಾವರಣ"}
+                other{"{0} ವಾತಾವರಣ"}
+            }
             hectopascal{
                 dnam{"ಹೆ.ಪ್ಯಾ."}
                 one{"{0} ಹೆ.ಪ್ಯಾ"}
@@ -1505,6 +1772,16 @@ kn{
                 dnam{"ಮರ್ಕ್ಯು.ಅಂ."}
                 one{"{0} ಮರ್ಕ್ಯುಅಂ"}
                 other{"{0} ಮರ್ಕ್ಯುಅಂ"}
+            }
+            kilopascal{
+                dnam{"ಕೆಪಿಎ"}
+                one{"{0} ಕೆಪಿಎ"}
+                other{"{0} ಕೆಪಿಎ"}
+            }
+            megapascal{
+                dnam{"ಎಂಪಿಎ"}
+                one{"{0} ಎಂಪಿಎ"}
+                other{"{0} ಎಂಪಿಎ"}
             }
             millibar{
                 dnam{"ಮಿ.ಬಾರ್‌"}
@@ -1566,11 +1843,28 @@ kn{
                 other{"{0} ಕೆ"}
             }
         }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                one{"{0} N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                one{"{0} lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
+            }
+        }
         volume{
             acre-foot{
                 dnam{"ಎಕರೆ ಅಡಿ"}
                 one{"{0} ಎ. ಅ"}
                 other{"{0} ಎ. ಅ"}
+            }
+            barrel{
+                dnam{"bbl"}
+                one{"{0} bbl"}
+                other{"{0} bbl"}
             }
             centiliter{
                 dnam{"ಸೆಂ.ಲೀ"}
@@ -1633,6 +1927,11 @@ kn{
                 dnam{"ಫ್ಲೂ.ಔ"}
                 one{"{0} ಫ್ಲೂ.ಔ"}
                 other{"{0} ಫ್ಲೂ.ಔ"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"ಗ್ಯಾ"}

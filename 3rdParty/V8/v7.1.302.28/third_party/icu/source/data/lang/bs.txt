@@ -14,7 +14,7 @@ bs{
     Languages{
         aa{"afarski"}
         ab{"abhaski"}
-        ace{"acehneski"}
+        ace{"ačinski"}
         ach{"akoli"}
         ada{"adangmejski"}
         ady{"adigejski"}
@@ -181,14 +181,14 @@ bs{
         hai{"haida"}
         haw{"havajski"}
         he{"hebrejski"}
-        hi{"hindu"}
+        hi{"hindi"}
         hil{"hiligajnon"}
         hit{"hitite"}
         hmn{"hmong"}
         ho{"hiri motu"}
         hr{"hrvatski"}
         hsb{"gornjolužičkosrpski"}
-        ht{"haićanski"}
+        ht{"haićanski kreolski"}
         hu{"mađarski"}
         hup{"hupa"}
         hy{"armenski"}
@@ -205,7 +205,7 @@ bs{
         inh{"ingušetski"}
         io{"ido"}
         is{"islandski"}
-        it{"talijanski"}
+        it{"italijanski"}
         iu{"inuktitut"}
         ja{"japanski"}
         jbo{"lojban"}
@@ -233,7 +233,7 @@ bs{
         khq{"kojra čini"}
         ki{"kikuju"}
         kj{"kuanjama"}
-        kk{"kazački"}
+        kk{"kazaški"}
         kkj{"kako"}
         kl{"kalalisutski"}
         kln{"kalenjin"}
@@ -271,7 +271,7 @@ bs{
         li{"limburški"}
         lkt{"lakota"}
         ln{"lingala"}
-        lo{"laoški"}
+        lo{"laoski"}
         lol{"mongo"}
         loz{"lozi"}
         lrc{"sjeverni luri"}
@@ -297,7 +297,7 @@ bs{
         men{"mende"}
         mer{"meru"}
         mfe{"mauricijski kreolski"}
-        mg{"malagaški"}
+        mg{"malgaški"}
         mga{"srednjovjekovni irski"}
         mgh{"makuva-meto"}
         mgo{"meta"}
@@ -335,7 +335,7 @@ bs{
         new{"nevari"}
         ng{"ndonga"}
         nia{"nias"}
-        niu{"niuean"}
+        niu{"niue"}
         nl{"holandski"}
         nl_BE{"flamanski"}
         nmg{"kvasio"}
@@ -383,7 +383,7 @@ bs{
         raj{"rajastani"}
         rap{"rapanui"}
         rar{"rarotongan"}
-        rm{"reto-romanski"}
+        rm{"retoromanski"}
         rn{"rundi"}
         ro{"rumunski"}
         ro_MD{"moldavski"}
@@ -392,7 +392,7 @@ bs{
         root{"korijenski"}
         ru{"ruski"}
         rup{"arumunski"}
-        rw{"kinjarvanda"}
+        rw{"kinjaruanda"}
         rwk{"rua"}
         sa{"sanskrit"}
         sad{"sandave"}
@@ -542,7 +542,7 @@ bs{
         Batk{"batak pismo"}
         Beng{"bengalsko pismo"}
         Blis{"blisimbolično pismo"}
-        Bopo{"bopomofo pismo"}
+        Bopo{"pismo bopomofo"}
         Brah{"bramansko pismo"}
         Brai{"brajevo pismo"}
         Bugi{"buginsko pismo"}
@@ -557,7 +557,7 @@ bs{
         Cprt{"kiparsko pismo"}
         Cyrl{"ćirilica"}
         Cyrs{"Staroslovenska crkvena ćirilica"}
-        Deva{"devanagari pismo"}
+        Deva{"pismo devanagari"}
         Dsrt{"dezeret"}
         Egyd{"egipatsko narodno pismo"}
         Egyh{"egipatsko hijeratsko pismo"}
@@ -568,29 +568,29 @@ bs{
         Glag{"glagoljica"}
         Goth{"gotika"}
         Grek{"grčko pismo"}
-        Gujr{"gudžarati pismo"}
-        Guru{"gurmuki pismo"}
-        Hanb{"hanb pismo"}
-        Hang{"hangul pismo"}
-        Hani{"han pismo"}
+        Gujr{"pismo gudžarati"}
+        Guru{"pismo gurmuki"}
+        Hanb{"pismo hanb"}
+        Hang{"pismo hangul"}
+        Hani{"pismo han"}
         Hano{"hanuno pismo"}
         Hans{"pojednostavljeno"}
         Hant{"tradicionalno"}
         Hebr{"hebrejsko pismo"}
-        Hira{"hiragana"}
+        Hira{"pismo hiragana"}
         Hmng{"pahawh hmong pismo"}
         Hrkt{"katakana ili hiragana"}
         Hung{"Staromađarsko pismo"}
         Inds{"induško ismo"}
         Ital{"staro italsko pismo"}
-        Jamo{"jamo"}
+        Jamo{"pismo jamo"}
         Java{"javansko pismo"}
         Jpan{"japansko pismo"}
         Kali{"kajah li pismo"}
-        Kana{"katakana"}
+        Kana{"pismo katakana"}
         Khar{"karošti pismo"}
         Khmr{"kmersko pismo"}
-        Knda{"kanada pismo"}
+        Knda{"pismo kanada"}
         Kore{"korejsko pismo"}
         Kthi{"kaićansko pismo"}
         Lana{"lanna pismo"}
@@ -617,7 +617,7 @@ bs{
         Ogam{"ogham pismo"}
         Olck{"ol čiki pismo"}
         Orkh{"orkhon pismo"}
-        Orya{"orija pismo"}
+        Orya{"pismo orija"}
         Osma{"osmanja pismo"}
         Perm{"staro permiksko pismo"}
         Phag{"phags-pa pismo"}
@@ -635,7 +635,7 @@ bs{
         Saur{"sauraštra pismo"}
         Sgnw{"znakovno pismo"}
         Shaw{"šavian pismo"}
-        Sinh{"sinhala pismo"}
+        Sinh{"pismo sinhala"}
         Sylo{"siloti nagri pismo"}
         Syrc{"sirijsko pismo"}
         Syre{"sirijsko estrangelo pismo"}
@@ -646,11 +646,11 @@ bs{
         Talu{"novo tai lue pismo"}
         Taml{"tamilsko pismo"}
         Tavt{"tai viet pismo"}
-        Telu{"telugu pismo"}
+        Telu{"pismo telugu"}
         Teng{"tengvar pismo"}
         Tfng{"tifinag pismo"}
         Tglg{"tagalog"}
-        Thaa{"tana pismo"}
+        Thaa{"pismo tana"}
         Thai{"tajlandsko pismo"}
         Tibt{"tibetansko pismo"}
         Ugar{"ugaritsko pismo"}
@@ -668,8 +668,8 @@ bs{
         Zzzz{"nepoznato pismo"}
     }
     Scripts%stand-alone{
-        Hans{"pojednostavljeno han pismo"}
-        Hant{"tradicionalno han pismo"}
+        Hans{"pojednostavljeno pismo han"}
+        Hant{"tradicionalno pismo han"}
     }
     Scripts%variant{
         Arab{"perzijsko-arapsko pismo"}
@@ -705,6 +705,10 @@ bs{
             stroke{"Sortiranje po broju crta"}
             traditional{"Tradicionalno sortiranje"}
         }
+        d0{
+            fwidth{"Široki"}
+            hwidth{"Uski"}
+        }
         hc{
             h11{"12-satni format (0-11)"}
             h12{"12-satni format (1-12)"}
@@ -715,6 +719,10 @@ bs{
             loose{"Slobodni stil prijeloma reda"}
             normal{"Normalni stil prijeloma reda"}
             strict{"Strogi stil prijeloma reda"}
+        }
+        m0{
+            bgn{"US BGN transliteracija"}
+            ungegn{"UN GEGN transliteracija"}
         }
         ms{
             metric{"metrički sistem"}
@@ -788,7 +796,7 @@ bs{
         TARASK{"Taraskijevica ortografija"}
         VALENCIA{"Valencijski"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — sve"}
         category-list{"{0}: {1}"}

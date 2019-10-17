@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hans_MO{
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
     calendar{
         chinese{
             DateTimePatterns{
@@ -35,9 +35,9 @@ zh_Hans_MO{
                 "z ah:mm:ss",
                 "ah:mm:ss",
                 "ah:mm",
-                "Gy年MM月d日EEEE",
-                "Gy年MM月d日",
-                "Gy年MM月d日",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
                 "d/M/yyGGGGG",
                 "{1} {0}",
                 "{1} {0}",

@@ -7,7 +7,7 @@ cy{
         collation{"Trefn"}
         currency{"Arian Breiniol"}
         hc{"Cylched Awr (12 vs 24)"}
-        lb{"Arddull Torriad Llinell"}
+        lb{"Arddull Toriad Llinell"}
         ms{"System Fesur"}
         numbers{"Rhifau"}
     }
@@ -80,18 +80,19 @@ cy{
         bs{"Bosnieg"}
         bss{"Acwseg"}
         bua{"Bwriateg"}
-        bug{"Buginese"}
+        bug{"Bwginaeg"}
         bum{"Bwlw"}
         byn{"Blin"}
         ca{"Catalaneg"}
         cad{"Cado"}
         car{"Caribeg"}
         cch{"Atsameg"}
+        ccp{"Tsiacma"}
         ce{"Tsietsieneg"}
         ceb{"Cebuano"}
         cgg{"Tsiga"}
         ch{"Tsiamorro"}
-        chk{"Chuukese"}
+        chk{"Chuukaeg"}
         chm{"Marieg"}
         cho{"Siocto"}
         chr{"Tsierocî"}
@@ -115,7 +116,7 @@ cy{
         de_CH{"Almaeneg Safonol y Swistir"}
         dgr{"Dogrib"}
         din{"Dinca"}
-        dje{"Zarmaeg"}
+        dje{"Sarmaeg"}
         doi{"Dogri"}
         dsb{"Sorbeg Isaf"}
         dua{"Diwaleg"}
@@ -229,7 +230,7 @@ cy{
         kac{"Kachin"}
         kaj{"Jju"}
         kam{"Camba"}
-        kbd{"Circaseg Dwyreiniol"}
+        kbd{"Cabardieg"}
         kcg{"Tyapeg"}
         kde{"Macondeg"}
         kea{"Caboferdianeg"}
@@ -362,7 +363,7 @@ cy{
         oc{"Ocsitaneg"}
         oj{"Ojibwa"}
         om{"Oromo"}
-        or{"Oriya"}
+        or{"Odia"}
         os{"Oseteg"}
         osa{"Osageg"}
         ota{"Tyrceg Otoman"}
@@ -507,7 +508,7 @@ cy{
         uga{"Wgariteg"}
         uk{"Wcreineg"}
         umb{"Umbundu"}
-        und{"Iaith Anhysbys"}
+        und{"Iaith anhysbys"}
         ur{"Wrdw"}
         uz{"Wsbeceg"}
         vai{"Faieg"}
@@ -542,9 +543,9 @@ cy{
         zh_Hans{"Tsieineeg Symledig"}
         zh_Hant{"Tsieineeg Traddodiadol"}
         zu{"Swlw"}
-        zun{"Zuni"}
+        zun{"Swni"}
         zxx{"Dim cynnwys ieithyddol"}
-        zza{"Zazäeg"}
+        zza{"Sasäeg"}
     }
     Languages%short{
         az{"Aseri"}
@@ -554,7 +555,7 @@ cy{
     Scripts{
         Arab{"Arabaidd"}
         Armn{"Armenaidd"}
-        Beng{"Bengalaidd"}
+        Beng{"Bangla"}
         Bopo{"Bopomofo"}
         Brai{"Braille"}
         Cyrl{"Cyrilig"}
@@ -564,7 +565,7 @@ cy{
         Grek{"Groegaidd"}
         Gujr{"Gwjarataidd"}
         Guru{"Gwrmwci"}
-        Hanb{"Hanb"}
+        Hanb{"Han gyda Bopomofo"}
         Hang{"Hangul"}
         Hani{"Han"}
         Hans{"Symledig"}
@@ -644,8 +645,8 @@ cy{
             h24{"System 24 Awr (1–24)"}
         }
         lb{
-            loose{"Arddull Torriad Llinell Rhydd"}
-            normal{"Arddull Torriad Llinell Arferol"}
+            loose{"Arddull Toriad Llinell Rhydd"}
+            normal{"Arddull Toriad Llinell Arferol"}
             strict{"Arddull Torriad Llinell Caeth"}
         }
         ms{
@@ -732,24 +733,24 @@ cy{
         VAIDIKA{"VAIDIKA"}
         VALLADER{"VALLADER"}
     }
-    Version{"2.1.30.6"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
-        all{"{0} — Popeth"}
+        all{"{0} — y cwbl"}
         category-list{"{0}: {1}"}
-        compatibility{"{0} — Cydweddoldeb"}
-        enclosed{"{0} — Amgaeedig"}
-        extended{"{0} — Estynedig"}
-        historic{"{0} — Hanesyddol"}
-        miscellaneous{"{0} — Amrywiol"}
-        other{"{0} — Arall"}
-        scripts{"Sgriptiau — {0}"}
+        compatibility{"{0} — cydweddoldeb"}
+        enclosed{"{0} — amgaeedig"}
+        extended{"{0} — estynedig"}
+        historic{"{0} — hanesyddol"}
+        miscellaneous{"{0} — amrywiol"}
+        other{"{0} — arall"}
+        scripts{"sgriptiau — {0}"}
         strokes{
-            few{"{0} Strôc"}
-            many{"{0} Strôc"}
-            one{"{0} Strôc"}
-            other{"{0} Strôc"}
-            two{"{0} Strôc"}
-            zero{"{0} Strôc"}
+            few{"{0} strôc"}
+            many{"{0} strôc"}
+            one{"{0} strôc"}
+            other{"{0} strôc"}
+            two{"{0} strôc"}
+            zero{"{0} strôc"}
         }
     }
     codePatterns{

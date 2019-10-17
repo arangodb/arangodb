@@ -22,6 +22,10 @@ ha{
             "BIF",
             "Kuɗin Burundi",
         }
+        BRL{
+            "R$",
+            "Ril Kudin Birazil",
+        }
         BWP{
             "BWP",
             "Kuɗin Baswana",
@@ -40,7 +44,7 @@ ha{
         }
         CNY{
             "CN¥",
-            "Kuɗin Caina/Sin",
+            "Yuwan kasar Sin",
         }
         CVE{
             "CVE",
@@ -72,7 +76,7 @@ ha{
         }
         GBP{
             "£",
-            "Fam kin Ingila",
+            "Fam na Ingila",
         }
         GHC{
             "GHC",
@@ -91,8 +95,8 @@ ha{
             "Kuɗin Indiya",
         }
         JPY{
-            "JP¥",
-            "Kuɗin Japan",
+            "¥",
+            "Yen kasar Japan",
         }
         KES{
             "KES",
@@ -124,6 +128,10 @@ ha{
         }
         MRO{
             "MRO",
+            "Kuɗin Moritaniya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Kuɗin Moritaniya",
         }
         MUR{
@@ -145,6 +153,10 @@ ha{
         NGN{
             "₦",
             "Naira",
+        }
+        RUB{
+            "RUB",
+            "Ruble kasar Rasha",
         }
         RWF{
             "RWF",
@@ -176,6 +188,10 @@ ha{
         }
         STD{
             "STD",
+            "Kuɗin Sawo Tome da Paransip (1977–2017)",
+        }
+        STN{
+            "STN",
             "Kuɗin Sawo Tome da Paransip",
         }
         SZL{
@@ -195,8 +211,8 @@ ha{
             "Sule Yuganda",
         }
         USD{
-            "US$",
-            "Dalar Amurka",
+            "$",
+            "Dalar Amirka",
         }
         XAF{
             "FCFA",
@@ -205,6 +221,10 @@ ha{
         XOF{
             "CFA",
             "Kuɗin Sefa na Afirka Ta Yamma",
+        }
+        XXX{
+            "¤",
+            "Kudin da ba a sani ba",
         }
         ZAR{
             "ZAR",
@@ -223,5 +243,49 @@ ha{
             "Dalar zimbabuwe",
         }
     }
-    Version{"2.1.27.40"}
+    Currencies%narrow{
+        BRL{"R$"}
+        CNY{"¥"}
+        EUR{"€"}
+        GBP{"£"}
+        INR{"₹"}
+        JPY{"¥"}
+        RUB{"₽"}
+        USD{"$"}
+    }
+    CurrencyPlurals{
+        BRL{
+            one{"Ril Kudin Birazil"}
+            other{"Ril Kudin Birazil"}
+        }
+        CNY{
+            one{"Yuwan kasar Sin"}
+            other{"Yuwan kasar Sin"}
+        }
+        GBP{
+            one{"Fam na Ingila"}
+            other{"Faman na Ingila"}
+        }
+        JPY{
+            one{"Yen kasar Japan"}
+            other{"Yen kasar Japan"}
+        }
+        RUB{
+            one{"Ruble kasar Rasha"}
+            other{"Ruble kasar Rasha"}
+        }
+        USD{
+            one{"Dalar Amirka"}
+            other{"Dalar Amirka"}
+        }
+        XXX{
+            one{"Kudin sashe da ba a sani ba"}
+            other{"(Kudin da ba a sani ba)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.48.45"}
 }

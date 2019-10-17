@@ -12,6 +12,7 @@ uz{
     }
     ExemplarCharacters{"[a b d e f g h i j k l m n o p q r s t u v x y z {oʻ} {gʻ} {sh} {ch} ʼ]"}
     ExemplarCharactersIndex{"[A B D E F G H I J K L M N O P Q R S T U V X Y Z {Oʻ} {Gʻ} {Sh} {Ch}]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” „ « » ( ) \\[ \\] \\{ \\} § @ * "
         "/ \\& # ′ ″]"
@@ -21,17 +22,14 @@ uz{
         arabext{
             patterns{
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             symbols{
-                decimal{"٫"}
                 exponential{"×۱۰^"}
-                group{"٬"}
                 infinity{"∞"}
                 minusSign{"-"}
-                nan{"haqiqiy son emas"}
+                nan{"son emas"}
                 perMille{"؉"}
                 percentSign{"٪"}
                 plusSign{"+"}
@@ -42,13 +40,14 @@ uz{
         default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"{0}+"}
+                approximately{"~{0}"}
+                atLeast{"≥{0}"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -211,19 +210,26 @@ uz{
                 exponential{"E"}
                 group{" "}
                 infinity{"∞"}
-                minusSign{"-"}
-                nan{"haqiqiy son emas"}
+                nan{"son emas"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"{0}chi chorraxada oʼngga buriling."}
+            }
+            plural{
+                one{"Savatingizda {0}X bor. Uni sotib olasizmi?"}
+                other{"Savatingizda {0}X bor. Ularni sotib olasizmi?"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.49.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -242,12 +248,24 @@ uz{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E, B h:mm"}
+                EBhms{"E, B h:mm:ss"}
+                EHm{"E, HH:mm"}
+                EHms{"E, HH:mm:ss"}
                 Ed{"E, d"}
+                Ehm{"E, h:mm (a)"}
+                Ehms{"E, h:mm:ss (a)"}
                 Gy{"y (G)"}
                 GyMMM{"MMM, y (G)"}
                 GyMMMEd{"E, d-MMM, y (G)"}
                 GyMMMd{"d-MMM, y (G)"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
                 M{"L"}
                 MEd{"E, dd.MM"}
                 MMM{"LLL"}
@@ -256,6 +274,10 @@ uz{
                 MMMd{"d-MMM"}
                 Md{"dd.MM"}
                 d{"d"}
+                h{"h (a)"}
+                hm{"h:mm (a)"}
+                hms{"h:mm:ss (a)"}
+                ms{"mm:ss"}
                 y{"y (G)"}
                 yyyy{"y (G)"}
                 yyyyM{"MM.y (GGGGG)"}
@@ -269,6 +291,53 @@ uz{
                 yyyyQQQQ{"y (G), QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"B h – B h"}
+                    h{"B h – h"}
+                }
+                Bhm{
+                    B{"B h:mm – B h:mm"}
+                    h{"B h:mm–h:mm"}
+                    m{"B h:mm – h:mm"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"M/y (GGGGG) – M/y (GGGGG)"}
+                    M{"M/y – M/y (GGGGG)"}
+                    y{"M/y – M/y (GGGGG)"}
+                }
+                GyMEd{
+                    G{"E, d/M/y (GGGGG) – E, d/M/y (GGGGG)"}
+                    M{"E, d/M/y – E, d/M/y (GGGGG)"}
+                    d{"E, d/M/y – E, d/M/y (GGGGG)"}
+                    y{"E, d/M/y – E, d/M/y (GGGGG)"}
+                }
+                GyMMM{
+                    G{"MMM G y – MMM G y"}
+                    M{"MMM – MMM, G y"}
+                    y{"MMM y – MMM y (G)"}
+                }
+                GyMMMEd{
+                    G{"E, d-MMM, G y – E, d-MMM, G y"}
+                    M{"E, d-MMM – E, d-MMM, G y"}
+                    d{"E, d-MMM – E, d-MMM, G y"}
+                    y{"E, d-MMM, y – E, d-MMM, y (G)"}
+                }
+                GyMMMd{
+                    G{"d-MMM, G y – d-MMM, G y"}
+                    M{"d-MMM – d-MMM, G y"}
+                    d{"d – d-MMM, G y"}
+                    y{"d-MMM, y – d-MMM, y (G)"}
+                }
+                GyMd{
+                    G{"d/M/y (GGGGG) – d/M/y (GGGGG)"}
+                    M{"d/M/y – d/M/y (GGGGG)"}
+                    d{"d/M/y – d/M/y (GGGGG)"}
+                    y{"d/M/y – d/M/y (GGGGG)"}
+                }
                 M{
                     M{"MM–MM"}
                 }
@@ -364,7 +433,12 @@ uz{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
                 E{"ccc"}
+                EBhm{"E, B h:mm"}
+                EBhms{"E, B h:mm:ss"}
                 EHm{"E, HH:mm"}
                 EHms{"E, HH:mm:ss"}
                 Ed{"d, E"}
@@ -384,8 +458,8 @@ uz{
                 MMM{"LLL"}
                 MMMEd{"E, d-MMM"}
                 MMMMW{
-                    one{"MMM, W-'hafta'"}
-                    other{"MMM, W-'hafta'"}
+                    one{"MMMM, W-'hafta'"}
+                    other{"MMMM, W-'hafta'"}
                 }
                 MMMMd{"d-MMMM"}
                 MMMd{"d-MMM"}
@@ -398,7 +472,7 @@ uz{
                 hmv{"h:mm a (v)"}
                 ms{"mm:ss"}
                 y{"y"}
-                yM{"MM/y"}
+                yM{"MM.y"}
                 yMEd{"E, dd/MM/y"}
                 yMMM{"MMM, y"}
                 yMMMEd{"E, d-MMM, y"}
@@ -408,8 +482,8 @@ uz{
                 yQQQ{"y, QQQ"}
                 yQQQQ{"y, QQQQ"}
                 yw{
-                    one{"y, w-'hafta'"}
-                    other{"y, w-'hafta'"}
+                    one{"Y, w-'hafta'"}
+                    other{"Y, w-'hafta'"}
                 }
             }
             dayNames{
@@ -557,7 +631,7 @@ uz{
                 }
                 abbreviated%variant{
                     "e.a.",
-                    "CE",
+                    "mil.",
                 }
                 wide{
                     "miloddan avvalgi",
@@ -565,10 +639,57 @@ uz{
                 }
                 wide%variant{
                     "eramizdan avvalgi",
-                    "CE",
+                    "mil.",
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"B h – B h"}
+                    h{"B h – h"}
+                }
+                Bhm{
+                    B{"B h:mm – B h:mm"}
+                    h{"B h:mm – h:mm"}
+                    m{"B h:mm – h:mm"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"M/y (GGGGG) – M/y (GGGGG)"}
+                    M{"M/y – M/y (GGGGG)"}
+                    y{"M/y – M/y (GGGGG)"}
+                }
+                GyMEd{
+                    G{"E, d/M/y (GGGGG) – E, d/M/y (GGGGG)"}
+                    M{"E, d/M/y – E, d/M/y (GGGGG)"}
+                    d{"E, d/M/y – E, d/M/y (GGGGG)"}
+                    y{"E, d/M/y – E, d/M/y (GGGGG)"}
+                }
+                GyMMM{
+                    G{"MMM, G y – MMM, G y"}
+                    M{"MMM–MMM, G y"}
+                    y{"MMM, y – MMM, y (G)"}
+                }
+                GyMMMEd{
+                    G{"E, d-MMM, G y – E, d-MMM, G y"}
+                    M{"E, d-MMM – E, d-MMM, G y"}
+                    d{"E, d-MMM – E, d-MMM, G y"}
+                    y{"E, d-MMM, y – E, d-MMM, y (G)"}
+                }
+                GyMMMd{
+                    G{"d-MMM, G y – d-MMM, G y"}
+                    M{"d-MMM – d-MMM, G y"}
+                    d{"d – d-MMM, G y"}
+                    y{"d-MMM, y – d-MMM, y (G)"}
+                }
+                GyMd{
+                    G{"d/M/y (GGGGG) – d/M/y (GGGGG)"}
+                    M{"d/M/y – d/M/y (GGGGG)"}
+                    d{"d/M/y – d/M/y (GGGGG)"}
+                    y{"d/M/y – d/M/y (GGGGG)"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -956,10 +1077,31 @@ uz{
                 }
             }
         }
+        dayOfYear{
+            dn{"yilning kuni"}
+        }
+        dayOfYear-narrow{
+            dn{"yilning kuni"}
+        }
+        dayOfYear-short{
+            dn{"yilning kuni"}
+        }
         dayperiod{
             dn{"TO/TK"}
         }
+        dayperiod-narrow{
+            dn{"TO/TK"}
+        }
+        dayperiod-short{
+            dn{"TO/TK"}
+        }
         era{
+            dn{"era"}
+        }
+        era-narrow{
+            dn{"era"}
+        }
+        era-short{
             dn{"era"}
         }
         fri{
@@ -1580,8 +1722,32 @@ uz{
                 }
             }
         }
+        weekOfMonth{
+            dn{"oyning haftasi"}
+        }
+        weekOfMonth-narrow{
+            dn{"oyning haftasi"}
+        }
+        weekOfMonth-short{
+            dn{"oyning haftasi"}
+        }
         weekday{
             dn{"hafta kuni"}
+        }
+        weekday-narrow{
+            dn{"hafta kuni"}
+        }
+        weekday-short{
+            dn{"hafta kuni"}
+        }
+        weekdayOfMonth{
+            dn{"oyning hafta kuni"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"oyning hafta kuni"}
+        }
+        weekdayOfMonth-short{
+            dn{"oyning hafta kuni"}
         }
         year{
             dn{"yil"}
@@ -1640,11 +1806,29 @@ uz{
         zone{
             dn{"vaqt mintaqasi"}
         }
+        zone-narrow{
+            dn{"vaqt mintaqasi"}
+        }
+        zone-short{
+            dn{"vaqt mintaqasi"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} yoki {1}"}
+            end{"{0} yoki {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} va {1}"}
             end{"{0} va {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }

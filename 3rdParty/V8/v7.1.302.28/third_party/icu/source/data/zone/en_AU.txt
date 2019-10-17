@@ -2,10 +2,20 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en_AU{
     %%Parent{"en_001"}
-    Version{"2.1.30.50"}
+    Version{"2.1.48.43"}
     zoneStrings{
+        "America:St_Barthelemy"{
+            ec{"St Barthélemy"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangoon"}
+        }
         "meta:Africa_Eastern"{
             ls{"Eastern Africa Time"}
+        }
+        "meta:Amazon"{
+            ld{"Amazon Summer Time"}
+            ls{"Amazon Standard Time"}
         }
         "meta:Arabian"{
             ld{"Arabia Daylight Time"}
@@ -41,10 +51,26 @@ en_AU{
             sg{"AWT"}
             ss{"AWST"}
         }
+        "meta:China"{
+            ld{"China Summer Time"}
+            ls{"China Standard Time"}
+        }
         "meta:Cook"{
             ld{"Cook Island Summer Time"}
             lg{"Cook Island Time"}
             ls{"Cook Island Standard Time"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Eastern European Summer Time"}
+            ls{"Eastern European Standard Time"}
+        }
+        "meta:Iran"{
+            lg{"Iran Time"}
+            ls{"Iran Standard Time"}
+        }
+        "meta:Israel"{
+            lg{"Israel Time"}
+            ls{"Israel Standard Time"}
         }
         "meta:Japan"{
             ld{"Japan Summer Time"}

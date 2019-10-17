@@ -8,9 +8,9 @@
 #include <limits>
 
 #include "src/base/compiler-specific.h"
+#include "src/codegen/source-position.h"
+#include "src/common/globals.h"
 #include "src/compiler/node-aux-data.h"
-#include "src/globals.h"
-#include "src/source-position.h"
 
 namespace v8 {
 namespace internal {
@@ -18,7 +18,7 @@ namespace compiler {
 
 class NodeOrigin {
  public:
-  typedef enum { kWasmBytecode, kGraphNode } OriginKind;
+  enum OriginKind { kWasmBytecode, kGraphNode };
   NodeOrigin(const char* phase_name, const char* reducer_name,
              NodeId created_from)
       : phase_name_(phase_name),
@@ -33,7 +33,7 @@ class NodeOrigin {
         origin_kind_(origin_kind),
         created_from_(created_from) {}
 
-  NodeOrigin(const NodeOrigin& other) = default;
+  NodeOrigin(const NodeOrigin& other) V8_NOEXCEPT = default;
   static NodeOrigin Unknown() { return NodeOrigin(); }
 
   bool IsKnown() { return created_from_ >= 0; }

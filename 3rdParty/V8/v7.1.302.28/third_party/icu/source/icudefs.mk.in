@@ -17,6 +17,9 @@
 
 SHELL = @SHELL@
 
+# Instruct Python to never write any byte code to the ICU source tree.
+export PYTHONDONTWRITEBYTECODE = 1
+
 # Standard directories
 
 prefix = @prefix@
@@ -118,6 +121,7 @@ ARFLAGS = @ARFLAGS@ r
 RANLIB = @RANLIB@
 COMPILE_LINK_ENVVAR = @COMPILE_LINK_ENVVAR@
 UCLN_NO_AUTO_CLEANUP = @UCLN_NO_AUTO_CLEANUP@
+SED = @SED@
 
 # Various flags for the tools
 

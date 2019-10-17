@@ -2,8 +2,8 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 yue{
     AuxExemplarCharacters{
-        "[乍 仂 伏 佐 侶 僳 兆 兌 兹 别 券 勳 卑 卞 占 叶 堤 墎 壤 奥 孜 峇 嶼 巽 栗 楔 涅 渾 澎 燦 狄 琳 瑚 甫 碑 礁 芒 苗"
-        " 茨 蓬 蚩 蜀 裘 謬 酋 隴]"
+        "[乍 仂 伏 佐 侶 僳 兆 兌 兹 凸 别 券 勳 卑 卞 占 叶 嘅 堤 墎 壤 奥 孜 峇 嶼 巽 栗 楔 涅 渾 澎 灘 燦 狄 琳 瑚 甫 碑"
+        " 礁 纜 艇 芒 苗 茨 蓬 蚩 蜀 裘 謬 酋 隴 雀 髪]"
     }
     Ellipsis{
         final{"{0}…"}
@@ -72,6 +72,7 @@ yue{
         "]"
     }
     ExemplarCharactersIndex{"[一 丁 丈 不 且 丞 並 串 乘 乾 亂 亭 傀 僎 僵 儐 償 儳 儷 儻 叢 嚴 囌 囑 廳]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9 〇 一 七 三 九 二 五 八 六 四]"}
     ExemplarCharactersPunctuation{
         "[‾ ﹉﹊﹋﹌ _ ＿ ﹍﹎﹏ ︳︴ \\- － ﹣ ‐ – ︲ — ﹘ ︱ , ， ﹐ 、 ﹑ ; ； ﹔ \\: ： ﹕ ! ！ ﹗ ? ？ ﹖ ."
         " ． ﹒ ‥ ︰ … 。 · ＇ ‘ ’ \u0022 ＂ “ ” 〝 〞 ( （ ﹙ ︵ ) ） ﹚ ︶ \\[ ［ \\] ］ \\{ ｛ ﹛ ︷ "
@@ -80,44 +81,39 @@ yue{
     }
     MoreInformation{"？"}
     NumberElements{
-        default{"latn"}
         finance{"hantfin"}
         hanidec{
             patterns{
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
-                minusSign{"-"}
                 nan{"非數值"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
             }
         }
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}-{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
                     1000{
-                        other{"0千"}
+                        other{"0"}
                     }
                     10000{
                         other{"0萬"}
@@ -157,7 +153,7 @@ yue{
             patternsShort{
                 currencyFormat{
                     1000{
-                        other{"¤0千"}
+                        other{"0"}
                     }
                     10000{
                         other{"¤0萬"}
@@ -195,7 +191,7 @@ yue{
                 }
                 decimalFormat{
                     1000{
-                        other{"0千"}
+                        other{"0"}
                     }
                     10000{
                         other{"0萬"}
@@ -233,25 +229,28 @@ yue{
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"非數值"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
             }
         }
-        minimumGroupingDigits{"1"}
+        minimalPairs{
+            ordinal{
+                other{"第 {0} 本書"}
+            }
+            plural{
+                other{"{0} 本書"}
+            }
+        }
         native{"hanidec"}
         traditional{"hant"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -1113,8 +1112,17 @@ yue{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"Bh時"}
+                Bhm{"Bh:mm"}
+                Bhms{"Bh:mm:ss"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"ah:mmE"}
+                Ehms{"ah:mm:ssE"}
                 Gy{"G y年"}
                 GyMMM{"G y年M月"}
                 GyMMMEd{"G y年M月d日 E"}
@@ -1147,6 +1155,53 @@ yue{
                 yyyyQQQQ{"G y年QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"Bh時至Bh時"}
+                    h{"Bh至h時"}
+                }
+                Bhm{
+                    B{"Bh:mm至Bh:mm"}
+                    h{"Bh:mm至h:mm"}
+                    m{"Bh:mm至h:mm"}
+                }
+                Gy{
+                    G{"G y年至G y年"}
+                    y{"G y至y年"}
+                }
+                GyM{
+                    G{"G y/M至G y/M"}
+                    M{"G y/M至y/M"}
+                    y{"G y/M至y/M"}
+                }
+                GyMEd{
+                    G{"G y/M/d（E）至G y/M/d（E）"}
+                    M{"G y/M/d（E）至y/M/d（E）"}
+                    d{"G y/M/d（E）至y/M/d（E）"}
+                    y{"G y/M/d（E）至y/M/d（E）"}
+                }
+                GyMMM{
+                    G{"G y年M月至G y年M月"}
+                    M{"G y年M月至M月"}
+                    y{"G y年M月至y年M月"}
+                }
+                GyMMMEd{
+                    G{"G y年M月d日（E）至G y年M月d日（E）"}
+                    M{"G y年M月d日（E）至M月d日（E）"}
+                    d{"G y年M月d日（E）至M月d日（E）"}
+                    y{"G y年M月d日（E）至y年M月d日（E）"}
+                }
+                GyMMMd{
+                    G{"G y年M月d日至G y年M月d日"}
+                    M{"G y年M月d日至M月d日"}
+                    d{"G y年M月d日至d日"}
+                    y{"G y年M月d日至y年M月d日"}
+                }
+                GyMd{
+                    G{"G y/M/d至G y/M/d"}
+                    M{"G y/M/d至y/M/d"}
+                    d{"G y/M/d至y/M/d"}
+                    y{"G y/M/d至y/M/d"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -1276,7 +1331,12 @@ yue{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"Bh時"}
+                Bhm{"Bh:mm"}
+                Bhms{"Bh:mm:ss"}
                 E{"ccc"}
+                EBhm{"E Bh:mm"}
+                EBhms{"E Bh:mm:ss"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -1321,19 +1381,19 @@ yue{
                 yQQQ{"y年QQQ"}
                 yQQQQ{"y年QQQQ"}
                 yw{
-                    other{"y年第w個星期"}
+                    other{"Y年第w個星期"}
                 }
             }
             dayNames{
                 format{
                     abbreviated{
-                        "週日",
-                        "週一",
-                        "週二",
-                        "週三",
-                        "週四",
-                        "週五",
-                        "週六",
+                        "星期日",
+                        "星期一",
+                        "星期二",
+                        "星期三",
+                        "星期四",
+                        "星期五",
+                        "星期六",
                     }
                     narrow{
                         "日",
@@ -1365,13 +1425,13 @@ yue{
                 }
                 stand-alone{
                     abbreviated{
-                        "週日",
-                        "週一",
-                        "週二",
-                        "週三",
-                        "週四",
-                        "週五",
-                        "週六",
+                        "星期日",
+                        "星期一",
+                        "星期二",
+                        "星期三",
+                        "星期四",
+                        "星期五",
+                        "星期六",
                     }
                     narrow{
                         "日",
@@ -1495,6 +1555,15 @@ yue{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"Bh時至Bh時"}
+                    h{"Bh至h時"}
+                }
+                Bhm{
+                    B{"Bh:mm至Bh:mm"}
+                    h{"Bh:mm至h:mm"}
+                    m{"Bh:mm至h:mm"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -2371,6 +2440,7 @@ yue{
                     "大正",
                     "昭和",
                     "平成",
+                    "令和",
                 }
             }
         }
@@ -2529,10 +2599,13 @@ yue{
         activities{"活動"}
         african_scripts{"非洲字體"}
         american_scripts{"美洲字體"}
+        animal{"動物"}
         animals_nature{"動物和大自然"}
         arrows{"箭咀"}
+        body{"身體"}
         box_drawing{"繪畫箱"}
         braille{"突字"}
+        building{"建築"}
         bullets_stars{"列點/星號"}
         consonantal_jamo{"輔音字母"}
         currency_symbols{"貨幣符號"}
@@ -2545,6 +2618,8 @@ yue{
         east_asian_scripts{"東亞字體"}
         emoji{"表情符號"}
         european_scripts{"歐洲字體"}
+        female{"女士"}
+        flag{"旗"}
         flags{"旗"}
         food_drink{"食物和飲品"}
         format{"格式"}
@@ -2557,43 +2632,54 @@ yue{
         hanja{"漢字"}
         hanzi_simplified{"漢字 (簡體)"}
         hanzi_traditional{"漢字 (繁體)"}
+        heart{"心"}
         historic_scripts{"古代字體"}
         ideographic_desc_characters{"漢字結構描述字符"}
         japanese_kana{"日文假名"}
         kanbun{"日本漢文"}
         kanji{"日本漢字"}
+        keycap{"鍵帽"}
         leftwards_arrows{"向左箭咀"}
         leftwards_rightwards_arrows{"向左和向右箭咀"}
         letterlike_symbols{"字母符號"}
         limited_use{"限制使用"}
+        male{"男士"}
         math_symbols{"數學符號"}
         middle_eastern_scripts{"中東字體"}
         miscellaneous{"其他"}
         modern_scripts{"現代字體"}
         modifier{"修飾符"}
         musical_symbols{"音樂符號"}
+        nature{"自然"}
         nonspacing{"非間距"}
         numbers{"數字"}
         objects{"物件"}
         other{"其他"}
         paired{"配對"}
+        person{"人物"}
         phonetic_alphabet{"拼音字母"}
         pictographs{"象形文字"}
+        place{"地方"}
+        plant{"植物"}
         punctuation{"標點符號"}
         rightwards_arrows{"向右箭咀"}
         sign_standard_symbols{"標記/標準符號"}
         small_form_variant{"小寫變體"}
-        smileys_people{"表情符號與人"}
+        smiley{"表情符號"}
+        smileys_people{"表情符號同人"}
         south_asian_scripts{"南亞字體"}
         southeast_asian_scripts{"東南亞字體"}
         spacing{"空位"}
+        sport{"體育"}
         symbols{"符號"}
         technical_symbols{"技術符號"}
         tone_marks{"聲調符號"}
-        travel_places{"旅遊和地點"}
+        travel{"旅遊"}
+        travel_places{"旅遊同地點"}
         upwards_arrows{"向上箭咀"}
         variant_forms{"變化型"}
         vocalic_jamo{"元音字母"}
+        weather{"天氣"}
         western_asian_scripts{"西亞字體"}
         whitespace{"空白"}
     }
@@ -2644,10 +2730,31 @@ yue{
                 }
             }
         }
+        dayOfYear{
+            dn{"年日"}
+        }
+        dayOfYear-narrow{
+            dn{"年日"}
+        }
+        dayOfYear-short{
+            dn{"年日"}
+        }
         dayperiod{
             dn{"上午/下午"}
         }
+        dayperiod-narrow{
+            dn{"上午/下午"}
+        }
+        dayperiod-short{
+            dn{"上午/下午"}
+        }
         era{
+            dn{"年代"}
+        }
+        era-narrow{
+            dn{"年代"}
+        }
+        era-short{
             dn{"年代"}
         }
         fri{
@@ -3200,8 +3307,32 @@ yue{
                 }
             }
         }
+        weekOfMonth{
+            dn{"月週"}
+        }
+        weekOfMonth-narrow{
+            dn{"月週"}
+        }
+        weekOfMonth-short{
+            dn{"月週"}
+        }
         weekday{
             dn{"週天"}
+        }
+        weekday-narrow{
+            dn{"週天"}
+        }
+        weekday-short{
+            dn{"週天"}
+        }
+        weekdayOfMonth{
+            dn{"月平日"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"月平日"}
+        }
+        weekdayOfMonth-short{
+            dn{"月平日"}
         }
         year{
             dn{"年"}
@@ -3244,9 +3375,27 @@ yue{
         zone{
             dn{"時區"}
         }
+        zone-narrow{
+            dn{"時區"}
+        }
+        zone-short{
+            dn{"時區"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} 或 {1}"}
+            end{"{0} 或 {1}"}
+            middle{"{0}、{1}"}
+            start{"{0}、{1}"}
+        }
         standard{
+            2{"{0}同{1}"}
+            end{"{0}同{1}"}
+            middle{"{0}、{1}"}
+            start{"{0}、{1}"}
+        }
+        standard-narrow{
             2{"{0}同{1}"}
             end{"{0}同{1}"}
             middle{"{0}、{1}"}
@@ -3281,5 +3430,37 @@ yue{
         UK{"英制"}
         US{"美制"}
         metric{"公制"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶︓﹕：]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄]",
+                "[£₤￡]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‐‒–⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

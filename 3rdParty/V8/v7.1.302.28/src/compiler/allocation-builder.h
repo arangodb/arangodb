@@ -25,13 +25,13 @@ class AllocationBuilder final {
         control_(control) {}
 
   // Primitive allocation of static size.
-  void Allocate(int size, PretenureFlag pretenure = NOT_TENURED,
+  void Allocate(int size, AllocationType allocation = AllocationType::kYoung,
                 Type type = Type::Any()) {
     DCHECK_LE(size, kMaxRegularHeapObjectSize);
     effect_ = graph()->NewNode(
         common()->BeginRegion(RegionObservability::kNotObservable), effect_);
     allocation_ =
-        graph()->NewNode(simplified()->Allocate(type, pretenure),
+        graph()->NewNode(simplified()->Allocate(type, allocation),
                          jsgraph()->Constant(size), effect_, control_);
     effect_ = allocation_;
   }
@@ -49,27 +49,11 @@ class AllocationBuilder final {
   }
 
   // Compound allocation of a context.
-  void AllocateContext(int length, Handle<Map> map) {
-    DCHECK(map->instance_type() >= AWAIT_CONTEXT_TYPE &&
-           map->instance_type() <= WITH_CONTEXT_TYPE);
-    int size = FixedArray::SizeFor(length);
-    Allocate(size, NOT_TENURED, Type::OtherInternal());
-    Store(AccessBuilder::ForMap(), map);
-    Store(AccessBuilder::ForFixedArrayLength(), jsgraph()->Constant(length));
-  }
+  inline void AllocateContext(int variadic_part_length, Handle<Map> map);
 
   // Compound allocation of a FixedArray.
-  void AllocateArray(int length, Handle<Map> map,
-                     PretenureFlag pretenure = NOT_TENURED) {
-    DCHECK(map->instance_type() == FIXED_ARRAY_TYPE ||
-           map->instance_type() == FIXED_DOUBLE_ARRAY_TYPE);
-    int size = (map->instance_type() == FIXED_ARRAY_TYPE)
-                   ? FixedArray::SizeFor(length)
-                   : FixedDoubleArray::SizeFor(length);
-    Allocate(size, pretenure, Type::OtherInternal());
-    Store(AccessBuilder::ForMap(), map);
-    Store(AccessBuilder::ForFixedArrayLength(), jsgraph()->Constant(length));
-  }
+  inline void AllocateArray(int length, Handle<Map> map,
+                            AllocationType allocation = AllocationType::kYoung);
 
   // Compound store of a constant into a field.
   void Store(const FieldAccess& access, Handle<Object> value) {

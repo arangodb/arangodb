@@ -11,6 +11,7 @@
 #include "base/i18n/icu_util.h"
 #include "third_party/icu/source/common/unicode/locid.h"
 #include "third_party/icu/source/common/unicode/uchar.h"
+#include "third_party/icu/source/common/unicode/unistr.h"
 
 struct IcuEnvironment {
   IcuEnvironment() {

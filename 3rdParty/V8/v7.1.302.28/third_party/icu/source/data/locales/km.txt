@@ -15,99 +15,101 @@ km{
         "ន ប ផ ព ភ ម យ រ ឫ ឬ ល ឭ ឮ វ ស ហ ឡ អ {អា} ឥ ឦ ឧ {ឧក} ឩ ឪ ឯ ឰ ឱ ឲ ឳ ា \u17B7 "
         "\u17B8 \u17B9 \u17BA \u17BB \u17BC \u17BD ើ ឿ ៀ េ ែ ៃ ោ ៅ \u17C6 ះ \u17D2]"
     }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[\\- , ៖ ! ? . ។ ៕ ‘ ’ \u0022 “ ” ( ) \\[ \\] \\{ \\} ៙ ៚]"}
     MoreInformation{"?"}
     NumberElements{
         default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"{0}+"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00¤;(#,##0.00¤)"}
                 currencyFormat{"#,##0.00¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
                     1000{
-                        other{"0ពាន់"}
+                        other{"0 ពាន់"}
                     }
                     10000{
-                        other{"0​មឺុន"}
+                        other{"00 ពាន់"}
                     }
                     100000{
-                        other{"0សែន"}
+                        other{"000ពាន់"}
                     }
                     1000000{
-                        other{"0លាន"}
+                        other{"0 លាន"}
                     }
                     10000000{
-                        other{"0​ដប់​លាន"}
+                        other{"00 លាន"}
                     }
                     100000000{
-                        other{"0​រយលាន"}
+                        other{"000 លាន"}
                     }
                     1000000000{
-                        other{"0​កោដិ"}
+                        other{"0 ប៊ីលាន"}
                     }
                     10000000000{
-                        other{"0​ដប់​កោដិ"}
+                        other{"00 ប៊ីលាន"}
                     }
                     100000000000{
-                        other{"0​រយ​កោដិ"}
+                        other{"000 ប៊ីលាន"}
                     }
                     1000000000000{
-                        other{"0​ពាន់​កោដិ"}
+                        other{"0 ទ្រីលាន"}
                     }
                     10000000000000{
-                        other{"0​មឺុន​កោដិ"}
+                        other{"00 ទ្រីលាន"}
                     }
                     100000000000000{
-                        other{"0​សែន​កោដិ"}
+                        other{"000 ទ្រីលាន"}
                     }
                 }
             }
             patternsShort{
                 currencyFormat{
                     1000{
-                        other{"¤0ពាន់"}
+                        other{"¤0 ពាន់"}
                     }
                     10000{
-                        other{"¤0​មឺុន"}
+                        other{"¤00 ពាន់"}
                     }
                     100000{
-                        other{"¤0សែន"}
+                        other{"¤000 ពាន់"}
                     }
                     1000000{
-                        other{"¤0លាន"}
+                        other{"¤0 លាន"}
                     }
                     10000000{
-                        other{"¤0​ដប់​លាន"}
+                        other{"¤00 លាន"}
                     }
                     100000000{
-                        other{"¤0​រយលាន"}
+                        other{"¤000 លាន"}
                     }
                     1000000000{
-                        other{"¤0​កោដិ"}
+                        other{"¤0 ប៊ីលាន"}
                     }
                     10000000000{
-                        other{"¤0​ដប់​កោដិ"}
+                        other{"¤00 ប៊ីលាន"}
                     }
                     100000000000{
-                        other{"¤0​រយ​កោដិ"}
+                        other{"¤000 ប៊ីលាន"}
                     }
                     1000000000000{
-                        other{"¤0​ពាន់​កោដិ"}
+                        other{"¤0 ទ្រីលាន"}
                     }
                     10000000000000{
-                        other{"¤0​មឺុន​កោដិ"}
+                        other{"¤00 ទ្រីលាន"}
                     }
                     100000000000000{
-                        other{"¤0​សែន​កោដិ"}
+                        other{"¤000 ទ្រីលាន"}
                     }
                 }
                 decimalFormat{
@@ -115,37 +117,37 @@ km{
                         other{"0ពាន់"}
                     }
                     10000{
-                        other{"0​មឺុន"}
+                        other{"00 ពាន់"}
                     }
                     100000{
-                        other{"0សែន"}
+                        other{"000 ពាន់"}
                     }
                     1000000{
-                        other{"0លាន"}
+                        other{"0 លាន"}
                     }
                     10000000{
-                        other{"0​ដប់​លាន"}
+                        other{"00 លាន"}
                     }
                     100000000{
-                        other{"0​រយលាន"}
+                        other{"000 លាន"}
                     }
                     1000000000{
-                        other{"0​កោដិ"}
+                        other{"0 ប៊ីលាន"}
                     }
                     10000000000{
-                        other{"0​ដប់​កោដិ"}
+                        other{"00 ប៊ីលាន"}
                     }
                     100000000000{
-                        other{"0​រយ​កោដិ"}
+                        other{"000 ប៊ីលាន"}
                     }
                     1000000000000{
-                        other{"0​ពាន់​កោដិ"}
+                        other{"0 ទ្រីលាន"}
                     }
                     10000000000000{
-                        other{"0​មឺុន​កោដិ"}
+                        other{"00 ទ្រីលាន"}
                     }
                     100000000000000{
-                        other{"0​សែន​កោដិ"}
+                        other{"000 ទ្រីលាន"}
                     }
                 }
             }
@@ -155,19 +157,24 @@ km{
                 group{"."}
                 infinity{"∞"}
                 list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
             }
         }
-        minimumGroupingDigits{"1"}
+        minimalPairs{
+            ordinal{
+                other{"បត់​ស្តាំ​លើក​ទី​ {0}"}
+            }
+            plural{
+                other{"{0} ថ្ងៃ"}
+            }
+        }
         native{"khmr"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -186,8 +193,17 @@ km{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d MMM y G"}
@@ -220,6 +236,15 @@ km{
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
                 H{
                     H{"H–H"}
                 }
@@ -347,16 +372,21 @@ km{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
                 Ehm{"E h:mm a"}
                 Ehms{"E h:mm:ss a"}
-                Gy{"y នៃ G"}
-                GyMMM{"MMM y នៃ G"}
-                GyMMMEd{"E d MMM y នៃ G"}
-                GyMMMd{"d MMM y នៃ G"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E d MMM y G"}
+                GyMMMd{"d MMM y G"}
                 H{"HH"}
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
@@ -367,7 +397,7 @@ km{
                 MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMMW{
-                    other{"សប្តាហ៍ទី W នៃខែ MMM"}
+                    other{"សប្តាហ៍ទី W នៃខែ MMMM"}
                 }
                 MMMMd{"MMMM d"}
                 MMMd{"d MMM"}
@@ -390,17 +420,17 @@ km{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    other{"សប្តាហ៍ទី w នៃឆ្នាំ y"}
+                    other{"សប្តាហ៍ទី w នៃឆ្នាំ Y"}
                 }
             }
             dayNames{
                 format{
                     abbreviated{
                         "អាទិត្យ",
-                        "ច័ន្ទ",
+                        "ចន្ទ",
                         "អង្គារ",
                         "ពុធ",
-                        "ព្រហស្បតិ៍",
+                        "ព្រហ",
                         "សុក្រ",
                         "សៅរ៍",
                     }
@@ -435,10 +465,10 @@ km{
                 stand-alone{
                     abbreviated{
                         "អាទិត្យ",
-                        "ច័ន្ទ",
+                        "ចន្ទ",
                         "អង្គារ",
                         "ពុធ",
-                        "ព្រហស្បតិ៍",
+                        "ព្រហ",
                         "សុក្រ",
                         "សៅរ៍",
                     }
@@ -462,7 +492,7 @@ km{
                     }
                     wide{
                         "អាទិត្យ",
-                        "ច័ន្ទ",
+                        "ចន្ទ",
                         "អង្គារ",
                         "ពុធ",
                         "ព្រហស្បតិ៍",
@@ -474,27 +504,27 @@ km{
             dayPeriod{
                 format{
                     abbreviated{
-                        afternoon1{"រសៀល"}
-                        evening1{"ល្ងាច"}
+                        afternoon1{"នៅពេលរសៀល"}
+                        evening1{"នៅពេល​ល្ងាច"}
                         midnight{"អធ្រាត្រ"}
-                        morning1{"ព្រឹក"}
-                        night1{"យប់"}
+                        morning1{"នៅពេល​ព្រឹក"}
+                        night1{"នៅពេល​យប់"}
                         noon{"ថ្ងៃត្រង់"}
                     }
                     narrow{
-                        afternoon1{"រសៀល"}
-                        evening1{"ល្ងាច"}
+                        afternoon1{"នៅពេលរសៀល"}
+                        evening1{"នៅពេល​ល្ងាច"}
                         midnight{"អធ្រាត្រ"}
-                        morning1{"ព្រឹក"}
-                        night1{"យប់"}
+                        morning1{"នៅពេល​ព្រឹក"}
+                        night1{"នៅពេល​យប់"}
                         noon{"ថ្ងៃត្រង់"}
                     }
                     wide{
-                        afternoon1{"រសៀល"}
-                        evening1{"ល្ងាច"}
+                        afternoon1{"នៅពេលរសៀល"}
+                        evening1{"នៅពេល​ល្ងាច"}
                         midnight{"អធ្រាត្រ"}
-                        morning1{"ព្រឹក"}
-                        night1{"យប់"}
+                        morning1{"នៅពេល​ព្រឹក"}
+                        night1{"នៅពេល​យប់"}
                         noon{"ថ្ងៃត្រង់"}
                     }
                 }
@@ -536,12 +566,29 @@ km{
                     "មុន គ.ស.",
                     "គ.ស.",
                 }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
                 wide{
                     "មុន​គ្រិស្តសករាជ",
                     "គ្រិស្តសករាជ",
                 }
+                wide%variant{
+                    "BCE",
+                    "CE",
+                }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
                 H{
                     H{"HH – HH"}
                 }
@@ -919,10 +966,31 @@ km{
                 }
             }
         }
+        dayOfYear{
+            dn{"ថ្ងៃនៃឆ្នាំ"}
+        }
+        dayOfYear-narrow{
+            dn{"ថ្ងៃនៃឆ្នាំ"}
+        }
+        dayOfYear-short{
+            dn{"ថ្ងៃនៃឆ្នាំ"}
+        }
         dayperiod{
             dn{"ព្រឹក/ល្ងាច"}
         }
+        dayperiod-narrow{
+            dn{"ព្រឹក/ល្ងាច"}
+        }
+        dayperiod-short{
+            dn{"ព្រឹក/ល្ងាច"}
+        }
         era{
+            dn{"សករាជ"}
+        }
+        era-narrow{
+            dn{"សករាជ"}
+        }
+        era-short{
             dn{"សករាជ"}
         }
         fri{
@@ -933,10 +1001,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃសុក្រ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃសុក្រទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃសុក្រ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃសុក្រមុន"}
                 }
             }
         }
@@ -948,10 +1016,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃសុក្រ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃសុក្រទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃសុក្រ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃសុក្រមុន"}
                 }
             }
         }
@@ -963,10 +1031,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃសុក្រ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃសុក្រទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃសុក្រ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃសុក្រមុន"}
                 }
             }
         }
@@ -1044,46 +1112,46 @@ km{
         }
         mon{
             relative{
-                "-1"{"ថ្ងៃ​ច័ន្ទ​មុន"}
-                "0"{"ថ្ងៃ​ច័ន្ទ​នេះ"}
-                "1"{"ថ្ងៃ​ច័ន្ទ​ក្រោយ"}
+                "-1"{"ថ្ងៃចន្ទមុន"}
+                "0"{"ថ្ងៃចន្ទនេះ"}
+                "1"{"ថ្ងៃចន្ទក្រោយ"}
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃច័ន្ទ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃចន្ទទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃច័ន្ទ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃចន្ទមុន"}
                 }
             }
         }
         mon-narrow{
             relative{
-                "-1"{"ថ្ងៃ​ច័ន្ទ​មុន"}
-                "0"{"ថ្ងៃ​ច័ន្ទ​នេះ"}
-                "1"{"ថ្ងៃ​ច័ន្ទ​ក្រោយ"}
+                "-1"{"ថ្ងៃចន្ទមុន"}
+                "0"{"ថ្ងៃចន្ទនេះ"}
+                "1"{"ថ្ងៃចន្ទក្រោយ"}
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃច័ន្ទ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃចន្ទទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃច័ន្ទ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃចន្ទមុន"}
                 }
             }
         }
         mon-short{
             relative{
-                "-1"{"ថ្ងៃ​ច័ន្ទ​មុន"}
-                "0"{"ថ្ងៃ​ច័ន្ទ​នេះ"}
-                "1"{"ថ្ងៃ​ច័ន្ទ​ក្រោយ"}
+                "-1"{"ថ្ងៃចន្ទមុន"}
+                "0"{"ថ្ងៃចន្ទនេះ"}
+                "1"{"ថ្ងៃចន្ទក្រោយ"}
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃច័ន្ទ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃចន្ទទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃច័ន្ទ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃចន្ទមុន"}
                 }
             }
         }
@@ -1191,10 +1259,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃសៅរ៍ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃសៅរ៍ ទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃសៅរ៍ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃសៅរ៍ មុន"}
                 }
             }
         }
@@ -1206,10 +1274,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃសៅរ៍ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃសៅរ៍ ទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃសៅរ៍ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃសៅរ៍ មុន"}
                 }
             }
         }
@@ -1221,10 +1289,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃសៅរ៍ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃសៅរ៍ ទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃសៅរ៍ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃសៅរ៍ មុន"}
                 }
             }
         }
@@ -1287,10 +1355,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃអាទិត្យ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃអាទិត្យទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃអាទិត្យ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃអាទិត្យមុន"}
                 }
             }
         }
@@ -1317,10 +1385,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃព្រហស្បតិ៍ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃព្រហស្បតិ៍ទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃព្រហស្បតិ៍ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃព្រហស្បតិ៍មុន"}
                 }
             }
         }
@@ -1332,10 +1400,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃព្រហស្បតិ៍ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃព្រហស្បតិ៍ទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃព្រហស្បតិ៍ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃព្រហស្បតិ៍មុន"}
                 }
             }
         }
@@ -1347,10 +1415,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃព្រហស្បតិ៍ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃព្រហស្បតិ៍ទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃព្រហស្បតិ៍ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃព្រហស្បតិ៍មុន"}
                 }
             }
         }
@@ -1362,10 +1430,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃអង្គារ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃអង្គារទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃអង្គារ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃអង្គារមុន"}
                 }
             }
         }
@@ -1377,10 +1445,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃអង្គារ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃអង្គារទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃអង្គារ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃអង្គារមុន"}
                 }
             }
         }
@@ -1392,10 +1460,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃអង្គារ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃអង្គារទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃអង្គារ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃអង្គារមុន"}
                 }
             }
         }
@@ -1407,10 +1475,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃពុធ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃពុធទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃពុធ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃពុធមុន"}
                 }
             }
         }
@@ -1422,10 +1490,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃពុធ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃពុធទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃពុធ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃពុធមុន"}
                 }
             }
         }
@@ -1437,10 +1505,10 @@ km{
             }
             relativeTime{
                 future{
-                    other{"ថ្ងៃពុធ {0} សប្តាហ៍ទៀត"}
+                    other{"ក្នុងពេល {0} ថ្ងៃពុធទៀត"}
                 }
                 past{
-                    other{"ថ្ងៃពុធ {0} សប្តាហ៍មុន"}
+                    other{"កាលពី {0} ថ្ងៃពុធមុន"}
                 }
             }
         }
@@ -1495,8 +1563,32 @@ km{
                 }
             }
         }
+        weekOfMonth{
+            dn{"សប្ដាហ៍នៃខែ"}
+        }
+        weekOfMonth-narrow{
+            dn{"សប្ដាហ៍នៃខែ"}
+        }
+        weekOfMonth-short{
+            dn{"សប្ដាហ៍នៃខែ"}
+        }
         weekday{
             dn{"ថ្ងៃ​នៃ​សប្ដាហ៍"}
+        }
+        weekday-narrow{
+            dn{"ថ្ងៃ​នៃ​សប្ដាហ៍"}
+        }
+        weekday-short{
+            dn{"ថ្ងៃ​នៃ​សប្ដាហ៍"}
+        }
+        weekdayOfMonth{
+            dn{"ថ្ងៃសប្ដាហ៍នៃខែ"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ថ្ងៃសប្ដាហ៍នៃខែ"}
+        }
+        weekdayOfMonth-short{
+            dn{"ថ្ងៃសប្ដាហ៍នៃខែ"}
         }
         year{
             dn{"ឆ្នាំ"}
@@ -1549,8 +1641,20 @@ km{
         zone{
             dn{"ល្វែងម៉ោង"}
         }
+        zone-narrow{
+            dn{"ល្វែងម៉ោង"}
+        }
+        zone-short{
+            dn{"ល្វែងម៉ោង"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ឬ {1}"}
+            end{"{0} ឬ {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} និង​{1}"}
             end{"{0} និង {1}"}

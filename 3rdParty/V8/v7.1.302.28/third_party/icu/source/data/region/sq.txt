@@ -19,7 +19,7 @@ sq{
         030{"Azia Lindore"}
         034{"Azia Jugore"}
         035{"Azia Juglindore"}
-        039{"Europa Jugore"}
+        039{"Evropa Jugore"}
         053{"Australazia"}
         054{"Melanezia"}
         057{"Rajoni Mikronezian"}
@@ -27,10 +27,11 @@ sq{
         142{"Azi"}
         143{"Azia Qendrore"}
         145{"Azia Perëndimore"}
-        150{"Europë"}
-        151{"Europa Lindore"}
-        154{"Europa Veriore"}
-        155{"Europa Perëndimore"}
+        150{"Evropë"}
+        151{"Evropa Lindore"}
+        154{"Evropa Veriore"}
+        155{"Evropa Perëndimore"}
+        202{"Afrika Subsahariane"}
         419{"Amerika Latine"}
         AC{"Ishulli Asenshion"}
         AD{"Andorrë"}
@@ -58,22 +59,22 @@ sq{
         BH{"Bahrejn"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Shën Bartolomeu"}
-        BM{"Bermudë"}
+        BL{"Sen-Bartelemi"}
+        BM{"Bermude"}
         BN{"Brunei"}
         BO{"Bolivi"}
         BQ{"Karaibet holandeze"}
         BR{"Brazil"}
-        BS{"Bahamas"}
+        BS{"Bahama"}
         BT{"Butan"}
-        BV{"Ishulli Bove’"}
+        BV{"Ishulli Bove"}
         BW{"Botsvanë"}
         BY{"Bjellorusi"}
         BZ{"Belizë"}
         CA{"Kanada"}
         CC{"Ishujt Kokos"}
         CD{"Kongo-Kinshasa"}
-        CF{"Repubika e Afrikës Qendrore"}
+        CF{"Republika e Afrikës Qendrore"}
         CG{"Kongo-Brazavilë"}
         CH{"Zvicër"}
         CI{"Côte d’Ivoire"}
@@ -86,10 +87,10 @@ sq{
         CR{"Kosta-Rikë"}
         CU{"Kubë"}
         CV{"Kepi i Gjelbër"}
-        CW{"Kuraçao"}
+        CW{"Kurasao"}
         CX{"Ishulli i Krishtlindjes"}
         CY{"Qipro"}
-        CZ{"Republika Çeke"}
+        CZ{"Çeki"}
         DE{"Gjermani"}
         DG{"Diego-Garsia"}
         DJ{"Xhibuti"}
@@ -105,25 +106,26 @@ sq{
         ER{"Eritre"}
         ES{"Spanjë"}
         ET{"Etiopi"}
-        EU{"Bashkimi Europian"}
+        EU{"Bashkimi Evropian"}
+        EZ{"Zona euro"}
         FI{"Finlandë"}
         FJ{"Fixhi"}
-        FK{"Ishujt Falkland"}
+        FK{"Ishujt Falkland (Malvine)"}
         FM{"Mikronezi"}
         FO{"Ishujt Faroe"}
         FR{"Francë"}
         GA{"Gabon"}
         GB{"Mbretëria e Bashkuar"}
-        GD{"Grenadë"}
+        GD{"Granadë"}
         GE{"Gjeorgji"}
         GF{"Guajana Franceze"}
         GG{"Gernsej"}
         GH{"Ganë"}
         GI{"Gjibraltar"}
-        GL{"Grenlandë"}
-        GM{"Gambia"}
+        GL{"Grënlandë"}
+        GM{"Gambi"}
         GN{"Guine"}
-        GP{"Guadalupe"}
+        GP{"Guadelupë"}
         GQ{"Guineja Ekuatoriale"}
         GR{"Greqi"}
         GS{"Xhorxha Jugore dhe Ishujt Senduiçë të Jugut"}
@@ -131,8 +133,8 @@ sq{
         GU{"Guam"}
         GW{"Guine-Bisau"}
         GY{"Guajanë"}
-        HK{"Hong Kong"}
-        HM{"Ishulli Hërd dhe Ishujt Mekdonald"}
+        HK{"Hong-Kong"}
+        HM{"Ishujt Hërd e Mekdonald"}
         HN{"Honduras"}
         HR{"Kroaci"}
         HT{"Haiti"}
@@ -153,13 +155,13 @@ sq{
         JO{"Jordani"}
         JP{"Japoni"}
         KE{"Kenia"}
-        KG{"Kirgistan"}
+        KG{"Kirgizi"}
         KH{"Kamboxhia"}
         KI{"Kiribati"}
         KM{"Komore"}
-        KN{"Shën Kits dhe Nevis"}
-        KP{"Koreja e Veriut"}
-        KR{"Koreja e Jugut"}
+        KN{"Shën-Kits dhe Nevis"}
+        KP{"Kore e Veriut"}
+        KR{"Kore e Jugut"}
         KW{"Kuvajt"}
         KY{"Ishujt Kajman"}
         KZ{"Kazakistan"}
@@ -178,12 +180,12 @@ sq{
         MC{"Monako"}
         MD{"Moldavi"}
         ME{"Mal i Zi"}
-        MF{"Shën-Martin"}
+        MF{"Sen-Marten"}
         MG{"Madagaskar"}
         MH{"Ishujt Marshall"}
-        MK{"Maqedoni"}
+        MK{"Maqedonia e Veriut"}
         ML{"Mali"}
-        MM{"Mianmar (Burma)"}
+        MM{"Mianmar (Burmë)"}
         MN{"Mongoli"}
         MO{"Makao"}
         MP{"Ishujt e Marianës Veriore"}
@@ -198,7 +200,7 @@ sq{
         MY{"Malajzi"}
         MZ{"Mozambik"}
         NA{"Namibi"}
-        NC{"Kaledonia e Re"}
+        NC{"Kaledoni e Re"}
         NE{"Niger"}
         NF{"Ishulli Norfolk"}
         NG{"Nigeri"}
@@ -213,11 +215,11 @@ sq{
         PA{"Panama"}
         PE{"Peru"}
         PF{"Polinezia Franceze"}
-        PG{"Papua Guineja e Re"}
+        PG{"Guineja e Re-Papua"}
         PH{"Filipine"}
         PK{"Pakistan"}
         PL{"Poloni"}
-        PM{"Shën Pier dhe Mikelon"}
+        PM{"Shën-Pier dhe Mikelon"}
         PN{"Ishujt Pitkern"}
         PR{"Porto-Riko"}
         PS{"Palestinë"}
@@ -231,27 +233,27 @@ sq{
         RS{"Serbi"}
         RU{"Rusi"}
         RW{"Ruandë"}
-        SA{"Arabia Saudite"}
+        SA{"Arabi Saudite"}
         SB{"Ishujt Solomon"}
         SC{"Sejshelle"}
         SD{"Sudan"}
         SE{"Suedi"}
         SG{"Singapor"}
-        SH{"Shën-Helenë"}
+        SH{"Shën-Elenë"}
         SI{"Slloveni"}
         SJ{"Svalbard e Jan-Majen"}
         SK{"Sllovaki"}
-        SL{"Siera-Leone"}
+        SL{"Sierra-Leone"}
         SM{"San-Marino"}
         SN{"Senegal"}
         SO{"Somali"}
         SR{"Surinami"}
         SS{"Sudani i Jugut"}
-        ST{"Sao-Tome e Prinsipe"}
+        ST{"Sao-Tome e Principe"}
         SV{"Salvador"}
-        SX{"Sint Marten"}
+        SX{"Sint-Marten"}
         SY{"Siri"}
-        SZ{"Svazilandë"}
+        SZ{"Esvatini"}
         TA{"Tristan-da-Kuna"}
         TC{"Ishujt Turks dhe Kaikos"}
         TD{"Çad"}
@@ -271,41 +273,42 @@ sq{
         TZ{"Tanzani"}
         UA{"Ukrainë"}
         UG{"Ugandë"}
-        UM{"Ishujt periferikë të SHBA-së"}
-        UN{"kombet e bashkuara"}
-        US{"Shtetet e Bashkuara të Amerikës"}
+        UM{"Ishujt Periferikë të SHBA-së"}
+        UN{"Organizata e Kombeve të Bashkuara"}
+        US{"SHBA"}
         UY{"Uruguai"}
         UZ{"Uzbekistan"}
         VA{"Vatikan"}
-        VC{"Shën Vincent dhe Grenadine"}
+        VC{"Shën-Vincent dhe Grenadine"}
         VE{"Venezuelë"}
         VG{"Ishujt e Virgjër Britanikë"}
-        VI{"Ishujt e Virgjër Amerikanë"}
+        VI{"Ishujt e Virgjër të SHBA-së"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Uollis e Futuna"}
         WS{"Samoa"}
+        XA{"Pseudo-thekse"}
+        XB{"Pseudo-bidi"}
         XK{"Kosovë"}
         YE{"Jemen"}
         YT{"Majotë"}
         ZA{"Afrika e Jugut"}
-        ZM{"Zambia"}
+        ZM{"Zambi"}
         ZW{"Zimbabve"}
         ZZ{"I panjohur"}
     }
     Countries%short{
         GB{"MB"}
-        UN{"kombet e bashkuara"}
+        UN{"OKB"}
         US{"SHBA"}
     }
     Countries%variant{
         CD{"Kongo (RDK)"}
         CG{"Kongo (Republika)"}
         CI{"Bregu i Fildishtë"}
-        CZ{"Çeki"}
-        FK{"Ishujt Falkland (Malvine)"}
-        MK{"Maqedoni (IRJM)"}
+        CZ{"Republika Çeke"}
+        SZ{"Suazilend"}
         TL{"Timori Lindor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

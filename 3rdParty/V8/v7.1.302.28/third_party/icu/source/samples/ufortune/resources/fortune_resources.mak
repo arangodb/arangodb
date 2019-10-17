@@ -6,7 +6,7 @@
 #  fortune_resources.mak
 #
 #      Windows nmake makefile for compiling and packaging the resources
-#      for for the ICU sample program "ufortune".
+#      for the ICU sample program "ufortune".
 #
 #      This makefile is normally invoked by the pre-link step in the
 #      MSVC project file for ufortune
@@ -45,7 +45,7 @@ BIN=bin
 #  -t fools make into thinking there are files such as es.res, etc
 #
 .txt.res:
-	$(ICUDIR)\$(BIN)\genrb -d . $*.txt
+    $(ICUDIR)\$(BIN)\genrb -d . $*.txt
 
 #
 #  all - nmake starts here by default
@@ -53,5 +53,5 @@ BIN=bin
 all: fortune_resources.dll
 
 fortune_resources.dll: $(RESFILES)
-	$(ICUDIR)\$(BIN)\pkgdata --name fortune_resources -v --mode dll -d . res-file-list.txt
+    $(ICUDIR)\$(BIN)\pkgdata --name fortune_resources -v --mode dll -d . res-file-list.txt
 

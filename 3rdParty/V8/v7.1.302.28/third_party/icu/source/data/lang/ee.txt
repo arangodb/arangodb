@@ -299,7 +299,7 @@ ee{
             tibt{"tibet digitwo"}
         }
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     codePatterns{
         language{"gbegbɔgblɔ {0}"}
         script{"gbeŋɔŋlɔ {0}"}

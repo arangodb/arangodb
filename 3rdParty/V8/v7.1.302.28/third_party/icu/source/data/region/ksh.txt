@@ -108,7 +108,7 @@ ksh{
         EU{"de Europähjesche Unijon"}
         FI{"Finnland"}
         FJ{"de Fidschi-Endelle"}
-        FK{"de Falkland-Enselle"}
+        FK{"de malleviinesche Enselle"}
         FM{"Mikroneesije"}
         FO{"de Färrör-Enselle"}
         FR{"Frankrisch"}
@@ -300,8 +300,7 @@ ksh{
         CD{"de Demmokraatesche Republik Konggo"}
         CG{"de Republik Konggo"}
         CI{"de Älfebeijnköß"}
-        FK{"de malleviinesche Enselle"}
         MK{"de vörmaals ens jugoßlaawesch jewääse Republik Mazedoonije"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

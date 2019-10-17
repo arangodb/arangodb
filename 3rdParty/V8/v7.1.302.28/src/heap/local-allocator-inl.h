@@ -26,11 +26,10 @@ AllocationResult LocalAllocator::Allocate(AllocationSpace space,
           ->AllocateRaw(object_size, alignment);
     default:
       UNREACHABLE();
-      break;
   }
 }
 
-void LocalAllocator::FreeLast(AllocationSpace space, HeapObject* object,
+void LocalAllocator::FreeLast(AllocationSpace space, HeapObject object,
                               int object_size) {
   switch (space) {
     case NEW_SPACE:
@@ -42,22 +41,21 @@ void LocalAllocator::FreeLast(AllocationSpace space, HeapObject* object,
     default:
       // Only new and old space supported.
       UNREACHABLE();
-      break;
   }
 }
 
-void LocalAllocator::FreeLastInNewSpace(HeapObject* object, int object_size) {
+void LocalAllocator::FreeLastInNewSpace(HeapObject object, int object_size) {
   if (!new_space_lab_.TryFreeLast(object, object_size)) {
     // We couldn't free the last object so we have to write a proper filler.
-    heap_->CreateFillerObjectAt(object->address(), object_size,
+    heap_->CreateFillerObjectAt(object.address(), object_size,
                                 ClearRecordedSlots::kNo);
   }
 }
 
-void LocalAllocator::FreeLastInOldSpace(HeapObject* object, int object_size) {
+void LocalAllocator::FreeLastInOldSpace(HeapObject object, int object_size) {
   if (!compaction_spaces_.Get(OLD_SPACE)->TryFreeLast(object, object_size)) {
     // We couldn't free the last object so we have to write a proper filler.
-    heap_->CreateFillerObjectAt(object->address(), object_size,
+    heap_->CreateFillerObjectAt(object.address(), object_size,
                                 ClearRecordedSlots::kNo);
   }
 }

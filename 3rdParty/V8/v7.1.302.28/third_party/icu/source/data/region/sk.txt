@@ -31,6 +31,7 @@ sk{
         151{"východná Európa"}
         154{"severná Európa"}
         155{"západná Európa"}
+        202{"subsaharská Afrika"}
         419{"Latinská Amerika"}
         AC{"Ascension"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ sk{
         CW{"Curaçao"}
         CX{"Vianočný ostrov"}
         CY{"Cyprus"}
-        CZ{"Česká republika"}
+        CZ{"Česko"}
         DE{"Nemecko"}
         DG{"Diego Garcia"}
         DJ{"Džibutsko"}
@@ -106,9 +107,10 @@ sk{
         ES{"Španielsko"}
         ET{"Etiópia"}
         EU{"Európska únia"}
+        EZ{"eurozóna"}
         FI{"Fínsko"}
         FJ{"Fidži"}
-        FK{"Falklandy"}
+        FK{"Falklandy (Malvíny)"}
         FM{"Mikronézia"}
         FO{"Faerské ostrovy"}
         FR{"Francúzsko"}
@@ -116,7 +118,7 @@ sk{
         GB{"Spojené kráľovstvo"}
         GD{"Grenada"}
         GE{"Gruzínsko"}
-        GF{"Francúzska Guayana"}
+        GF{"Francúzska Guyana"}
         GG{"Guernsey"}
         GH{"Ghana"}
         GI{"Gibraltár"}
@@ -130,7 +132,7 @@ sk{
         GT{"Guatemala"}
         GU{"Guam"}
         GW{"Guinea-Bissau"}
-        GY{"Guayana"}
+        GY{"Guyana"}
         HK{"Hongkong"}
         HM{"Heardov ostrov a Macdonaldove ostrovy"}
         HN{"Honduras"}
@@ -181,7 +183,7 @@ sk{
         MF{"Svätý Martin (fr.)"}
         MG{"Madagaskar"}
         MH{"Marshallove ostrovy"}
-        MK{"Macedónsko"}
+        MK{"Severné Macedónsko"}
         ML{"Mali"}
         MM{"Mjanmarsko"}
         MN{"Mongolsko"}
@@ -213,7 +215,7 @@ sk{
         PA{"Panama"}
         PE{"Peru"}
         PF{"Francúzska Polynézia"}
-        PG{"Papua Nová Guinea"}
+        PG{"Papua-Nová Guinea"}
         PH{"Filipíny"}
         PK{"Pakistan"}
         PL{"Poľsko"}
@@ -272,7 +274,7 @@ sk{
         UA{"Ukrajina"}
         UG{"Uganda"}
         UM{"Menšie odľahlé ostrovy USA"}
-        UN{"OSN"}
+        UN{"Organizácia Spojených národov"}
         US{"Spojené štáty"}
         UY{"Uruguaj"}
         UZ{"Uzbekistan"}
@@ -299,8 +301,7 @@ sk{
         US{"USA"}
     }
     Countries%variant{
-        CZ{"Česko"}
-        MK{"Macedónsko (BJRM)"}
+        CZ{"Česká republika"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

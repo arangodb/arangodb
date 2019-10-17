@@ -291,5 +291,5 @@ se{
         GB{"Stuorra-Británnia"}
         US{"USA"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.48.4"}
 }

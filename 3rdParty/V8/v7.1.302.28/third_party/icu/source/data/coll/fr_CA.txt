@@ -5,7 +5,7 @@ fr_CA{
     collations{
         standard{
             Sequence{"[backwards 2]"}
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

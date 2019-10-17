@@ -8,9 +8,11 @@ en_SI{
                 accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
             }
             symbols{
+                decimal{","}
                 exponential{"e"}
+                group{"."}
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
 }

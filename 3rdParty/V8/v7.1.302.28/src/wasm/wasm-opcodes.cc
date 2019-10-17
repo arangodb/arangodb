@@ -7,9 +7,9 @@
 #include <array>
 
 #include "src/base/template-utils.h"
-#include "src/messages.h"
+#include "src/codegen/signature.h"
+#include "src/execution/messages.h"
 #include "src/runtime/runtime.h"
-#include "src/signature.h"
 
 namespace v8 {
 namespace internal {
@@ -23,7 +23,9 @@ namespace wasm {
 #define CASE_F32_OP(name, str) CASE_OP(F32##name, "f32." str)
 #define CASE_F64_OP(name, str) CASE_OP(F64##name, "f64." str)
 #define CASE_REF_OP(name, str) CASE_OP(Ref##name, "ref." str)
+#define CASE_F64x2_OP(name, str) CASE_OP(F64x2##name, "f64x2." str)
 #define CASE_F32x4_OP(name, str) CASE_OP(F32x4##name, "f32x4." str)
+#define CASE_I64x2_OP(name, str) CASE_OP(I64x2##name, "i64x2." str)
 #define CASE_I32x4_OP(name, str) CASE_OP(I32x4##name, "i32x4." str)
 #define CASE_I16x8_OP(name, str) CASE_OP(I16x8##name, "i16x8." str)
 #define CASE_I8x16_OP(name, str) CASE_OP(I8x16##name, "i8x16." str)
@@ -31,6 +33,7 @@ namespace wasm {
 #define CASE_S32x4_OP(name, str) CASE_OP(S32x4##name, "s32x4." str)
 #define CASE_S16x8_OP(name, str) CASE_OP(S16x8##name, "s16x8." str)
 #define CASE_S8x16_OP(name, str) CASE_OP(S8x16##name, "s8x16." str)
+#define CASE_S1x2_OP(name, str) CASE_OP(S1x2##name, "s1x2." str)
 #define CASE_S1x4_OP(name, str) CASE_OP(S1x4##name, "s1x4." str)
 #define CASE_S1x8_OP(name, str) CASE_OP(S1x8##name, "s1x8." str)
 #define CASE_S1x16_OP(name, str) CASE_OP(S1x16##name, "s1x16." str)
@@ -48,11 +51,11 @@ namespace wasm {
 #define CASE_ALL_SIGN_OP(name, str) \
   CASE_FLOAT_OP(name, str) CASE_SIGN_OP(INT, name, str)
 #define CASE_CONVERT_OP(name, RES, SRC, src_suffix, str) \
-  CASE_##RES##_OP(U##name##SRC, str "_u/" src_suffix)    \
-      CASE_##RES##_OP(S##name##SRC, str "_s/" src_suffix)
-#define CASE_CONVERT_SAT_OP(name, RES, SRC, src_suffix, str)   \
-  CASE_##RES##_OP(U##name##Sat##SRC, str "_u:sat/" src_suffix) \
-      CASE_##RES##_OP(S##name##Sat##SRC, str "_s:sat/" src_suffix)
+  CASE_##RES##_OP(U##name##SRC, str "_" src_suffix "_u") \
+      CASE_##RES##_OP(S##name##SRC, str "_" src_suffix "_s")
+#define CASE_CONVERT_SAT_OP(name, RES, SRC, src_suffix, str)      \
+  CASE_##RES##_OP(U##name##Sat##SRC, str "_sat_" src_suffix "_u") \
+      CASE_##RES##_OP(S##name##Sat##SRC, str "_sat_" src_suffix "_s")
 #define CASE_L32_OP(name, str)          \
   CASE_SIGN_OP(I32, name##8, str "8")   \
   CASE_SIGN_OP(I32, name##16, str "16") \
@@ -107,29 +110,24 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_FLOAT_OP(CopySign, "copysign")
     CASE_REF_OP(Null, "null")
     CASE_REF_OP(IsNull, "is_null")
-    CASE_I32_OP(ConvertI64, "wrap/i64")
+    CASE_REF_OP(Func, "func")
+    CASE_I32_OP(ConvertI64, "wrap_i64")
     CASE_CONVERT_OP(Convert, INT, F32, "f32", "trunc")
     CASE_CONVERT_OP(Convert, INT, F64, "f64", "trunc")
-    // TODO(kschimpf): Simplify after filling in other saturating operations.
-    CASE_CONVERT_SAT_OP(Convert, I32, F32, "f32", "trunc")
-    CASE_CONVERT_SAT_OP(Convert, I32, F64, "f64", "trunc")
-    CASE_CONVERT_SAT_OP(Convert, I64, F32, "f32", "trunc")
-    CASE_CONVERT_SAT_OP(Convert, I64, F64, "f64", "trunc")
-
     CASE_CONVERT_OP(Convert, I64, I32, "i32", "extend")
     CASE_CONVERT_OP(Convert, F32, I32, "i32", "convert")
     CASE_CONVERT_OP(Convert, F32, I64, "i64", "convert")
-    CASE_F32_OP(ConvertF64, "demote/f64")
+    CASE_F32_OP(ConvertF64, "demote_f64")
     CASE_CONVERT_OP(Convert, F64, I32, "i32", "convert")
     CASE_CONVERT_OP(Convert, F64, I64, "i64", "convert")
-    CASE_F64_OP(ConvertF32, "promote/f32")
-    CASE_I32_OP(ReinterpretF32, "reinterpret/f32")
-    CASE_I64_OP(ReinterpretF64, "reinterpret/f64")
-    CASE_F32_OP(ReinterpretI32, "reinterpret/i32")
-    CASE_F64_OP(ReinterpretI64, "reinterpret/i64")
-    CASE_INT_OP(SExtendI8, "sign_extend8")
-    CASE_INT_OP(SExtendI16, "sign_extend16")
-    CASE_I64_OP(SExtendI32, "sign_extend32")
+    CASE_F64_OP(ConvertF32, "promote_f32")
+    CASE_I32_OP(ReinterpretF32, "reinterpret_f32")
+    CASE_I64_OP(ReinterpretF64, "reinterpret_f64")
+    CASE_F32_OP(ReinterpretI32, "reinterpret_i32")
+    CASE_F64_OP(ReinterpretI64, "reinterpret_i64")
+    CASE_INT_OP(SExtendI8, "extend8_s")
+    CASE_INT_OP(SExtendI16, "extend16_s")
+    CASE_I64_OP(SExtendI32, "extend32_s")
     CASE_OP(Unreachable, "unreachable")
     CASE_OP(Nop, "nop")
     CASE_OP(Block, "block")
@@ -143,16 +141,21 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_OP(Return, "return")
     CASE_OP(CallFunction, "call")
     CASE_OP(CallIndirect, "call_indirect")
+    CASE_OP(ReturnCall, "return_call")
+    CASE_OP(ReturnCallIndirect, "return_call_indirect")
     CASE_OP(Drop, "drop")
     CASE_OP(Select, "select")
-    CASE_OP(GetLocal, "get_local")
-    CASE_OP(SetLocal, "set_local")
-    CASE_OP(TeeLocal, "tee_local")
-    CASE_OP(GetGlobal, "get_global")
-    CASE_OP(SetGlobal, "set_global")
+    CASE_OP(SelectWithType, "select")
+    CASE_OP(GetLocal, "local.get")
+    CASE_OP(SetLocal, "local.set")
+    CASE_OP(TeeLocal, "local.tee")
+    CASE_OP(GetGlobal, "global.get")
+    CASE_OP(SetGlobal, "global.set")
+    CASE_OP(TableGet, "table.get")
+    CASE_OP(TableSet, "table.set")
     CASE_ALL_OP(Const, "const")
-    CASE_OP(MemorySize, "current_memory")
-    CASE_OP(GrowMemory, "grow_memory")
+    CASE_OP(MemorySize, "memory.size")
+    CASE_OP(MemoryGrow, "memory.grow")
     CASE_ALL_OP(LoadMem, "load")
     CASE_SIGN_OP(INT, LoadMem8, "load8")
     CASE_SIGN_OP(INT, LoadMem16, "load16")
@@ -164,12 +167,12 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_I64_OP(StoreMem32, "store32")
     CASE_S128_OP(StoreMem, "store128")
 
-    // Non-standard opcodes.
+    // Exception handling opcodes.
     CASE_OP(Try, "try")
+    CASE_OP(Catch, "catch")
     CASE_OP(Throw, "throw")
     CASE_OP(Rethrow, "rethrow")
-    CASE_OP(Catch, "catch")
-    CASE_OP(CatchAll, "catch_all")
+    CASE_OP(BrOnExn, "br_on_exn")
 
     // asm.js-only opcodes.
     CASE_F64_OP(Acos, "acos")
@@ -193,19 +196,50 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_I32_OP(AsmjsStoreMem16, "asmjs_store16")
     CASE_SIGN_OP(I32, AsmjsDiv, "asmjs_div")
     CASE_SIGN_OP(I32, AsmjsRem, "asmjs_rem")
-    CASE_I32_OP(AsmjsSConvertF32, "asmjs_convert_s/f32")
-    CASE_I32_OP(AsmjsUConvertF32, "asmjs_convert_u/f32")
-    CASE_I32_OP(AsmjsSConvertF64, "asmjs_convert_s/f64")
-    CASE_I32_OP(AsmjsUConvertF64, "asmjs_convert_u/f64")
+    CASE_I32_OP(AsmjsSConvertF32, "asmjs_convert_f32_s")
+    CASE_I32_OP(AsmjsUConvertF32, "asmjs_convert_f32_u")
+    CASE_I32_OP(AsmjsSConvertF64, "asmjs_convert_f64_s")
+    CASE_I32_OP(AsmjsUConvertF64, "asmjs_convert_f64_u")
+
+    // Numeric Opcodes.
+    CASE_CONVERT_SAT_OP(Convert, I32, F32, "f32", "trunc")
+    CASE_CONVERT_SAT_OP(Convert, I32, F64, "f64", "trunc")
+    CASE_CONVERT_SAT_OP(Convert, I64, F32, "f32", "trunc")
+    CASE_CONVERT_SAT_OP(Convert, I64, F64, "f64", "trunc")
+    CASE_OP(MemoryInit, "memory.init")
+    CASE_OP(DataDrop, "data.drop")
+    CASE_OP(MemoryCopy, "memory.copy")
+    CASE_OP(MemoryFill, "memory.fill")
+    CASE_OP(TableInit, "table.init")
+    CASE_OP(ElemDrop, "elem.drop")
+    CASE_OP(TableCopy, "table.copy")
+    CASE_OP(TableGrow, "table.grow")
+    CASE_OP(TableSize, "table.size")
+    CASE_OP(TableFill, "table.fill")
 
     // SIMD opcodes.
     CASE_SIMD_OP(Splat, "splat")
     CASE_SIMD_OP(Neg, "neg")
+    CASE_F64x2_OP(Neg, "neg")
+    CASE_I64x2_OP(Neg, "neg")
     CASE_SIMD_OP(Eq, "eq")
+    CASE_F64x2_OP(Eq, "eq")
+    CASE_I64x2_OP(Eq, "eq")
     CASE_SIMD_OP(Ne, "ne")
+    CASE_F64x2_OP(Ne, "ne")
+    CASE_I64x2_OP(Ne, "ne")
     CASE_SIMD_OP(Add, "add")
+    CASE_I64x2_OP(Add, "add")
     CASE_SIMD_OP(Sub, "sub")
+    CASE_I64x2_OP(Sub, "sub")
     CASE_SIMD_OP(Mul, "mul")
+    CASE_I64x2_OP(Mul, "mul")
+    CASE_F64x2_OP(Splat, "splat")
+    CASE_F64x2_OP(Lt, "lt")
+    CASE_F64x2_OP(Le, "le")
+    CASE_F64x2_OP(Gt, "gt")
+    CASE_F64x2_OP(Ge, "ge")
+    CASE_F64x2_OP(Abs, "abs")
     CASE_F32x4_OP(Abs, "abs")
     CASE_F32x4_OP(AddHoriz, "add_horizontal")
     CASE_F32x4_OP(RecipApprox, "recip_approx")
@@ -224,18 +258,29 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_CONVERT_OP(Convert, I16x8, I8x16Low, "i32", "convert")
     CASE_CONVERT_OP(Convert, I16x8, I8x16High, "i32", "convert")
     CASE_CONVERT_OP(Convert, I8x16, I16x8, "i32", "convert")
+    CASE_F64x2_OP(ExtractLane, "extract_lane")
+    CASE_F64x2_OP(ReplaceLane, "replace_lane")
     CASE_F32x4_OP(ExtractLane, "extract_lane")
     CASE_F32x4_OP(ReplaceLane, "replace_lane")
+    CASE_I64x2_OP(ExtractLane, "extract_lane")
+    CASE_I64x2_OP(ReplaceLane, "replace_lane")
     CASE_SIMDI_OP(ExtractLane, "extract_lane")
     CASE_SIMDI_OP(ReplaceLane, "replace_lane")
     CASE_SIGN_OP(SIMDI, Min, "min")
     CASE_SIGN_OP(SIMDI, Max, "max")
     CASE_SIGN_OP(SIMDI, Lt, "lt")
+    CASE_SIGN_OP(I64x2, Lt, "lt")
     CASE_SIGN_OP(SIMDI, Le, "le")
+    CASE_SIGN_OP(I64x2, Le, "le")
     CASE_SIGN_OP(SIMDI, Gt, "gt")
+    CASE_SIGN_OP(I64x2, Gt, "gt")
     CASE_SIGN_OP(SIMDI, Ge, "ge")
+    CASE_SIGN_OP(I64x2, Ge, "ge")
     CASE_SIGN_OP(SIMDI, Shr, "shr")
+    CASE_SIGN_OP(I64x2, Shr, "shr")
     CASE_SIMDI_OP(Shl, "shl")
+    CASE_I64x2_OP(Shl, "shl")
+    CASE_I64x2_OP(Splat, "splat")
     CASE_I32x4_OP(AddHoriz, "add_horizontal")
     CASE_I16x8_OP(AddHoriz, "add_horizontal")
     CASE_SIGN_OP(I16x8, AddSaturate, "add_saturate")
@@ -248,6 +293,8 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_S128_OP(Not, "not")
     CASE_S128_OP(Select, "select")
     CASE_S8x16_OP(Shuffle, "shuffle")
+    CASE_S1x2_OP(AnyTrue, "any_true")
+    CASE_S1x2_OP(AllTrue, "all_true")
     CASE_S1x4_OP(AnyTrue, "any_true")
     CASE_S1x4_OP(AllTrue, "all_true")
     CASE_S1x8_OP(AnyTrue, "any_true")
@@ -256,15 +303,18 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
     CASE_S1x16_OP(AllTrue, "all_true")
 
     // Atomic operations.
-    CASE_UNSIGNED_ALL_OP(AtomicLoad, "atomic_load")
-    CASE_UNSIGNED_ALL_OP(AtomicStore, "atomic_store")
-    CASE_UNSIGNED_ALL_OP(AtomicAdd, "atomic_add")
-    CASE_UNSIGNED_ALL_OP(AtomicSub, "atomic_sub")
-    CASE_UNSIGNED_ALL_OP(AtomicAnd, "atomic_and")
-    CASE_UNSIGNED_ALL_OP(AtomicOr, "atomic_or")
-    CASE_UNSIGNED_ALL_OP(AtomicXor, "atomic_xor")
-    CASE_UNSIGNED_ALL_OP(AtomicExchange, "atomic_xchng")
-    CASE_UNSIGNED_ALL_OP(AtomicCompareExchange, "atomic_cmpxchng")
+    CASE_OP(AtomicNotify, "atomic.notify")
+    CASE_INT_OP(AtomicWait, "atomic.wait")
+    CASE_OP(AtomicFence, "atomic.fence")
+    CASE_UNSIGNED_ALL_OP(AtomicLoad, "atomic.load")
+    CASE_UNSIGNED_ALL_OP(AtomicStore, "atomic.store")
+    CASE_UNSIGNED_ALL_OP(AtomicAdd, "atomic.add")
+    CASE_UNSIGNED_ALL_OP(AtomicSub, "atomic.sub")
+    CASE_UNSIGNED_ALL_OP(AtomicAnd, "atomic.and")
+    CASE_UNSIGNED_ALL_OP(AtomicOr, "atomic.or")
+    CASE_UNSIGNED_ALL_OP(AtomicXor, "atomic.xor")
+    CASE_UNSIGNED_ALL_OP(AtomicExchange, "atomic.xchng")
+    CASE_UNSIGNED_ALL_OP(AtomicCompareExchange, "atomic.cmpxchng")
 
     default : return "unknown";
     // clang-format on
@@ -277,7 +327,9 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
 #undef CASE_F32_OP
 #undef CASE_F64_OP
 #undef CASE_REF_OP
+#undef CASE_F64x2_OP
 #undef CASE_F32x4_OP
+#undef CASE_I64x2_OP
 #undef CASE_I32x4_OP
 #undef CASE_I16x8_OP
 #undef CASE_I8x16_OP
@@ -285,6 +337,7 @@ const char* WasmOpcodes::OpcodeName(WasmOpcode opcode) {
 #undef CASE_S32x4_OP
 #undef CASE_S16x8_OP
 #undef CASE_S8x16_OP
+#undef CASE_S1x2_OP
 #undef CASE_S1x4_OP
 #undef CASE_S1x8_OP
 #undef CASE_S1x16_OP
@@ -353,6 +406,20 @@ bool WasmOpcodes::IsAnyRefOpcode(WasmOpcode opcode) {
   switch (opcode) {
     case kExprRefNull:
     case kExprRefIsNull:
+    case kExprRefFunc:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool WasmOpcodes::IsThrowingOpcode(WasmOpcode opcode) {
+  // TODO(8729): Trapping opcodes are not yet considered to be throwing.
+  switch (opcode) {
+    case kExprThrow:
+    case kExprRethrow:
+    case kExprCallFunction:
+    case kExprCallIndirect:
       return true;
     default:
       return false;
@@ -372,11 +439,18 @@ std::ostream& operator<<(std::ostream& os, const FunctionSig& sig) {
   return os;
 }
 
-bool IsJSCompatibleSignature(const FunctionSig* sig) {
-  for (auto type : sig->all()) {
-    if (type == kWasmI64 || type == kWasmS128) return false;
+bool IsJSCompatibleSignature(const FunctionSig* sig, bool has_bigint_feature) {
+  if (sig->return_count() > 1) {
+    return false;
   }
-  return sig->return_count() <= 1;
+  for (auto type : sig->all()) {
+    if (!has_bigint_feature && type == kWasmI64) {
+      return false;
+    }
+
+    if (type == kWasmS128) return false;
+  }
+  return true;
 }
 
 namespace {
@@ -435,7 +509,8 @@ struct GetSimdOpcodeSigIndex {
 struct GetAtomicOpcodeSigIndex {
   constexpr WasmOpcodeSig operator()(byte opcode) const {
 #define CASE(name, opc, sig) opcode == (opc & 0xFF) ? kSigEnum_##sig:
-    return FOREACH_ATOMIC_OPCODE(CASE) kSigEnum_None;
+    return FOREACH_ATOMIC_OPCODE(CASE) FOREACH_ATOMIC_0_OPERAND_OPCODE(CASE)
+        kSigEnum_None;
 #undef CASE
 }
 };
@@ -459,19 +534,7 @@ constexpr std::array<WasmOpcodeSig, 256> kAtomicExprSigTable =
 constexpr std::array<WasmOpcodeSig, 256> kNumericExprSigTable =
     base::make_array<256>(GetNumericOpcodeSigIndex{});
 
-// Computes a direct pointer to a cached signature for a simple opcode.
-struct GetSimpleOpcodeSig {
-  constexpr const FunctionSig* operator()(byte opcode) const {
-#define CASE(name, opc, sig) opcode == opc ? &kSig_##sig:
-    return FOREACH_SIMPLE_OPCODE(CASE) nullptr;
-#undef CASE
-  }
-};
-
 }  // namespace
-
-const std::array<const FunctionSig*, 256> kSimpleOpcodeSigs =
-    base::make_array<256>(GetSimpleOpcodeSig{});
 
 FunctionSig* WasmOpcodes::Signature(WasmOpcode opcode) {
   switch (opcode >> 8) {
@@ -506,7 +569,7 @@ constexpr uint8_t StoreType::kStoreSizeLog2[];
 constexpr ValueType StoreType::kValueType[];
 constexpr MachineRepresentation StoreType::kMemRep[];
 
-int WasmOpcodes::TrapReasonToMessageId(TrapReason reason) {
+MessageTemplate WasmOpcodes::TrapReasonToMessageId(TrapReason reason) {
   switch (reason) {
 #define TRAPREASON_TO_MESSAGE(name) \
   case k##name:                     \
@@ -519,7 +582,7 @@ int WasmOpcodes::TrapReasonToMessageId(TrapReason reason) {
 }
 
 const char* WasmOpcodes::TrapReasonMessage(TrapReason reason) {
-  return MessageTemplate::TemplateString(TrapReasonToMessageId(reason));
+  return MessageFormatter::TemplateString(TrapReasonToMessageId(reason));
 }
 }  // namespace wasm
 }  // namespace internal

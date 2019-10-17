@@ -6,12 +6,12 @@
 #define V8_COMPILER_TYPES_H_
 
 #include "src/base/compiler-specific.h"
-#include "src/compiler/js-heap-broker.h"
-#include "src/conversions.h"
-#include "src/globals.h"
-#include "src/handles.h"
-#include "src/objects.h"
-#include "src/ostreams.h"
+#include "src/common/globals.h"
+#include "src/compiler/heap-refs.h"
+#include "src/handles/handles.h"
+#include "src/numbers/conversions.h"
+#include "src/objects/objects.h"
+#include "src/utils/ostreams.h"
 
 namespace v8 {
 namespace internal {
@@ -220,6 +220,7 @@ namespace compiler {
   INTERNAL_BITSET_TYPE_LIST(V) \
   PROPER_BITSET_TYPE_LIST(V)
 
+class JSHeapBroker;
 class HeapConstantType;
 class OtherNumberConstantType;
 class TupleType;
@@ -231,7 +232,7 @@ class UnionType;
 
 class V8_EXPORT_PRIVATE BitsetType {
  public:
-  typedef uint32_t bitset;  // Internal
+  using bitset = uint32_t;  // Internal
 
   enum : uint32_t {
 #define DECLARE_TYPE(type, value) k##type = (value),
@@ -355,7 +356,7 @@ class RangeType : public TypeBase {
 
 class V8_EXPORT_PRIVATE Type {
  public:
-  typedef BitsetType::bitset bitset;  // Internal
+  using bitset = BitsetType::bitset;  // Internal
 
 // Constructors.
 #define DEFINE_TYPE_CONSTRUCTOR(type, value) \
@@ -369,8 +370,8 @@ class V8_EXPORT_PRIVATE Type {
   static Type UnsignedSmall() { return NewBitset(BitsetType::UnsignedSmall()); }
 
   static Type OtherNumberConstant(double value, Zone* zone);
-  static Type HeapConstant(JSHeapBroker* js_heap_broker,
-                           Handle<i::Object> value, Zone* zone);
+  static Type HeapConstant(JSHeapBroker* broker, Handle<i::Object> value,
+                           Zone* zone);
   static Type HeapConstant(const HeapObjectRef& value, Zone* zone);
   static Type Range(double min, double max, Zone* zone);
   static Type Range(RangeType::Limits lims, Zone* zone);
@@ -378,7 +379,7 @@ class V8_EXPORT_PRIVATE Type {
   static Type Union(int length, Zone* zone);
 
   // NewConstant is a factory that returns Constant, Range or Number.
-  static Type NewConstant(JSHeapBroker* js_heap_broker, Handle<i::Object> value,
+  static Type NewConstant(JSHeapBroker* broker, Handle<i::Object> value,
                           Zone* zone);
   static Type NewConstant(double value, Zone* zone);
 
@@ -457,8 +458,8 @@ class V8_EXPORT_PRIVATE Type {
   friend UnionType;
   friend size_t hash_value(Type type);
 
-  Type(bitset bits) : payload_(bits | 1u) {}
-  Type(TypeBase* type_base)
+  explicit Type(bitset bits) : payload_(bits | 1u) {}
+  Type(TypeBase* type_base)  // NOLINT(runtime/explicit)
       : payload_(reinterpret_cast<uintptr_t>(type_base)) {}
 
   // Internal inspection.

@@ -1064,6 +1064,13 @@ supplementalData:table(nofallback){
                     320765951,
                 }
             }
+            {
+                from:intvector{
+                    297,
+                    -402654208,
+                }
+                id{"CNH"}
+            }
         }
         CO{
             {
@@ -2847,10 +2854,21 @@ supplementalData:table(nofallback){
         MR{
             {
                 from:intvector{
+                    352,
+                    -1358655488,
+                }
+                id{"MRU"}
+            }
+            {
+                from:intvector{
                     25,
                     -1509149696,
                 }
                 id{"MRO"}
+                to:intvector{
+                    356,
+                    1394842623,
+                }
             }
             {
                 from:intvector{
@@ -2920,6 +2938,17 @@ supplementalData:table(nofallback){
                     2016347136,
                 }
                 id{"MVR"}
+            }
+            {
+                from:intvector{
+                    -169,
+                    3073024,
+                }
+                id{"MVP"}
+                to:intvector{
+                    84,
+                    2102747135,
+                }
             }
         }
         MW{
@@ -3822,10 +3851,21 @@ supplementalData:table(nofallback){
         ST{
             {
                 from:intvector{
+                    352,
+                    -1358655488,
+                }
+                id{"STN"}
+            }
+            {
+                from:intvector{
                     56,
                     2006631424,
                 }
                 id{"STD"}
+                to:intvector{
+                    352,
+                    -1358655489,
+                }
             }
         }
         SU{
@@ -4277,6 +4317,9 @@ supplementalData:table(nofallback){
             {
                 id{"UYI"}
             }
+            {
+                id{"UYW"}
+            }
         }
         UZ{
             {
@@ -4319,10 +4362,21 @@ supplementalData:table(nofallback){
         VE{
             {
                 from:intvector{
+                    357,
+                    1419875328,
+                }
+                id{"VES"}
+            }
+            {
+                from:intvector{
                     279,
                     849724416,
                 }
                 id{"VEF"}
+                to:intvector{
+                    357,
+                    1506275327,
+                }
             }
             {
                 from:intvector{
@@ -4737,7 +4791,7 @@ supplementalData:table(nofallback){
             0,
         }
         AMD:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -4791,7 +4845,7 @@ supplementalData:table(nofallback){
             0,
         }
         COP:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -4820,6 +4874,12 @@ supplementalData:table(nofallback){
             0,
             0,
         }
+        DKK:intvector{
+            2,
+            0,
+            2,
+            50,
+        }
         ESP:intvector{
             0,
             0,
@@ -4833,7 +4893,7 @@ supplementalData:table(nofallback){
             0,
         }
         GYD:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -4845,7 +4905,7 @@ supplementalData:table(nofallback){
             0,
         }
         IDR:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -4953,7 +5013,7 @@ supplementalData:table(nofallback){
             0,
         }
         MNT:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -4965,7 +5025,13 @@ supplementalData:table(nofallback){
             0,
         }
         MUR:intvector{
+            2,
             0,
+            0,
+            0,
+        }
+        NOK:intvector{
+            2,
             0,
             0,
             0,
@@ -4977,7 +5043,7 @@ supplementalData:table(nofallback){
             0,
         }
         PKR:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -4996,6 +5062,12 @@ supplementalData:table(nofallback){
         }
         RWF:intvector{
             0,
+            0,
+            0,
+            0,
+        }
+        SEK:intvector{
+            2,
             0,
             0,
             0,
@@ -5049,7 +5121,7 @@ supplementalData:table(nofallback){
             0,
         }
         TZS:intvector{
-            0,
+            2,
             0,
             0,
             0,
@@ -5066,8 +5138,20 @@ supplementalData:table(nofallback){
             0,
             0,
         }
-        UZS:intvector{
+        UYW:intvector{
+            4,
             0,
+            4,
+            0,
+        }
+        UZS:intvector{
+            2,
+            0,
+            0,
+            0,
+        }
+        VEF:intvector{
+            2,
             0,
             0,
             0,

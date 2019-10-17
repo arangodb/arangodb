@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 es_GT{
     %%Parent{"es_419"}
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     units{
         duration{
             day{
@@ -45,11 +45,6 @@ es_GT{
                 dnam{"kilojulios"}
                 one{"{0} kilojulio"}
                 other{"{0} kilojulios"}
-            }
-        }
-        length{
-            mile-scandinavian{
-                dnam{"milla escandinava"}
             }
         }
         power{

@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ******************************************************************************
@@ -6,7 +6,7 @@
 *                Corporation and others. All Rights Reserved.
 ******************************************************************************
 *   file name:  ucln_cmn.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -40,8 +40,8 @@ U_CAPI void U_EXPORT2
 u_cleanup(void)
 {
     UTRACE_ENTRY_OC(UTRACE_U_CLEANUP);
-    umtx_lock(NULL);     /* Force a memory barrier, so that we are sure to see   */
-    umtx_unlock(NULL);   /*   all state left around by any other threads.        */
+    icu::umtx_lock(NULL);     /* Force a memory barrier, so that we are sure to see   */
+    icu::umtx_unlock(NULL);   /*   all state left around by any other threads.        */
 
     ucln_lib_cleanup();
 

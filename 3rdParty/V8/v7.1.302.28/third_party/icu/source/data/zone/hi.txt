@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 hi{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"अबिदजान"}
@@ -196,7 +196,7 @@ hi{
             ec{"उशुआइया"}
         }
         "America:Aruba"{
-            ec{"अरुबा"}
+            ec{"अरूबा"}
         }
         "America:Asuncion"{
             ec{"एसनशियॉन"}
@@ -226,7 +226,7 @@ hi{
             ec{"बोगोटा"}
         }
         "America:Boise"{
-            ec{"बॉइस"}
+            ec{"बॉइसी"}
         }
         "America:Buenos_Aires"{
             ec{"ब्यूनस आयरस"}
@@ -507,6 +507,9 @@ hi{
         "America:Puerto_Rico"{
             ec{"पोर्टो रिको"}
         }
+        "America:Punta_Arenas"{
+            ec{"पुंटा एरिनास"}
+        }
         "America:Rainy_River"{
             ec{"रेनी नदी"}
         }
@@ -657,6 +660,9 @@ hi{
         "Asia:Ashgabat"{
             ec{"अश्गाबात"}
         }
+        "Asia:Atyrau"{
+            ec{"एतराउ"}
+        }
         "Asia:Baghdad"{
             ec{"बगदाद"}
         }
@@ -707,6 +713,9 @@ hi{
         }
         "Asia:Dushanbe"{
             ec{"दुशांबे"}
+        }
+        "Asia:Famagusta"{
+            ec{"फ़ामागुस्ता"}
         }
         "Asia:Gaza"{
             ec{"गाज़ा"}
@@ -800,6 +809,9 @@ hi{
         }
         "Asia:Qatar"{
             ec{"कतर"}
+        }
+        "Asia:Qostanay"{
+            ec{"कोस्टाने"}
         }
         "Asia:Qyzylorda"{
             ec{"केज़ेलोर्डा"}
@@ -942,6 +954,9 @@ hi{
         "Australia:Sydney"{
             ec{"सिडनी"}
         }
+        "Etc:UTC"{
+            ls{"समन्वित वैश्विक समय"}
+        }
         "Etc:Unknown"{
             ec{"अज्ञात शहर"}
         }
@@ -1073,6 +1088,9 @@ hi{
         "Europe:Sarajevo"{
             ec{"साराजेवो"}
         }
+        "Europe:Saratov"{
+            ec{"सारातोव"}
+        }
         "Europe:Simferopol"{
             ec{"सिम्फ़ेरोपोल"}
         }
@@ -1092,7 +1110,7 @@ hi{
             ec{"टाइरेन"}
         }
         "Europe:Ulyanovsk"{
-            ec{"Ulyanovsk"}
+            ec{"उल्यानोव्स्क"}
         }
         "Europe:Uzhgorod"{
             ec{"अज़्गोरोद"}
@@ -1164,10 +1182,10 @@ hi{
             ec{"ऑकलैंड"}
         }
         "Pacific:Bougainville"{
-            ec{"बोगनविल"}
+            ec{"बोगनविले"}
         }
         "Pacific:Chatham"{
-            ec{"चाथम"}
+            ec{"चैथम"}
         }
         "Pacific:Easter"{
             ec{"ईस्टर"}
@@ -1239,7 +1257,7 @@ hi{
             ec{"पागो पागो"}
         }
         "Pacific:Palau"{
-            ec{"पालाऊ"}
+            ec{"पलाऊ"}
         }
         "Pacific:Pitcairn"{
             ec{"पिटकैर्न"}
@@ -1284,7 +1302,7 @@ hi{
             ls{"पूर्वी अफ़्रीका समय"}
         }
         "meta:Africa_Southern"{
-            ls{"दक्षिण अफ़्रीका समय"}
+            ls{"दक्षिण अफ़्रीका मानक समय"}
         }
         "meta:Africa_Western"{
             ld{"पश्चिम अफ़्रीका ग्रीष्मकालीन समय"}
@@ -1398,9 +1416,9 @@ hi{
             ls{"बोलीविया समय"}
         }
         "meta:Brasilia"{
-            ld{"ब्राजीलिया ग्रीष्मकालीन समय"}
-            lg{"ब्राजीलिया समय"}
-            ls{"ब्राजीलिया मानक समय"}
+            ld{"ब्राज़ीलिया ग्रीष्मकालीन समय"}
+            lg{"ब्राज़ीलिया समय"}
+            ls{"ब्राज़ीलिया मानक समय"}
         }
         "meta:Brunei"{
             ls{"ब्रूनेई दारूस्सलम समय"}
@@ -1458,7 +1476,7 @@ hi{
             ls{"डेविस समय"}
         }
         "meta:DumontDUrville"{
-            ls{"ड्यूमोंट डर्विल समय"}
+            ls{"ड्यूमोंट डी अर्विले समय"}
         }
         "meta:East_Timor"{
             ls{"पूर्वी तिमोर समय"}
@@ -1750,9 +1768,9 @@ hi{
             ls{"फ़ीनिक्स द्वीपसमूह समय"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"सेंट पियरे और मिकेलान डेलाइट समय"}
-            lg{"सेंट पियरे और मिकेलान समय"}
-            ls{"सेंट पियरे और मिकेलान मानक समय"}
+            ld{"सेंट पिएरे और मिक्वेलान डेलाइट समय"}
+            lg{"सेंट पिएरे और मिक्वेलान समय"}
+            ls{"सेंट पिएरे और मिक्वेलान मानक समय"}
         }
         "meta:Pitcairn"{
             ls{"पिटकैर्न समय"}
@@ -1785,7 +1803,7 @@ hi{
             ls{"समोआ मानक समय"}
         }
         "meta:Seychelles"{
-            ls{"सेशल्स समय"}
+            ls{"सेशेल्स समय"}
         }
         "meta:Singapore"{
             ls{"सिंगापुर समय"}
@@ -1822,7 +1840,7 @@ hi{
             ls{"टोंगा मानक समय"}
         }
         "meta:Truk"{
-            ls{"चूक समय"}
+            ls{"चुक समय"}
         }
         "meta:Turkmenistan"{
             ld{"तुर्कमेनिस्तान ग्रीष्मकालीन समय"}

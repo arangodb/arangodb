@@ -3,8 +3,8 @@
 fi{
     AuxExemplarCharacters{
         "[á à ă â ã ą ā ć č ċ ç ď ð đ é è ê ě ë ė ę ē ğ ǧ ģ ǥ ȟ ħ í î ï İ į ī ı ǩ ķ ĺ"
-        " ľ ļ ł ń ň ñ ņ ŋ ó ò ô ő õ œ ŕ ř ś ŝ ş ß ť ţ ŧ ú ù û ů ű ų ū ý ÿ ü ź ż ʒ ǯ þ"
-        " æ ø]"
+        " ľ ļ ł ń ň ñ ņ ŋ ó ò ô ő õ œ ŕ ř ś ŝ ş ș ß ť ţ ț ŧ ú ù û ů ű ų ū ý ÿ ü ź ż ʒ"
+        " ǯ þ æ ø]"
     }
     Ellipsis{
         final{"{0}…"}
@@ -16,19 +16,20 @@ fi{
     }
     ExemplarCharacters{"[a b c d e f g h i j k l m n o p q r s š t u v w x y z ž å ä ö]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Å Ä Ö]"}
-    ExemplarCharactersPunctuation{"[‐ – , ; \\: ! ? . … ’ ” » ( ) \\[ \\] § @ * / \\\\ \\& #]"}
+    ExemplarCharactersNumbers{"[  , % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{"[\\- ‐ – , ; \\: ! ? . … ’ ” » ( ) \\[ \\] § @ * / \\\\ \\& #]"}
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
+                approximately{"~{0}"}
                 atLeast{"vähintään {0}"}
-                range{"{0}‒{1}"}
+                atMost{"≤{0}"}
+                range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
                 scientificFormat{"#E0"}
             }
@@ -191,20 +192,25 @@ fi{
                 exponential{"E"}
                 group{" "}
                 infinity{"∞"}
-                list{";"}
                 minusSign{"−"}
                 nan{"epäluku"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{"."}
             }
         }
-        minimumGroupingDigits{"1"}
-        native{"latn"}
+        minimalPairs{
+            ordinal{
+                other{"Käänny {0}. risteyksestä oikealle."}
+            }
+            plural{
+                one{"{0} päivä"}
+                other{"{0} päivää"}
+            }
+        }
     }
-    Version{"2.1.29.88"}
+    Version{"2.1.48.42"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -228,28 +234,28 @@ fi{
                 GyMMM{"LLL y G"}
                 GyMMMEd{"E d. MMM y G"}
                 GyMMMd{"d. MMM y G"}
-                M{"L"}
                 MEd{"E d.M."}
-                MMM{"LLL"}
                 MMMEd{"ccc d. MMM"}
+                MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
                 Md{"d.M."}
-                d{"d"}
                 y{"y G"}
                 yyyy{"y G"}
                 yyyyM{"L.y G"}
                 yyyyMEd{"E d.M.y G"}
+                yyyyMM{"M.y G"}
                 yyyyMMM{"LLL y G"}
                 yyyyMMMEd{"E d. MMM y G"}
                 yyyyMMMM{"LLLL y G"}
+                yyyyMMMMccccd{"cccc d. MMMM y G"}
                 yyyyMMMd{"d. MMM y G"}
                 yyyyMd{"d.M.y G"}
                 yyyyQQQ{"QQQ y G"}
                 yyyyQQQQ{"QQQQ y G"}
             }
             eras{
-                abbreviated{
-                    "BE",
+                wide{
+                    "buddhalainen aika",
                 }
             }
         }
@@ -288,6 +294,142 @@ fi{
                 yyyyMd{"d.M.y"}
             }
         }
+        coptic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "thoutkuuta",
+                        "paopikuuta",
+                        "hathorkuuta",
+                        "koiakkuuta",
+                        "tobikuuta",
+                        "meshirkuuta",
+                        "paremhatkuuta",
+                        "paremoudekuuta",
+                        "pashonskuuta",
+                        "paonikuuta",
+                        "epipkuuta",
+                        "mesorikuuta",
+                        "pi-kogi-enavotkuuta",
+                    }
+                    wide{
+                        "thoutkuuta",
+                        "paopikuuta",
+                        "hathorkuuta",
+                        "koiakkuuta",
+                        "tobikuuta",
+                        "meshirkuuta",
+                        "paremhatkuuta",
+                        "paremoudekuuta",
+                        "pashonskuuta",
+                        "paonikuuta",
+                        "epipkuuta",
+                        "mesorikuuta",
+                        "pi-kogi-enavotkuuta",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "thout",
+                        "paopi",
+                        "hathor",
+                        "koiak",
+                        "toba",
+                        "meshir",
+                        "paremhat",
+                        "paremoude",
+                        "pashons",
+                        "paoni",
+                        "epip",
+                        "mesori",
+                        "pi kogi enavot",
+                    }
+                    wide{
+                        "thoutkuu",
+                        "paopikuu",
+                        "hathorkuu",
+                        "koiakkuu",
+                        "tobikuu",
+                        "meshirkuu",
+                        "paremhatkuu",
+                        "paremoudekuu",
+                        "pashonskuu",
+                        "paonikuu",
+                        "epipkuu",
+                        "mesorikuu",
+                        "pi-kogi-enavotkuu",
+                    }
+                }
+            }
+        }
+        ethiopic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "mäskärämkuuta",
+                        "ṭəqəmtkuuta",
+                        "ḫədarkuuta",
+                        "taḫśaśkuuta",
+                        "ṭərrkuuta",
+                        "yäkatitkuuta",
+                        "mägabitkuuta",
+                        "miyazyakuuta",
+                        "gənbotkuuta",
+                        "sänekuuta",
+                        "ḥamlekuuta",
+                        "nähasekuuta",
+                        "ṗagumenkuuta",
+                    }
+                    wide{
+                        "mäskärämkuuta",
+                        "ṭəqəmtkuuta",
+                        "ḫədarkuuta",
+                        "taḫśaśkuuta",
+                        "ṭərrkuuta",
+                        "yäkatitkuuta",
+                        "mägabitkuuta",
+                        "miyazyakuuta",
+                        "gənbotkuuta",
+                        "sänekuuta",
+                        "ḥamlekuuta",
+                        "nähasekuuta",
+                        "ṗagumenkuuta",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "mäskärämkuu",
+                        "ṭəqəmtkuu",
+                        "ḫədarkuu",
+                        "taḫśaśkuu",
+                        "ṭərrkuu",
+                        "yäkatitkuu",
+                        "mägabitkuu",
+                        "miyazyakuu",
+                        "gənbotkuu",
+                        "sänekuu",
+                        "ḥamlekuu",
+                        "nähasekuu",
+                        "ṗagumenkuu",
+                    }
+                    wide{
+                        "mäskärämkuu",
+                        "ṭəqəmtkuu",
+                        "ḫədarkuu",
+                        "taḫśaśkuu",
+                        "ṭərrkuu",
+                        "yäkatitkuu",
+                        "mägabitkuu",
+                        "miyazyakuu",
+                        "gənbotkuu",
+                        "sänekuu",
+                        "ḥamlekuu",
+                        "nähasekuu",
+                        "ṗagumenkuu",
+                    }
+                }
+            }
+        }
         generic{
             DateTimePatterns{
                 "H.mm.ss zzzz",
@@ -305,8 +447,17 @@ fi{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h.mm B"}
+                Bhms{"h.mm.ss B"}
                 E{"ccc"}
+                EBhm{"E h.mm B"}
+                EBhms{"E h.mm.ss B"}
+                EHm{"E HH.mm"}
+                EHms{"E HH.mm.ss"}
                 Ed{"E d."}
+                Ehm{"E h.mm a"}
+                Ehms{"E h.mm.ss a"}
                 Gy{"y G"}
                 GyMMM{"LLL y G"}
                 GyMMMEd{"E d. MMM y G"}
@@ -341,6 +492,53 @@ fi{
                 yyyyQQQQ{"QQQQ y G"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h.mm B – h.mm B"}
+                    h{"h.mm–h.mm B"}
+                    m{"h.mm–h.mm B"}
+                }
+                Gy{
+                    G{"y G – y G"}
+                    y{"y–y G"}
+                }
+                GyM{
+                    G{"M/y GGGGG – M/y GGGGG"}
+                    M{"M/y–M/y GGGGG"}
+                    y{"M/y–M/y GGGGG"}
+                }
+                GyMEd{
+                    G{"E d.M.y GGGGG – E d.M.y GGGGG"}
+                    M{"E d.M.y – E d.M.y GGGGG"}
+                    d{"E d.M.y – E d.M.y GGGGG"}
+                    y{"E d.M.y – E d.M.y GGGGG"}
+                }
+                GyMMM{
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM–MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                GyMMMEd{
+                    G{"E d. MMM y – E d. MMM y G"}
+                    M{"E d. MMM – E d. MMM y G"}
+                    d{"E d. MMM – E d. MMM y G"}
+                    y{"E d. MMM y – E d. MMM y G"}
+                }
+                GyMMMd{
+                    G{"d. MMM y G – d. MMM y G"}
+                    M{"d. MMM – d. MMM y G"}
+                    d{"d.–d. MMM, y G"}
+                    y{"d. MMM y – d. MMM y G"}
+                }
+                GyMd{
+                    G{"d.M.y GGGGG – d.M.y GGGGG"}
+                    M{"d.M.y–d.M.y GGGGG"}
+                    d{"d.M.y–d.M.y GGGGG"}
+                    y{"d.M.y–d.M.y GGGGG"}
+                }
                 H{
                     H{"H–H"}
                 }
@@ -471,7 +669,12 @@ fi{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h.mm B"}
+                Bhms{"h.mm.ss B"}
                 E{"ccc"}
+                EBhm{"E h.mm B"}
+                EBhms{"E h.mm.ss B"}
                 EHm{"E H.mm"}
                 EHms{"E H.mm.ss"}
                 Ed{"E d."}
@@ -480,6 +683,8 @@ fi{
                 Gy{"y G"}
                 GyMMM{"LLL y G"}
                 GyMMMEd{"E d. MMM y G"}
+                GyMMMMEd{"E d. MMMM y G"}
+                GyMMMMd{"d. MMMM y G"}
                 GyMMMd{"d. MMM y G"}
                 H{"H"}
                 Hm{"H.mm"}
@@ -490,6 +695,7 @@ fi{
                 MEd{"E d.M."}
                 MMM{"LLL"}
                 MMMEd{"ccc d. MMM"}
+                MMMMEd{"ccc d. MMMM"}
                 MMMMW{
                     one{"LLLL'n' W. 'viikko'"}
                     other{"LLLL'n' W. 'viikko'"}
@@ -511,14 +717,16 @@ fi{
                 yMMM{"LLL y"}
                 yMMMEd{"E d. MMM y"}
                 yMMMM{"LLLL y"}
+                yMMMMEd{"E d. MMMM y"}
                 yMMMMccccd{"cccc d. MMMM y"}
+                yMMMMd{"d. MMMM y"}
                 yMMMd{"d. MMM y"}
                 yMd{"d.M.y"}
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ y"}
                 yw{
-                    one{"'vuoden' y 'viikko' w"}
-                    other{"'vuoden' y 'viikko' w"}
+                    one{"'vuoden' Y 'viikko' w"}
+                    other{"'vuoden' Y 'viikko' w"}
                 }
             }
             dayNames{
@@ -692,6 +900,53 @@ fi{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h.mm B – h.mm B"}
+                    h{"h.mm–h.mm B"}
+                    m{"h.mm–h.mm B"}
+                }
+                Gy{
+                    G{"y G – y G"}
+                    y{"y–y G"}
+                }
+                GyM{
+                    G{"M/y GGGGG – M/y GGGGG"}
+                    M{"M/y–M/y GGGGG"}
+                    y{"M/y–M/y GGGGG"}
+                }
+                GyMEd{
+                    G{"E d.M.y GGGGG – E d.M.y GGGGG"}
+                    M{"E d.M.y – E d.M.y GGGGG"}
+                    d{"E d.M.y – E d.M.y GGGGG"}
+                    y{"E d.M.y – E d.M.y GGGGG"}
+                }
+                GyMMM{
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM–MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                GyMMMEd{
+                    G{"E d. MMM y – E d. MMM y G"}
+                    M{"E d. MMM – E d. MMM y G"}
+                    d{"E d. MMM – E d. MMM y G"}
+                    y{"E d. MMM y – E d. MMM y G"}
+                }
+                GyMMMd{
+                    G{"d.–d. MMM, y G"}
+                    M{"d. MMM – d. MMM y G"}
+                    d{"d.–d. MMM, y G"}
+                    y{"d. MMM y – d. MMM y G"}
+                }
+                GyMd{
+                    G{"d.M.y GGGGG – d.M.y GGGGG"}
+                    M{"d.M.y–d.M.y GGGGG"}
+                    d{"d.M.y–d.M.y GGGGG"}
+                    y{"d.M.y–d.M.y GGGGG"}
+                }
                 H{
                     H{"H–H"}
                 }
@@ -722,6 +977,14 @@ fi{
                 }
                 MMMM{
                     M{"LLL–LLLL"}
+                }
+                MMMMEd{
+                    M{"E d. MMMM – E d. MMMM"}
+                    d{"E d. – E d. MMMM"}
+                }
+                MMMMd{
+                    M{"d. MMMM – d. MMMM"}
+                    d{"d.–d. MMMM"}
                 }
                 MMMd{
                     M{"d. MMMM – d. MMMM"}
@@ -777,6 +1040,16 @@ fi{
                 yMMMM{
                     M{"LLL–LLLL y"}
                     y{"LLLL y – LLLL y"}
+                }
+                yMMMMEd{
+                    M{"E d. MMMM – E d. MMMM y"}
+                    d{"E d. – E d. MMMM y"}
+                    y{"E d. MMMM y – E d. MMMM y"}
+                }
+                yMMMMd{
+                    M{"d. MMMM – d. MMMM y"}
+                    d{"d.–d. MMMM y"}
+                    y{"d. MMMM y – d. MMMM y"}
                 }
                 yMMMd{
                     M{"d. MMMM – d. MMMM y"}
@@ -923,8 +1196,29 @@ fi{
             }
         }
         hebrew{
+            eras{
+                wide{
+                    "Anno Mundi",
+                }
+            }
             monthNames{
                 format{
+                    abbreviated{
+                        "tišrí",
+                        "hešván",
+                        "kislév",
+                        "tevét",
+                        "ševát",
+                        "adár I",
+                        "adár",
+                        "nisán",
+                        "ijjár",
+                        "siván",
+                        "tammúz",
+                        "ab",
+                        "elúl",
+                        "adár II",
+                    }
                     wide{
                         "tišríkuuta",
                         "hešvánkuuta",
@@ -994,7 +1288,81 @@ fi{
                 }
             }
         }
+        indian{
+            eras{
+                wide{
+                    "Saka-ajanlaskua",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "chaitrakuuta",
+                        "vaisakhakuuta",
+                        "jyaisthakuuta",
+                        "asadhakuuta",
+                        "sravanakuuta",
+                        "bhadrakuuta",
+                        "asvinakuuta",
+                        "kartikakuuta",
+                        "agrahayanakuuta",
+                        "pausakuuta",
+                        "maghakuuta",
+                        "phalgunakuuta",
+                    }
+                    wide{
+                        "chaitrakuuta",
+                        "vaisakhakuuta",
+                        "jyaisthakuuta",
+                        "asadhakuuta",
+                        "sravanakuuta",
+                        "bhadrakuuta",
+                        "asvinakuuta",
+                        "kartikakuuta",
+                        "agrahayanakuuta",
+                        "pausakuuta",
+                        "maghakuuta",
+                        "phalgunakuuta",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "chaitra",
+                        "vaisakha",
+                        "jyaistha",
+                        "asadha",
+                        "sravana",
+                        "bhadra",
+                        "asvina",
+                        "kartika",
+                        "agrahayana",
+                        "pausa",
+                        "magha",
+                        "phalguna",
+                    }
+                    wide{
+                        "chaitrakuu",
+                        "vaisakhakuu",
+                        "jyaisthakuu",
+                        "asadhakuu",
+                        "sravanakuu",
+                        "bhadrakuu",
+                        "asvinakuu",
+                        "kartikakuu",
+                        "agrahayanakuu",
+                        "pausakuu",
+                        "maghakuu",
+                        "phalgunakuu",
+                    }
+                }
+            }
+        }
         islamic{
+            eras{
+                wide{
+                    "hidžran jälkeen",
+                }
+            }
             monthNames{
                 format{
                     wide{
@@ -1047,102 +1415,179 @@ fi{
                 "{1} {0}",
             }
         }
+        persian{
+            eras{
+                wide{
+                    "Anno Persico",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "farvardinkuuta",
+                        "ordibeheštkuuta",
+                        "khordadkuuta",
+                        "tirkuuta",
+                        "mordadkuuta",
+                        "šahrivarkuuta",
+                        "mehrkuuta",
+                        "abankuuta",
+                        "azarkuuta",
+                        "deykuuta",
+                        "bahmankuuta",
+                        "esfandkuuta",
+                    }
+                    wide{
+                        "farvardinkuuta",
+                        "ordibeheštkuuta",
+                        "khordadkuuta",
+                        "tirkuuta",
+                        "mordadkuuta",
+                        "šahrivarkuuta",
+                        "mehrkuuta",
+                        "abankuuta",
+                        "azarkuuta",
+                        "deykuuta",
+                        "bahmankuuta",
+                        "esfandkuuta",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "farvardin",
+                        "ordibehešt",
+                        "khordad",
+                        "tir",
+                        "mordad",
+                        "šahrivar",
+                        "mehr",
+                        "aban",
+                        "azar",
+                        "dey",
+                        "bahman",
+                        "esfand",
+                    }
+                    wide{
+                        "farvardinkuu",
+                        "ordibeheštkuu",
+                        "khordadkuu",
+                        "tirkuu",
+                        "mordadkuu",
+                        "šahrivarkuu",
+                        "mehrkuu",
+                        "abankuu",
+                        "azarkuu",
+                        "deykuu",
+                        "bahmankuu",
+                        "esfandkuu",
+                    }
+                }
+            }
+        }
         roc{
             eras{
                 abbreviated{
-                    "Before R.O.C.",
+                    "e. Kiinan tasav.",
+                    "Minguo",
+                }
+                narrow{
+                    "e. Kiinan tasav.",
+                    "Minguo",
+                }
+                wide{
+                    "ennen Kiinan tasavaltaa",
                     "Minguo",
                 }
             }
         }
     }
     characterLabel{
-        activities{"Toiminnot"}
-        african_scripts{"Afrikkalaiset kirjoitusjärjestelmät"}
-        american_scripts{"Amerikkalaiset kirjoitusjärjestelmät"}
+        activities{"toiminta"}
+        african_scripts{"afrikkalaiset kirjoitusjärjestelmät"}
+        american_scripts{"amerikkalaiset kirjoitusjärjestelmät"}
         animal{"eläin"}
-        animals_nature{"Eläimet ja luonto"}
-        arrows{"Nuolet"}
+        animals_nature{"eläimet ja luonto"}
+        arrows{"nuolet"}
         body{"keho"}
-        box_drawing{"Viivapiirrosmerkit"}
-        braille{"Pistekirjoitus"}
+        box_drawing{"viivapiirrosmerkit"}
+        braille{"pistekirjoitus"}
         building{"rakennus"}
-        bullets_stars{"Luettelomerkit/tähdet"}
-        consonantal_jamo{"Jamo-konsonanttielementit"}
-        currency_symbols{"Valuuttamerkit"}
-        dash_connector{"Yhdysmerkit"}
-        digits{"Numerot"}
-        dingbats{"Ornamentit"}
-        divination_symbols{"Ennustussymbolit"}
-        downwards_arrows{"Alaspäin osoittavat nuolet"}
-        downwards_upwards_arrows{"Alas- ja ylöspäin osoittavat nuolet"}
-        east_asian_scripts{"Itäaasialaiset kirjoitusjärjestelmät"}
-        emoji{"Emojit"}
-        european_scripts{"Eurooppalaiset kirjoitusjärjestelmät"}
+        bullets_stars{"luettelomerkit ja tähdet"}
+        consonantal_jamo{"jamo-konsonanttielementit"}
+        currency_symbols{"valuuttamerkit"}
+        dash_connector{"yhdysmerkit"}
+        digits{"numerot"}
+        dingbats{"ornamentit"}
+        divination_symbols{"ennustussymbolit"}
+        downwards_arrows{"alaspäin osoittavat nuolet"}
+        downwards_upwards_arrows{"alas- ja ylöspäin osoittavat nuolet"}
+        east_asian_scripts{"itäaasialaiset kirjoitusjärjestelmät"}
+        emoji{"emojit"}
+        european_scripts{"eurooppalaiset kirjoitusjärjestelmät"}
         female{"naissukupuolinen"}
         flag{"lippu"}
-        flags{"Liput"}
-        food_drink{"Ruoka ja juoma"}
-        format{"Muotoilu"}
-        format_whitespace{"Muotoilu ja tyhjämerkit"}
-        full_width_form_variant{"Ideografin levyiset muotovariantit"}
-        geometric_shapes{"Geometriset kuviot"}
-        half_width_form_variant{"Ideografin puolikkaan levyiset muotovariantit"}
-        han_characters{"Han-merkit"}
-        han_radicals{"Han-radikaalit"}
-        hanja{"Hanja"}
-        hanzi_simplified{"Hanzi (yksinkertaistettu)"}
-        hanzi_traditional{"Hanzi (perinteinen)"}
+        flags{"liput"}
+        food_drink{"ruoka ja juoma"}
+        format{"muotoilu"}
+        format_whitespace{"muotoilu ja tyhjämerkki"}
+        full_width_form_variant{"ideografin levyiset muotovariantit"}
+        geometric_shapes{"geometriset kuviot"}
+        half_width_form_variant{"ideografin puolikkaan levyiset muotovariantit"}
+        han_characters{"han-merkit"}
+        han_radicals{"han-radikaalit"}
+        hanja{"hanja"}
+        hanzi_simplified{"hanzi (yksinkertaistettu)"}
+        hanzi_traditional{"hanzi (perinteinen)"}
         heart{"sydän"}
-        historic_scripts{"Historialliset kirjoitusjärjestelmät"}
-        ideographic_desc_characters{"Ideogrammien kuvausmerkit"}
-        japanese_kana{"Japanilainen Kana-kirjoitusjärjestelmä"}
-        kanbun{"Kanbun"}
-        kanji{"Kanji"}
+        historic_scripts{"historialliset kirjoitusjärjestelmät"}
+        ideographic_desc_characters{"ideogrammien kuvausmerkit"}
+        japanese_kana{"japanilainen kana-kirjoitusjärjestelmä"}
+        kanbun{"kanbun"}
+        kanji{"kanji"}
         keycap{"näppäin"}
-        leftwards_arrows{"Vasemmalle osoittavat nuolet"}
-        leftwards_rightwards_arrows{"Vasemmalle ja oikealle osoittavat nuolet"}
-        letterlike_symbols{"Kirjainsymbolit"}
-        limited_use{"Rajoitettu käyttö"}
+        leftwards_arrows{"vasemmalle osoittavat nuolet"}
+        leftwards_rightwards_arrows{"vasemmalle ja oikealle osoittavat nuolet"}
+        letterlike_symbols{"kirjainsymbolit"}
+        limited_use{"rajoitettu käyttö"}
         male{"miessukupuolinen"}
-        math_symbols{"Matemaattiset symbolit"}
+        math_symbols{"matemaattiset symbolit"}
         middle_eastern_scripts{"Lähi-idän kirjoitusjärjestelmät"}
-        miscellaneous{"Sekalaiset"}
-        modern_scripts{"Nykyaikaiset kirjoitusjärjestelmät"}
-        modifier{"Tarkkeenomaiset merkit"}
-        musical_symbols{"Musiikkisymbolit"}
+        miscellaneous{"sekalaiset"}
+        modern_scripts{"nykyaikaiset kirjoitusjärjestelmät"}
+        modifier{"tarkkeenomaiset merkit"}
+        musical_symbols{"musiikkisymbolit"}
         nature{"luonto"}
-        nonspacing{"Välittömästi yhdistyvät merkit"}
-        numbers{"Numerot"}
-        objects{"Objektit"}
-        other{"Muu"}
-        paired{"Merkkiparit"}
+        nonspacing{"omaa tilaa viemättömät merkit"}
+        numbers{"numerot"}
+        objects{"objektit"}
+        other{"muut"}
+        paired{"merkkiparit"}
         person{"henkilö"}
-        phonetic_alphabet{"Foneettinen aakkosto"}
-        pictographs{"Kuvakirjoitus"}
+        phonetic_alphabet{"foneettiset aakkoset"}
+        pictographs{"kuvakirjoitus"}
         place{"paikka"}
         plant{"kasvi"}
-        punctuation{"Välimerkit"}
-        rightwards_arrows{"Oikealle osoittavat nuolet"}
-        sign_standard_symbols{"Vakiosymbolit"}
-        small_form_variant{"Vähäiset muotovariantit"}
+        punctuation{"välimerkit"}
+        rightwards_arrows{"oikealle osoittavat nuolet"}
+        sign_standard_symbols{"vakiosymboli"}
+        small_form_variant{"vähäiset muotovariantit"}
         smiley{"hymiö"}
-        smileys_people{"Hymiöt ja ihmiset"}
-        south_asian_scripts{"Etelä-Aasian kirjoitusjärjestelmät"}
-        southeast_asian_scripts{"Kaakkois-Aasian kirjoitusjärjestelmät"}
-        spacing{"Välistys"}
+        smileys_people{"hymiöt ja ihmiset"}
+        south_asian_scripts{"eteläaasialaiset kirjoitusjärjestelmät"}
+        southeast_asian_scripts{"kaakkoisaasialaiset kirjoitusjärjestelmät"}
+        spacing{"välistys"}
         sport{"urheilu"}
-        symbols{"Symbolit"}
-        technical_symbols{"Tekniset symbolit"}
-        tone_marks{"Toonimerkit"}
-        travel{"matka"}
-        travel_places{"Matkustus ja paikat"}
-        upwards_arrows{"Ylöspäin osoittavat nuolet"}
-        variant_forms{"Varianttimuodot"}
-        vocalic_jamo{"Jamo-vokaalilementit"}
+        symbols{"symbolit"}
+        technical_symbols{"tekniset symbolit"}
+        tone_marks{"toonimerkit"}
+        travel{"matkustus"}
+        travel_places{"matkustus ja paikat"}
+        upwards_arrows{"ylöspäin osoittavat nuolet"}
+        variant_forms{"varianttimuodot"}
+        vocalic_jamo{"jamo-vokaalielementit"}
         weather{"sää"}
-        western_asian_scripts{"Länsiaasialaiset kirjoitusjärjestelmät"}
-        whitespace{"Tyhjämerkit"}
+        western_asian_scripts{"länsiaasialaiset kirjoitusjärjestelmät"}
+        whitespace{"tyhjämerkki"}
     }
     contextTransforms{
         languages:intvector{
@@ -1151,6 +1596,10 @@ fi{
         }
         relative:intvector{
             0,
+            1,
+        }
+        typographicNames:intvector{
+            1,
             1,
         }
     }
@@ -1221,10 +1670,31 @@ fi{
                 }
             }
         }
+        dayOfYear{
+            dn{"vuodenpäivä"}
+        }
+        dayOfYear-narrow{
+            dn{"vuodenpv"}
+        }
+        dayOfYear-short{
+            dn{"vuodenpv"}
+        }
         dayperiod{
             dn{"vuorokaudenaika"}
         }
+        dayperiod-narrow{
+            dn{"vuorokaudenaika"}
+        }
+        dayperiod-short{
+            dn{"vuorokaudenaika"}
+        }
         era{
+            dn{"aikakausi"}
+        }
+        era-narrow{
+            dn{"aikakausi"}
+        }
+        era-short{
             dn{"aikakausi"}
         }
         fri{
@@ -1893,8 +2363,32 @@ fi{
                 }
             }
         }
+        weekOfMonth{
+            dn{"kuukauden viikko"}
+        }
+        weekOfMonth-narrow{
+            dn{"kuukauden vk"}
+        }
+        weekOfMonth-short{
+            dn{"kuukauden vk"}
+        }
         weekday{
             dn{"viikonpäivä"}
+        }
+        weekday-narrow{
+            dn{"viikonpäivä"}
+        }
+        weekday-short{
+            dn{"viikonpäivä"}
+        }
+        weekdayOfMonth{
+            dn{"kuukauden viikonpäivä"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"kuukauden vk päivä"}
+        }
+        weekdayOfMonth-short{
+            dn{"kuukauden vk päivä"}
         }
         year{
             dn{"vuosi"}
@@ -1953,9 +2447,27 @@ fi{
         zone{
             dn{"aikavyöhyke"}
         }
+        zone-narrow{
+            dn{"aikavyöhyke"}
+        }
+        zone-short{
+            dn{"aikavyöhyke"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} tai {1}"}
+            end{"{0} tai {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
+            2{"{0} ja {1}"}
+            end{"{0} ja {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} ja {1}"}
             end{"{0} ja {1}"}
             middle{"{0}, {1}"}
@@ -1990,5 +2502,37 @@ fi{
         UK{"brittiläinen"}
         US{"amerikkalainen"}
         metric{"metrinen"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

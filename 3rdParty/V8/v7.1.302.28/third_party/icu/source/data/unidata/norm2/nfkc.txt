@@ -1,3 +1,5 @@
+# Copyright (C) 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
 # Copyright (C) 1999-2016, International Business Machines
 # Corporation and others.  All Rights Reserved.
 #
@@ -11,7 +13,7 @@
 # to NFKC one-way mappings.
 # Use this file as the second gennorm2 input file after nfc.txt.
 
-* Unicode 9.0.0
+* Unicode 12.1.0
 
 00A0>0020
 00A8>0020 0308
@@ -1105,6 +1107,7 @@
 32FC>30F0
 32FD>30F1
 32FE>30F2
+32FF>4EE4 548C
 3300>30A2 30D1 30FC 30C8
 3301>30A2 30EB 30D5 30A1
 3302>30A2 30F3 30DA 30A2
@@ -3628,6 +3631,7 @@ FFEE>25CB
 1F14F>0057 0043
 1F16A>004D 0043
 1F16B>004D 0044
+1F16C>004D 0052
 1F190>0044 004A
 1F200>307B 304B
 1F201>30B3 30B3

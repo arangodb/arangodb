@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ks{
-    Version{"2.1.30.6"}
+    Version{"2.1.47.83"}
     units{
         duration{
             day{
@@ -10,19 +10,19 @@ ks{
             }
             hour{
                 one{"{0} گَنٹہٕ"}
-                other{"{0} گٲنٛٹہٕ"}
+                other{"{0} گٲنٹہٕ"}
             }
             minute{
                 one{"{0} مِنَٹ"}
                 other{"{0} مِنَٹ"}
             }
             month{
-                one{"{0} ریٚتھ"}
-                other{"{0} ریٚتھ"}
+                one{"{0} ریتھ"}
+                other{"{0} ریتھ"}
             }
             second{
-                one{"{0} سیٚکَنٛڈ"}
-                other{"{0} سیٚکَنٛڈ"}
+                one{"{0} سیکَنڈ"}
+                other{"{0} سیکَنڈ"}
             }
             week{
                 one{"{0} ہَفتہٕ"}

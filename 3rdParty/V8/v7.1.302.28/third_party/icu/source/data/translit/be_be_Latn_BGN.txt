@@ -5,8 +5,6 @@
 # Generated from CLDR
 #
 
-#
-########################################################################
 # BGN/PCGN 1979 System
 #
 # The BGN/PCGN system for Belarusian (formerly Byelorussian) was
@@ -22,21 +20,8 @@
 #
 # Originally prepared by Michael Everson <everson@evertype.com>
 ########################################################################
-#
-# MINIMAL FILTER: Belarusian-Latin
-#
-:: [АБВГДЕЁЖЗІЙКЛМНОПРСТУЎФХЦЧШЩЪЫЬЭЮЯҐабвгдеёжзійклмнопрстуўфхцчшщъыьэюя’ґ] ;
-:: NFD (NFC) ;
-#
-#
-########################################################################
-#
-########################################################################
-#
-# Define All Transformation Variables
-#
-########################################################################
-#
+::[АБВГДЕЁЖЗІЙКЛМНОПРСТУЎФХЦЧШЩЪЫЬЭЮЯҐабвгдеёжзійклмнопрстуўфхцчшщъыьэюя’ґ] ;
+::NFC;
 $prime  = ʹ ;
 $doublePrime = ʺ ;
 $upperConsonants = [БВГДЖЗЙКЛМНПРСТЎФХЦЧШЬҐ] ;
@@ -46,22 +31,10 @@ $upperVowels = [АЕЁІОУЫЭЮЯ] ;
 $lowerVowels = [аеёіоуыэюя] ;
 $vowels = [$upperVowels $lowerVowels] ;
 $lower = [$lowerConsonants $lowerVowels] ;
-#
-#
 # Use this $wordBoundary until bug 2034 is fixed in ICU:
 # http://bugs.icu-project.org/cgi-bin/icu-bugs/transliterate?id=2034;expression=boundary;user=guest
-#
 $wordBoundary =  [^[:L:][:M:][:N:]] ;
-#
-#
-########################################################################
-#
-########################################################################
-#
 # Start of Alphabetic Transformations
-#
-########################################################################
-#
 А → A ; # CYRILLIC CAPITAL LETTER A
 а → a ; # CYRILLIC SMALL LETTER A
 Б → B ; # CYRILLIC CAPITAL LETTER BE
@@ -81,8 +54,9 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 Ж} $lower → Zh ; # CYRILLIC CAPITAL LETTER ZHE
 Ж → ZH ; # CYRILLIC CAPITAL LETTER ZHE
 ж → zh ; # CYRILLIC SMALL LETTER ZHE
-#
-#
+Ш} $lower → Sh;
+Ш → SH;
+ш → sh;
 ########################################################################
 #
 # BGN Page 23 Note 1
@@ -93,14 +67,11 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 # are used to render characters ж, х, ш, ц, and the character sequence тш.
 #
 ########################################################################
-#
 ЗГ → Z·H ; # CYRILLIC CAPITAL LETTER ZE
 Зг → Z·h ; # CYRILLIC CAPITAL LETTER ZE
 зг → z·h ; # CYRILLIC SMALL LETTER ZE
 З → Z ; # CYRILLIC CAPITAL LETTER ZE
 з → z ; # CYRILLIC SMALL LETTER ZE
-#
-#
 ########################################################################
 #
 # End Rule 1
@@ -110,7 +81,6 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 і → i ; # CYRILLIC SMALL LETTER BYELORUSSIAN-UKRAINIAN I
 Й → Y ; # CYRILLIC CAPITAL LETTER I
 й → y ; # CYRILLIC SMALL LETTER I
-#
 ########################################################################
 #
 # BGN Page 23 Rule 1
@@ -118,14 +88,11 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 # кг becomes k·h
 #
 ########################################################################
-#
 КГ → K·H ; # CYRILLIC CAPITAL LETTER KA
 Кг → K·h ; # CYRILLIC CAPITAL LETTER KA
 кг → k·h ; # CYRILLIC SMALL LETTER KA
 К → K ; # CYRILLIC CAPITAL LETTER KA
 к → k ; # CYRILLIC SMALL LETTER KA
-#
-#
 ########################################################################
 #
 # End Rule 1
@@ -143,7 +110,6 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 п → p ; # CYRILLIC SMALL LETTER PE
 Р → R ; # CYRILLIC CAPITAL LETTER ER
 р → r ; # CYRILLIC SMALL LETTER ER
-#
 ########################################################################
 #
 # BGN Page 23 Rule 1
@@ -151,14 +117,11 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 # сг becomes s·h
 #
 ########################################################################
-#
 СГ → S·H ; # CYRILLIC CAPITAL LETTER ES
 Сг → S·h ; # CYRILLIC CAPITAL LETTER ES
 сг → s·h ; # CYRILLIC SMALL LETTER ES
 С → S ; # CYRILLIC CAPITAL LETTER ES
 с → s ; # CYRILLIC SMALL LETTER ES
-#
-#
 ########################################################################
 #
 # End Rule 1
@@ -172,14 +135,11 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 # тс becomes t·s
 #
 ########################################################################
-#
 ТС → T·S ; # CYRILLIC CAPITAL LETTER TE
 Тс → T·s ; # CYRILLIC CAPITAL LETTER TE
 тс → t·s ; # CYRILLIC SMALL LETTER TE
 Т → T ; # CYRILLIC CAPITAL LETTER TE
 т → t ; # CYRILLIC SMALL LETTER TE
-#
-#
 ########################################################################
 #
 # End Rule 1
@@ -194,7 +154,6 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 Х} $lower → Kh ; # CYRILLIC CAPITAL LETTER HA
 Х → KH ; # CYRILLIC CAPITAL LETTER HA
 х → kh ; # CYRILLIC SMALL LETTER HA
-#
 ########################################################################
 #
 # BGN Page 23 Rule 1
@@ -202,15 +161,12 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 # цг becomes ts·h
 #
 ########################################################################
-#
 ЦГ → TS·H ; # CYRILLIC CAPITAL LETTER TSE
 Цг → Ts·h ; # CYRILLIC CAPITAL LETTER TSE
 цг → ts·h ; # CYRILLIC SMALL LETTER TSE
 Ц} $lower → Ts ; # CYRILLIC CAPITAL LETTER TSE
 Ц → TS ; # CYRILLIC CAPITAL LETTER TSE
 ц → ts ; # CYRILLIC SMALL LETTER TSE
-#
-#
 ########################################################################
 #
 # End Rule 1
@@ -232,7 +188,6 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 Я → YA ; # CYRILLIC CAPITAL LETTER YA
 я → ya ; # CYRILLIC SMALL LETTER YA
 ’ → $doublePrime ; # LEFT SINGLE QUOTATION MARK
-#
 ########################################################################
 #
 # BGN Page 23 Note 2
@@ -240,14 +195,6 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 # The obsolete character ґ should be romanized g.
 #
 ########################################################################
-#
 Ґ → G ; # CYRILLIC CAPITAL LETTER GHE WITH UPTURN
 ґ → g ; # CYRILLIC SMALL LETTER GHE WITH UPTURN
-#
-#
-########################################################################
-#
-# End Note 2
-#
-########################################################################
 

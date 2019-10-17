@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en_001{
-    Version{"2.1.29.54"}
+    Version{"2.1.47.69"}
     units{
         acceleration{
             meter-per-second-squared{
@@ -266,6 +266,11 @@ en_001{
                 other{"{0}lb"}
             }
         }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/h"}
+            }
+        }
         temperature{
             celsius{
                 one{"{0}°"}
@@ -452,7 +457,7 @@ en_001{
             megaliter{
                 dnam{"Ml"}
                 one{"{0} Ml"}
-                other{"{0} MLl"}
+                other{"{0} Ml"}
             }
             milliliter{
                 dnam{"ml"}

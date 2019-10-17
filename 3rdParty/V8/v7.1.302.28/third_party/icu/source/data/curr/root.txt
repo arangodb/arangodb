@@ -85,6 +85,10 @@ root{
             "CFPF",
             "XPF",
         }
+        XXX{
+            "¤",
+            "XXX",
+        }
     }
     Currencies%narrow{
         AOA{"Kz"}
@@ -170,7 +174,7 @@ root{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -192,7 +196,7 @@ root{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.30.58"}
+    Version{"2.1.49.82"}
     currencySpacing{
         afterCurrency{
             currencyMatch{"[:^S:]"}

@@ -8,5 +8,5 @@ en_WS{
             "Samoan Tala",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
 }

@@ -31,6 +31,7 @@ pl{
         151{"Europa Wschodnia"}
         154{"Europa Północna"}
         155{"Europa Zachodnia"}
+        202{"Afryka Subsaharyjska"}
         419{"Ameryka Łacińska"}
         AC{"Wyspa Wniebowstąpienia"}
         AD{"Andora"}
@@ -41,7 +42,7 @@ pl{
         AL{"Albania"}
         AM{"Armenia"}
         AO{"Angola"}
-        AQ{"Antarktyka"}
+        AQ{"Antarktyda"}
         AR{"Argentyna"}
         AS{"Samoa Amerykańskie"}
         AT{"Austria"}
@@ -82,7 +83,7 @@ pl{
         CM{"Kamerun"}
         CN{"Chiny"}
         CO{"Kolumbia"}
-        CP{"Clipperton"}
+        CP{"Wyspa Clippertona"}
         CR{"Kostaryka"}
         CU{"Kuba"}
         CV{"Republika Zielonego Przylądka"}
@@ -106,9 +107,10 @@ pl{
         ES{"Hiszpania"}
         ET{"Etiopia"}
         EU{"Unia Europejska"}
+        EZ{"strefa euro"}
         FI{"Finlandia"}
         FJ{"Fidżi"}
-        FK{"Falklandy"}
+        FK{"Falklandy (Malwiny)"}
         FM{"Mikronezja"}
         FO{"Wyspy Owcze"}
         FR{"Francja"}
@@ -181,7 +183,7 @@ pl{
         MF{"Saint-Martin"}
         MG{"Madagaskar"}
         MH{"Wyspy Marshalla"}
-        MK{"Macedonia"}
+        MK{"Macedonia Północna"}
         ML{"Mali"}
         MM{"Mjanma (Birma)"}
         MN{"Mongolia"}
@@ -225,7 +227,7 @@ pl{
         PW{"Palau"}
         PY{"Paragwaj"}
         QA{"Katar"}
-        QO{"Oceania inne"}
+        QO{"Oceania — wyspy dalekie"}
         RE{"Reunion"}
         RO{"Rumunia"}
         RS{"Serbia"}
@@ -251,7 +253,7 @@ pl{
         SV{"Salwador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
-        SZ{"Suazi"}
+        SZ{"Eswatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks i Caicos"}
         TD{"Czad"}
@@ -285,6 +287,8 @@ pl{
         VU{"Vanuatu"}
         WF{"Wallis i Futuna"}
         WS{"Samoa"}
+        XA{"Pseudoakcenty"}
+        XB{"Pseudodwukierunkowe"}
         XK{"Kosowo"}
         YE{"Jemen"}
         YT{"Majotta"}
@@ -299,12 +303,12 @@ pl{
         US{"USA"}
     }
     Countries%variant{
+        CD{"Kongo (DRK)"}
         CG{"Republika Konga"}
         CI{"Wybrzeże Kości Słoniowej"}
         CZ{"Republika Czeska"}
-        FK{"Falklandy (Malwiny)"}
-        MK{"Była Jugosłowiańska Republika Macedonii"}
+        SZ{"Suazi"}
         TL{"Timor-Leste"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

@@ -180,5 +180,5 @@ de_CH{
             "0: =%spellout-ordinal=s;",
         }
     }
-    Version{"2.1.29.33"}
+    Version{"2.1.44.50"}
 }

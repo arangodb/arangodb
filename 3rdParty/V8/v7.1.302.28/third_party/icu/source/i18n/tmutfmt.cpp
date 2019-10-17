@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
  *******************************************************************************
@@ -224,7 +224,7 @@ TimeUnitFormat::parseObject(const UnicodeString& source,
                     if (temp.getType() == Formattable::kString) {
                         UnicodeString tmpString;
                         UErrorCode pStatus = U_ZERO_ERROR;
-                        getNumberFormat().parse(temp.getString(tmpString), tmpNumber, pStatus);
+                        getNumberFormatInternal().parse(temp.getString(tmpString), tmpNumber, pStatus);
                         if (U_FAILURE(pStatus)) {
                             continue;
                         }

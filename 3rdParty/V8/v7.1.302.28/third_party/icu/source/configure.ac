@@ -16,6 +16,10 @@ AC_INIT([ICU],
         [International Components for Unicode],
         [http://icu-project.org])
 
+# Instruct Python to never write any byte code to the ICU source tree.
+PYTHONDONTWRITEBYTECODE=1
+export PYTHONDONTWRITEBYTECODE
+
 AC_CONFIG_MACRO_DIR([config/m4])
 AC_CONFIG_SRCDIR([common/unicode/utypes.h])
 
@@ -99,6 +103,16 @@ UCONFIG_CPPFLAGS=""
 # UCONFIG_CFLAGS: contains a copy of anything that needs to be set by end users
 # such as -std
 UCONFIG_CFLAGS=""
+
+# Check whether to install icu-config
+AC_ARG_ENABLE([icu-config],
+    AS_HELP_STRING([--enable-icu-config], [install icu-config]),
+        [case "${enableval}" in
+            yes) enable_icu_config=true ;;
+            no) enable_icu_config=false ;;
+            *) AC_MSG_ERROR([bad value '${enableval}' for --enable-icu-config]) ;;
+        esac], [enable_icu_config=true])
+AC_SUBST(INSTALL_ICU_CONFIG, [$enable_icu_config])
 
 # Check whether to build debug libraries
 AC_MSG_CHECKING([whether to build debug libraries])
@@ -184,6 +198,10 @@ fi
 
 #AC_CHECK_PROG(AUTOCONF, autoconf, autoconf, true)
 #AC_CHECK_PROG(STRIP, strip, strip, true)
+
+# TODO(ICU-20301): Remove fallback to Python 2.
+AC_CHECK_PROGS(PYTHON, python3 "py -3" python "py")
+AC_SUBST(PYTHON)
 
 # Check for the platform make
 AC_PATH_PROGS(U_MAKE, gmake gnumake, make)
@@ -365,11 +383,14 @@ AC_ARG_ENABLE(draft,
 AC_MSG_RESULT($enabled)
 # Make sure that we can use draft API in ICU.
 if test "$U_DEFAULT_SHOW_DRAFT" = 0; then
-    CONFIG_CPPFLAGS="$CONFIG_CPPFLAGS -DU_SHOW_DRAFT_API"
+    CONFIG_CPPFLAGS="$CONFIG_CPPFLAGS -DU_SHOW_DRAFT_API -DU_SHOW_INTERNAL_API"
 fi
 AC_SUBST(U_DEFAULT_SHOW_DRAFT)
 
 AC_PROG_RANLIB
+
+# need sed
+AC_PROG_SED
 
 # look for 'ar' the proper way
 AC_CHECK_TOOL(AR, ar, false)
@@ -492,17 +513,17 @@ else
 fi
 
 if [[ "$GXX" = yes ]]; then
-    # if CXXFLAGS does not have a "-std=" setting, set it now to -std=c++0x,
+    # if CXXFLAGS does not have a "-std=" setting, set it now to -std=c++11,
     # and check that the compiler still works.
     if ! echo "$CXXFLAGS" | grep '\-std=' >/dev/null 2>&1; then
         OLD_CXXFLAGS="${CXXFLAGS}"
-        CXXFLAGS="$CXXFLAGS --std=c++0x"
+        CXXFLAGS="$CXXFLAGS -std=c++11"
         AC_MSG_CHECKING([[if we have a C++11 compiler]])
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[]])],[cxx11_okay=yes],[cxx11_okay=no])
         AC_MSG_RESULT($cxx11_okay)
         if [[ $cxx11_okay = yes ]]; then
-            AC_MSG_NOTICE([Adding CXXFLAGS option --std=c++0x])
-            UCONFIG_CXXFLAGS="${UCONFIG_CXXFLAGS} --std=c++0x"
+            AC_MSG_NOTICE([Adding CXXFLAGS option -std=c++11])
+            UCONFIG_CXXFLAGS="${UCONFIG_CXXFLAGS} -std=c++11"
         else
             CXXFLAGS="$OLD_CXXFLAGS"
         fi
@@ -513,32 +534,6 @@ if [[ "$GXX" = yes ]]; then
         esac
     fi
 fi
-
-AC_MSG_CHECKING([[if #include <string> works]])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <string>]], [[]])], [ac_cv_header_stdstring=yes], [ac_cv_header_stdstring=no])
-AC_MSG_RESULT($ac_cv_header_stdstring)
-if test $ac_cv_header_stdstring = yes
-then
-	U_HAVE_STD_STRING=1
-else
-        U_HAVE_STD_STRING=0
-        CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_STD_STRING=0"
-fi
-AC_SUBST(U_HAVE_STD_STRING)
-
-
-AC_MSG_CHECKING([[if #include <atomic> works]])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <atomic>]], [[]])], [ac_cv_header_atomic=yes], [ac_cv_header_atomic=no])
-AC_MSG_RESULT($ac_cv_header_atomic)
-if test $ac_cv_header_atomic = yes
-then
-	U_HAVE_ATOMIC=1
-else
-        U_HAVE_ATOMIC=0
-fi
-# Make this available via CPPFLAGS
-CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_ATOMIC=${U_HAVE_ATOMIC}"
-AC_SUBST(U_HAVE_ATOMIC)
 
 AC_LANG_POP([C++])
 
@@ -893,11 +888,18 @@ AC_SUBST(U_TIMEZONE)
 AC_CHECK_FUNC(strtod_l)
 if test x$ac_cv_func_strtod_l = xyes
 then
-     CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_STRTOD_L=1"
-     U_HAVE_STRTOD_L=1
+    U_HAVE_STRTOD_L=1
+    AC_CHECK_HEADER(xlocale.h)
+    if test "$ac_cv_header_xlocale_h" = yes; then
+      U_HAVE_XLOCALE_H=1
+      CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_STRTOD_L=1 -DU_HAVE_XLOCALE_H=1"
+    else
+      U_HAVE_XLOCALE_H=0
+      CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_STRTOD_L=1 -DU_HAVE_XLOCALE_H=0"
+    fi
 else
-     CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_STRTOD_L=0"
-     U_HAVE_STRTOD_L=0
+    CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_STRTOD_L=0"
+    U_HAVE_STRTOD_L=0
 fi
 AC_SUBST(U_HAVE_STRTOD_L)
 
@@ -1041,19 +1043,14 @@ case "${host}" in
     ;;
 esac
 
-# GCC >= 4.4 supports UTF16 string literals. The CFLAGS and CXXFLAGS may change in the future.
+# GCC >= 4.4 supports UTF16 string literals. As of ICU 62, both C and C++ files require them.
 if test "$CHECK_UTF16_STRING_RESULT" = "unknown"; then
     if test "$GCC" = yes; then
-        OLD_CFLAGS="${CFLAGS}"
-        CFLAGS="${CFLAGS} -std=gnu99"
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-static const char16_t test[] = u"This is a UTF16 literal string.";
+static const unsigned short test[] = u"This is a UTF16 literal string.";
         ]], [[]])],[CC_UTF16_STRING=1],[CC_UTF16_STRING=0])
         if test "$CC_UTF16_STRING" = 1; then
-            UCONFIG_CFLAGS="${UCONFIG_CFLAGS} -std=gnu99"
             CHECK_UTF16_STRING_RESULT="C only";
-        else
-            CFLAGS="${OLD_CFLAGS}"
         fi
     fi
     if test "$GXX" = yes; then
@@ -1299,13 +1296,13 @@ fi
 # Now that we're done using CPPFLAGS etc. for tests, we can change it
 # for build.
 
-if test "${CC}" == "clang"; then
+if test "${CC}" = "clang"; then
    CLANGCFLAGS="-Qunused-arguments -Wno-parentheses-equality"
 else
    CLANGCFLAGS=""
 fi
 
-if test "${CXX}" == "clang++"; then
+if test "${CXX}" = "clang++"; then
    CLANGCXXFLAGS="-Qunused-arguments -Wno-parentheses-equality"
 else
    CLANGCXXFLAGS=""
@@ -1362,6 +1359,7 @@ AC_CONFIG_FILES([icudefs.mk \
 		tools/pkgdata/Makefile \
 		tools/tzcode/Makefile \
 		tools/gencfu/Makefile \
+		tools/escapesrc/Makefile \
 		test/Makefile \
 		test/compat/Makefile \
 		test/testdata/Makefile \
@@ -1392,6 +1390,39 @@ AC_CONFIG_FILES([icudefs.mk \
 		samples/Makefile samples/date/Makefile \
 		samples/cal/Makefile samples/layout/Makefile])
 AC_OUTPUT
+
+if test -z "$PYTHON";
+then
+    echo "" > data/rules.mk
+    echo "" > test/testdata/rules.mk
+else
+    if test -f "$srcdir/data/locales/root.txt";
+    then
+        echo "Spawning Python to generate data/rules.mk..."
+        PYTHONPATH="$srcdir/data" $PYTHON -m buildtool \
+            --mode gnumake \
+            --seqmode parallel \
+            --src_dir "$srcdir/data" \
+            --filter_file "$ICU_DATA_FILTER_FILE" \
+            $ICU_DATA_BUILDTOOL_OPTS \
+            > data/rules.mk
+        if test "$?" != "0"; then
+            AC_MSG_ERROR(Python failed to run; see above error.)
+        fi
+    else
+      echo "Not rebuilding data/rules.mk, assuming prebuilt data in data/in"
+      touch data/rules.mk
+    fi
+    echo "Spawning Python to generate test/testdata/rules.mk..."
+    PYTHONPATH="$srcdir/test/testdata:$srcdir/data" $PYTHON -m buildtool \
+        --mode gnumake \
+        --seqmode parallel \
+        --src_dir "$srcdir/test/testdata" \
+        > test/testdata/rules.mk
+    if test "$?" != "0"; then
+        AC_MSG_ERROR(Python failed to run; see above error.)
+    fi
+fi
 
 echo
 echo "ICU for C/C++ $VERSION is ready to be built."
@@ -1470,6 +1501,11 @@ if test "$tools" = false;
 then
         echo "## Note: you have disabled ICU's tools. This ICU cannot build its own data or tests."
         echo "## Expect build failures in the 'data', 'test', and other directories."
+fi
+
+if test -z "$PYTHON";
+then
+    echo "** Note: Python not found. You will not be able to build data from source or run tests."
 fi
 
 $as_unset _CXX_CXXSUFFIX

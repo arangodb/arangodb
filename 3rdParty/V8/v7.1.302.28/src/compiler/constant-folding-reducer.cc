@@ -5,17 +5,15 @@
 #include "src/compiler/constant-folding-reducer.h"
 
 #include "src/compiler/js-graph.h"
-#include "src/objects-inl.h"
+#include "src/objects/objects-inl.h"
 
 namespace v8 {
 namespace internal {
 namespace compiler {
 
 ConstantFoldingReducer::ConstantFoldingReducer(Editor* editor, JSGraph* jsgraph,
-                                               JSHeapBroker* js_heap_broker)
-    : AdvancedReducer(editor),
-      jsgraph_(jsgraph),
-      js_heap_broker_(js_heap_broker) {}
+                                               JSHeapBroker* broker)
+    : AdvancedReducer(editor), jsgraph_(jsgraph), broker_(broker) {}
 
 ConstantFoldingReducer::~ConstantFoldingReducer() = default;
 
@@ -40,7 +38,7 @@ Reduction ConstantFoldingReducer::Reduce(Node* node) {
         replacement = jsgraph()->Constant(upper.AsHeapConstant()->Ref());
       } else if (upper.Is(Type::MinusZero())) {
         Factory* factory = jsgraph()->isolate()->factory();
-        ObjectRef minus_zero(js_heap_broker(), factory->minus_zero_value());
+        ObjectRef minus_zero(broker(), factory->minus_zero_value());
         replacement = jsgraph()->Constant(minus_zero);
       } else if (upper.Is(Type::NaN())) {
         replacement = jsgraph()->NaNConstant();

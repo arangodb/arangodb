@@ -47,10 +47,11 @@ it{
         ar{"arabo"}
         ar_001{"arabo moderno standard"}
         arc{"aramaico"}
-        arn{"mapuche"}
+        arn{"mapudungun"}
         aro{"araona"}
         arp{"arapaho"}
         arq{"arabo algerino"}
+        ars{"arabo najd"}
         arw{"aruaco"}
         ary{"arabo marocchino"}
         arz{"arabo egiziano"}
@@ -108,6 +109,7 @@ it{
         car{"caribico"}
         cay{"cayuga"}
         cch{"atsam"}
+        ccp{"chakma"}
         ce{"ceceno"}
         ceb{"cebuano"}
         cgg{"chiga"}
@@ -317,7 +319,7 @@ it{
         kut{"kutenai"}
         kv{"komi"}
         kw{"cornico"}
-        ky{"chirghiso"}
+        ky{"kirghiso"}
         la{"latino"}
         lad{"giudeo-spagnolo"}
         lag{"langi"}
@@ -335,6 +337,7 @@ it{
         ln{"lingala"}
         lo{"lao"}
         lol{"lolo bantu"}
+        lou{"creolo della Louisiana"}
         loz{"lozi"}
         lrc{"luri settentrionale"}
         lt{"lituano"}
@@ -428,7 +431,7 @@ it{
         oc{"occitano"}
         oj{"ojibwa"}
         om{"oromo"}
-        or{"oriya"}
+        or{"odia"}
         os{"ossetico"}
         osa{"osage"}
         ota{"turco ottomano"}
@@ -586,7 +589,7 @@ it{
         umb{"mbundu"}
         und{"lingua imprecisata"}
         ur{"urdu"}
-        uz{"usbeco"}
+        uz{"uzbeco"}
         vai{"vai"}
         ve{"venda"}
         vec{"veneto"}
@@ -865,9 +868,9 @@ it{
         }
         collation{
             big5han{"cinese tradizionale"}
+            compat{"Ordinamento compatto"}
             dictionary{"Ordinamento dizionario"}
             ducet{"Ordinamento Unicode predefinito"}
-            eor{"eor"}
             gb2312han{"cinese semplificato"}
             phonebook{"ordine elenco telefonico"}
             phonetic{"Ordinamento fonetico"}
@@ -1017,14 +1020,15 @@ it{
         VALENCIA{"valenziano"}
         WADEGILE{"romanizzazione Wade-Giles"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
         all{"{0} — Tutto"}
         category-list{"{0}: {1}"}
         compatibility{"{0} — Compatibilità"}
+        enclosed{"{0} — Cerchiato"}
         extended{"{0} — Esteso"}
         historic{"{0} — Storico"}
-        miscellaneous{"{0} — Miscellanea"}
+        miscellaneous{"{0} — Vario"}
         other{"{0} — Altro"}
         scripts{"Sistemi di scrittura — {0}"}
         strokes{

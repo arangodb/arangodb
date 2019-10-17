@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sl{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidžan"}
@@ -166,7 +166,7 @@ sl{
             ec{"Anchorage"}
         }
         "America:Anguilla"{
-            ec{"Anguilla"}
+            ec{"Angvila"}
         }
         "America:Antigua"{
             ec{"Antigua"}
@@ -439,7 +439,7 @@ sl{
             ec{"Metlakatla"}
         }
         "America:Mexico_City"{
-            ec{"Ciudad Mexico"}
+            ec{"Ciudad de Mexico"}
         }
         "America:Miquelon"{
             ec{"Miquelon"}
@@ -506,6 +506,9 @@ sl{
         }
         "America:Puerto_Rico"{
             ec{"Portoriko"}
+        }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
         }
         "America:Rainy_River"{
             ec{"Rainy River"}
@@ -655,7 +658,10 @@ sl{
             ec{"Aktobe"}
         }
         "Asia:Ashgabat"{
-            ec{"Ašgabat"}
+            ec{"Ašhabad"}
+        }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
         }
         "Asia:Baghdad"{
             ec{"Bagdad"}
@@ -707,6 +713,9 @@ sl{
         }
         "Asia:Dushanbe"{
             ec{"Dušanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -823,7 +832,7 @@ sl{
             ec{"Seul"}
         }
         "Asia:Shanghai"{
-            ec{"Šangaj"}
+            ec{"Šanghaj"}
         }
         "Asia:Singapore"{
             ec{"Singapur"}
@@ -844,7 +853,7 @@ sl{
             ec{"Teheran"}
         }
         "Asia:Thimphu"{
-            ec{"Thimphu"}
+            ec{"Timpu"}
         }
         "Asia:Tokyo"{
             ec{"Tokio"}
@@ -941,6 +950,9 @@ sl{
         }
         "Australia:Sydney"{
             ec{"Sydney"}
+        }
+        "Etc:UTC"{
+            ls{"univerzalni koordinirani čas"}
         }
         "Etc:Unknown"{
             ec{"neznano mesto"}
@@ -1072,6 +1084,9 @@ sl{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1655,14 +1670,14 @@ sl{
             ls{"Mawsonski čas"}
         }
         "meta:Mexico_Northwest"{
-            ld{"mehiški severozahodni poletni čas"}
-            lg{"mehiški severozahodni čas"}
-            ls{"mehiški severozahodni standardni čas"}
+            ld{"Mehiški severozahodni poletni čas"}
+            lg{"Mehiški severozahodni čas"}
+            ls{"Mehiški severozahodni standardni čas"}
         }
         "meta:Mexico_Pacific"{
-            ld{"mehiški pacifiški poletni čas"}
-            lg{"mehiški pacifiški čas"}
-            ls{"mehiški pacifiški standardni čas"}
+            ld{"Mehiški pacifiški poletni čas"}
+            lg{"Mehiški pacifiški čas"}
+            ls{"Mehiški pacifiški standardni čas"}
         }
         "meta:Mongolia"{
             ld{"Ulanbatorski poletni čas"}
@@ -1860,7 +1875,7 @@ sl{
             ls{"Volgograjski standardni čas"}
         }
         "meta:Vostok"{
-            ls{"vostoški čas"}
+            ls{"Vostoški čas"}
         }
         "meta:Wake"{
             ls{"Čas: Otok Wake"}

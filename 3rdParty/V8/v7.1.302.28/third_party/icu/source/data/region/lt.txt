@@ -31,6 +31,7 @@ lt{
         151{"Rytų Europa"}
         154{"Šiaurės Europa"}
         155{"Vakarų Europa"}
+        202{"Užsachario Afrika"}
         419{"Lotynų Amerika"}
         AC{"Dangun Žengimo sala"}
         AD{"Andora"}
@@ -106,9 +107,10 @@ lt{
         ES{"Ispanija"}
         ET{"Etiopija"}
         EU{"Europos Sąjunga"}
+        EZ{"euro zona"}
         FI{"Suomija"}
         FJ{"Fidžis"}
-        FK{"Folklando Salos"}
+        FK{"Folklando (Malvinų) Salos"}
         FM{"Mikronezija"}
         FO{"Farerų Salos"}
         FR{"Prancūzija"}
@@ -181,7 +183,7 @@ lt{
         MF{"Sen Martenas"}
         MG{"Madagaskaras"}
         MH{"Maršalo Salos"}
-        MK{"Makedonija"}
+        MK{"Šiaurės Makedonija"}
         ML{"Malis"}
         MM{"Mianmaras (Birma)"}
         MN{"Mongolija"}
@@ -285,6 +287,8 @@ lt{
         VU{"Vanuatu"}
         WF{"Volisas ir Futūna"}
         WS{"Samoa"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Kosovas"}
         YE{"Jemenas"}
         YT{"Majotas"}
@@ -302,8 +306,8 @@ lt{
         CD{"Kongo Demokratinė Respublika"}
         CG{"Kongo Respublika"}
         CI{"Dramblio Kaulo Kranto Respublika"}
-        FK{"Folklando (Malvinų) Salos"}
-        MK{"Makedonijos Respublika"}
+        CZ{"Čekijos Respublika"}
+        TL{"TL"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

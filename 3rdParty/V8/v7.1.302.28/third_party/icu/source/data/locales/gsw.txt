@@ -3,6 +3,7 @@
 gsw{
     AuxExemplarCharacters{"[á à ă â å ā æ ç é è ĕ ê ë ē í ì ĭ î ï ī ñ ó ò ŏ ô ø ō œ ú ù ŭ û ū ÿ]"}
     ExemplarCharacters{"[a ä b c d e f g h i j k l m n o ö p q r s t u ü v w x y z]"}
+    ExemplarCharactersNumbers{"[. ’ % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -10,6 +11,160 @@ gsw{
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
                 scientificFormat{"#E0"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 Tuusig"}
+                        other{"0 Tuusig"}
+                    }
+                    10000{
+                        one{"00 Tuusig"}
+                        other{"00 Tuusig"}
+                    }
+                    100000{
+                        one{"000 Tuusig"}
+                        other{"000 Tuusig"}
+                    }
+                    1000000{
+                        one{"0 Millioon"}
+                        other{"0 Millioone"}
+                    }
+                    10000000{
+                        one{"00 Millioon"}
+                        other{"00 Millioone"}
+                    }
+                    100000000{
+                        one{"000 Millioon"}
+                        other{"000 Millioone"}
+                    }
+                    1000000000{
+                        one{"0 Milliarde"}
+                        other{"0 Milliarde"}
+                    }
+                    10000000000{
+                        one{"00 Milliarde"}
+                        other{"00 Milliarde"}
+                    }
+                    100000000000{
+                        one{"000 Milliarde"}
+                        other{"000 Milliarde"}
+                    }
+                    1000000000000{
+                        one{"0 Billioon"}
+                        other{"0 Billioone"}
+                    }
+                    10000000000000{
+                        one{"00 Billioon"}
+                        other{"00 Billioone"}
+                    }
+                    100000000000000{
+                        one{"000 Billioon"}
+                        other{"000 Billioone"}
+                    }
+                }
+            }
+            patternsShort{
+                currencyFormat{
+                    1000{
+                        one{"0 Tsg'.' ¤"}
+                        other{"0 Tsg'.' ¤"}
+                    }
+                    10000{
+                        one{"00 Tsg'.' ¤"}
+                        other{"00 Tsg'.' ¤"}
+                    }
+                    100000{
+                        one{"000 Tsg'.' ¤"}
+                        other{"000 Tsg'.' ¤"}
+                    }
+                    1000000{
+                        one{"0 Mio'.' ¤"}
+                        other{"0 Mio'.' ¤"}
+                    }
+                    10000000{
+                        one{"00 Mio'.' ¤"}
+                        other{"00 Mio'.' ¤"}
+                    }
+                    100000000{
+                        one{"000 Mio'.' ¤"}
+                        other{"000 Mio'.' ¤"}
+                    }
+                    1000000000{
+                        one{"0 Mrd'.' ¤"}
+                        other{"0 Mrd'.' ¤"}
+                    }
+                    10000000000{
+                        one{"00 Mrd'.' ¤"}
+                        other{"00 Mrd'.' ¤"}
+                    }
+                    100000000000{
+                        one{"000 Mrd'.' ¤"}
+                        other{"000 Mrd'.' ¤"}
+                    }
+                    1000000000000{
+                        one{"0 Bio'.' ¤"}
+                        other{"0 Bio'.' ¤"}
+                    }
+                    10000000000000{
+                        one{"00 Bio'.' ¤"}
+                        other{"00 Bio'.' ¤"}
+                    }
+                    100000000000000{
+                        one{"000 Bio'.' ¤"}
+                        other{"000 Bio'.' ¤"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        one{"0 Tsg'.'"}
+                        other{"0 Tsg'.'"}
+                    }
+                    10000{
+                        one{"00 Tsg'.'"}
+                        other{"00 Tsg'.'"}
+                    }
+                    100000{
+                        one{"000 Tsg'.'"}
+                        other{"000 Tsg'.'"}
+                    }
+                    1000000{
+                        one{"0 Mio'.'"}
+                        other{"0 Mio'.'"}
+                    }
+                    10000000{
+                        one{"00 Mio'.'"}
+                        other{"00 Mio'.'"}
+                    }
+                    100000000{
+                        one{"000 Mio'.'"}
+                        other{"000 Mio'.'"}
+                    }
+                    1000000000{
+                        one{"0 Mrd'.'"}
+                        other{"0 Mrd'.'"}
+                    }
+                    10000000000{
+                        one{"00 Mrd'.'"}
+                        other{"00 Mrd'.'"}
+                    }
+                    100000000000{
+                        one{"000 Mrd'.'"}
+                        other{"000 Mrd'.'"}
+                    }
+                    1000000000000{
+                        one{"0 Bio'.'"}
+                        other{"0 Bio'.'"}
+                    }
+                    10000000000000{
+                        one{"00 Bio'.'"}
+                        other{"00 Bio'.'"}
+                    }
+                    100000000000000{
+                        one{"000 Bio'.'"}
+                        other{"000 Bio'.'"}
+                    }
+                }
             }
             symbols{
                 decimal{"."}
@@ -25,7 +180,7 @@ gsw{
             }
         }
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -190,12 +345,12 @@ gsw{
         }
         gregorian{
             AmPmMarkers{
-                "vorm.",
-                "nam.",
+                "am Vormittag",
+                "am Namittag",
             }
             AmPmMarkersAbbr{
-                "v.m.",
-                "n.m.",
+                "vorm.",
+                "nam.",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -271,6 +426,38 @@ gsw{
                         "D",
                         "F",
                         "S",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"zmittag"}
+                        afternoon2{"am Namittag"}
+                        evening1{"zaabig"}
+                        midnight{"Mitternacht"}
+                        morning1{"am Morge"}
+                        night1{"znacht"}
+                    }
+                    wide{
+                        afternoon1{"zmittag"}
+                        afternoon2{"am Namittag"}
+                        evening1{"zaabig"}
+                        midnight{"Mitternacht"}
+                        morning1{"am Morge"}
+                        night1{"znacht"}
+                    }
+                }
+                stand-alone{
+                    wide{
+                        afternoon1{"Mittag"}
+                        afternoon2{"Namittag"}
+                        am{"Vormittag"}
+                        evening1{"Aabig"}
+                        midnight{"Mitternacht"}
+                        morning1{"Morge"}
+                        night1{"Nacht"}
+                        pm{"Namittag"}
                     }
                 }
             }

@@ -5,15 +5,17 @@
 #include "src/builtins/builtins-iterator-gen.h"
 #include "src/builtins/growable-fixed-array-gen.h"
 
+#include "src/builtins/builtins-collections-gen.h"
 #include "src/builtins/builtins-string-gen.h"
 #include "src/builtins/builtins-utils-gen.h"
 #include "src/builtins/builtins.h"
-#include "src/code-stub-assembler.h"
+#include "src/codegen/code-stub-assembler.h"
 #include "src/heap/factory-inl.h"
 
 namespace v8 {
 namespace internal {
 
+using IteratorRecord = TorqueStructIteratorRecord;
 using compiler::Node;
 
 TNode<Object> IteratorBuiltinsAssembler::GetIteratorMethod(Node* context,
@@ -73,7 +75,7 @@ IteratorRecord IteratorBuiltinsAssembler::GetIterator(Node* context,
   }
 }
 
-Node* IteratorBuiltinsAssembler::IteratorStep(
+TNode<JSReceiver> IteratorBuiltinsAssembler::IteratorStep(
     Node* context, const IteratorRecord& iterator, Label* if_done,
     Node* fast_iterator_result_map, Label* if_exception, Variable* exception) {
   DCHECK_NOT_NULL(if_done);
@@ -123,23 +125,21 @@ Node* IteratorBuiltinsAssembler::IteratorStep(
   }
 
   BIND(&return_result);
-  return result;
+  return CAST(result);
 }
 
-Node* IteratorBuiltinsAssembler::IteratorValue(Node* context, Node* result,
-                                               Node* fast_iterator_result_map,
-                                               Label* if_exception,
-                                               Variable* exception) {
-  CSA_ASSERT(this, IsJSReceiver(result));
-
+TNode<Object> IteratorBuiltinsAssembler::IteratorValue(
+    TNode<Context> context, TNode<JSReceiver> result,
+    base::Optional<TNode<Map>> fast_iterator_result_map, Label* if_exception,
+    Variable* exception) {
   Label exit(this);
-  VARIABLE(var_value, MachineRepresentation::kTagged);
-  if (fast_iterator_result_map != nullptr) {
+  TVARIABLE(Object, var_value);
+  if (fast_iterator_result_map) {
     // Fast iterator result case:
     Label if_generic(this);
     Node* map = LoadMap(result);
-    GotoIfNot(WordEqual(map, fast_iterator_result_map), &if_generic);
-    var_value.Bind(LoadObjectField(result, JSIteratorResult::kValueOffset));
+    GotoIfNot(WordEqual(map, *fast_iterator_result_map), &if_generic);
+    var_value = LoadObjectField(result, JSIteratorResult::kValueOffset);
     Goto(&exit);
 
     BIND(&if_generic);
@@ -147,9 +147,10 @@ Node* IteratorBuiltinsAssembler::IteratorValue(Node* context, Node* result,
 
   // Generic iterator result case:
   {
-    Node* value = GetProperty(context, result, factory()->value_string());
+    TNode<Object> value =
+        GetProperty(context, result, factory()->value_string());
     GotoIfException(value, if_exception, exception);
-    var_value.Bind(value);
+    var_value = value;
     Goto(&exit);
   }
 
@@ -163,8 +164,7 @@ void IteratorBuiltinsAssembler::IteratorCloseOnException(
   // Perform ES #sec-iteratorclose when an exception occurs. This simpler
   // algorithm does not include redundant steps which are never reachable from
   // the spec IteratorClose algorithm.
-  DCHECK_NOT_NULL(if_exception);
-  DCHECK_NOT_NULL(exception);
+  DCHECK((if_exception != nullptr && exception != nullptr));
   CSA_ASSERT(this, IsNotTheHole(exception->value()));
   CSA_ASSERT(this, IsJSReceiver(iterator.object));
 
@@ -189,12 +189,13 @@ void IteratorBuiltinsAssembler::IteratorCloseOnException(
 }
 
 void IteratorBuiltinsAssembler::IteratorCloseOnException(
-    Node* context, const IteratorRecord& iterator, Variable* exception) {
+    Node* context, const IteratorRecord& iterator, TNode<Object> exception) {
   Label rethrow(this, Label::kDeferred);
-  IteratorCloseOnException(context, iterator, &rethrow, exception);
+  TVARIABLE(Object, exception_variable, exception);
+  IteratorCloseOnException(context, iterator, &rethrow, &exception_variable);
 
   BIND(&rethrow);
-  CallRuntime(Runtime::kReThrow, context, exception->value());
+  CallRuntime(Runtime::kReThrow, context, exception_variable.value());
   Unreachable();
 }
 
@@ -215,10 +216,10 @@ TNode<JSArray> IteratorBuiltinsAssembler::IterableToList(
   BIND(&loop_start);
   {
     //  a. Set next to ? IteratorStep(iteratorRecord).
-    TNode<Object> next = CAST(IteratorStep(context, iterator_record, &done));
+    TNode<JSReceiver> next = IteratorStep(context, iterator_record, &done);
     //  b. If next is not false, then
     //   i. Let nextValue be ? IteratorValue(next).
-    TNode<Object> next_value = CAST(IteratorValue(context, next));
+    TNode<Object> next_value = IteratorValue(context, next);
     //   ii. Append nextValue to the end of the List values.
     values.Push(next_value);
     Goto(&loop_start);
@@ -252,7 +253,7 @@ TF_BUILTIN(IterableToListMayPreserveHoles, IteratorBuiltinsAssembler) {
 
   Label slow_path(this);
 
-  GotoIfNot(IsFastJSArrayWithNoCustomIteration(iterable, context), &slow_path);
+  GotoIfNot(IsFastJSArrayWithNoCustomIteration(context, iterable), &slow_path);
 
   // The fast path will copy holes to the new array.
   TailCallBuiltin(Builtins::kCloneFastJSArray, context, iterable);
@@ -261,37 +262,86 @@ TF_BUILTIN(IterableToListMayPreserveHoles, IteratorBuiltinsAssembler) {
   TailCallBuiltin(Builtins::kIterableToList, context, iterable, iterator_fn);
 }
 
-// This builtin loads the property Symbol.iterator as the iterator, and has a
-// fast path for fast arrays and another one for strings. These fast paths will
-// only be taken if Symbol.iterator and the Iterator prototype are not modified
-// in a way that changes the original iteration behavior.
+void IteratorBuiltinsAssembler::FastIterableToList(
+    TNode<Context> context, TNode<Object> iterable,
+    TVariable<Object>* var_result, Label* slow) {
+  Label done(this), check_string(this), check_map(this), check_set(this);
+
+  GotoIfNot(
+      Word32Or(IsFastJSArrayWithNoCustomIteration(context, iterable),
+               IsFastJSArrayForReadWithNoCustomIteration(context, iterable)),
+      &check_string);
+
+  // Fast path for fast JSArray.
+  *var_result =
+      CallBuiltin(Builtins::kCloneFastJSArrayFillingHoles, context, iterable);
+  Goto(&done);
+
+  BIND(&check_string);
+  {
+    Label string_maybe_fast_call(this);
+    StringBuiltinsAssembler string_assembler(state());
+    string_assembler.BranchIfStringPrimitiveWithNoCustomIteration(
+        iterable, context, &string_maybe_fast_call, &check_map);
+
+    BIND(&string_maybe_fast_call);
+    TNode<IntPtrT> const length = LoadStringLengthAsWord(CAST(iterable));
+    // Use string length as conservative approximation of number of codepoints.
+    GotoIf(
+        IntPtrGreaterThan(length, IntPtrConstant(JSArray::kMaxFastArrayLength)),
+        slow);
+    *var_result = CallBuiltin(Builtins::kStringToList, context, iterable);
+    Goto(&done);
+  }
+
+  BIND(&check_map);
+  {
+    Label map_fast_call(this);
+    BranchIfIterableWithOriginalKeyOrValueMapIterator(
+        state(), iterable, context, &map_fast_call, &check_set);
+
+    BIND(&map_fast_call);
+    *var_result = CallBuiltin(Builtins::kMapIteratorToList, context, iterable);
+    Goto(&done);
+  }
+
+  BIND(&check_set);
+  {
+    Label set_fast_call(this);
+    BranchIfIterableWithOriginalValueSetIterator(state(), iterable, context,
+                                                 &set_fast_call, slow);
+
+    BIND(&set_fast_call);
+    *var_result =
+        CallBuiltin(Builtins::kSetOrSetIteratorToList, context, iterable);
+    Goto(&done);
+  }
+
+  BIND(&done);
+}
+
+// This builtin loads the property Symbol.iterator as the iterator, and has fast
+// paths for fast arrays, for primitive strings, for sets and set iterators, and
+// for map iterators. These fast paths will only be taken if Symbol.iterator and
+// the Iterator prototype are not modified in a way that changes the original
+// iteration behavior.
 // * In case of fast holey arrays, holes will be converted to undefined to
-// reflect iteration semantics. Note that replacement by undefined is only
-// correct when the NoElements protector is valid.
+//   reflect iteration semantics. Note that replacement by undefined is only
+//   correct when the NoElements protector is valid.
+// * In case of map/set iterators, there is an additional requirement that the
+//   iterator is not partially consumed. To be spec-compliant, after spreading
+//   the iterator is set to be exhausted.
 TF_BUILTIN(IterableToListWithSymbolLookup, IteratorBuiltinsAssembler) {
   TNode<Context> context = CAST(Parameter(Descriptor::kContext));
   TNode<Object> iterable = CAST(Parameter(Descriptor::kIterable));
 
-  Label slow_path(this), check_string(this);
+  Label slow_path(this);
 
   GotoIfForceSlowPath(&slow_path);
 
-  GotoIfNot(IsFastJSArrayWithNoCustomIteration(iterable, context),
-            &check_string);
-
-  // Fast path for fast JSArray.
-  TailCallBuiltin(Builtins::kCloneFastJSArrayFillingHoles, context, iterable);
-
-  BIND(&check_string);
-  {
-    StringBuiltinsAssembler string_assembler(state());
-    GotoIfNot(string_assembler.IsStringPrimitiveWithNoCustomIteration(iterable,
-                                                                      context),
-              &slow_path);
-
-    // Fast path for strings.
-    TailCallBuiltin(Builtins::kStringToList, context, iterable);
-  }
+  TVARIABLE(Object, var_result);
+  FastIterableToList(context, iterable, &var_result, &slow_path);
+  Return(var_result.value());
 
   BIND(&slow_path);
   {

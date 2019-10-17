@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  icupkg.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -501,10 +501,8 @@ main(int argc, char *argv[]) {
     }
 
     /* check dependencies between items */
-    if(!pkg->checkDependencies()) {
-        /* some dependencies are not fulfilled */
-        return U_MISSING_RESOURCE_ERROR;
-    }
+    // Still check the checkDependencies to output warning but not produce error
+    pkg->checkDependencies();
 
     /* write the output .dat package if there are any modifications */
     if(isModified) {

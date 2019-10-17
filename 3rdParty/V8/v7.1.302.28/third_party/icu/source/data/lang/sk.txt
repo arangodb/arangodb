@@ -44,8 +44,9 @@ sk{
         ar{"arabčina"}
         ar_001{"arabčina (moderná štandardná)"}
         arc{"aramejčina"}
-        arn{"araukánčina"}
+        arn{"mapudungun"}
         arp{"arapažština"}
+        ars{"arabčina (nadždská)"}
         arw{"arawačtina"}
         as{"ásamčina"}
         asa{"asu"}
@@ -169,6 +170,7 @@ sk{
         fr{"francúzština"}
         fr_CA{"francúzština (kanadská)"}
         fr_CH{"francúzština (švajčiarska)"}
+        frc{"francúzština (Cajun)"}
         frm{"stredná francúzština"}
         fro{"stará francúzština"}
         frr{"severná frízština"}
@@ -292,6 +294,7 @@ sk{
         ln{"lingalčina"}
         lo{"laoština"}
         lol{"mongo"}
+        lou{"kreolčina (Louisiana)"}
         loz{"lozi"}
         lrc{"severné luri"}
         lt{"litovčina"}
@@ -347,7 +350,7 @@ sk{
         nap{"neapolčina"}
         naq{"nama"}
         nb{"nórčina (bokmal)"}
-        nd{"severná ndebelčina"}
+        nd{"ndebelčina (severná)"}
         nds{"dolná nemčina"}
         nds_NL{"dolná saština"}
         ne{"nepálčina"}
@@ -364,8 +367,8 @@ sk{
         nog{"nogajčina"}
         non{"stará nórčina"}
         nqo{"n’ko"}
-        nr{"južná ndebelčina"}
-        nso{"severná sothčina"}
+        nr{"ndebelčina (južná)"}
+        nso{"sothčina (severná)"}
         nus{"nuer"}
         nv{"navaho"}
         nwc{"klasická nevárčina"}
@@ -429,7 +432,7 @@ sk{
         sco{"škótčina"}
         sd{"sindhčina"}
         sdh{"južná kurdčina"}
-        se{"severná lapončina"}
+        se{"saamčina (severná)"}
         see{"senekčina"}
         seh{"sena"}
         sel{"selkupčina"}
@@ -445,10 +448,10 @@ sk{
         sk{"slovenčina"}
         sl{"slovinčina"}
         sm{"samojčina"}
-        sma{"južná lapončina"}
-        smj{"lapončina (lulská)"}
-        smn{"lapončina (inarijská)"}
-        sms{"lapončina (skoltská)"}
+        sma{"saamčina (južná)"}
+        smj{"saamčina (lulská)"}
+        smn{"saamčina (inarijská)"}
+        sms{"saamčina (skoltská)"}
         sn{"šončina"}
         snk{"soninke"}
         so{"somálčina"}
@@ -459,7 +462,7 @@ sk{
         srr{"sererčina"}
         ss{"svazijčina"}
         ssy{"saho"}
-        st{"južná sothčina"}
+        st{"sothčina (južná)"}
         su{"sundčina"}
         suk{"sukuma"}
         sus{"susu"}
@@ -502,7 +505,7 @@ sk{
         twq{"tasawaq"}
         ty{"tahitčina"}
         tyv{"tuviančina"}
-        tzm{"stredomarocká tuaregčina"}
+        tzm{"tuaregčina (stredomarocká)"}
         udm{"udmurtčina"}
         ug{"ujgurčina"}
         uga{"ugaritčina"}
@@ -627,6 +630,7 @@ sk{
             indian{"Indický národný kalendár"}
             islamic{"islamský kalendár"}
             islamic-civil{"Islamský občiansky kalendár"}
+            islamic-umalqura{"islamský kalendár (Umm al-Qura)"}
             iso8601{"kalendár ISO 8601"}
             japanese{"japonský kalendár"}
             persian{"perzský kalendár"}
@@ -670,8 +674,10 @@ sk{
         }
         collation{
             big5han{"Tradičný čínsky Big5"}
+            compat{"predchádzajúce zoradenie, kompatibilita"}
             dictionary{"Usporiadanie slovníka"}
             ducet{"predvolené zoradenie unicode"}
+            eor{"európske zoradenie"}
             gb2312han{"Zjednodušený čínsky GB2312"}
             phonebook{"Lexikografické triedenie"}
             phonetic{"Fonetické radenie"}
@@ -685,8 +691,8 @@ sk{
             unihan{"Usporiadanie podľa znakov radikál"}
         }
         d0{
-            fwidth{"Celá šírka"}
-            hwidth{"Polovičná šírka"}
+            fwidth{"celá šírka"}
+            hwidth{"polovičná šírka"}
             npinyin{"Číslice"}
         }
         hc{
@@ -701,8 +707,8 @@ sk{
             strict{"presný štýl koncov riadka"}
         }
         m0{
-            bgn{"BGN"}
-            ungegn{"UNGEGN"}
+            bgn{"americká transliterácia BGN"}
+            ungegn{"medzinárodná transliterácia GEGN"}
         }
         ms{
             metric{"metrická sústava"}
@@ -755,7 +761,7 @@ sk{
     Variants{
         SCOTLAND{"škótska štandardná angličtina"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
         all{"{0} – všetko"}
         category-list{"{0}: {1}"}
@@ -767,10 +773,10 @@ sk{
         other{"{0} – ostatné"}
         scripts{"písma – {0}"}
         strokes{
-            few{"{0} údery"}
-            many{"{0} úderu"}
-            one{"{0} úder"}
-            other{"{0} úderov"}
+            few{"{0} ťahy"}
+            many{"{0} ťahu"}
+            one{"{0} ťah"}
+            other{"{0} ťahov"}
         }
     }
     codePatterns{

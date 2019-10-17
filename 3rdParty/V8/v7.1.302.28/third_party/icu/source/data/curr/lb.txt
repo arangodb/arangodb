@@ -612,6 +612,10 @@ lb{
         }
         MRO{
             "MRO",
+            "Mauretaneschen Ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauretaneschen Ouguiya",
         }
         MTL{
@@ -708,11 +712,11 @@ lb{
         }
         PEN{
             "PEN",
-            "Peruaneschen Neie Sol",
+            "Peruaneschen Sol",
         }
         PES{
             "PES",
-            "Peruanesche Sol (1863–1965)",
+            "Peruaneschen Sol (1863–1965)",
         }
         PGK{
             "PGK",
@@ -840,6 +844,10 @@ lb{
         }
         STD{
             "STD",
+            "São-toméeschen Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "São-toméeschen Dobra",
         }
         SUR{
@@ -956,6 +964,10 @@ lb{
         }
         VEF{
             "VEF",
+            "Venezolanesche Bolívar (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venezolanesche Bolívar",
         }
         VND{
@@ -1043,7 +1055,7 @@ lb{
             "Testwährung",
         }
         XXX{
-            "XXX",
+            "¤",
             "Onbekannt Währung",
         }
         YDD{
@@ -1729,6 +1741,10 @@ lb{
             other{"Macau-Pataca"}
         }
         MRO{
+            one{"Mauretaneschen Ouguiya (1973–2017)"}
+            other{"Mauretanesch Ouguiya (1973–2017)"}
+        }
+        MRU{
             one{"Mauretaneschen Ouguiya"}
             other{"Mauretanesch Ouguiya"}
         }
@@ -1825,11 +1841,11 @@ lb{
             other{"Peruanesch Inti"}
         }
         PEN{
-            one{"Peruaneschen Neie Sol"}
-            other{"Peruanesch Nei Soles"}
+            one{"Peruaneschen Sol"}
+            other{"Peruanesch Soles"}
         }
         PES{
-            one{"Peruanesche Sol (1863–1965)"}
+            one{"Peruaneschen Sol (1863–1965)"}
             other{"Peruanesch Soles (1863–1965)"}
         }
         PGK{
@@ -1957,6 +1973,10 @@ lb{
             other{"Südsudanesesch Pond"}
         }
         STD{
+            one{"São-toméeschen Dobra (1977–2017)"}
+            other{"São-toméesch Dobra (1977–2017)"}
+        }
+        STN{
             one{"São-toméeschen Dobra"}
             other{"São-toméesch Dobra"}
         }
@@ -2073,6 +2093,10 @@ lb{
             other{"Venezolanesch Bolívares (1871–2008)"}
         }
         VEF{
+            one{"Venezolanesche Bolívar (2008–2018)"}
+            other{"Venezolanesch Bolívares (2008–2018)"}
+        }
+        VES{
             one{"Venezolanesche Bolívar"}
             other{"Venezolanesch Bolívares"}
         }
@@ -2225,5 +2249,5 @@ lb{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
 }

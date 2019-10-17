@@ -3,6 +3,7 @@
 zh_Hant_HK{
     Keys{
         ms{"度量衡系統"}
+        x{"專用區"}
     }
     Languages{
         aa{"阿法爾文"}
@@ -45,22 +46,22 @@ zh_Hant_HK{
         mg{"馬拉加斯文"}
         ml{"馬拉雅拉姆文"}
         mt{"馬耳他文"}
-        nds_NL{"荷蘭低地德文"}
         nl_BE{"比利時荷蘭文"}
         nqo{"西非書面語言（N’ko）"}
         or{"奧里雅文"}
         pcm{"尼日利亞皮欽文"}
-        pt_BR{"巴西葡萄牙語"}
+        pt_BR{"巴西葡萄牙文"}
         pt_PT{"歐洲葡萄牙文"}
         ro_MD{"摩爾多瓦羅馬尼亞文"}
         rup{"阿羅馬尼亞語"}
         rw{"盧旺達文"}
-        sd{"信德語"}
         sl{"斯洛文尼亞文"}
         sn{"修納文"}
         so{"索馬里文"}
         sw_CD{"剛果史瓦希里文"}
+        syr{"敍利亞文"}
         ta{"泰米爾文"}
+        tn{"突尼西亞文"}
         to{"湯加文"}
         ur{"烏爾都文"}
         wbp{"瓦爾皮里文"}
@@ -78,7 +79,6 @@ zh_Hant_HK{
     }
     Scripts{
         Cyrl{"西里爾文"}
-        Deva{"梵文"}
         Ethi{"埃塞俄比亞文"}
         Geor{"格魯吉亞文"}
         Guru{"古木基文"}
@@ -88,15 +88,15 @@ zh_Hant_HK{
         Laoo{"老撾文"}
         Latn{"拉丁字母"}
         Mlym{"馬拉雅拉姆文"}
+        Newa{"尼瓦爾文"}
         Orya{"奧里雅文"}
         Sinh{"僧伽羅文"}
         Taml{"泰米爾文"}
         Thaa{"它拿字母"}
-        Tibt{"藏文"}
     }
     Types{
         calendar{
-            ethiopic{"埃及曆"}
+            ethiopic{"埃塞俄比亞曆"}
             ethiopic-amete-alem{"埃塞俄比亞阿美德阿萊姆曆"}
         }
         collation{
@@ -124,10 +124,12 @@ zh_Hant_HK{
     Variants{
         1901{"傳統德國拼字法"}
         1996{"1996 德國拼字法"}
+        ABL1943{"ABL1943"}
         REVISED{"已修訂拼字法"}
         SCOTLAND{"蘇格蘭標準英語"}
+        SOTAV{"SOTAV"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.86"}
     characterLabelPattern{
         enclosed{"{0} — 包含"}
         historic{"{0} — 舊式"}

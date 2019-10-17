@@ -141,7 +141,7 @@ kea{
         }
         GHC{
             "GHC",
-            "Sedi di Gana",
+            "Sedi di Gana (1979–2007)",
         }
         GMD{
             "GMD",
@@ -285,6 +285,10 @@ kea{
         }
         MRO{
             "MRO",
+            "Ougia (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ougia",
         }
         MUR{
@@ -393,7 +397,7 @@ kea{
         }
         SDP{
             "SDP",
-            "Libra sudanes antigu",
+            "Libra sudanes antigu (1957–1998)",
         }
         SEK{
             "SEK",
@@ -413,6 +417,10 @@ kea{
         }
         STD{
             "STD",
+            "Dobra di Sãu Tume i Prínsipi (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobra di Sãu Tume i Prínsipi",
         }
         SYP{
@@ -500,7 +508,7 @@ kea{
             "XPF",
         }
         XXX{
-            "XXX",
+            "¤",
             "Mueda diskonxedu",
         }
         YER{
@@ -521,7 +529,7 @@ kea{
         }
         ZWD{
             "ZWD",
-            "Dola di Zimbabue",
+            "Dola di Zimbabue (1980–2008)",
         }
     }
     Currencies%narrow{
@@ -647,6 +655,9 @@ kea{
             other{"Ariari di Madagaskar"}
         }
         MRO{
+            other{"Ougia (1973–2017)"}
+        }
+        MRU{
             other{"Ougia"}
         }
         MUR{
@@ -698,6 +709,9 @@ kea{
             other{"Xelin somalianu"}
         }
         STD{
+            other{"Dobra di Sãu Tume i Prinsipi (1977–2017)"}
+        }
+        STN{
             other{"Dobra di Sãu Tume i Prinsipi"}
         }
         SZL{
@@ -743,5 +757,5 @@ kea{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"2.1.27.46"}
+    Version{"2.1.48.9"}
 }

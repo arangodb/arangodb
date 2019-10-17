@@ -3,7 +3,6 @@
 sr_Latn_XK{
     Countries{
         CG{"Kongo"}
-        CI{"Obala Slonovače (Kot d’Ivoar)"}
         CV{"Kabo Verde"}
         CZ{"Češka Republika"}
         HK{"SAR Hongkong"}
@@ -11,12 +10,11 @@ sr_Latn_XK{
         MO{"SAR Makao"}
         PM{"Sveti Pjer i Mikelon"}
         RE{"Reunion"}
-        TL{"Timor-Leste (Istočni Timor)"}
         UM{"Manja udaljena ostrva SAD"}
         VC{"Sveti Vinsent i Grenadini"}
     }
     Countries%variant{
         MK{"BJR Makedonija"}
     }
-    Version{"2.1.29.33"}
+    Version{"2.1.47.82"}
 }

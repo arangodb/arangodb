@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 en{
-    Version{"2.1.30.50"}
+    Version{"2.1.48.65"}
     zoneStrings{
         "Africa:Sao_Tome"{
             ec{"São Tomé"}
@@ -18,14 +18,24 @@ en{
         "Antarctica:DumontDUrville"{
             ec{"Dumont d’Urville"}
         }
+        "Asia:Qostanay"{
+            ec{"Kostanay"}
+        }
         "Asia:Saigon"{
             ec{"Ho Chi Minh City"}
+        }
+        "Etc:UTC"{
+            ls{"Coordinated Universal Time"}
         }
         "Etc:Unknown"{
             ec{"Unknown City"}
         }
         "Europe:Dublin"{
             ld{"Irish Standard Time"}
+        }
+        "Europe:Kiev"{
+            ec{"Kiev"}
+            ec%formal{"Kyiv"}
         }
         "Europe:London"{
             ld{"British Summer Time"}
@@ -431,7 +441,7 @@ en{
             ls{"Krasnoyarsk Standard Time"}
         }
         "meta:Kyrgystan"{
-            ls{"Kyrgystan Time"}
+            ls{"Kyrgyzstan Time"}
         }
         "meta:Lanka"{
             ls{"Lanka Time"}
@@ -445,9 +455,9 @@ en{
             ls{"Lord Howe Standard Time"}
         }
         "meta:Macau"{
-            ld{"Macau Summer Time"}
-            lg{"Macau Time"}
-            ls{"Macau Standard Time"}
+            ld{"Macao Summer Time"}
+            lg{"Macao Time"}
+            ls{"Macao Standard Time"}
         }
         "meta:Macquarie"{
             ls{"Macquarie Island Time"}
@@ -488,9 +498,9 @@ en{
             ls{"Mexican Pacific Standard Time"}
         }
         "meta:Mongolia"{
-            ld{"Ulan Bator Summer Time"}
-            lg{"Ulan Bator Time"}
-            ls{"Ulan Bator Standard Time"}
+            ld{"Ulaanbaatar Summer Time"}
+            lg{"Ulaanbaatar Time"}
+            ls{"Ulaanbaatar Standard Time"}
         }
         "meta:Moscow"{
             ld{"Moscow Summer Time"}
@@ -594,7 +604,7 @@ en{
             ls{"Qyzylorda Standard Time"}
         }
         "meta:Reunion"{
-            ls{"Reunion Time"}
+            ls{"Réunion Time"}
         }
         "meta:Rothera"{
             ls{"Rothera Time"}

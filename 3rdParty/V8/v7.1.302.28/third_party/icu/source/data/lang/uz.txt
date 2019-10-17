@@ -12,6 +12,7 @@ uz{
         numbers{"raqamlar"}
     }
     Languages{
+        aa{"afar"}
         ab{"abxaz"}
         ace{"achin"}
         ada{"adangme"}
@@ -27,7 +28,7 @@ uz{
         anp{"angika"}
         ar{"arab"}
         ar_001{"standart arab"}
-        arn{"araukan"}
+        arn{"mapuche"}
         arp{"arapaxo"}
         as{"assam"}
         asa{"asu"}
@@ -37,6 +38,8 @@ uz{
         ay{"aymara"}
         az{"ozarbayjon"}
         ba{"boshqird"}
+        ban{"bali"}
+        bas{"basa"}
         be{"belarus"}
         bem{"bemba"}
         bez{"bena"}
@@ -53,11 +56,14 @@ uz{
         brx{"bodo"}
         bs{"bosniy"}
         bug{"bugi"}
+        byn{"blin"}
         ca{"katalan"}
         ce{"chechen"}
+        ceb{"sebuan"}
         cgg{"chiga"}
         ch{"chamorro"}
         chk{"chukot"}
+        chm{"mari"}
         cho{"choktav"}
         chr{"cheroki"}
         chy{"cheyenn"}
@@ -68,7 +74,7 @@ uz{
         cu{"slavyan (cherkov)"}
         cv{"chuvash"}
         cy{"valliy"}
-        da{"dat"}
+        da{"dan"}
         dak{"dakota"}
         dar{"dargva"}
         dav{"taita"}
@@ -77,10 +83,12 @@ uz{
         de_CH{"yuqori nemis (Shveytsariya)"}
         dgr{"dogrib"}
         dje{"zarma"}
-        dsb{"quyi sorbcha"}
+        dsb{"quyi sorb"}
         dua{"duala"}
+        dv{"divexi"}
         dyo{"diola-fogni"}
         dz{"dzongka"}
+        dzg{"dazag"}
         ebu{"embu"}
         ee{"eve"}
         efi{"efik"}
@@ -98,7 +106,9 @@ uz{
         es_MX{"ispan (Meksika)"}
         et{"estoncha"}
         eu{"bask"}
+        ewo{"evondo"}
         fa{"fors"}
+        ff{"fula"}
         fi{"fincha"}
         fil{"filipincha"}
         fj{"fiji"}
@@ -107,11 +117,13 @@ uz{
         fr{"fransuzcha"}
         fr_CA{"fransuz (Kanada)"}
         fr_CH{"fransuz (Shveytsariya)"}
+        fur{"friul"}
         fy{"g‘arbiy friz"}
         ga{"irland"}
         gaa{"ga"}
         gag{"gagauz"}
         gan{"gan"}
+        gd{"shotland-gel"}
         gez{"geez"}
         gil{"gilbert"}
         gl{"galisiy"}
@@ -125,8 +137,9 @@ uz{
         ha{"xausa"}
         hak{"hak"}
         haw{"gavaycha"}
-        he{"ibroniy"}
+        he{"ivrit"}
         hi{"hind"}
+        hil{"hiligaynon"}
         hmn{"xmong"}
         hr{"xorvat"}
         hsb{"yuqori sorb"}
@@ -171,7 +184,7 @@ uz{
         kkj{"kako"}
         kl{"grenland"}
         kln{"kalenjin"}
-        km{"xmercha"}
+        km{"xmer"}
         kmb{"kimbundu"}
         kn{"kannada"}
         ko{"koreyscha"}
@@ -229,7 +242,8 @@ uz{
         min{"minangkabau"}
         mk{"makedon"}
         ml{"malayalam"}
-        mn{"mo‘g‘ul"}
+        mn{"mongol"}
+        mni{"manipur"}
         moh{"mohauk"}
         mos{"mossi"}
         mr{"maratxi"}
@@ -254,23 +268,28 @@ uz{
         new{"nevar"}
         ng{"ndonga"}
         nia{"nias"}
-        nl{"golland"}
+        niu{"niue"}
+        nl{"niderland"}
         nl_BE{"flamand"}
         nmg{"kvasio"}
         nn{"norveg-nyunorsk"}
         nnh{"ngiyembun"}
         nog{"no‘g‘ay"}
         nqo{"nko"}
+        nr{"janubiy ndebel"}
         nso{"shimoliy soto"}
         nus{"nuer"}
         nv{"navaxo"}
+        ny{"cheva"}
         nyn{"nyankole"}
+        oc{"oksitan"}
         om{"oromo"}
         or{"oriya"}
         os{"osetin"}
         pa{"panjobcha"}
         pag{"pangasinan"}
         pam{"pampanga"}
+        pap{"papiyamento"}
         pau{"palau"}
         pcm{"kreol (Nigeriya)"}
         pl{"polyakcha"}
@@ -297,12 +316,13 @@ uz{
         sad{"sandave"}
         sah{"saxa"}
         saq{"samburu"}
+        sat{"santali"}
         sba{"ngambay"}
         sbp{"sangu"}
         sc{"sardin"}
         scn{"sitsiliya"}
         sco{"shotland"}
-        sd{"sindxi"}
+        sd{"sindhi"}
         sdh{"janubiy kurd"}
         se{"shimoliy saam"}
         seh{"sena"}
@@ -324,6 +344,8 @@ uz{
         sq{"alban"}
         sr{"serbcha"}
         srn{"sranan-tongo"}
+        ss{"svati"}
+        ssy{"saho"}
         st{"janubiy soto"}
         su{"sundan"}
         suk{"sukuma"}
@@ -331,6 +353,7 @@ uz{
         sw{"suaxili"}
         sw_CD{"suaxili (Kongo)"}
         swb{"qamar"}
+        syr{"suriyacha"}
         ta{"tamil"}
         te{"telugu"}
         tem{"timne"}
@@ -368,6 +391,8 @@ uz{
         vo{"volapyuk"}
         vun{"vunjo"}
         wa{"vallon"}
+        wae{"valis"}
+        wal{"volamo"}
         war{"varay"}
         wbp{"valbiri"}
         wo{"volof"}
@@ -456,7 +481,7 @@ uz{
             iso8601{"ISO-8601 taqvimi"}
             japanese{"yapon taqvimi"}
             persian{"fors taqvimi"}
-            roc{"xitoy taqvimi"}
+            roc{"Mingo taqvimi"}
         }
         cf{
             account{"moliyaviy valyuta formati"}
@@ -521,7 +546,7 @@ uz{
             tibt{"tibet raqamlari"}
         }
     }
-    Version{"2.1.29.44"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — hammasi"}
         category-list{"{0}: {1}"}

@@ -17,7 +17,7 @@ az{
         ace{"akin"}
         ach{"akoli"}
         ada{"adanqme"}
-        ady{"aduge"}
+        ady{"adıgey"}
         ae{"avestan"}
         af{"afrikaans"}
         afh{"afrihili"}
@@ -47,7 +47,7 @@ az{
         az_Arab{"cənubi azərbaycan"}
         ba{"başqırd"}
         bal{"baluc"}
-        ban{"balli"}
+        ban{"bali"}
         bas{"basa"}
         be{"belarus"}
         bej{"beja"}
@@ -66,7 +66,7 @@ az{
         br{"breton"}
         bra{"braj"}
         brx{"bodo"}
-        bs{"bosniak"}
+        bs{"bosniya"}
         bua{"buryat"}
         bug{"bugin"}
         byn{"blin"}
@@ -74,6 +74,7 @@ az{
         cad{"keddo"}
         car{"karib"}
         cch{"atsam"}
+        ccp{"Çakma"}
         ce{"çeçen"}
         ceb{"sebuan"}
         cgg{"çiqa"}
@@ -87,11 +88,12 @@ az{
         chp{"çipevyan"}
         chr{"çeroki"}
         chy{"çeyen"}
-        ckb{"soran"}
+        ckb{"Mərkəzi kürdcə"}
         co{"korsika"}
         cop{"kopt"}
         cr{"kri"}
         crh{"krım türkcəsi"}
+        crs{"Seyşel kreol fransızcası"}
         cs{"çex"}
         csb{"kaşubyan"}
         cu{"slavyan"}
@@ -116,7 +118,7 @@ az{
         dv{"maldiv"}
         dyo{"diola"}
         dyu{"dyula"}
-        dz{"dzonqa"}
+        dz{"dzonqxa"}
         dzg{"dazaqa"}
         ebu{"embu"}
         ee{"eve"}
@@ -171,7 +173,7 @@ az{
         goh{"qədim alman"}
         gon{"qondi"}
         gor{"qorontalo"}
-        got{"gotça"}
+        got{"qotika"}
         grb{"qrebo"}
         grc{"qədim yunan"}
         gsw{"İsveçrə almancası"}
@@ -373,6 +375,7 @@ az{
         pi{"pali"}
         pl{"polyak"}
         pon{"ponpey"}
+        prg{"pruss"}
         pro{"qədim provansal"}
         ps{"puştu"}
         pt{"portuqal"}
@@ -526,7 +529,7 @@ az{
     }
     Languages%short{
         az{"azəri"}
-        en_GB{"ingilis (B.K.)"}
+        en_GB{"ingilis (BK)"}
         en_US{"ingilis (ABŞ)"}
     }
     Scripts{
@@ -660,7 +663,7 @@ az{
         Zzzz{"tanınmayan yazı"}
     }
     Scripts%stand-alone{
-        Hans{"Sadələşdirilmiş Han"}
+        Hans{"Sadələşmiş Han"}
         Hant{"Ənənəvi Han"}
     }
     Types{
@@ -743,7 +746,7 @@ az{
             tibt{"Tibet Rəqəmləri"}
         }
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — Bütün"}
         category-list{"{0}: {1}"}

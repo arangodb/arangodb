@@ -4,6 +4,7 @@ dyo{
     AuxExemplarCharacters{"[z]"}
     ExemplarCharacters{"[a á b c d e é f g h i í j k l m n ñ ŋ o ó p q r s t u ú v w x y]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N Ñ Ŋ O P Q R S T U V W X Y]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -17,7 +18,7 @@ dyo{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

@@ -193,7 +193,7 @@ wae{
             latn{"Arabiši Zálä"}
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Sprač: {0}"}
         script{"Alfabét: {0}"}

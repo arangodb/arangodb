@@ -41,7 +41,7 @@
     'has_valgrind%': 0,
     'coverage%': 0,
     'v8_target_arch%': '<(target_arch)',
-    'v8_host_byteorder%': '<!<(PYTHON_EXECUTABLE) -c "import sys; print sys.byteorder")',
+    'v8_host_byteorder%': '<!<(PYTHON_EXECUTABLE) -c "import sys; print sys.byteorder ")',
     'force_dynamic_crt%': 0,
 
     # Setting 'v8_can_use_vfp32dregs' to 'true' will cause V8 to use the VFP
@@ -135,10 +135,12 @@
     # Indicates if gcmole tools are downloaded by a hook.
     'gcmole%': 0,
   },
+
+  # [GYP] this needs to be outside of the top level 'variables'
   'conditions': [
     ['host_arch=="ia32" or host_arch=="x64" or \
       host_arch=="ppc" or host_arch=="ppc64" or \
-      host_arch=="s390" or host_arch=="s390x" or \
+      host_arch=="s390x" or \
       clang==1', {
       'variables': {
         'host_cxx_is_biarch%': 1,
@@ -149,7 +151,7 @@
       },
     }],
     ['target_arch=="ia32" or target_arch=="x64" or \
-      target_arch=="ppc" or target_arch=="ppc64" or target_arch=="s390" or \
+      target_arch=="ppc" or target_arch=="ppc64" or \
       target_arch=="s390x" or clang==1', {
       'variables': {
         'target_cxx_is_biarch%': 1,
@@ -161,7 +163,17 @@
     }],
   ],
   'target_defaults': {
+    'include_dirs': [
+      '<(V8_ROOT)',
+      '<(V8_ROOT)/include',
+    ],
     'conditions': [
+      ['clang', {
+        'cflags': [ '-Werror', '-Wno-unknown-pragmas' ],
+      },{
+        'cflags!': [ '-Wall', '-Wextra' ],
+        'cflags': [ '-Wno-return-type' ],
+      }],
       ['v8_target_arch=="arm"', {
         'defines': [
           'V8_TARGET_ARCH_ARM',
@@ -290,7 +302,7 @@
           'V8_TARGET_ARCH_ARM64',
         ],
       }],
-      ['v8_target_arch=="s390" or v8_target_arch=="s390x"', {
+      ['v8_target_arch=="s390x"', {
         'defines': [
           'V8_TARGET_ARCH_S390',
         ],
@@ -308,7 +320,7 @@
             'cflags': [ '-march=z196' ],
           }],
           ],
-      }],  # s390
+      }],  # s390x
       ['v8_target_arch=="ppc" or v8_target_arch=="ppc64"', {
         'defines': [
           'V8_TARGET_ARCH_PPC',
@@ -996,6 +1008,7 @@
       ['OS=="win"', {
         'defines': [
           'WIN32',
+          'NOMINMAX',  # Refs: https://chromium-review.googlesource.com/c/v8/v8/+/1456620
         ],
         # 4351: VS 2005 and later are warning us that they've fixed a bug
         #       present in VS 2003 and earlier.
@@ -1032,13 +1045,13 @@
          or OS=="netbsd" or OS=="mac" or OS=="android" or OS=="qnx") and \
         (v8_target_arch=="arm" or v8_target_arch=="ia32" or \
          v8_target_arch=="mips" or v8_target_arch=="mipsel" or \
-         v8_target_arch=="ppc" or v8_target_arch=="s390")', {
+         v8_target_arch=="ppc")', {
         'target_conditions': [
           ['_toolset=="host"', {
             'conditions': [
               ['host_cxx_is_biarch==1', {
                 'conditions': [
-                  ['host_arch=="s390" or host_arch=="s390x"', {
+                  ['host_arch=="s390x"', {
                     'cflags': [ '-m31' ],
                     'ldflags': [ '-m31' ]
                   },{
@@ -1056,7 +1069,7 @@
             'conditions': [
               ['target_cxx_is_biarch==1', {
                 'conditions': [
-                  ['host_arch=="s390" or host_arch=="s390x"', {
+                  ['host_arch=="s390x"', {
                     'cflags': [ '-m31' ],
                     'ldflags': [ '-m31' ]
                   },{
@@ -1084,7 +1097,7 @@
               }],
              ],
            }],
-           ['_toolset=="target"', {
+          ['_toolset=="target"', {
              'conditions': [
                ['target_cxx_is_biarch==1', {
                  'cflags': [ '-m64' ],
@@ -1394,19 +1407,19 @@
       },  # Release
     },  # configurations
     'msvs_disabled_warnings': [
+      4129,  # unrecognized character escape sequence (torque-generated)
       4245,  # Conversion with signed/unsigned mismatch.
       4267,  # Conversion with possible loss of data.
       4324,  # Padding structure due to alignment.
+      # 4351, # [refack] Old issue with array init.
+      4355,  # 'this' used in base member initializer list
+      4661,  # no suitable definition provided for explicit template instantiation request
       4701,  # Potentially uninitialized local variable.
       4702,  # Unreachable code.
       4703,  # Potentially uninitialized local pointer variable.
       4709,  # Comma operator within array index expr (bugged).
-      4714,  # Function marked forceinline not inlined.
-
-      # MSVC assumes that control can get past an exhaustive switch and then
-      # warns if there's no return there (see https://crbug.com/v8/7658)
-      4715,  # Not all control paths return a value.
-
+      # 4714,  # Function marked forceinline not inlined.
+      4715,  # Not all control paths return a value. (see https://crbug.com/v8/7658)
       4718,  # Recursive call has no side-effect.
       4723,  # https://crbug.com/v8/7771
       4724,  # https://crbug.com/v8/7771

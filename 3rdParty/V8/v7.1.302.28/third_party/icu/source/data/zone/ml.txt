@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ml{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"അബിദ്‌ജാൻ‌"}
@@ -61,7 +61,7 @@ ml{
             ec{"ദിജിബൗട്ടി"}
         }
         "Africa:Douala"{
-            ec{"ഡൌല"}
+            ec{"ഡൗല"}
         }
         "Africa:El_Aaiun"{
             ec{"എൽ‌ ഐയുൻ‌"}
@@ -142,7 +142,7 @@ ml{
             ec{"നൗവാക്‌ഷോട്ട്"}
         }
         "Africa:Ouagadougou"{
-            ec{"ഔഗാദൌഗൌ"}
+            ec{"ഔഗാദൗഗൗ"}
         }
         "Africa:Porto-Novo"{
             ec{"പോർ‌ട്ടോ-നോവോ"}
@@ -349,7 +349,7 @@ ml{
             ec{"നോക്സ്, ഇൻഡ്യാന"}
         }
         "America:Indiana:Marengo"{
-            ec{"മരെങ്കോ, ഇൻഡ്യാനാ"}
+            ec{"മരെങ്കോ, ഇൻഡ്യാന"}
         }
         "America:Indiana:Petersburg"{
             ec{"പീറ്റേഴ്സ്ബർഗ്, ഇൻഡ്യാന"}
@@ -385,7 +385,7 @@ ml{
             ec{"ജൂനോ"}
         }
         "America:Kentucky:Monticello"{
-            ec{"മോണ്ടിസെല്ലോ, കെൻറക്കി"}
+            ec{"മോണ്ടിസെല്ലോ, കെന്റക്കി"}
         }
         "America:Kralendijk"{
             ec{"കാർലൻഡിജെക്ക്"}
@@ -507,6 +507,9 @@ ml{
         "America:Puerto_Rico"{
             ec{"പ്യൂർട്ടോ റിക്കോ"}
         }
+        "America:Punta_Arenas"{
+            ec{"പുന്റ അരീനസ്"}
+        }
         "America:Rainy_River"{
             ec{"റെയ്നി റിവർ"}
         }
@@ -529,10 +532,10 @@ ml{
             ec{"സാന്ത ഇസബേൽ"}
         }
         "America:Santarem"{
-            ec{"സാൻററെം"}
+            ec{"സാന്ററെം"}
         }
         "America:Santiago"{
-            ec{"സാൻറിയാഗോ"}
+            ec{"സാന്റിയാഗോ"}
         }
         "America:Santo_Domingo"{
             ec{"സാന്തോ ഡോമിംഗോ"}
@@ -559,13 +562,13 @@ ml{
             ec{"സെൻറ് ലൂസിയ"}
         }
         "America:St_Thomas"{
-            ec{"സെൻറ്. തോമസ്"}
+            ec{"സെന്റ് തോമസ്"}
         }
         "America:St_Vincent"{
-            ec{"സെൻറ് വിൻ‌സെൻറ്"}
+            ec{"സെന്റ് വിൻസെന്റ്"}
         }
         "America:Swift_Current"{
-            ec{"സ്വിഫ്റ്റ് കറൻറ്"}
+            ec{"സ്വിഫ്‌റ്റ് കറന്റ്"}
         }
         "America:Tegucigalpa"{
             ec{"ടെഗൂസിഗാൽപ"}
@@ -657,6 +660,9 @@ ml{
         "Asia:Ashgabat"{
             ec{"ആഷ്‌ഗാബട്ട്"}
         }
+        "Asia:Atyrau"{
+            ec{"അറ്റിറോ"}
+        }
         "Asia:Baghdad"{
             ec{"ബാഗ്‌ദാദ്"}
         }
@@ -707,6 +713,9 @@ ml{
         }
         "Asia:Dushanbe"{
             ec{"ദുഷൻ‌ബെ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ഫാമഗുസ്‌റ്റ"}
         }
         "Asia:Gaza"{
             ec{"ഗാസ"}
@@ -793,13 +802,16 @@ ml{
             ec{"ഫെനോം പെൻ"}
         }
         "Asia:Pontianak"{
-            ec{"പൊൻറിയാനക്"}
+            ec{"പൊന്റിയാനക്"}
         }
         "Asia:Pyongyang"{
             ec{"പ്യോംഗ്‌യാംഗ്"}
         }
         "Asia:Qatar"{
             ec{"ഖത്തർ"}
+        }
+        "Asia:Qostanay"{
+            ec{"കോസ്റ്റനേ"}
         }
         "Asia:Qyzylorda"{
             ec{"ഖിസിലോർഡ"}
@@ -835,7 +847,7 @@ ml{
             ec{"തായ്‌പെയ്"}
         }
         "Asia:Tashkent"{
-            ec{"താഷ്‌ക്കൻറ്"}
+            ec{"താഷ്‌ക്കന്റ്"}
         }
         "Asia:Tbilisi"{
             ec{"തിബിലിസി"}
@@ -941,6 +953,9 @@ ml{
         }
         "Australia:Sydney"{
             ec{"സിഡ്നി"}
+        }
+        "Etc:UTC"{
+            ls{"കോർഡിനേറ്റഡ് യൂണിവേഴ്‌സൽ ടൈം"}
         }
         "Etc:Unknown"{
             ec{"അജ്ഞാത നഗരം"}
@@ -1073,6 +1088,9 @@ ml{
         "Europe:Sarajevo"{
             ec{"സരയേവോ"}
         }
+        "Europe:Saratov"{
+            ec{"സരാറ്റോവ്"}
+        }
         "Europe:Simferopol"{
             ec{"സിംഫെറോപോൾ"}
         }
@@ -1161,7 +1179,7 @@ ml{
             ec{"ആപിയ"}
         }
         "Pacific:Auckland"{
-            ec{"ഓക്ക്‌‌ലാൻറ്"}
+            ec{"ഓക്ക്‌ലാന്റ്"}
         }
         "Pacific:Bougainville"{
             ec{"ബോഗൺവില്ലെ"}
@@ -1245,7 +1263,7 @@ ml{
             ec{"പിറ്റ്കയിൻ‌"}
         }
         "Pacific:Ponape"{
-            ec{"പൊനാപ്"}
+            ec{"പോൺപെ"}
         }
         "Pacific:Port_Moresby"{
             ec{"പോർട്ട് മോഴ്‌സ്ബൈ"}

@@ -7,6 +7,7 @@ yav{
         "y} ŋ {ŋg} o ó ò ô ǒ ō ɔ {ɔ\u0301} {ɔ\u0300} p s t u ú ù û ǔ ū v w y]"
     }
     ExemplarCharactersIndex{"[A B C D E Ɛ F H I K L M N Ŋ O Ɔ P S T U V W Y]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -21,7 +22,7 @@ yav{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

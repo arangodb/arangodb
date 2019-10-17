@@ -19,9 +19,9 @@ jgo{
             "Fɛlâŋ",
         }
         XXX{
-            "XXX",
+            "¤",
             "ntɛ-ŋkáp yi pɛ́ ká kɛ́ jínɛ",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

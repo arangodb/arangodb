@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
  ********************************************************************************
@@ -179,6 +179,7 @@ enum {
     OPT_SMALL,
     OPT_IGNORE_SISO_CHECK,
     OPT_QUIET,
+    OPT_SOURCEDIR,
 
     OPT_COUNT
 };
@@ -193,6 +194,7 @@ static UOption options[]={
     { "small", NULL, NULL, NULL, '\1', UOPT_NO_ARG, 0 },
     { "ignore-siso-check", NULL, NULL, NULL, '\1', UOPT_NO_ARG, 0 },
     UOPTION_QUIET,
+    UOPTION_SOURCEDIR,
 };
 
 int main(int argc, char* argv[])
@@ -230,7 +232,8 @@ int main(int argc, char* argv[])
             "\t-c or --copyright   include a copyright notice\n"
             "\t-d or --destdir     destination directory, followed by the path\n"
             "\t-v or --verbose     Turn on verbose output\n"
-            "\t-q or --quiet       do not display warnings and progress\n",
+            "\t-q or --quiet       do not display warnings and progress\n"
+            "\t-s or --sourcedir   source directory, followed by the path\n",
             argv[0]);
         fprintf(stdfile,
             "\t      --small       Generate smaller .cnv files. They will be\n"
@@ -282,10 +285,19 @@ int main(int argc, char* argv[])
 #endif
 
     UBool printFilename = (UBool) (argc > 2 || VERBOSE);
+    icu::CharString pathBuf;
     for (++argv; --argc; ++argv)
     {
         UErrorCode localError = U_ZERO_ERROR;
         const char *arg = getLongPathname(*argv);
+
+        const char* sourcedir = options[OPT_SOURCEDIR].value;
+        if (sourcedir != NULL && *sourcedir != 0 && uprv_strcmp(sourcedir, ".") != 0) {
+            pathBuf.clear();
+            pathBuf.appendPathPart(sourcedir, localError);
+            pathBuf.appendPathPart(arg, localError);
+            arg = pathBuf.data();
+        }
 
         /*produces the right destination path for display*/
         outFileName.truncate(outBasenameStart);

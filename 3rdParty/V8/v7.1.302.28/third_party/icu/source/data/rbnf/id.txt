@@ -4,8 +4,8 @@ id{
     RBNFRules{
         OrdinalRules{
             "%digits-ordinal:",
-            "-x: ke\u2212>#,##0>;",
-            "0: ke=#,##0=;",
+            "-x: \u2212ke->#,##0>;",
+            "0: ke-=#,##0=;",
         }
         SpelloutRules{
             "%spellout-numbering-year:",
@@ -45,5 +45,5 @@ id{
             "0: ke=%spellout-cardinal=;",
         }
     }
-    Version{"2.1.27.22"}
+    Version{"2.1.32.38"}
 }

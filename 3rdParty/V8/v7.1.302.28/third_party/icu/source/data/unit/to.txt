@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 to{
-    Version{"2.1.27.98"}
+    Version{"2.1.47.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -42,7 +42,7 @@ to{
         }
         area{
             acre{
-                dnam{"ʻeka ʻe"}
+                dnam{"ʻeka"}
                 other{"ʻeka ʻe {0}"}
             }
             hectare{
@@ -64,6 +64,7 @@ to{
             square-kilometer{
                 dnam{"kilomita sikuea"}
                 other{"kilomita sikuea ʻe {0}"}
+                per{"{0} ki he kilomita sikuea"}
             }
             square-meter{
                 dnam{"mita sikuea ʻe"}
@@ -72,6 +73,7 @@ to{
             square-mile{
                 dnam{"maile sikuea"}
                 other{"maile sikuea ʻe {0}"}
+                per{"{0}/mi²"}
             }
             square-yard{
                 dnam{"iate sikuea"}
@@ -117,9 +119,15 @@ to{
                 other{"maile ʻe {0} he kālani fakaʻemipaea"}
             }
         }
+        coordinate{
+            east{"hahake ʻe {0}"}
+            north{"tokelau ʻe {0}"}
+            south{"tonga ʻe {0}"}
+            west{"hihifo ʻe {0}"}
+        }
         digital{
             bit{
-                dnam{"ʻū piti"}
+                dnam{"piti"}
                 other{"piti ʻe {0}"}
             }
             byte{
@@ -223,11 +231,11 @@ to{
         }
         energy{
             calorie{
-                dnam{"ʻū kaloli"}
+                dnam{"kaloli"}
                 other{"kaloli ʻe {0}"}
             }
             foodcalorie{
-                dnam{"ʻū kaloli-kai"}
+                dnam{"kaloli-kai"}
                 other{"kaloli-kai ʻe {0}"}
             }
             joule{
@@ -423,16 +431,16 @@ to{
                 other{"hēkitopasikale ʻe {0}"}
             }
             inch-hg{
-                dnam{"ʻinisi mēkuli"}
-                other{"ʻinisi mēkuli ʻe {0}"}
+                dnam{"ʻinisi meakuli"}
+                other{"ʻinisi meakuli ʻe {0}"}
             }
             millibar{
                 dnam{"milipā"}
                 other{"milipā ʻe {0}"}
             }
             millimeter-of-mercury{
-                dnam{"milimita mēkuli"}
-                other{"milimita mēkuli ʻe {0}"}
+                dnam{"milimita meakuli"}
+                other{"milimita meakuli ʻe {0}"}
             }
             pound-per-square-inch{
                 dnam{"pāuni he ʻinisi sikuea"}
@@ -461,6 +469,10 @@ to{
             fahrenheit{
                 dnam{"tikili felenihaiti"}
                 other{"tikili felenihaiti ʻe {0}"}
+            }
+            generic{
+                dnam{"tikili"}
+                other{"tikili ʻe {0}"}
             }
             kelvin{
                 dnam{"kelevini"}
@@ -659,6 +671,12 @@ to{
             mile-per-gallon-imperial{
                 other{"{0}m/kāʻe"}
             }
+        }
+        coordinate{
+            east{"{0} ha"}
+            north{"{0} tk"}
+            south{"{0} to"}
+            west{"{0} hi"}
         }
         digital{
             bit{
@@ -1136,7 +1154,7 @@ to{
         }
         area{
             acre{
-                dnam{"ʻeka ʻe"}
+                dnam{"ʻek"}
                 other{"ʻek ʻe {0}"}
             }
             hectare{
@@ -1158,13 +1176,14 @@ to{
             square-kilometer{
                 dnam{"km²"}
                 other{"km² ʻe {0}"}
+                per{"{0}/km²"}
             }
             square-meter{
-                dnam{"mita sikuea ʻe"}
+                dnam{"m²"}
                 other{"m² ʻe {0}"}
             }
             square-mile{
-                dnam{"maile sikuea ʻe"}
+                dnam{"mi²"}
                 other{"mi² ʻe {0}"}
             }
             square-yard{
@@ -1211,13 +1230,19 @@ to{
                 other{"mi ʻe {0}/kāʻem"}
             }
         }
+        coordinate{
+            east{"ha ʻe {0}"}
+            north{"tk ʻe {0}"}
+            south{"to ʻe {0}"}
+            west{"hi ʻe {0}"}
+        }
         digital{
             bit{
                 dnam{"piti"}
                 other{"piti ʻe {0}"}
             }
             byte{
-                dnam{"ʻū paiti"}
+                dnam{"paiti"}
                 other{"paiti ʻe {0}"}
             }
             gigabit{
@@ -1243,6 +1268,9 @@ to{
             megabyte{
                 dnam{"mekapaiti"}
                 other{"MB ʻe {0}"}
+            }
+            petabyte{
+                other{"PB ʻe {0}"}
             }
             terabit{
                 dnam{"telapiti"}
@@ -1556,6 +1584,9 @@ to{
                 dnam{"°F"}
                 other{"°F ʻe {0}"}
             }
+            generic{
+                other{"° ʻe {0}"}
+            }
             kelvin{
                 dnam{"K"}
                 other{"K ʻe {0}"}
@@ -1630,6 +1661,7 @@ to{
             liter{
                 dnam{"l"}
                 other{"l ʻe {0}"}
+                per{"{0}/l"}
             }
             megaliter{
                 dnam{"Ml"}

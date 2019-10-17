@@ -31,6 +31,7 @@ zu{
         151{"i-Eastern Europe"}
         154{"i-Northern Europe"}
         155{"i-Western Europe"}
+        202{"Sub-Saharan Africa"}
         419{"i-Latin America"}
         AC{"i-Ascension Island"}
         AD{"i-Andorra"}
@@ -89,7 +90,7 @@ zu{
         CW{"i-Curaçao"}
         CX{"i-Christmas Island"}
         CY{"i-Cyprus"}
-        CZ{"i-Czech Republic"}
+        CZ{"i-Czechia"}
         DE{"i-Germany"}
         DG{"i-Diego Garcia"}
         DJ{"i-Djibouti"}
@@ -106,9 +107,10 @@ zu{
         ES{"i-Spain"}
         ET{"i-Ethiopia"}
         EU{"i-European Union"}
+        EZ{"EZ"}
         FI{"i-Finland"}
         FJ{"i-Fiji"}
-        FK{"i-Falkland Islands"}
+        FK{"i-Falkland Islands (Islas Malvinas)"}
         FM{"i-Micronesia"}
         FO{"i-Faroe Islands"}
         FR{"i-France"}
@@ -285,10 +287,12 @@ zu{
         VU{"i-Vanuatu"}
         WF{"i-Wallis ne-Futuna"}
         WS{"i-Samoa"}
+        XA{"Pseudo-Accents"}
+        XB{"Pseudo-Bidi"}
         XK{"i-Kosovo"}
         YE{"i-Yemen"}
         YT{"i-Mayotte"}
-        ZA{"i-South Africa"}
+        ZA{"iNingizimu Afrika"}
         ZM{"i-Zambia"}
         ZW{"iZimbabwe"}
         ZZ{"iSifunda esingaziwa"}
@@ -302,10 +306,10 @@ zu{
         CD{"i-Congo (DRC)"}
         CG{"i-Congo (Republic)"}
         CI{"i-Ivory Coast"}
-        CZ{"i-Czechia"}
-        FK{"i-Falkland Islands (Islas Malvinas)"}
+        CZ{"i-Czech Republic"}
         MK{"i-Macedonia (FYROM)"}
+        SZ{"SZ"}
         TL{"i-East Timor"}
     }
-    Version{"2.1.29.22"}
+    Version{"2.1.48.17"}
 }

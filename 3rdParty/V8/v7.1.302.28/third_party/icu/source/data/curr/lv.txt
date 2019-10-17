@@ -134,6 +134,10 @@ lv{
             "CLP",
             "Čīles peso",
         }
+        CNH{
+            "CNH",
+            "Ķīnas juaņa (ofšors)",
+        }
         CNY{
             "CN¥",
             "Ķīnas juaņs",
@@ -312,7 +316,7 @@ lv{
         }
         ISK{
             "ISK",
-            "Īslandes krona",
+            "Islandes krona",
         }
         ITL{
             "ITL",
@@ -440,6 +444,10 @@ lv{
         }
         MRO{
             "MRO",
+            "Mauritānijas ugija (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritānijas ugija",
         }
         MTL{
@@ -520,7 +528,7 @@ lv{
         }
         PEN{
             "PEN",
-            "Peru jaunais sols",
+            "Peru sols",
         }
         PGK{
             "PGK",
@@ -572,7 +580,7 @@ lv{
         }
         SAR{
             "SAR",
-            "Saūda riāls",
+            "Saūda Arābijas riāls",
         }
         SBD{
             "SBD",
@@ -628,6 +636,10 @@ lv{
         }
         STD{
             "STD",
+            "Santome un Prinsipi dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "Santome un Prinsipi dobra",
         }
         SVC{
@@ -712,6 +724,10 @@ lv{
         }
         VEF{
             "VEF",
+            "Venecuēlas bolivārs (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venecuēlas bolivārs",
         }
         VND{
@@ -795,7 +811,7 @@ lv{
             "Testa valūtas kods",
         }
         XXX{
-            "XXX",
+            "¤",
             "Nezināma valūta",
         }
         YER{
@@ -894,6 +910,7 @@ lv{
         PKR{"Rs"}
         PLN{"zł"}
         PYG{"₲"}
+        RON{"lei"}
         RUB{"₽"}
         RWF{"RF"}
         SBD{"$"}
@@ -902,7 +919,7 @@ lv{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
+        STN{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1083,6 +1100,11 @@ lv{
             other{"Čīles peso"}
             zero{"Čīles peso"}
         }
+        CNH{
+            one{"Ķīnas juaņa (ofšors)"}
+            other{"Ķīnas juaņas (ofšors)"}
+            zero{"Ķīnas juaņa (ofšors)"}
+        }
         CNY{
             one{"Ķīnas juaņs"}
             other{"Ķīnas juaņi"}
@@ -1259,9 +1281,9 @@ lv{
             zero{"Irānas riāli"}
         }
         ISK{
-            one{"Īslandes krona"}
-            other{"Īslandes kronas"}
-            zero{"Īslandes kronas"}
+            one{"Islandes krona"}
+            other{"Islandes kronas"}
+            zero{"Islandes kronas"}
         }
         JMD{
             one{"Jamaikas dolārs"}
@@ -1394,6 +1416,11 @@ lv{
             zero{"Makao patakas"}
         }
         MRO{
+            one{"Mauritānijas ugija (1973–2017)"}
+            other{"Mauritānijas ugijas (1973–2017)"}
+            zero{"Mauritānijas ugijas (1973–2017)"}
+        }
+        MRU{
             one{"Mauritānijas ugija"}
             other{"Mauritānijas ugijas"}
             zero{"Mauritānijas ugijas"}
@@ -1474,9 +1501,9 @@ lv{
             zero{"Panamas balboa"}
         }
         PEN{
-            one{"Peru jaunais sols"}
-            other{"Peru jaunie soli"}
-            zero{"Peru jaunie soli"}
+            one{"Peru sols"}
+            other{"Peru soli"}
+            zero{"Peru soli"}
         }
         PGK{
             one{"Papua-Jaungvinejas kina"}
@@ -1589,6 +1616,11 @@ lv{
             zero{"Dienvidsudānas mārciņas"}
         }
         STD{
+            one{"Santome un Prinsipi dobra (1977–2017)"}
+            other{"Santome un Prinsipi dobras (1977–2017)"}
+            zero{"Santome un Prinsipi dobras (1977–2017)"}
+        }
+        STN{
             one{"Santome un Prinsipi dobra"}
             other{"Santome un Prinsipi dobras"}
             zero{"Santome un Prinsipi dobras"}
@@ -1689,6 +1721,11 @@ lv{
             zero{"Venecuēlas bolivāri (1871–2008)"}
         }
         VEF{
+            one{"Venecuēlas bolivārs (2008–2018)"}
+            other{"Venecuēlas bolivāri (2008–2018)"}
+            zero{"Venecuēlas bolivāri (2008–2018)"}
+        }
+        VES{
             one{"Venecuēlas bolivārs"}
             other{"Venecuēlas bolivāri"}
             zero{"Venecuēlas bolivāri"}
@@ -1784,5 +1821,5 @@ lv{
         other{"{0} {1}"}
         zero{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.43"}
 }

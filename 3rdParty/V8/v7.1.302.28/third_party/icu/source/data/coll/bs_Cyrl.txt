@@ -5,7 +5,7 @@ bs_Cyrl{
     collations{
         standard{
             Sequence{"[import sr]"}
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

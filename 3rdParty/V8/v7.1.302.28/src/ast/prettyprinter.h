@@ -5,9 +5,10 @@
 #ifndef V8_AST_PRETTYPRINTER_H_
 #define V8_AST_PRETTYPRINTER_H_
 
-#include "src/allocation.h"
 #include "src/ast/ast.h"
 #include "src/base/compiler-specific.h"
+#include "src/utils/allocation.h"
+#include "src/objects/function-kind.h"
 
 namespace v8 {
 namespace internal {
@@ -59,8 +60,8 @@ class CallPrinter final : public AstVisitor<CallPrinter> {
  protected:
   void PrintLiteral(Handle<Object> value, bool quote);
   void PrintLiteral(const AstRawString* value, bool quote);
-  void FindStatements(ZonePtrList<Statement>* statements);
-  void FindArguments(ZonePtrList<Expression>* arguments);
+  void FindStatements(const ZonePtrList<Statement>* statements);
+  void FindArguments(const ZonePtrList<Expression>* arguments);
 };
 
 
@@ -98,10 +99,10 @@ class AstPrinter final : public AstVisitor<AstPrinter> {
   void PrintIndented(const char* txt);
   void PrintIndentedVisit(const char* s, AstNode* node);
 
-  void PrintStatements(ZonePtrList<Statement>* statements);
+  void PrintStatements(const ZonePtrList<Statement>* statements);
   void PrintDeclarations(Declaration::List* declarations);
   void PrintParameters(DeclarationScope* scope);
-  void PrintArguments(ZonePtrList<Expression>* arguments);
+  void PrintArguments(const ZonePtrList<Expression>* arguments);
   void PrintCaseClause(CaseClause* clause);
   void PrintLiteralIndented(const char* info, Literal* literal, bool quote);
   void PrintLiteralIndented(const char* info, const AstRawString* value,
@@ -112,8 +113,10 @@ class AstPrinter final : public AstVisitor<AstPrinter> {
                                     const AstRawString* value);
   void PrintLabelsIndented(ZonePtrList<const AstRawString>* labels,
                            const char* prefix = "");
-  void PrintObjectProperties(ZonePtrList<ObjectLiteral::Property>* properties);
-  void PrintClassProperties(ZonePtrList<ClassLiteral::Property>* properties);
+  void PrintObjectProperties(
+      const ZonePtrList<ObjectLiteral::Property>* properties);
+  void PrintClassProperties(
+      const ZonePtrList<ClassLiteral::Property>* properties);
 
   void inc_indent() { indent_++; }
   void dec_indent() { indent_--; }

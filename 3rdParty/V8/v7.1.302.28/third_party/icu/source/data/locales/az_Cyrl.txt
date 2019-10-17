@@ -4,11 +4,12 @@ az_Cyrl{
     %%Parent{"root"}
     AuxExemplarCharacters{"[ц щ ъ ь э ю я]"}
     ExemplarCharacters{"[а ә б в г ғ д е ж з и й ј к ҝ л м н о ө п р с т у ү ф х һ ч ҹ ш ы]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
-                accountingFormat{"¤ #,##0.00"}
-                currencyFormat{"¤ #,##0.00"}
+                accountingFormat{"#,##0.00 ¤"}
+                currencyFormat{"#,##0.00 ¤"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
             }
@@ -26,7 +27,7 @@ az_Cyrl{
             }
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -144,8 +145,8 @@ az_Cyrl{
                 MMM{"LLL"}
                 MMMEd{"d MMM, E"}
                 MMMMW{
-                    one{"MMM, W 'һәфтә'"}
-                    other{"MMM, W 'һәфтә'"}
+                    one{"MMMM, W 'һәфтә'"}
+                    other{"MMMM, W 'һәфтә'"}
                 }
                 MMMd{"d MMM"}
                 Md{"dd.MM"}
@@ -156,8 +157,8 @@ az_Cyrl{
                 yMMMd{"d MMM y"}
                 yMd{"dd.MM.y"}
                 yw{
-                    one{"y, w 'һәфтә'"}
-                    other{"y, w 'һәфтә'"}
+                    one{"Y, w 'һәфтә'"}
+                    other{"Y, w 'һәфтә'"}
                 }
             }
             dayNames{

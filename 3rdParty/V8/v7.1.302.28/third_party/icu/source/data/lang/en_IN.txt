@@ -4,7 +4,6 @@ en_IN{
     %%Parent{"en_001"}
     Languages{
         bn{"Bengali"}
-        or{"Oriya"}
     }
     Scripts{
         Beng{"Bengali"}
@@ -16,5 +15,5 @@ en_IN{
             orya{"Oriya Digits"}
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.49.14"}
 }

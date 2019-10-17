@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 nl{
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -507,6 +507,9 @@ nl{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -548,21 +551,6 @@ nl{
         }
         "America:St_Barthelemy"{
             ec{"Saint-Barthélemy"}
-        }
-        "America:St_Johns"{
-            ec{"St. John’s"}
-        }
-        "America:St_Kitts"{
-            ec{"St. Kitts"}
-        }
-        "America:St_Lucia"{
-            ec{"St. Lucia"}
-        }
-        "America:St_Thomas"{
-            ec{"St. Thomas"}
-        }
-        "America:St_Vincent"{
-            ec{"St. Vincent"}
         }
         "America:Swift_Current"{
             ec{"Swift Current"}
@@ -657,6 +645,9 @@ nl{
         "Asia:Ashgabat"{
             ec{"Asjchabad"}
         }
+        "Asia:Atyrau"{
+            ec{"Atıraw"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -688,7 +679,7 @@ nl{
             ec{"Chita"}
         }
         "Asia:Choibalsan"{
-            ec{"Choibalsan"}
+            ec{"Tsjojbalsan"}
         }
         "Asia:Colombo"{
             ec{"Colombo"}
@@ -707,6 +698,9 @@ nl{
         }
         "Asia:Dushanbe"{
             ec{"Doesjanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -942,6 +936,9 @@ nl{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Gecoördineerde wereldtijd"}
+        }
         "Etc:Unknown"{
             ec{"onbekende stad"}
         }
@@ -986,7 +983,7 @@ nl{
         }
         "Europe:Dublin"{
             ec{"Dublin"}
-            ld{"Ierse zomertijd"}
+            ld{"Ierse standaardtijd"}
         }
         "Europe:Gibraltar"{
             ec{"Gibraltar"}
@@ -1072,6 +1069,9 @@ nl{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratov"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1303,6 +1303,9 @@ nl{
             ld{"Alaska-zomertijd"}
             lg{"Alaska-tijd"}
             ls{"Alaska-standaardtijd"}
+            sd{"AKDT"}
+            sg{"AKT"}
+            ss{"AKST"}
         }
         "meta:Almaty"{
             ld{"Alma-Ata-zomertijd"}
@@ -1318,21 +1321,33 @@ nl{
             ld{"Central-zomertijd"}
             lg{"Central-tijd"}
             ls{"Central-standaardtijd"}
+            sd{"CDT"}
+            sg{"CT"}
+            ss{"CST"}
         }
         "meta:America_Eastern"{
             ld{"Eastern-zomertijd"}
             lg{"Eastern-tijd"}
             ls{"Eastern-standaardtijd"}
+            sd{"EDT"}
+            sg{"ET"}
+            ss{"EST"}
         }
         "meta:America_Mountain"{
             ld{"Mountain-zomertijd"}
             lg{"Mountain-tijd"}
             ls{"Mountain-standaardtijd"}
+            sd{"MDT"}
+            sg{"MT"}
+            ss{"MST"}
         }
         "meta:America_Pacific"{
             ld{"Pacific-zomertijd"}
             lg{"Pacific-tijd"}
             ls{"Pacific-standaardtijd"}
+            sd{"PDT"}
+            sg{"PT"}
+            ss{"PST"}
         }
         "meta:Anadyr"{
             ld{"Anadyr-zomertijd"}
@@ -1378,6 +1393,9 @@ nl{
             ld{"Atlantic-zomertijd"}
             lg{"Atlantic-tijd"}
             ls{"Atlantic-standaardtijd"}
+            sd{"ADT"}
+            sg{"AT"}
+            ss{"AST"}
         }
         "meta:Australia_Central"{
             ld{"Midden-Australische zomertijd"}
@@ -1542,9 +1560,10 @@ nl{
         }
         "meta:GMT"{
             ls{"Greenwich Mean Time"}
+            ss{"GMT"}
         }
         "meta:Galapagos"{
-            ls{"Galapagoseilandse tijd"}
+            ls{"Galapagoseilandse standaardtijd"}
         }
         "meta:Gambier"{
             ls{"Gambiereilandse tijd"}
@@ -1580,6 +1599,9 @@ nl{
             ld{"Hawaii-Aleoetische zomertijd"}
             lg{"Hawaii-Aleoetische tijd"}
             ls{"Hawaii-Aleoetische standaardtijd"}
+            sd{"HADT"}
+            sg{"HAT"}
+            ss{"HAST"}
         }
         "meta:Hong_Kong"{
             ld{"Hongkongse zomertijd"}

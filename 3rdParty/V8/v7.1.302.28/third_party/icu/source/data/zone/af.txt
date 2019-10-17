@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 af{
-    Version{"2.1.29.44"}
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -472,13 +472,13 @@ af{
             ec{"Noronha"}
         }
         "America:North_Dakota:Beulah"{
-            ec{"Beulah, North Dakota"}
+            ec{"Beulah, Noord-Dakota"}
         }
         "America:North_Dakota:Center"{
-            ec{"Center, North Dakota"}
+            ec{"Center, Noord-Dakota"}
         }
         "America:North_Dakota:New_Salem"{
-            ec{"New Salem, North Dakota"}
+            ec{"New Salem, Noord-Dakota"}
         }
         "America:Ojinaga"{
             ec{"Ojinaga"}
@@ -507,8 +507,11 @@ af{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
-            ec{"Rainy River"}
+            ec{"Rainyrivier"}
         }
         "America:Rankin_Inlet"{
             ec{"Rankin Inlet"}
@@ -631,7 +634,7 @@ af{
             ec{"Troll"}
         }
         "Antarctica:Vostok"{
-            ec{"Vostok"}
+            ec{"Wostok"}
         }
         "Arctic:Longyearbyen"{
             ec{"Longyearbyen"}
@@ -656,6 +659,9 @@ af{
         }
         "Asia:Ashgabat"{
             ec{"Asjchabad"}
+        }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
         }
         "Asia:Baghdad"{
             ec{"Bagdad"}
@@ -703,10 +709,13 @@ af{
             ec{"Dili"}
         }
         "Asia:Dubai"{
-            ec{"Dubai"}
+            ec{"Doebai"}
         }
         "Asia:Dushanbe"{
             ec{"Dushanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -724,7 +733,7 @@ af{
             ec{"Irkutsk"}
         }
         "Asia:Jakarta"{
-            ec{"Jakarta"}
+            ec{"Djakarta"}
         }
         "Asia:Jayapura"{
             ec{"Jayapura"}
@@ -733,10 +742,10 @@ af{
             ec{"Jerusalem"}
         }
         "Asia:Kabul"{
-            ec{"Kabul"}
+            ec{"Kaboel"}
         }
         "Asia:Kamchatka"{
-            ec{"Kamchatka"}
+            ec{"Kamtsjatka"}
         }
         "Asia:Karachi"{
             ec{"Karatsji"}
@@ -748,10 +757,10 @@ af{
             ec{"Khandyga"}
         }
         "Asia:Krasnoyarsk"{
-            ec{"Krasnoyarsk"}
+            ec{"Krasnojarsk"}
         }
         "Asia:Kuala_Lumpur"{
-            ec{"Kuala Lumpur"}
+            ec{"Koeala-Loempoer"}
         }
         "Asia:Kuching"{
             ec{"Kuching"}
@@ -787,7 +796,7 @@ af{
             ec{"Omsk"}
         }
         "Asia:Oral"{
-            ec{"Oeral"}
+            ec{"Oral"}
         }
         "Asia:Phnom_Penh"{
             ec{"Phnom Penh"}
@@ -805,7 +814,7 @@ af{
             ec{"Qyzylorda"}
         }
         "Asia:Rangoon"{
-            ec{"Rangoen"}
+            ec{"Yangon"}
         }
         "Asia:Riyadh"{
             ec{"Riaad"}
@@ -847,13 +856,13 @@ af{
             ec{"Thimphu"}
         }
         "Asia:Tokyo"{
-            ec{"Tokyo"}
+            ec{"Tokio"}
         }
         "Asia:Tomsk"{
             ec{"Tomsk"}
         }
         "Asia:Ulaanbaatar"{
-            ec{"Ulaanbatar"}
+            ec{"Ulaanbaatar"}
         }
         "Asia:Urumqi"{
             ec{"Urumqi"}
@@ -865,7 +874,7 @@ af{
             ec{"Vientiane"}
         }
         "Asia:Vladivostok"{
-            ec{"Vladivostok"}
+            ec{"Wladiwostok"}
         }
         "Asia:Yakutsk"{
             ec{"Jakoetsk"}
@@ -901,7 +910,7 @@ af{
             ec{"Suid-Georgië"}
         }
         "Atlantic:St_Helena"{
-            ec{"St. Helena"}
+            ec{"Sint Helena"}
         }
         "Atlantic:Stanley"{
             ec{"Stanley"}
@@ -941,6 +950,9 @@ af{
         }
         "Australia:Sydney"{
             ec{"Sydney"}
+        }
+        "Etc:UTC"{
+            ls{"Gekoördineerde universele tyd"}
         }
         "Etc:Unknown"{
             ec{"Onbekende stad"}
@@ -1073,6 +1085,9 @@ af{
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
         }
+        "Europe:Saratov"{
+            ec{"Saratof"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopol"}
         }
@@ -1110,7 +1125,7 @@ af{
             ec{"Vilnius"}
         }
         "Europe:Volgograd"{
-            ec{"Volgograd"}
+            ec{"Wolgograd"}
         }
         "Europe:Warsaw"{
             ec{"Warskou"}
@@ -1131,7 +1146,7 @@ af{
             ec{"Chagos"}
         }
         "Indian:Christmas"{
-            ec{"Kers"}
+            ec{"Christmas"}
         }
         "Indian:Cocos"{
             ec{"Kokos"}
@@ -1272,10 +1287,10 @@ af{
             ec{"Wake"}
         }
         "Pacific:Wallis"{
-            ec{"Wallis"}
+            ec{"Mata-Utu"}
         }
         "meta:Afghanistan"{
-            ls{"Afghanistan-tyd"}
+            ls{"Afganistan-tyd"}
         }
         "meta:Africa_Central"{
             ls{"Sentraal-Afrika-tyd"}
@@ -1308,19 +1323,19 @@ af{
             ls{"Amasone-standaardtyd"}
         }
         "meta:America_Central"{
-            ld{"Sentrale dagligtyd"}
-            lg{"Sentrale tyd"}
-            ls{"Sentrale standaardtyd"}
+            ld{"Noord-Amerikaanse sentrale dagligtyd"}
+            lg{"Noord-Amerikaanse sentrale tyd"}
+            ls{"Noord-Amerikaanse sentrale standaardtyd"}
         }
         "meta:America_Eastern"{
-            ld{"Oostelike dagligtyd"}
-            lg{"Oostelike tyd"}
-            ls{"Oostelike standaardtyd"}
+            ld{"Noord-Amerikaanse oostelike dagligtyd"}
+            lg{"Noord-Amerikaanse oostelike tyd"}
+            ls{"Noord-Amerikaanse oostelike standaardtyd"}
         }
         "meta:America_Mountain"{
-            ld{"Berg-dagligtyd"}
-            lg{"Bergtyd"}
-            ls{"Berg-standaardtyd"}
+            ld{"Noord-Amerikaanse berg-dagligtyd"}
+            lg{"Noord-Amerikaanse bergtyd"}
+            ls{"Noord-Amerikaanse berg-standaardtyd"}
         }
         "meta:America_Pacific"{
             ld{"Pasifiese dagligtyd"}
@@ -1363,24 +1378,24 @@ af{
             ls{"Atlantiese standaardtyd"}
         }
         "meta:Australia_Central"{
-            ld{"Australiese sentrale dagligtyd"}
-            lg{"Sentraal-Australië-tyd"}
-            ls{"Australiese sentraal-standaardtyd"}
+            ld{"Sentraal-Australiese dagligtyd"}
+            lg{"Sentraal-Australiese tyd"}
+            ls{"Sentraal-Australiese standaardtyd"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"Australiese sentraal-Westelike dagligtyd"}
-            lg{"Australiese sentraal-Westelike tyd"}
-            ls{"Australiese sentraal-Westelike standaard-tyd"}
+            ld{"Sentraal-westelike Australiese dagligtyd"}
+            lg{"Sentraal-westelike Australiese tyd"}
+            ls{"Sentraal-westelike Australiese standaard-tyd"}
         }
         "meta:Australia_Eastern"{
-            ld{"Australiese Oostelike dagligtyd"}
+            ld{"Oostelike Australiese dagligtyd"}
             lg{"Oostelike Australiese tyd"}
-            ls{"Australiese Oostelike standaardtyd"}
+            ls{"Oostelike Australiese standaardtyd"}
         }
         "meta:Australia_Western"{
-            ld{"Australiese Westelike dagligtyd"}
-            lg{"Westelike Australië-tyd"}
-            ls{"Australiese Westelike standaardtyd"}
+            ld{"Westelike Australiese dagligtyd"}
+            lg{"Westelike Australiese tyd"}
+            ls{"Westelike Australiese standaardtyd"}
         }
         "meta:Azerbaijan"{
             ld{"Aserbeidjan-somertyd"}
@@ -1404,9 +1419,9 @@ af{
             ls{"Bolivia-tyd"}
         }
         "meta:Brasilia"{
-            ld{"Brasilië somertyd"}
-            lg{"Brasilië-tyd"}
-            ls{"Brasilië-standaardtyd"}
+            ld{"Brasilia-somertyd"}
+            lg{"Brasilia-tyd"}
+            ls{"Brasilia-standaardtyd"}
         }
         "meta:Brunei"{
             ls{"Broenei Darussalam-tyd"}
@@ -1440,10 +1455,10 @@ af{
             ls{"Choibalsan-standaardtyd"}
         }
         "meta:Christmas"{
-            ls{"Kersfeeseiland-tyd"}
+            ls{"Christmaseiland-tyd"}
         }
         "meta:Cocos"{
-            ls{"Cocoseilande-tyd"}
+            ls{"Kokoseilande-tyd"}
         }
         "meta:Colombia"{
             ld{"Colombië-somertyd"}
@@ -1488,7 +1503,7 @@ af{
             ls{"Oos-Europese standaardtyd"}
         }
         "meta:Europe_Further_Eastern"{
-            ls{"Verder-oosterse Europese Tyd"}
+            ls{"Verder-oos-Europese tyd"}
         }
         "meta:Europe_Western"{
             ld{"Wes-Europese somertyd"}
@@ -1512,7 +1527,7 @@ af{
             ls{"Franse Suider- en Antarktiese tyd"}
         }
         "meta:GMT"{
-            ls{"Greenwich-mediaantyd"}
+            ls{"Greenwich-tyd"}
         }
         "meta:Galapagos"{
             ls{"Galapagos-tyd"}
@@ -1539,15 +1554,15 @@ af{
             ls{"Wes-Groenland-standaardtyd"}
         }
         "meta:Gulf"{
-            ls{"Golf-standaardtyd"}
+            ls{"Persiese Golf-standaardtyd"}
         }
         "meta:Guyana"{
             ls{"Guyana-tyd"}
         }
         "meta:Hawaii_Aleutian"{
-            ld{"Hawaii-Aleusiër-dagligtyd"}
-            lg{"Hawaii-Aleusiër-tyd"}
-            ls{"Hawaii-Aleusiër-standaardtyd"}
+            ld{"Hawaii-Aleoete-dagligtyd"}
+            lg{"Hawaii-Aleoete-tyd"}
+            ls{"Hawaii-Aleoete-standaardtyd"}
         }
         "meta:Hong_Kong"{
             ld{"Hongkong-somertyd"}
@@ -1569,7 +1584,7 @@ af{
             ls{"Indosjina-tyd"}
         }
         "meta:Indonesia_Central"{
-            ls{"Sentraal Indonesië-tyd"}
+            ls{"Sentraal-Indonesiese tyd"}
         }
         "meta:Indonesia_Eastern"{
             ls{"Oos-Indonesië-tyd"}
@@ -1671,9 +1686,9 @@ af{
             ls{"Meksikaanse Pasifiese standaardtyd"}
         }
         "meta:Mongolia"{
-            ld{"Ulaanbatar-somertyd"}
-            lg{"Ulaanbatar-tyd"}
-            ls{"Ulaanbatar-standaardtyd"}
+            ld{"Ulaanbaatar-somertyd"}
+            lg{"Ulaanbaatar-tyd"}
+            ls{"Ulaanbaatar-standaardtyd"}
         }
         "meta:Moscow"{
             ld{"Moskou-somertyd"}
@@ -1708,7 +1723,7 @@ af{
             ls{"Niue-tyd"}
         }
         "meta:Norfolk"{
-            ls{"Norfolkeilande-tyd"}
+            ls{"Norfolkeiland-tyd"}
         }
         "meta:Noronha"{
             ld{"Fernando de Noronha-somertyd"}
@@ -1769,7 +1784,7 @@ af{
             ls{"Pyongyang-tyd"}
         }
         "meta:Reunion"{
-            ls{"Reunion-tyd"}
+            ls{"Réunion-tyd"}
         }
         "meta:Rothera"{
             ls{"Rothera-tyd"}
@@ -1796,7 +1811,7 @@ af{
             ls{"Singapoer-standaardtyd"}
         }
         "meta:Solomon"{
-            ls{"Solomoneilande-tyd"}
+            ls{"Salomonseilande-tyd"}
         }
         "meta:South_Georgia"{
             ls{"Suid-Georgië-tyd"}
@@ -1856,17 +1871,17 @@ af{
             ls{"Venezuela-tyd"}
         }
         "meta:Vladivostok"{
-            ld{"Vladivostok-somertyd"}
-            lg{"Vladivostok-tyd"}
-            ls{"Vladivostok-standaardtyd"}
+            ld{"Wladiwostok-somertyd"}
+            lg{"Wladiwostok-tyd"}
+            ls{"Wladiwostok-standaardtyd"}
         }
         "meta:Volgograd"{
-            ld{"Volgograd-somertyd"}
-            lg{"Volgograd-tyd"}
-            ls{"Volgograd-standaardtyd"}
+            ld{"Wolgograd-somertyd"}
+            lg{"Wolgograd-tyd"}
+            ls{"Wolgograd-standaardtyd"}
         }
         "meta:Vostok"{
-            ls{"Vostok-tyd"}
+            ls{"Wostok-tyd"}
         }
         "meta:Wake"{
             ls{"Wake-eiland-tyd"}

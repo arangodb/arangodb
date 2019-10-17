@@ -12,6 +12,9 @@
 
 namespace v8 {
 namespace internal {
+
+class TickCounter;
+
 namespace compiler {
 
 // Forward declarations.
@@ -23,10 +26,11 @@ class TypeCache;
 
 class V8_EXPORT_PRIVATE SimplifiedLowering final {
  public:
-  SimplifiedLowering(JSGraph* jsgraph, JSHeapBroker* js_heap_broker, Zone* zone,
+  SimplifiedLowering(JSGraph* jsgraph, JSHeapBroker* broker, Zone* zone,
                      SourcePositionTable* source_position,
                      NodeOriginTable* node_origins,
-                     PoisoningMitigationLevel poisoning_level);
+                     PoisoningMitigationLevel poisoning_level,
+                     TickCounter* tick_counter);
   ~SimplifiedLowering() = default;
 
   void LowerAllNodes();
@@ -37,7 +41,6 @@ class V8_EXPORT_PRIVATE SimplifiedLowering final {
       Node* node, RepresentationSelector* selector);
   void DoJSToNumberOrNumericTruncatesToWord32(Node* node,
                                               RepresentationSelector* selector);
-  void DoShift(Node* node, Operator const* op, Type rhs_type);
   void DoIntegral32ToBit(Node* node);
   void DoOrderedNumberToBit(Node* node);
   void DoNumberToBit(Node* node);
@@ -48,9 +51,9 @@ class V8_EXPORT_PRIVATE SimplifiedLowering final {
 
  private:
   JSGraph* const jsgraph_;
-  JSHeapBroker* js_heap_broker_;
+  JSHeapBroker* broker_;
   Zone* const zone_;
-  TypeCache const& type_cache_;
+  TypeCache const* type_cache_;
   SetOncePointer<Node> to_number_code_;
   SetOncePointer<Node> to_number_convert_big_int_code_;
   SetOncePointer<Node> to_numeric_code_;
@@ -67,6 +70,8 @@ class V8_EXPORT_PRIVATE SimplifiedLowering final {
   NodeOriginTable* node_origins_;
 
   PoisoningMitigationLevel poisoning_level_;
+
+  TickCounter* const tick_counter_;
 
   Node* Float64Round(Node* const node);
   Node* Float64Sign(Node* const node);

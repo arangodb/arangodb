@@ -234,6 +234,10 @@ et{
             "CLP",
             "Tšiili peeso",
         }
+        CNH{
+            "CNH",
+            "Hiina jüaan (välismaine turg)",
+        }
         CNY{
             "CN¥",
             "Hiina jüaan",
@@ -609,6 +613,10 @@ et{
         }
         MRO{
             "MRO",
+            "Mauritaania ugia (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Mauritaania ugia",
         }
         MTL{
@@ -705,7 +713,7 @@ et{
         }
         PEN{
             "PEN",
-            "Peruu uus soll",
+            "Peruu soll",
         }
         PES{
             "PES",
@@ -837,6 +845,10 @@ et{
         }
         STD{
             "STD",
+            "São Tomé ja Príncipe dobra (1977–2017)",
+        }
+        STN{
+            "STN",
             "São Tomé ja Príncipe dobra",
         }
         SUR{
@@ -901,7 +913,7 @@ et{
         }
         TWD{
             "NT$",
-            "Taiwani dollar",
+            "uus Taiwani dollar",
         }
         TZS{
             "TZS",
@@ -953,6 +965,10 @@ et{
         }
         VEF{
             "VEF",
+            "Venezuela boliivar (2008–2018)",
+        }
+        VES{
+            "VES",
             "Venezuela boliivar",
         }
         VND{
@@ -1040,7 +1056,7 @@ et{
             "vääringute testkood",
         }
         XXX{
-            "XXX",
+            "¤",
             "määramata rahaühik",
         }
         YDD{
@@ -1097,7 +1113,6 @@ et{
         BND{"$"}
         BRL{"R$"}
         BSD{"$"}
-        BYN{"р."}
         BZD{"$"}
         CAD{"$"}
         CLP{"$"}
@@ -1356,6 +1371,10 @@ et{
         CLP{
             one{"Tšiili peeso"}
             other{"Tšiili peesot"}
+        }
+        CNH{
+            one{"Hiina jüaan (välismaine turg)"}
+            other{"Hiina jüaani (välismaine turg)"}
         }
         CNY{
             one{"Hiina jüaan"}
@@ -1722,6 +1741,10 @@ et{
             other{"Macau pataakat"}
         }
         MRO{
+            one{"Mauritaania ugia (1973–2017)"}
+            other{"Mauritaania ugiat (1973–2017)"}
+        }
+        MRU{
             one{"Mauritaania ugia"}
             other{"Mauritaania ugiat"}
         }
@@ -1814,8 +1837,8 @@ et{
             other{"Panama balboad"}
         }
         PEN{
-            one{"Peruu uus soll"}
-            other{"Peruu uut solli"}
+            one{"Peruu soll"}
+            other{"Peruu solli"}
         }
         PES{
             one{"Peruu soll (1863–1965)"}
@@ -1942,6 +1965,10 @@ et{
             other{"Lõuna-Sudaani naela"}
         }
         STD{
+            one{"São Tomé ja Príncipe dobra (1977–2017)"}
+            other{"São Tomé ja Príncipe dobrat (1977–2017)"}
+        }
+        STN{
             one{"São Tomé ja Príncipe dobra"}
             other{"São Tomé ja Príncipe dobrat"}
         }
@@ -2002,8 +2029,8 @@ et{
             other{"Trinidadi ja Tobago dollarit"}
         }
         TWD{
-            one{"Taiwani dollar"}
-            other{"Taiwani dollarit"}
+            one{"uus Taiwani dollar"}
+            other{"uut Taiwani dollarit"}
         }
         TZS{
             one{"Tansaania šilling"}
@@ -2042,6 +2069,10 @@ et{
             other{"Venezuela boliivarit (1871–2008)"}
         }
         VEF{
+            one{"Venezuela boliivar (2008–2018)"}
+            other{"Venezuela boliivarit (2008–2018)"}
+        }
+        VES{
             one{"Venezuela boliivar"}
             other{"Venezuela boliivarit"}
         }
@@ -2150,5 +2181,5 @@ et{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

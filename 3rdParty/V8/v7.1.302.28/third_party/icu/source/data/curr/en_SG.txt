@@ -8,5 +8,5 @@ en_SG{
             "Singapore Dollar",
         }
     }
-    Version{"2.1.29.54"}
+    Version{"2.1.47.70"}
 }

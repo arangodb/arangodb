@@ -11,12 +11,11 @@ sw_CD{
             }
         }
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.71"}
     calendar{
         generic{
             availableFormats{
                 MMMEd{"E d MMM"}
-                hms{"h:mm:ss a"}
                 ms{"m:ss"}
             }
         }

@@ -31,6 +31,7 @@ ca{
         151{"Europa oriental"}
         154{"Europa septentrional"}
         155{"Europa occidental"}
+        202{"Àfrica subsahariana"}
         419{"Amèrica Llatina"}
         AC{"Illa de l’Ascensió"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ ca{
         CW{"Curaçao"}
         CX{"Illa Christmas"}
         CY{"Xipre"}
-        CZ{"República Txeca"}
+        CZ{"Txèquia"}
         DE{"Alemanya"}
         DG{"Diego Garcia"}
         DJ{"Djibouti"}
@@ -106,9 +107,10 @@ ca{
         ES{"Espanya"}
         ET{"Etiòpia"}
         EU{"Unió Europea"}
+        EZ{"zona euro"}
         FI{"Finlàndia"}
         FJ{"Fiji"}
-        FK{"Illes Malvines"}
+        FK{"Illes Malvines (Illes Falkland)"}
         FM{"Micronèsia"}
         FO{"Illes Fèroe"}
         FR{"França"}
@@ -181,7 +183,7 @@ ca{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Illes Marshall"}
-        MK{"Macedònia"}
+        MK{"Macedònia del Nord"}
         ML{"Mali"}
         MM{"Myanmar (Birmània)"}
         MN{"Mongòlia"}
@@ -251,11 +253,11 @@ ca{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Síria"}
-        SZ{"Swazilàndia"}
+        SZ{"eSwatini"}
         TA{"Tristão da Cunha"}
         TC{"Illes Turks i Caicos"}
         TD{"Txad"}
-        TF{"Territoris Francesos del Sud"}
+        TF{"Territoris Australs Francesos"}
         TG{"Togo"}
         TH{"Tailàndia"}
         TJ{"Tadjikistan"}
@@ -285,6 +287,8 @@ ca{
         VU{"Vanuatu"}
         WF{"Wallis i Futuna"}
         WS{"Samoa"}
+        XA{"Pseudo-Accents"}
+        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Iemen"}
         YT{"Mayotte"}
@@ -301,9 +305,8 @@ ca{
     Countries%variant{
         CD{"Congo (República Democràtica del Congo)"}
         CG{"Congo (República del Congo)"}
-        CZ{"Txèquia"}
-        FK{"Illes Malvines (Illes Falkland)"}
-        MK{"Macedònia (Antiga República Iugoslava de Macedònia)"}
+        CZ{"República Txeca"}
+        SZ{"Swazilàndia"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

@@ -58,6 +58,7 @@ sq{
         bug{"buginezisht"}
         byn{"blinisht"}
         ca{"katalonisht"}
+        ccp{"çakmaisht"}
         ce{"çeçenisht"}
         ceb{"sebuanisht"}
         cgg{"çigisht"}
@@ -71,7 +72,7 @@ sq{
         co{"korsikisht"}
         crs{"frëngjishte kreole seselve"}
         cs{"çekisht"}
-        cu{"sllavishte kishe"}
+        cu{"sllavishte kishtare"}
         cv{"çuvashisht"}
         cy{"uellsisht"}
         da{"danisht"}
@@ -231,7 +232,7 @@ sq{
         men{"mendisht"}
         mer{"meruisht"}
         mfe{"morisjenisht"}
-        mg{"malagezisht"}
+        mg{"madagaskarisht"}
         mgh{"makua-mitoisht"}
         mgo{"metaisht"}
         mh{"marshallisht"}
@@ -284,7 +285,7 @@ sq{
         om{"oromoisht"}
         or{"odisht"}
         os{"osetisht"}
-        pa{"panxhabisht"}
+        pa{"punxhabisht"}
         pag{"pangasinanisht"}
         pam{"pampangaisht"}
         pap{"papiamentisht"}
@@ -307,7 +308,7 @@ sq{
         rof{"romboisht"}
         root{"rutisht"}
         ru{"rusisht"}
-        rup{"arumune"}
+        rup{"vllahisht"}
         rw{"kiniaruandisht"}
         rwk{"ruaisht"}
         sa{"sanskritisht"}
@@ -350,7 +351,7 @@ sq{
         suk{"sukumaisht"}
         sv{"suedisht"}
         sw{"suahilisht"}
-        sw_CD{"suahilishte kongoje"}
+        sw_CD{"suahilishte kongoleze"}
         swb{"kamorianisht"}
         syr{"siriakisht"}
         ta{"tamilisht"}
@@ -377,12 +378,12 @@ sq{
         twq{"tasavakisht"}
         ty{"tahitisht"}
         tyv{"tuvinianisht"}
-        tzm{"tamaziatishte atlase qendrore"}
+        tzm{"tamazajtisht e Atlasit Qendror"}
         udm{"udmurtisht"}
         ug{"ujgurisht"}
         uk{"ukrainisht"}
         umb{"umbunduisht"}
-        und{"e panjohur"}
+        und{"E panjohur"}
         ur{"urduisht"}
         uz{"uzbekisht"}
         vai{"vaisht"}
@@ -395,9 +396,9 @@ sq{
         wal{"ulajtaisht"}
         war{"uarajisht"}
         wbp{"uarlpirisht"}
-        wo{"ulufisht"}
+        wo{"uolofisht"}
         xal{"kalmikisht"}
-        xh{"kosaisht"}
+        xh{"xhosaisht"}
         xog{"sogisht"}
         yav{"jangbenisht"}
         ybb{"jembaisht"}
@@ -406,6 +407,8 @@ sq{
         yue{"kantonezisht"}
         zgh{"tamaziatishte standarde marokene"}
         zh{"kinezisht"}
+        zh_Hans{"kinezishte e thjeshtuar"}
+        zh_Hant{"kinezishte tradicionale"}
         zu{"zuluisht"}
         zun{"zunisht"}
         zxx{"nuk ka përmbajtje gjuhësore"}
@@ -472,7 +475,7 @@ sq{
             chinese{"kalendar kinez"}
             coptic{"Kalendari Koptik"}
             dangi{"kalendar dangi"}
-            ethiopic{"kalendar etiop"}
+            ethiopic{"kalendar etiopian"}
             ethiopic-amete-alem{"Kalendari Etiopas Amete Alem"}
             gregorian{"kalendar gregorian"}
             hebrew{"kalendar hebraik"}
@@ -484,7 +487,7 @@ sq{
             iso8601{"kalendar ISO-8601"}
             japanese{"kalendar japonez"}
             persian{"kalendar persian"}
-            roc{"kalendar minguoje (kinez)"}
+            roc{"kalendar minguo (i Republikës së Kinës)"}
         }
         cf{
             account{"format valutor llogaritës"}
@@ -524,7 +527,7 @@ sq{
             armnlow{"numra armenë të vegjël"}
             beng{"shifra bengali"}
             deva{"shifra devanagari"}
-            ethi{"numra etiopë"}
+            ethi{"numra etiopianë"}
             fullwide{"shifra me largësi të brendshme"}
             geor{"numra gjeorgjianë"}
             grek{"numra grekë"}
@@ -555,7 +558,7 @@ sq{
             tibt{"shifra tibetiane"}
         }
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
         all{"{0} — Të gjitha"}
         category-list{"{0}: {1}"}
@@ -573,7 +576,7 @@ sq{
     }
     codePatterns{
         language{"Gjuha: {0}"}
-        script{"Shkrimi: {0}"}
+        script{"Skripti: {0}"}
         territory{"Rajoni: {0}"}
     }
     localeDisplayPattern{

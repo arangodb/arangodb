@@ -31,6 +31,7 @@ es{
         151{"Europa oriental"}
         154{"Europa septentrional"}
         155{"Europa occidental"}
+        202{"África subsahariana"}
         419{"Latinoamérica"}
         AC{"Isla de la Ascensión"}
         AD{"Andorra"}
@@ -49,7 +50,7 @@ es{
         AW{"Aruba"}
         AX{"Islas Åland"}
         AZ{"Azerbaiyán"}
-        BA{"Bosnia-Herzegovina"}
+        BA{"Bosnia y Herzegovina"}
         BB{"Barbados"}
         BD{"Bangladés"}
         BE{"Bélgica"}
@@ -74,7 +75,7 @@ es{
         CC{"Islas Cocos"}
         CD{"República Democrática del Congo"}
         CF{"República Centroafricana"}
-        CG{"República del Congo"}
+        CG{"Congo"}
         CH{"Suiza"}
         CI{"Côte d’Ivoire"}
         CK{"Islas Cook"}
@@ -89,7 +90,7 @@ es{
         CW{"Curazao"}
         CX{"Isla de Navidad"}
         CY{"Chipre"}
-        CZ{"República Checa"}
+        CZ{"Chequia"}
         DE{"Alemania"}
         DG{"Diego García"}
         DJ{"Yibuti"}
@@ -106,9 +107,10 @@ es{
         ES{"España"}
         ET{"Etiopía"}
         EU{"Unión Europea"}
+        EZ{"zona euro"}
         FI{"Finlandia"}
         FJ{"Fiyi"}
-        FK{"Islas Malvinas"}
+        FK{"Islas Malvinas (Islas Falkland)"}
         FM{"Micronesia"}
         FO{"Islas Feroe"}
         FR{"Francia"}
@@ -117,7 +119,7 @@ es{
         GD{"Granada"}
         GE{"Georgia"}
         GF{"Guayana Francesa"}
-        GG{"Guernesey"}
+        GG{"Guernsey"}
         GH{"Ghana"}
         GI{"Gibraltar"}
         GL{"Groenlandia"}
@@ -181,7 +183,7 @@ es{
         MF{"San Martín"}
         MG{"Madagascar"}
         MH{"Islas Marshall"}
-        MK{"Macedonia"}
+        MK{"Macedonia del Norte"}
         ML{"Mali"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
@@ -251,7 +253,7 @@ es{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Siria"}
-        SZ{"Suazilandia"}
+        SZ{"Esuatini"}
         TA{"Tristán de Acuña"}
         TC{"Islas Turcas y Caicos"}
         TD{"Chad"}
@@ -272,6 +274,7 @@ es{
         UA{"Ucrania"}
         UG{"Uganda"}
         UM{"Islas menores alejadas de EE. UU."}
+        UN{"Naciones Unidas"}
         US{"Estados Unidos"}
         UY{"Uruguay"}
         UZ{"Uzbekistán"}
@@ -297,13 +300,12 @@ es{
         US{"EE. UU."}
     }
     Countries%variant{
-        CD{"Congo (República Democrática del Congo)"}
+        CD{"Congo (RDC)"}
         CG{"Congo (República)"}
         CI{"Costa de Marfil"}
-        CZ{"Chequia"}
-        FK{"Islas Malvinas (Islas Falkland)"}
-        MK{"Macedonia (ERYM)"}
+        CZ{"República Checa"}
+        SZ{"Suazilandia"}
         TL{"Timor Oriental"}
     }
-    Version{"2.1.28.80"}
+    Version{"2.1.49.82"}
 }

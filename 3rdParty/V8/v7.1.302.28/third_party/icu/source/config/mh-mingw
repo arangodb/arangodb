@@ -28,6 +28,10 @@ else
 STATICCPPFLAGS = -DU_STATIC_IMPLEMENTATION
 endif
 
+## ICU requires a minimum target of Windows 7, and MinGW does not set this by default.
+## https://msdn.microsoft.com/en-us/library/aa383745.aspx
+CPPFLAGS += -DWINVER=0x0601 -D_WIN32_WINNT=0x0601
+
 ## Flags for position independent code
 SHAREDLIBCFLAGS = 
 SHAREDLIBCXXFLAGS = 
@@ -37,6 +41,11 @@ SHAREDLIBCPPFLAGS = -DPIC
 THREADSCFLAGS = -mthreads
 THREADSCXXFLAGS = -mthreads
 LIBCPPFLAGS =
+
+## Add 'd' suffix to the names of binary files with Debug configuration
+ifeq ($(ENABLE_DEBUG),1)
+ICULIBSUFFIX:=$(ICULIBSUFFIX)d#M#
+endif
 
 # Commands to link. Link with C++ in case static libraries are used.
 LINK.c=       $(CXX) $(CXXFLAGS) $(LDFLAGS)

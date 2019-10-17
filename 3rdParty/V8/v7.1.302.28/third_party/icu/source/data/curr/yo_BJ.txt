@@ -22,6 +22,10 @@ yo_BJ{
             "BIF",
             "Faransi ti Orílɛ́ède Bùùrúndì",
         }
+        BRL{
+            "R$",
+            "Owó ti Orílɛ̀-èdè Brazil",
+        }
         BWP{
             "BWP",
             "Pula ti Orílɛ́ède Bɔ̀tìsúwánà",
@@ -66,9 +70,13 @@ yo_BJ{
             "ETB",
             "Biri ti Orílɛ́ède Eutopia",
         }
+        EUR{
+            "€",
+            "owó Yúrò",
+        }
         GBP{
             "£",
-            "Pɔɔn ti Orílɛ́ède Bírítísì",
+            "Pɔ́n-ùn ti Orilɛ̀-èdè Gɛ̀ɛ́sì",
         }
         GHC{
             "GHC",
@@ -120,6 +128,10 @@ yo_BJ{
         }
         MRO{
             "MRO",
+            "Ouguiya ti Orílɛ́ède Maritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Ouguiya ti Orílɛ́ède Maritania",
         }
         MUR{
@@ -140,7 +152,11 @@ yo_BJ{
         }
         NGN{
             "₦",
-            "Naira ti Orílɛ́ède Nàìjíríà",
+            "Náìrà ti Orílɛ̀-èdè Nàìjíríà",
+        }
+        RUB{
+            "₽",
+            "Owó ruble ti ilɛ̀ Rɔ́shíà",
         }
         RWF{
             "RWF",
@@ -166,13 +182,25 @@ yo_BJ{
             "SHP",
             "Pɔɔun ti Orílɛ́ède ̣Elena",
         }
+        SLL{
+            "SLL",
+            "Lioni",
+        }
         SOS{
             "SOS",
             "Sile ti Orílɛ́ède Somali",
         }
         STD{
             "STD",
+            "Dobira ti Orílɛ́ède Sao tome Ati Pirisipe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Dobira ti Orílɛ́ède Sao tome Ati Pirisipe",
+        }
+        SZL{
+            "SZL",
+            "Lilangeni",
         }
         TND{
             "TND",
@@ -187,8 +215,8 @@ yo_BJ{
             "Siile ti Orílɛ́ède Uganda",
         }
         USD{
-            "US$",
-            "Dɔla ti Orílɛ́ède Amerika",
+            "$",
+            "Dɔ́là",
         }
         XAF{
             "FCFA",
@@ -197,6 +225,10 @@ yo_BJ{
         XOF{
             "CFA",
             "Faransi ti Orílɛ́ède BIKEAO",
+        }
+        XXX{
+            "¤",
+            "owóníná àìmɔ̀",
         }
         ZAR{
             "ZAR",
@@ -215,5 +247,35 @@ yo_BJ{
             "Dɔla ti Orílɛ́ède Siibabuwe",
         }
     }
-    Version{"2.1.29.54"}
+    Currencies%narrow{
+        BRL{"R$"}
+        CNY{"¥"}
+        EUR{"€"}
+        GBP{"£"}
+        INR{"₹"}
+        JPY{"¥"}
+        RUB{"₽"}
+        USD{"$"}
+    }
+    CurrencyPlurals{
+        BRL{
+            other{"Awon owó ti Orílɛ̀-èdè Brazil"}
+        }
+        EUR{
+            other{"Awon owó Yúrò"}
+        }
+        RUB{
+            other{"Owó ruble ti ilɛ̀ Rɔ́shíà"}
+        }
+        USD{
+            other{"Dɔ́là ti Orílɛ̀-Èdè Amɛ́ríkà"}
+        }
+        XXX{
+            other{"owóníná àìmɔ̀"}
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.1.48.77"}
 }

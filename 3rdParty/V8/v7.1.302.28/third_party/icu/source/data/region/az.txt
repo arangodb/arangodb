@@ -31,6 +31,7 @@ az{
         151{"Şərqi Avropa"}
         154{"Şimali Avropa"}
         155{"Qərbi Avropa"}
+        202{"Saharadan cənub"}
         419{"Latın Amerikası"}
         AC{"Askenson adası"}
         AD{"Andorra"}
@@ -89,7 +90,7 @@ az{
         CW{"Kurasao"}
         CX{"Milad adası"}
         CY{"Kipr"}
-        CZ{"Çex Respublikası"}
+        CZ{"Çexiya"}
         DE{"Almaniya"}
         DG{"Dieqo Qarsiya"}
         DJ{"Cibuti"}
@@ -106,9 +107,10 @@ az{
         ES{"İspaniya"}
         ET{"Efiopiya"}
         EU{"Avropa Birliyi"}
+        EZ{"Avrozona"}
         FI{"Finlandiya"}
         FJ{"Fici"}
-        FK{"Folklend adaları"}
+        FK{"Folklend adaları (Malvin adaları)"}
         FM{"Mikroneziya"}
         FO{"Farer adaları"}
         FR{"Fransa"}
@@ -181,7 +183,7 @@ az{
         MF{"Sent Martin"}
         MG{"Madaqaskar"}
         MH{"Marşal adaları"}
-        MK{"Makedoniya"}
+        MK{"Şimali Makedoniya"}
         ML{"Mali"}
         MM{"Myanma"}
         MN{"Monqolustan"}
@@ -251,7 +253,7 @@ az{
         SV{"Salvador"}
         SX{"Sint-Marten"}
         SY{"Suriya"}
-        SZ{"Svazilend"}
+        SZ{"Esvatini"}
         TA{"Tristan da Kunya"}
         TC{"Törks və Kaykos adaları"}
         TD{"Çad"}
@@ -285,6 +287,8 @@ az{
         VU{"Vanuatu"}
         WF{"Uollis və Futuna"}
         WS{"Samoa"}
+        XA{"Psevdo-Aksent"}
+        XB{"Psevdo-Bidi"}
         XK{"Kosovo"}
         YE{"Yəmən"}
         YT{"Mayot"}
@@ -302,10 +306,9 @@ az{
         CD{"Konqo (KDR)"}
         CG{"Konqo (Respublika)"}
         CI{"Fil Dişi Sahili"}
-        CZ{"Çexiya"}
-        FK{"Folklend adaları (Malvin adaları)"}
-        MK{"Makedoniya (KYRM)"}
+        CZ{"Çex Respublikası"}
+        SZ{"Svazilend"}
         TL{"Doğu Timor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

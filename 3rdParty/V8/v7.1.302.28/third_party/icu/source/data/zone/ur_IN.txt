@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ur_IN{
-    Version{"2.1.27.79"}
+    Version{"2.1.47.71"}
     zoneStrings{
         "Africa:Accra"{
             ec{"اکرا"}
@@ -23,9 +23,6 @@ ur_IN{
         }
         "America:Thule"{
             ec{"تھولے"}
-        }
-        "Asia:Dubai"{
-            ec{"دبئی"}
         }
         "Europe:Budapest"{
             ec{"بوڈاپیسٹ"}

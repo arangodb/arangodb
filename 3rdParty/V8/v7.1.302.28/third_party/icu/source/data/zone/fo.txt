@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 fo{
-    Version{"2.1.28.76"}
+    Version{"2.1.48.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -148,7 +148,7 @@ fo{
             ec{"Porto-Novo"}
         }
         "Africa:Sao_Tome"{
-            ec{"Sao Tome"}
+            ec{"São Tomé"}
         }
         "Africa:Tripoli"{
             ec{"Tripoli"}
@@ -507,6 +507,9 @@ fo{
         "America:Puerto_Rico"{
             ec{"Puerto Riko"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -657,6 +660,9 @@ fo{
         "Asia:Ashgabat"{
             ec{"Ashgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Baghdad"}
         }
@@ -707,6 +713,9 @@ fo{
         }
         "Asia:Dushanbe"{
             ec{"Dushanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gasa"}
@@ -942,6 +951,9 @@ fo{
         "Australia:Sydney"{
             ec{"Sydney"}
         }
+        "Etc:UTC"{
+            ls{"Samskipað heimstíð"}
+        }
         "Etc:Unknown"{
             ec{"ókendur býur"}
         }
@@ -1073,6 +1085,9 @@ fo{
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
         }
+        "Europe:Saratov"{
+            ec{"Saratov"}
+        }
         "Europe:Simferopol"{
             ec{"Simferopol"}
         }
@@ -1095,7 +1110,7 @@ fo{
             ec{"Ulyanovsk"}
         }
         "Europe:Uzhgorod"{
-            ec{"Uzhgorod"}
+            ec{"Uzhhorod"}
         }
         "Europe:Vaduz"{
             ec{"Vaduz"}

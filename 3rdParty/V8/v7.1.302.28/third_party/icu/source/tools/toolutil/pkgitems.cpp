@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -8,7 +8,7 @@
 *
 *******************************************************************************
 *   file name:  pkgitems.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -305,7 +305,8 @@ ures_enumDependencies(const char *itemName,
                 break;
             }
             int32_t length;
-            const UChar *alias=res_getString(pResData, res, &length);
+            // No tracing: build tool
+            const UChar *alias=res_getStringNoTrace(pResData, res, &length);
             checkAlias(itemName, res, alias, length, useResSuffix, check, context, pErrorCode);
         }
         break;

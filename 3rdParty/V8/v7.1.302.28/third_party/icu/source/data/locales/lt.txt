@@ -2,11 +2,11 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 lt{
     AuxExemplarCharacters{
-        "[á à ã {ą\u0301} {ą\u0303} {ch} {dz} {dž} é è ẽ {ę\u0301} {ę\u0303} {ė\u0301"
-        "} {ė\u0303} {i\u0307\u0301}í {i\u0307\u0300}ì {i\u0307\u0303}ĩ {į\u0301}{į"
-        "\u0307\u0301} {į\u0303}{į\u0307\u0303} {j\u0303}{j\u0307\u0303} {l\u0303} {m"
-        "\u0303} ñ ó ò õ q {r\u0303} ú ù ũ {ų\u0301} {ų\u0303} {ū\u0301} {ū\u0303} w "
-        "x]"
+        "[á à ã {ą\u0301} {ą\u0303} {ch} {dz} {dž} é è ẽ {ę\u0301} {ę\u0303} {ė"
+        "\u0301} {ė\u0303} {i\u0307\u0301}í {i\u0307\u0300}ì {i\u0307\u0303}ĩ {į"
+        "\u0301}{į\u0307\u0301} {į\u0303}{į\u0307\u0303} {j\u0303}{j\u0307\u0303} {l"
+        "\u0303} {m\u0303} ñ ó ò õ q {r\u0303} ú ù ũ {ų\u0301} {ų\u0303} {ū\u0301} {ū"
+        "\u0303} w x]"
     }
     Ellipsis{
         final{"{0}…"}
@@ -18,19 +18,20 @@ lt{
     }
     ExemplarCharacters{"[a ą b c č d e ę ė f g h i į y j k l m n o p r s š t u ų ū v z ž]"}
     ExemplarCharactersIndex{"[A Ą B C Č D E Ę Ė F G H I Į Y J K L M N O P R S Š T U Ų Ū V Z Ž]"}
+    ExemplarCharactersNumbers{"[  , % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[\\- ‐ – — , ; \\: ! ? . … “ „ ( ) \\[ \\] \\{ \\}]"}
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                approximately{"~{0}"}
+                atLeast{"≥{0}"}
+                atMost{"≤{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
                 scientificFormat{"#E0"}
             }
@@ -265,24 +266,39 @@ lt{
                 exponential{"×10^"}
                 group{" "}
                 infinity{"∞"}
-                list{";"}
                 minusSign{"−"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
                 timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"{0}-ame posūkyje sukite į dešinę."}
+            }
+            plural{
+                few{"{0} obuoliai"}
+                many{"{0} obuolio"}
+                one{"{0} obuolys"}
+                other{"{0} obuolių"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     calendar{
         buddhist{
             eras{
                 abbreviated{
+                    "BE",
+                }
+                narrow{
+                    "BE",
+                }
+                wide{
                     "BE",
                 }
             }
@@ -304,18 +320,10 @@ lt{
                 "{1} {0}",
             }
             availableFormats{
-                Ed{"d, E"}
                 Gy{"U"}
                 GyMMM{"U MMM"}
                 GyMMMEd{"U MMM d, E"}
                 GyMMMd{"U MMM d"}
-                M{"L"}
-                MEd{"MM-dd, E"}
-                MMM{"LLL"}
-                MMMEd{"MMM d, E"}
-                MMMd{"MMM d"}
-                Md{"MM-dd"}
-                d{"d"}
                 y{"U"}
                 yMd{"y-MM-dd"}
                 yyyy{"U"}
@@ -329,24 +337,6 @@ lt{
                 yyyyQQQQ{"U QQQQ"}
             }
             cyclicNameSets{
-                dayParts{
-                    format{
-                        abbreviated{
-                            "zi",
-                            "chou",
-                            "yin",
-                            "mao",
-                            "chen",
-                            "si",
-                            "wu",
-                            "wei",
-                            "shen",
-                            "you",
-                            "xu",
-                            "hai",
-                        }
-                    }
-                }
                 solarTerms{
                     format{
                         abbreviated{
@@ -377,72 +367,6 @@ lt{
                         }
                     }
                 }
-                years{
-                    format{
-                        abbreviated{
-                            "jia-zi",
-                            "yi-chou",
-                            "bing-yin",
-                            "ding-mao",
-                            "wu-chen",
-                            "ji-si",
-                            "geng-wu",
-                            "xin-wei",
-                            "ren-shen",
-                            "gui-you",
-                            "jia-xu",
-                            "yi-hai",
-                            "bing-zi",
-                            "ding-chou",
-                            "wu-yin",
-                            "ji-mao",
-                            "geng-chen",
-                            "xin-si",
-                            "ren-wu",
-                            "gui-wei",
-                            "jia-shen",
-                            "yi-you",
-                            "bing-xu",
-                            "ding-hai",
-                            "wu-zi",
-                            "ji-chou",
-                            "geng-yin",
-                            "xin-mao",
-                            "ren-chen",
-                            "gui-si",
-                            "jia-wu",
-                            "yi-wei",
-                            "bing-shen",
-                            "ding-you",
-                            "wu-xu",
-                            "ji-hai",
-                            "geng-zi",
-                            "xin-chou",
-                            "ren-yin",
-                            "gui-mao",
-                            "jia-chen",
-                            "yi-si",
-                            "bing-wu",
-                            "ding-wei",
-                            "wu-shen",
-                            "ji-you",
-                            "geng-xu",
-                            "xin-hai",
-                            "ren-zi",
-                            "gui-chou",
-                            "jia-yin",
-                            "yi-mao",
-                            "bing-chen",
-                            "ding-si",
-                            "wu-wu",
-                            "ji-wei",
-                            "geng-shen",
-                            "xin-you",
-                            "ren-xu",
-                            "gui-hai",
-                        }
-                    }
-                }
                 zodiacs{
                     format{
                         abbreviated{
@@ -463,15 +387,9 @@ lt{
                 }
             }
             intervalFormats{
-                M{
-                    M{"MM–MM"}
-                }
                 MEd{
                     M{"MM-dd, E–MM-dd, E"}
                     d{"MM-dd, E–MM-dd, E"}
-                }
-                MMM{
-                    M{"LLL–LLL"}
                 }
                 MMMEd{
                     M{"MMM d, E–MMM d, E"}
@@ -479,17 +397,10 @@ lt{
                 }
                 MMMd{
                     M{"MMM d–MMM d"}
-                    d{"MMM d–d"}
                 }
                 Md{
                     M{"MM-dd–MM-dd"}
                     d{"MM-dd–MM-dd"}
-                }
-                d{
-                    d{"d–d"}
-                }
-                y{
-                    y{"U–U"}
                 }
                 yM{
                     M{"y-MM–y-MM"}
@@ -501,7 +412,6 @@ lt{
                     y{"y-MM-dd, E–y-MM-dd, E"}
                 }
                 yMMM{
-                    M{"U MMM–MMM"}
                     y{"U MMM–U MMM"}
                 }
                 yMMMEd{
@@ -510,12 +420,10 @@ lt{
                     y{"U MMM d, E–U MMM d, E"}
                 }
                 yMMMM{
-                    M{"U MMMM–MMMM"}
                     y{"U MMMM–U MMMM"}
                 }
                 yMMMd{
                     M{"U MMM d–MMM d"}
-                    d{"U MMM d–d"}
                     y{"U MMM d–U MMM d"}
                 }
                 yMd{
@@ -614,27 +522,14 @@ lt{
                     }
                 }
             }
-            monthPatterns{
-                format{
-                    wide{
-                        leap{"{0}bis"}
-                    }
-                }
-                numeric{
-                    all{
-                        leap{"{0}bis"}
-                    }
-                }
-                stand-alone{
-                    narrow{
-                        leap{"{0}b"}
-                    }
-                }
-            }
         }
         coptic{
             eras{
                 abbreviated{
+                    "ERA0",
+                    "ERA1",
+                }
+                narrow{
                     "ERA0",
                     "ERA1",
                 }
@@ -757,18 +652,10 @@ lt{
                 "{1} {0}",
             }
             availableFormats{
-                Ed{"d, E"}
                 Gy{"U"}
                 GyMMM{"U MMM"}
                 GyMMMEd{"U MMM d, E"}
                 GyMMMd{"U MMM d"}
-                M{"L"}
-                MEd{"MM-dd, E"}
-                MMM{"LLL"}
-                MMMEd{"MMM d, E"}
-                MMMd{"MMM d"}
-                Md{"MM-dd"}
-                d{"d"}
                 y{"U"}
                 yMd{"y-MM-dd"}
                 yyyy{"U"}
@@ -782,24 +669,6 @@ lt{
                 yyyyQQQQ{"U QQQQ"}
             }
             cyclicNameSets{
-                dayParts{
-                    format{
-                        abbreviated{
-                            "zi",
-                            "chou",
-                            "yin",
-                            "mao",
-                            "chen",
-                            "si",
-                            "wu",
-                            "wei",
-                            "shen",
-                            "you",
-                            "xu",
-                            "hai",
-                        }
-                    }
-                }
                 solarTerms{
                     format{
                         abbreviated{
@@ -830,72 +699,6 @@ lt{
                         }
                     }
                 }
-                years{
-                    format{
-                        abbreviated{
-                            "jia-zi",
-                            "yi-chou",
-                            "bing-yin",
-                            "ding-mao",
-                            "wu-chen",
-                            "ji-si",
-                            "geng-wu",
-                            "xin-wei",
-                            "ren-shen",
-                            "gui-you",
-                            "jia-xu",
-                            "yi-hai",
-                            "bing-zi",
-                            "ding-chou",
-                            "wu-yin",
-                            "ji-mao",
-                            "geng-chen",
-                            "xin-si",
-                            "ren-wu",
-                            "gui-wei",
-                            "jia-shen",
-                            "yi-you",
-                            "bing-xu",
-                            "ding-hai",
-                            "wu-zi",
-                            "ji-chou",
-                            "geng-yin",
-                            "xin-mao",
-                            "ren-chen",
-                            "gui-si",
-                            "jia-wu",
-                            "yi-wei",
-                            "bing-shen",
-                            "ding-you",
-                            "wu-xu",
-                            "ji-hai",
-                            "geng-zi",
-                            "xin-chou",
-                            "ren-yin",
-                            "gui-mao",
-                            "jia-chen",
-                            "yi-si",
-                            "bing-wu",
-                            "ding-wei",
-                            "wu-shen",
-                            "ji-you",
-                            "geng-xu",
-                            "xin-hai",
-                            "ren-zi",
-                            "gui-chou",
-                            "jia-yin",
-                            "yi-mao",
-                            "bing-chen",
-                            "ding-si",
-                            "wu-wu",
-                            "ji-wei",
-                            "geng-shen",
-                            "xin-you",
-                            "ren-xu",
-                            "gui-hai",
-                        }
-                    }
-                }
                 zodiacs{
                     format{
                         abbreviated{
@@ -916,15 +719,9 @@ lt{
                 }
             }
             intervalFormats{
-                M{
-                    M{"MM–MM"}
-                }
                 MEd{
                     M{"MM-dd, E–MM-dd, E"}
                     d{"MM-dd, E–MM-dd, E"}
-                }
-                MMM{
-                    M{"LLL–LLL"}
                 }
                 MMMEd{
                     M{"MMM d, E–MMM d, E"}
@@ -932,17 +729,10 @@ lt{
                 }
                 MMMd{
                     M{"MMM d–MMM d"}
-                    d{"MMM d–d"}
                 }
                 Md{
                     M{"MM-dd–MM-dd"}
                     d{"MM-dd–MM-dd"}
-                }
-                d{
-                    d{"d–d"}
-                }
-                y{
-                    y{"U–U"}
                 }
                 yM{
                     M{"y-MM–y-MM"}
@@ -954,7 +744,6 @@ lt{
                     y{"y-MM-dd, E–y-MM-dd, E"}
                 }
                 yMMM{
-                    M{"U MMM–MMM"}
                     y{"U MMM–U MMM"}
                 }
                 yMMMEd{
@@ -963,12 +752,10 @@ lt{
                     y{"U MMM d, E–U MMM d, E"}
                 }
                 yMMMM{
-                    M{"U MMMM–MMMM"}
                     y{"U MMMM–U MMMM"}
                 }
                 yMMMd{
                     M{"U MMM d–MMM d"}
-                    d{"U MMM d–d"}
                     y{"U MMM d–U MMM d"}
                 }
                 yMd{
@@ -993,20 +780,6 @@ lt{
                         "11",
                         "12",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "1",
                         "2",
@@ -1037,20 +810,6 @@ lt{
                         "11",
                         "12",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "1",
                         "2",
@@ -1064,23 +823,6 @@ lt{
                         "10",
                         "11",
                         "12",
-                    }
-                }
-            }
-            monthPatterns{
-                format{
-                    wide{
-                        leap{"{0}bis"}
-                    }
-                }
-                numeric{
-                    all{
-                        leap{"{0}bis"}
-                    }
-                }
-                stand-alone{
-                    narrow{
-                        leap{"{0}b"}
                     }
                 }
             }
@@ -1088,6 +830,10 @@ lt{
         ethiopic{
             eras{
                 abbreviated{
+                    "ERA0",
+                    "ERA1",
+                }
+                narrow{
                     "ERA0",
                     "ERA1",
                 }
@@ -1193,16 +939,6 @@ lt{
                 }
             }
         }
-        ethiopic-amete-alem{
-            eras{
-                abbreviated{
-                    "ERA0",
-                }
-                wide{
-                    "ERA0",
-                }
-            }
-        }
         generic{
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -1220,8 +956,17 @@ lt{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"h:mm B, E"}
+                EBhms{"h:mm:ss B, E"}
+                EHm{"HH:mm, E"}
+                EHms{"HH:mm:ss, E"}
                 Ed{"d, E"}
+                Ehm{"h:mm a, E"}
+                Ehms{"h:mm:ss a, E"}
                 Gy{"y G"}
                 GyMMM{"y MMM G"}
                 GyMMMEd{"y MMM d G, E"}
@@ -1238,9 +983,9 @@ lt{
                 MMdd{"MM.dd"}
                 Md{"MM-dd"}
                 d{"d"}
-                h{"hh a"}
-                hm{"hh:mm a"}
-                hms{"hh:mm:ss a"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"mm:ss"}
                 y{"y G"}
                 yyyy{"y G"}
@@ -1255,19 +1000,52 @@ lt{
                 yyyyQQQQ{"y G QQQQ"}
             }
             intervalFormats{
-                H{
-                    H{"HH–HH"}
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
                 }
-                Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
                 }
-                Hmv{
-                    H{"HH:mm–HH:mm v"}
-                    m{"HH:mm–HH:mm v"}
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
                 }
-                Hv{
-                    H{"HH–HH v"}
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
                 }
                 M{
                     M{"M–M"}
@@ -1297,21 +1075,15 @@ lt{
                 fallback{"{0} – {1}"}
                 h{
                     a{"h a–h a"}
-                    h{"h–h a"}
                 }
                 hm{
                     a{"hh:mm a–hh:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
                 }
                 hmv{
                     a{"hh:mm a–hh:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
                 }
                 hv{
                     a{"h a–h a v"}
-                    h{"h–h a v"}
                 }
                 y{
                     y{"y–y G"}
@@ -1360,7 +1132,7 @@ lt{
                 "popiet",
             }
             AmPmMarkersNarrow{
-                "pr. p.",
+                "pr. p.",
                 "pop.",
             }
             DateTimePatterns{
@@ -1382,7 +1154,12 @@ lt{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"h:mm B, E"}
+                EBhms{"h:mm:ss B, E"}
                 EHm{"HH:mm, E"}
                 EHms{"HH:mm:ss, E"}
                 Ed{"d, E"}
@@ -1407,10 +1184,10 @@ lt{
                 MMMM{"LLLL"}
                 MMMMEd{"MMMM d 'd'., E"}
                 MMMMW{
-                    few{"MMM W 'sav'."}
-                    many{"MMM W 'sav'."}
-                    one{"MMM W 'sav'."}
-                    other{"MMM W 'sav'."}
+                    few{"MMMM W 'sav'."}
+                    many{"MMMM W 'sav'."}
+                    one{"MMMM W 'sav'."}
+                    other{"MMMM W 'sav'."}
                 }
                 MMMMd{"MMMM d 'd'."}
                 MMMd{"MM-dd"}
@@ -1436,10 +1213,10 @@ lt{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    few{"y w 'sav'."}
-                    many{"y w 'sav'."}
-                    one{"y w 'sav'."}
-                    other{"y w 'sav'."}
+                    few{"Y w 'sav'."}
+                    many{"Y w 'sav'."}
+                    one{"Y w 'sav'."}
+                    other{"Y w 'sav'."}
                 }
             }
             dayNames{
@@ -1560,7 +1337,7 @@ lt{
                     }
                     narrow{
                         afternoon1{"diena"}
-                        am{"pr. p."}
+                        am{"pr. p."}
                         evening1{"vakaras"}
                         midnight{"vidurnaktis"}
                         morning1{"rytas"}
@@ -1603,6 +1380,53 @@ lt{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"hh–hh B"}
+                }
+                Bhm{
+                    B{"hh:mm B–hh:mm B"}
+                    h{"hh:mm–hh:mm B"}
+                    m{"hh:mm–hh:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -1871,6 +1695,12 @@ lt{
                 abbreviated{
                     "AM",
                 }
+                narrow{
+                    "AM",
+                }
+                wide{
+                    "AM",
+                }
             }
             monthNames{
                 format{
@@ -1980,6 +1810,12 @@ lt{
                 abbreviated{
                     "Saka",
                 }
+                narrow{
+                    "Saka",
+                }
+                wide{
+                    "Saka",
+                }
             }
             monthNames{
                 format{
@@ -1996,6 +1832,20 @@ lt{
                         "Pausa",
                         "Magha",
                         "Phalguna",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
                     }
                     wide{
                         "Chaitra",
@@ -2061,6 +1911,12 @@ lt{
         islamic{
             eras{
                 abbreviated{
+                    "AH",
+                }
+                narrow{
+                    "AH",
+                }
+                wide{
                     "AH",
                 }
             }
@@ -2394,12 +2250,19 @@ lt{
                     "Taišo",
                     "Šova",
                     "Heisei",
+                    "Reiwa",
                 }
             }
         }
         persian{
             eras{
                 abbreviated{
+                    "AP",
+                }
+                narrow{
+                    "AP",
+                }
+                wide{
                     "AP",
                 }
             }
@@ -2497,6 +2360,14 @@ lt{
         roc{
             eras{
                 abbreviated{
+                    "Prieš R.O.C.",
+                    "R.O.C.",
+                }
+                narrow{
+                    "Prieš R.O.C.",
+                    "R.O.C.",
+                }
+                wide{
                     "Prieš R.O.C.",
                     "R.O.C.",
                 }
@@ -2624,6 +2495,13 @@ lt{
         }
         day-narrow{
             dn{"d."}
+            relative{
+                "-1"{"vakar"}
+                "-2"{"užvakar"}
+                "0"{"šiandien"}
+                "1"{"rytoj"}
+                "2"{"poryt"}
+            }
             relativeTime{
                 future{
                     few{"po {0} d."}
@@ -2641,6 +2519,13 @@ lt{
         }
         day-short{
             dn{"d."}
+            relative{
+                "-1"{"vakar"}
+                "-2"{"užvakar"}
+                "0"{"šiandien"}
+                "1"{"rytoj"}
+                "2"{"poryt"}
+            }
             relativeTime{
                 future{
                     few{"po {0} d."}
@@ -2656,10 +2541,31 @@ lt{
                 }
             }
         }
+        dayOfYear{
+            dn{"metų diena"}
+        }
+        dayOfYear-narrow{
+            dn{"metų diena"}
+        }
+        dayOfYear-short{
+            dn{"metų diena"}
+        }
         dayperiod{
             dn{"iki pietų / po pietų"}
         }
+        dayperiod-narrow{
+            dn{"iki pietų / po pietų"}
+        }
+        dayperiod-short{
+            dn{"iki pietų / po pietų"}
+        }
         era{
+            dn{"era"}
+        }
+        era-narrow{
+            dn{"era"}
+        }
+        era-short{
             dn{"era"}
         }
         fri{
@@ -2691,16 +2597,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} penktadienių"}
-                    many{"po {0} penktadienio"}
-                    one{"po {0} penktadienio"}
-                    other{"po {0} penktadienių"}
+                    few{"po {0} penkt."}
+                    many{"po {0} penkt."}
+                    one{"po {0} penkt."}
+                    other{"po {0} penkt."}
                 }
                 past{
-                    few{"prieš {0} penktadienius"}
-                    many{"prieš {0} penktadienio"}
-                    one{"prieš {0} penktadienį"}
-                    other{"prieš {0} penktadienių"}
+                    few{"prieš {0} penkt."}
+                    many{"prieš {0} penkt."}
+                    one{"prieš {0} penkt."}
+                    other{"prieš {0} penkt."}
                 }
             }
         }
@@ -2712,16 +2618,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} penktadienių"}
-                    many{"po {0} penktadienio"}
-                    one{"po {0} penktadienio"}
-                    other{"po {0} penktadienių"}
+                    few{"po {0} penkt."}
+                    many{"po {0} penkt."}
+                    one{"po {0} penkt."}
+                    other{"po {0} penkt."}
                 }
                 past{
-                    few{"prieš {0} penktadienius"}
-                    many{"prieš {0} penktadienio"}
-                    one{"prieš {0} penktadienį"}
-                    other{"prieš {0} penktadienių"}
+                    few{"prieš {0} penkt."}
+                    many{"prieš {0} penkt."}
+                    one{"prieš {0} penkt."}
+                    other{"prieš {0} penkt."}
                 }
             }
         }
@@ -2862,16 +2768,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} pirmadienių"}
-                    many{"po {0} pirmadienio"}
-                    one{"po {0} pirmadienio"}
-                    other{"po {0} pirmadienių"}
+                    few{"po {0} pirm."}
+                    many{"po {0} pirm."}
+                    one{"po {0} pirm."}
+                    other{"po {0} pirm."}
                 }
                 past{
-                    few{"prieš {0} pirmadienius"}
-                    many{"prieš {0} pirmadienio"}
-                    one{"prieš {0} pirmadienį"}
-                    other{"prieš {0} pirmadienių"}
+                    few{"prieš {0} pirm."}
+                    many{"prieš {0} pirm."}
+                    one{"prieš {0} pirm."}
+                    other{"prieš {0} pirm."}
                 }
             }
         }
@@ -2883,16 +2789,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} pirmadienių"}
-                    many{"po {0} pirmadienio"}
-                    one{"po {0} pirmadienio"}
-                    other{"po {0} pirmadienių"}
+                    few{"po {0} pirm."}
+                    many{"po {0} pirm."}
+                    one{"po {0} pirm."}
+                    other{"po {0} pirm."}
                 }
                 past{
-                    few{"prieš {0} pirmadienius"}
-                    many{"prieš {0} pirmadienio"}
-                    one{"prieš {0} pirmadienį"}
-                    other{"prieš {0} pirmadienių"}
+                    few{"prieš {0} pirm."}
+                    many{"prieš {0} pirm."}
+                    one{"prieš {0} pirm."}
+                    other{"prieš {0} pirm."}
                 }
             }
         }
@@ -2920,6 +2826,11 @@ lt{
         }
         month-narrow{
             dn{"mėn."}
+            relative{
+                "-1"{"praėjusį mėnesį"}
+                "0"{"šį mėnesį"}
+                "1"{"kitą mėnesį"}
+            }
             relativeTime{
                 future{
                     few{"po {0} mėn."}
@@ -2937,6 +2848,11 @@ lt{
         }
         month-short{
             dn{"mėn."}
+            relative{
+                "-1"{"praėjusį mėnesį"}
+                "0"{"šį mėnesį"}
+                "1"{"kitą mėnesį"}
+            }
             relativeTime{
                 future{
                     few{"po {0} mėn."}
@@ -3037,16 +2953,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} šeštadienių"}
-                    many{"po {0} šeštadienio"}
+                    few{"po {0} šešt."}
+                    many{"po {0} šešt."}
                     one{"po {0} šeštadienio"}
-                    other{"po {0} šeštadienių"}
+                    other{"po {0} šešt."}
                 }
                 past{
-                    few{"prieš {0} šeštadienius"}
-                    many{"prieš {0} šeštadienio"}
-                    one{"prieš {0} šeštadienį"}
-                    other{"prieš {0} šeštadienių"}
+                    few{"prieš {0} šešt."}
+                    many{"prieš {0} šešt."}
+                    one{"prieš {0} šešt."}
+                    other{"prieš {0} šešt."}
                 }
             }
         }
@@ -3058,16 +2974,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} šeštadienių"}
-                    many{"po {0} šeštadienio"}
-                    one{"po {0} šeštadienio"}
-                    other{"po {0} šeštadienių"}
+                    few{"po {0} šešt."}
+                    many{"po {0} šešt."}
+                    one{"po {0} šešt."}
+                    other{"po {0} šešt."}
                 }
                 past{
-                    few{"prieš {0} šeštadienius"}
-                    many{"prieš {0} šeštadienio"}
-                    one{"prieš {0} šeštadienį"}
-                    other{"prieš {0} šeštadienių"}
+                    few{"prieš {0} šešt."}
+                    many{"prieš {0} šešt."}
+                    one{"prieš {0} šešt."}
+                    other{"prieš {0} šešt."}
                 }
             }
         }
@@ -3154,16 +3070,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} sekmadienių"}
-                    many{"po {0} sekmadienio"}
-                    one{"po {0} sekmadienio"}
-                    other{"po {0} sekmadienių"}
+                    few{"po {0} sekm."}
+                    many{"po {0} sekm."}
+                    one{"po {0} sekm."}
+                    other{"po {0} sekm."}
                 }
                 past{
-                    few{"prieš {0} sekmadienius"}
-                    many{"prieš {0} sekmadienio"}
-                    one{"prieš {0} sekmadienį"}
-                    other{"prieš {0} sekmadienių"}
+                    few{"prieš {0} sekm."}
+                    many{"prieš {0} sekm."}
+                    one{"prieš {0} sekm."}
+                    other{"prieš {0} sekm."}
                 }
             }
         }
@@ -3175,16 +3091,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} sekmadienių"}
-                    many{"po {0} sekmadienio"}
-                    one{"po {0} sekmadienio"}
-                    other{"po {0} sekmadienių"}
+                    few{"po {0} sekm."}
+                    many{"po {0} sekm."}
+                    one{"po {0} sekm."}
+                    other{"po {0} sekm."}
                 }
                 past{
-                    few{"prieš {0} sekmadienius"}
-                    many{"prieš {0} sekmadienio"}
-                    one{"prieš {0} sekmadienį"}
-                    other{"prieš {0} sekmadienių"}
+                    few{"prieš {0} sekm."}
+                    many{"prieš {0} sekm."}
+                    one{"prieš {0} sekm."}
+                    other{"prieš {0} sekm."}
                 }
             }
         }
@@ -3217,16 +3133,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} ketvirtadienių"}
-                    many{"po {0} ketvirtadienio"}
-                    one{"po {0} ketvirtadienio"}
-                    other{"po {0} ketvirtadienių"}
+                    few{"po {0} ketv."}
+                    many{"po {0} ketv."}
+                    one{"po {0} ketv."}
+                    other{"po {0} ketv."}
                 }
                 past{
-                    few{"prieš {0} ketvirtadienius"}
-                    many{"prieš {0} ketvirtadienio"}
-                    one{"prieš {0} ketvirtadienį"}
-                    other{"prieš {0} ketvirtadienių"}
+                    few{"prieš {0} ketv."}
+                    many{"prieš {0} ketv."}
+                    one{"prieš {0} ketv."}
+                    other{"prieš {0} ketv."}
                 }
             }
         }
@@ -3238,16 +3154,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} ketvirtadienių"}
-                    many{"po {0} ketvirtadienio"}
-                    one{"po {0} ketvirtadienio"}
-                    other{"po {0} ketvirtadienių"}
+                    few{"po {0} ketv."}
+                    many{"po {0} ketv."}
+                    one{"po {0} ketv."}
+                    other{"po {0} ketv."}
                 }
                 past{
-                    few{"prieš {0} ketvirtadienius"}
-                    many{"prieš {0} ketvirtadienio"}
-                    one{"prieš {0} ketvirtadienį"}
-                    other{"prieš {0} ketvirtadienių"}
+                    few{"prieš {0} ketv."}
+                    many{"prieš {0} ketv."}
+                    one{"prieš {0} ketv."}
+                    other{"prieš {0} ketv."}
                 }
             }
         }
@@ -3280,16 +3196,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} antradienių"}
-                    many{"po {0} antradienio"}
-                    one{"po {0} antradienio"}
-                    other{"po {0} antradienių"}
+                    few{"po {0} antr."}
+                    many{"po {0} antr."}
+                    one{"po {0} antr."}
+                    other{"po {0} antr."}
                 }
                 past{
-                    few{"prieš {0} antradienius"}
-                    many{"prieš {0} antradienio"}
-                    one{"prieš {0} antradienį"}
-                    other{"prieš {0} antradienių"}
+                    few{"prieš {0} antr."}
+                    many{"prieš {0} antr."}
+                    one{"prieš {0} antr."}
+                    other{"prieš {0} antr."}
                 }
             }
         }
@@ -3301,16 +3217,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} antradienių"}
-                    many{"po {0} antradienio"}
-                    one{"po {0} antradienio"}
-                    other{"po {0} antradienių"}
+                    few{"po {0} antr."}
+                    many{"po {0} antr."}
+                    one{"po {0} antr."}
+                    other{"po {0} antr."}
                 }
                 past{
-                    few{"prieš {0} antradienius"}
-                    many{"prieš {0} antradienio"}
-                    one{"prieš {0} antradienį"}
-                    other{"prieš {0} antradienių"}
+                    few{"prieš {0} antr."}
+                    many{"prieš {0} antr."}
+                    one{"prieš {0} antr."}
+                    other{"prieš {0} antr."}
                 }
             }
         }
@@ -3343,16 +3259,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} trečiadienių"}
-                    many{"po {0} trečiadienio"}
-                    one{"po {0} trečiadienio"}
-                    other{"po {0} trečiadienių"}
+                    few{"po {0} treč."}
+                    many{"po {0} treč."}
+                    one{"po {0} treč."}
+                    other{"po {0} treč."}
                 }
                 past{
-                    few{"prieš {0} trečiadienius"}
-                    many{"prieš {0} trečiadienio"}
-                    one{"prieš {0} trečiadienį"}
-                    other{"prieš {0} trečiadienių"}
+                    few{"prieš {0} treč."}
+                    many{"prieš {0} treč."}
+                    one{"prieš {0} treč."}
+                    other{"prieš {0} treč."}
                 }
             }
         }
@@ -3364,16 +3280,16 @@ lt{
             }
             relativeTime{
                 future{
-                    few{"po {0} trečiadienių"}
-                    many{"po {0} trečiadienio"}
-                    one{"po {0} trečiadienio"}
-                    other{"po {0} trečiadienių"}
+                    few{"po {0} treč."}
+                    many{"po {0} treč."}
+                    one{"po {0} treč."}
+                    other{"po {0} treč."}
                 }
                 past{
-                    few{"prieš {0} trečiadienius"}
-                    many{"prieš {0} trečiadienio"}
-                    one{"prieš {0} trečiadienį"}
-                    other{"prieš {0} trečiadienių"}
+                    few{"prieš {0} treč."}
+                    many{"prieš {0} treč."}
+                    one{"prieš {0} treč."}
+                    other{"prieš {0} treč."}
                 }
             }
         }
@@ -3402,6 +3318,11 @@ lt{
         }
         week-narrow{
             dn{"sav."}
+            relative{
+                "-1"{"praėjusią savaitę"}
+                "0"{"šią savaitę"}
+                "1"{"kitą savaitę"}
+            }
             relativePeriod{"{0} savaitę"}
             relativeTime{
                 future{
@@ -3420,6 +3341,11 @@ lt{
         }
         week-short{
             dn{"sav."}
+            relative{
+                "-1"{"praėjusią savaitę"}
+                "0"{"šią savaitę"}
+                "1"{"kitą savaitę"}
+            }
             relativePeriod{"{0} savaitę"}
             relativeTime{
                 future{
@@ -3436,8 +3362,32 @@ lt{
                 }
             }
         }
+        weekOfMonth{
+            dn{"mėnesio savaitė"}
+        }
+        weekOfMonth-narrow{
+            dn{"mėnesio savaitė"}
+        }
+        weekOfMonth-short{
+            dn{"mėnesio savaitė"}
+        }
         weekday{
             dn{"savaitės diena"}
+        }
+        weekday-narrow{
+            dn{"savaitės diena"}
+        }
+        weekday-short{
+            dn{"savaitės diena"}
+        }
+        weekdayOfMonth{
+            dn{"mėnesio šiokiadienis"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"mėnesio šiokiadienis"}
+        }
+        weekdayOfMonth-short{
+            dn{"mėnesio šiokiadienis"}
         }
         year{
             dn{"metai"}
@@ -3463,6 +3413,11 @@ lt{
         }
         year-narrow{
             dn{"m."}
+            relative{
+                "-1"{"praėjusiais metais"}
+                "0"{"šiais metais"}
+                "1"{"kitais metais"}
+            }
             relativeTime{
                 future{
                     few{"po {0} m."}
@@ -3480,6 +3435,11 @@ lt{
         }
         year-short{
             dn{"m."}
+            relative{
+                "-1"{"praėjusiais metais"}
+                "0"{"šiais metais"}
+                "1"{"kitais metais"}
+            }
             relativeTime{
                 future{
                     few{"po {0} m."}
@@ -3491,16 +3451,34 @@ lt{
                     few{"prieš {0} m."}
                     many{"prieš {0} m."}
                     one{"prieš {0} m."}
-                    other{"prieš {0} metų"}
+                    other{"prieš {0} m."}
                 }
             }
         }
         zone{
             dn{"laiko juosta"}
         }
+        zone-narrow{
+            dn{"laiko juosta"}
+        }
+        zone-short{
+            dn{"laiko juosta"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} ar {1}"}
+            end{"{0} ar {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
+            2{"{0} ir {1}"}
+            end{"{0} ir {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} ir {1}"}
             end{"{0} ir {1}"}
             middle{"{0}, {1}"}
@@ -3535,5 +3513,37 @@ lt{
         UK{"JK"}
         US{"JAV"}
         metric{"metrinė"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

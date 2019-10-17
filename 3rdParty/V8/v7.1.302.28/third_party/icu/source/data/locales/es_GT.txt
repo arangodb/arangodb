@@ -42,24 +42,11 @@ es_GT{
                         one{"¤000MRD "}
                         other{"¤000MRD "}
                     }
-                    1000000000000{
-                        one{"¤0 B"}
-                        other{"¤0 B"}
-                    }
-                    10000000000000{
-                        one{"¤00 B"}
-                        other{"¤00 B"}
-                    }
-                    100000000000000{
-                        one{"¤000 B"}
-                        other{"¤000 B"}
-                    }
                 }
             }
         }
-        minimumGroupingDigits{"2"}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
@@ -126,12 +113,12 @@ es_GT{
         }
         gregorian{
             AmPmMarkers{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -151,16 +138,16 @@ es_GT{
             dayPeriod{
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     wide{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                 }
             }
@@ -220,14 +207,14 @@ es_GT{
         day{
             relative{
                 "-1"{"ayer"}
-                "-2"{"antier"}
+                "-2"{"anteayer"}
                 "0"{"hoy"}
                 "1"{"mañana"}
                 "2"{"pasado mañana"}
             }
         }
         dayperiod{
-            dn{"a. m./p. m."}
+            dn{"a. m./p. m."}
         }
     }
 }

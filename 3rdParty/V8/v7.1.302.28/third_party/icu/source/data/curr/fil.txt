@@ -388,7 +388,11 @@ fil{
         }
         MRO{
             "MRO",
-            "Mauritanian Ouguiya",
+            "Mauritanian Ouguiya (1973–2017)",
+        }
+        MRU{
+            "MRU",
+            "Ouguiya ng Mauritania",
         }
         MUR{
             "MUR",
@@ -448,7 +452,7 @@ fil{
         }
         PEN{
             "PEN",
-            "Peruvian Nuevo Sol",
+            "Peruvian Sol",
         }
         PGK{
             "PGK",
@@ -544,7 +548,11 @@ fil{
         }
         STD{
             "STD",
-            "São Tomé & Príncipe Dobra",
+            "São Tomé & Príncipe Dobra (1977–2017)",
+        }
+        STN{
+            "STN",
+            "São Tomé & Príncipe Dobra (2018)",
         }
         SYP{
             "SYP",
@@ -616,6 +624,10 @@ fil{
         }
         VEF{
             "VEF",
+            "Bolívar ng Venezuela (2008–2018)",
+        }
+        VES{
+            "VES",
             "Bolívar ng Venezuela",
         }
         VND{
@@ -647,7 +659,7 @@ fil{
             "CFP Franc",
         }
         XXX{
-            "XXX",
+            "¤",
             "Hindi Kilalang Pera",
         }
         YER{
@@ -680,7 +692,6 @@ fil{
         BRL{"R$"}
         BSD{"$"}
         BWP{"P"}
-        BYN{"р."}
         BZD{"$"}
         CAD{"$"}
         CLP{"$"}
@@ -697,7 +708,6 @@ fil{
         FJD{"$"}
         FKP{"£"}
         GBP{"£"}
-        GEL{"₾"}
         GIP{"£"}
         GNF{"FG"}
         GTQ{"Q"}
@@ -746,7 +756,6 @@ fil{
         SHP{"£"}
         SRD{"$"}
         SSP{"£"}
-        STD{"Db"}
         SYP{"£"}
         THB{"฿"}
         TOP{"T$"}
@@ -1136,6 +1145,10 @@ fil{
             other{"Macanese patacas"}
         }
         MRO{
+            one{"Mauritanian ouguiya (1973–2017)"}
+            other{"Mauritanian ouguiyas (1973–2017)"}
+        }
+        MRU{
             one{"Mauritanian ouguiya"}
             other{"Mauritanian ouguiyas"}
         }
@@ -1196,8 +1209,8 @@ fil{
             other{"Balboas ng Panama"}
         }
         PEN{
-            one{"Peruvian nuevo sol"}
-            other{"Peruvian nuevos soles"}
+            one{"Peruvian sol"}
+            other{"Peruvian soles"}
         }
         PGK{
             one{"Papua New Guinean kina"}
@@ -1284,6 +1297,10 @@ fil{
             other{"pounds ng Timog Sudan"}
         }
         STD{
+            one{"São Tomé & Príncipe dobra (1977–2017)"}
+            other{"São Tomé & Príncipe dobras (1977–2017)"}
+        }
+        STN{
             one{"São Tomé & Príncipe dobra"}
             other{"São Tomé & Príncipe dobras"}
         }
@@ -1352,6 +1369,10 @@ fil{
             other{"Uzbekistan som"}
         }
         VEF{
+            one{"bolívar ng Venezuela (2008–2018)"}
+            other{"bolívars ng Venezuela (2008–2018)"}
+        }
+        VES{
             one{"bolívar ng Venezuela"}
             other{"bolívars ng Venezuela"}
         }
@@ -1404,5 +1425,5 @@ fil{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

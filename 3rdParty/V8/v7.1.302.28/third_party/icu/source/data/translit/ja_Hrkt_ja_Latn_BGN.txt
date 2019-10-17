@@ -5,55 +5,26 @@
 # Generated from CLDR
 #
 
+# Romanization and Roman-Script Spelling Conventions.
+# Prepared by the U.S. Board on Geographic Names, Foreign Names Committee Staff
+# Published by the Defense Mapping Agency, 1994.
+# Chapter “Romanization System for Japanese Kana, Modified Hebpurn System,
+# BGN/PCGN Agreement”, pages 39 to 45.
 #
-########################################################################
-# BGN/PCGN Agreement
+# http://libraries.ucsd.edu/bib/fed/USBGN_romanization.pdf
 #
-# The modified Hepburn system for the romanization of Japanese has been
-# in use by the U.S. Board on Geographic Names since about 1930 and has
-# been used extensively in the romanization of Japanese geographic names.
-# The system is well adapted to the general needs of speakers of English
-# and is the most widely used system for the romanization of Japanese.
-#
-# Originally prepared by Michael Everson <everson@evertype.com>
-########################################################################
-#
-# MINIMAL FILTER: Japanese-Latin
-#
-:: [あいうえおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわゐゑをんゔアイウエオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロワヰヱヲンヴ] ;
-:: NFD (NFC) ;
-#
-#
-########################################################################
-#
-########################################################################
-#
-# Define All Transformation Variables
-#
-########################################################################
-$apostrophe  = ’;
-#
+# https://commons.wikimedia.org/w/index.php?title=File%3ARomanization_Systems_and_Roman-Script_Spelling_Conventions.djvu
+:: [あいうえおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわゐゑをんゔアイウエオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロワヰヱヲンヴ\u3099\u309Aー \uFF61-\uFF9F];
+::NFC;
+::[\uFF61-\uFF9F] Halfwidth-Fullwidth;
 # Use this $wordBoundary until bug 2034 is fixed in ICU:
 # http://bugs.icu-project.org/cgi-bin/icu-bugs/transliterate?id=2034;expression=boundary;user=guest
-#
 $wordBoundary =  [^[:L:][:M:][:N:]] ;
-#
-########################################################################
-#
-# Rules moved to front to avoid masking
-#
-########################################################################
-#
-########################################################################
-#
 # BGN Page 45 Rule 2:
 #
 # A small-script tsu form (ッ or っ) is inserted between kana symbols
 # to indicate a double consonant and is romanized as k before k;
 # as s before s or sh; as t before t, ts, or ch; and as p before p.
-#
-########################################################################
-#
 ッ}[カキクケコ] → k ; # KATAKANA LETTER SMALL TU
 っ}[かきくけこ] → k ; # HIRAGANA LETTER SMALL TU
 ッ}[サシスセソ] → s ; # KATAKANA LETTER SMALL TU
@@ -62,20 +33,7 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 っ}[たちつてと] → t ; # HIRAGANA LETTER SMALL TU
 ッ}[パピプペポ] → p ; # KATAKANA LETTER SMALL TU
 っ}[ぱぴぷぺぽ] → p ; # HIRAGANA LETTER SMALL TU
-#
-#
-########################################################################
-#
-# End of Rule 2
-#
-########################################################################
-#
-########################################################################
-#
 # Start of Syllabic Transformations
-#
-########################################################################
-#
 ア → a ; # KATAKANA LETTER A
 イ → i ; # KATAKANA LETTER I
 ウ → u ; # KATAKANA LETTER U
@@ -138,11 +96,11 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 ホウ → hō ; # KATAKANA LETTER HO + U
 ホ → ho ; # KATAKANA LETTER HO
 マ → ma ; # KATAKANA LETTER MA
-ミョウ → hyō ; # KATAKANA LETTER MI + SMALL YO + U
-ミュウ → hyū ; # KATAKANA LETTER MI + SMALL YU + U
-ミャ → hya ; # KATAKANA LETTER MI + SMALL YA
-ミョ → hyo ; # KATAKANA LETTER MI + SMALL YO
-ミュ → hyu ; # KATAKANA LETTER MI + SMALL YU
+ミョウ → myō ; # KATAKANA LETTER MI + SMALL YO + U
+ミュウ → myū ; # KATAKANA LETTER MI + SMALL YU + U
+ミャ → mya ; # KATAKANA LETTER MI + SMALL YA
+ミョ → myo ; # KATAKANA LETTER MI + SMALL YO
+ミュ → myu ; # KATAKANA LETTER MI + SMALL YU
 ミ → mi ; # KATAKANA LETTER MI
 ム → mu ; # KATAKANA LETTER MU
 メ → me ; # KATAKANA LETTER ME
@@ -167,31 +125,16 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 ヰ → i ; # KATAKANA LETTER WI
 ヱ → e ; # KATAKANA LETTER WE
 ヲ → o ; # KATAKANA LETTER WO
-#
-#
-########################################################################
-#
 # BGN Page 45 Rule 3:
 #
 # The character ン should be romanized m before b, p, or m.
 # The character ん should be romanized m before b, p, or m.
 # The character ン should be romanized n’ before y or a vowel letter.
 # The character ん should be romanized n’ before y or a vowel letter.
-#
-########################################################################
-#
 ン}[バビブベボパピプペポマミムメモ] → m ; # KATAKANA LETTER N
 ん}[ばびぶべぼぱぴぷぺぽまみむめも] → m ; # HIRAGANA LETTER N
-ン}[ヤユヨアイウエオ] → n $apostrophe ; # KATAKANA LETTER N
-ん}[やゆよあいうえお] → n $apostrophe ; # HIRAGANA LETTER N
-#
-#
-########################################################################
-#
-# End of Rule 3
-#
-########################################################################
-#
+ン}[ヤユヨアイウエオ] → n’ ; # KATAKANA LETTER N
+ん}[やゆよあいうえお] → n’ ; # HIRAGANA LETTER N
 ン → n ; # KATAKANA LETTER N
 ガ → ga ; # KATAKANA LETTER GA
 ギョウ → gyō ; # KATAKANA LETTER GI + SMALL YO + U
@@ -306,11 +249,11 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 ほう → hō ; # HIRAGANA LETTER HO + U
 ほ → ho ; # HIRAGANA LETTER HO
 ま → ma ; # HIRAGANA LETTER MA
-みょう → hyō ; # HIRAGANA LETTER MI + SMALL YO + U
-みゅう → hyū ; # HIRAGANA LETTER MI + SMALL YU + U
-みゃ → hya ; # HIRAGANA LETTER MI + SMALL YA
-みょ → hyo ; # HIRAGANA LETTER MI + SMALL YO
-みゅ → hyu ; # HIRAGANA LETTER MI + SMALL YU
+みょう → myō ; # HIRAGANA LETTER MI + SMALL YO + U
+みゅう → myū ; # HIRAGANA LETTER MI + SMALL YU + U
+みゃ → mya ; # HIRAGANA LETTER MI + SMALL YA
+みょ → myo ; # HIRAGANA LETTER MI + SMALL YO
+みゅ → myu ; # HIRAGANA LETTER MI + SMALL YU
 み → mi ; # HIRAGANA LETTER MI
 む → mu ; # HIRAGANA LETTER MU
 め → me ; # HIRAGANA LETTER ME
@@ -387,7 +330,12 @@ $wordBoundary =  [^[:L:][:M:][:N:]] ;
 ぽう → pō ; # HIRAGANA LETTER PO + U
 ぽ → po ; # HIRAGANA LETTER PO
 ゔ → v ; # HIRAGANA LETTER VU
-#
-#
-########################################################################
+::NULL;
+aー → ā;
+iー → ī;
+uー → ū;
+eー → ē;
+oー → ō;
+vー → vū;  # ヴーゔー
+ー →;
 

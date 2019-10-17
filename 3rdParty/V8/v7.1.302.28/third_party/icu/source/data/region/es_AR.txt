@@ -7,10 +7,10 @@ es_AR{
         TA{"Tristán de Acuña"}
         TL{"Timor-Leste"}
         UM{"Islas menores alejadas de EE. UU."}
+        VI{"Islas Vírgenes de EE. UU."}
     }
     Countries%short{
         GB{"RU"}
-        US{"EE. UU."}
     }
-    Version{"2.1.27.99"}
+    Version{"2.1.47.70"}
 }

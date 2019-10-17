@@ -15,13 +15,19 @@ to{
     }
     ExemplarCharacters{"[a á ā e é ē f h i í ī k l m n {ng} o ó ō p s t u ú ū v ʻ]"}
     ExemplarCharactersIndex{"[A E F H I K L M N {NG} O P S T U V ʻ]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
         "″]"
     }
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
+        arab{
+            symbols{
+                minusSign{"‏-"}
+                plusSign{"‏+"}
+            }
+        }
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -75,15 +81,35 @@ to{
                 }
             }
             patternsShort{
-                decimalFormat{
+                currencyFormat{
                     1000{
-                        other{"0k"}
+                        other{"¤ 0a"}
                     }
                     10000{
-                        other{"00k"}
+                        other{"¤ 0m"}
                     }
                     100000{
-                        other{"000k"}
+                        other{"¤ 0k"}
+                    }
+                    1000000000{
+                        other{"¤ 0P"}
+                    }
+                    10000000000{
+                        other{"¤ 00P"}
+                    }
+                    100000000000{
+                        other{"¤ 000P"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        other{"0a"}
+                    }
+                    10000{
+                        other{"0m"}
+                    }
+                    100000{
+                        other{"0k"}
                     }
                     1000000{
                         other{"0M"}
@@ -95,13 +121,13 @@ to{
                         other{"000M"}
                     }
                     1000000000{
-                        other{"0Ki"}
+                        other{"0P"}
                     }
                     10000000000{
-                        other{"00Ki"}
+                        other{"00P"}
                     }
                     100000000000{
-                        other{"000Ki"}
+                        other{"000P"}
                     }
                     1000000000000{
                         other{"0T"}
@@ -125,13 +151,18 @@ to{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
             }
         }
-        minimumGroupingDigits{"1"}
-        native{"latn"}
+        minimalPairs{
+            ordinal{
+                other{"afe mataʻu he hala hono {0}"}
+            }
+            plural{
+                other{"Ngaahi ʻaho ʻe {0}"}
+            }
+        }
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -150,8 +181,17 @@ to{
                 "{1}, {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E d MMM y G"}
@@ -309,7 +349,7 @@ to{
                 E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
-                Ed{"d E"}
+                Ed{"E d"}
                 Ehm{"E h:mm a"}
                 Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
@@ -685,6 +725,25 @@ to{
             }
         }
     }
+    characterLabel{
+        animal{"manu"}
+        body{"sino"}
+        building{"fale"}
+        female{"fakafefine"}
+        flag{"fuka"}
+        flags{"ngaahi fuka"}
+        heart{"mafu"}
+        keycap{"tatā foʻi kī"}
+        male{"fakatangata"}
+        nature{"natula"}
+        person{"kakai"}
+        place{"feituʻu"}
+        plant{"ʻakau"}
+        smiley{"malimali"}
+        sport{"vāʻinga"}
+        travel{"folau"}
+        weather{"ʻea"}
+    }
     delimiters{
         alternateQuotationEnd{"’"}
         alternateQuotationStart{"‘"}
@@ -745,6 +804,15 @@ to{
                     other{"ʻaho ʻe {0} kuoʻosi"}
                 }
             }
+        }
+        dayOfYear{
+            dn{"ʻaho ʻo e taʻu"}
+        }
+        dayOfYear-narrow{
+            dn{"ʻaho ʻoe taʻu"}
+        }
+        dayOfYear-short{
+            dn{"ʻaho ʻoe taʻu"}
         }
         dayperiod{
             dn{"AM/PM"}
@@ -1145,8 +1213,32 @@ to{
                 }
             }
         }
+        weekOfMonth{
+            dn{"uike ʻo e māhina"}
+        }
+        weekOfMonth-narrow{
+            dn{"uk ʻoe mh"}
+        }
+        weekOfMonth-short{
+            dn{"uike ʻoe māhina"}
+        }
         weekday{
             dn{"ʻaho ʻo e uike"}
+        }
+        weekday-narrow{
+            dn{"ʻaho ʻoe uike"}
+        }
+        weekday-short{
+            dn{"ʻaho ʻoe uike"}
+        }
+        weekdayOfMonth{
+            dn{"ʻaho ʻo e mahina"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ʻaho ʻo e mahina"}
+        }
+        weekdayOfMonth-short{
+            dn{"ʻaho ʻo e mahina"}
         }
         year{
             dn{"taʻu"}
@@ -1201,6 +1293,10 @@ to{
         }
     }
     listPattern{
+        or{
+            2{"{0} pē {1}"}
+            end{"{0}, pē {1}"}
+        }
         standard{
             2{"{0} mo {1}"}
             end{"{0} mo {1}"}

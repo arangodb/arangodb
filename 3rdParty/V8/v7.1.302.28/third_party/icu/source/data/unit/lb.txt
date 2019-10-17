@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 lb{
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -764,8 +764,8 @@ lb{
             }
             fathom{
                 dnam{"fm"}
-                one{"{0} fm"}
-                other{"{0} fm"}
+                one{"{0} fth"}
+                other{"{0} fth"}
             }
             foot{
                 one{"{0} ft"}
@@ -1337,8 +1337,8 @@ lb{
             }
             fathom{
                 dnam{"fm"}
-                one{"{0} fm"}
-                other{"{0} fm"}
+                one{"{0} fth"}
+                other{"{0} fth"}
             }
             foot{
                 dnam{"ft"}

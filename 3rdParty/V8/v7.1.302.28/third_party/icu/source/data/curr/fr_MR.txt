@@ -2,10 +2,10 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 fr_MR{
     Currencies{
-        MRO{
+        MRU{
             "UM",
             "ouguiya mauritanien",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.70"}
 }

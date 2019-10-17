@@ -124,6 +124,10 @@ asa{
         }
         MRO{
             "MRO",
+            "ugwiya ya Moritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ugwiya ya Moritania",
         }
         MUR{
@@ -180,6 +184,10 @@ asa{
         }
         STD{
             "STD",
+            "dobra ya Thao Tome na Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra ya Thao Tome na Principe",
         }
         SZL{
@@ -227,5 +235,5 @@ asa{
             "dola ya Dhimbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

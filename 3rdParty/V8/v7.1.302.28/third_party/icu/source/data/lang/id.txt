@@ -49,6 +49,7 @@ id{
         arn{"Mapuche"}
         arp{"Arapaho"}
         arq{"Arab Aljazair"}
+        ars{"Arab Najdi"}
         arw{"Arawak"}
         ary{"Arab Maroko"}
         arz{"Arab Mesir"}
@@ -101,6 +102,7 @@ id{
         car{"Karib"}
         cay{"Cayuga"}
         cch{"Atsam"}
+        ccp{"Chakma"}
         ce{"Chechen"}
         ceb{"Cebuano"}
         cgg{"Kiga"}
@@ -137,7 +139,7 @@ id{
         din{"Dinka"}
         dje{"Zarma"}
         doi{"Dogri"}
-        dsb{"Sorbia Rendah"}
+        dsb{"Sorbia Hilir"}
         dua{"Duala"}
         dum{"Belanda Abad Pertengahan"}
         dv{"Divehi"}
@@ -171,6 +173,9 @@ id{
         fo{"Faroe"}
         fon{"Fon"}
         fr{"Prancis"}
+        fr_CA{"Perancis (Kanada)"}
+        fr_CH{"Perancis (Swiss)"}
+        frc{"Prancis Cajun"}
         frm{"Prancis Abad Pertengahan"}
         fro{"Prancis Kuno"}
         frp{"Arpitan"}
@@ -212,7 +217,7 @@ id{
         hmn{"Hmong"}
         ho{"Hiri Motu"}
         hr{"Kroasia"}
-        hsb{"Sorbia Atas"}
+        hsb{"Sorbia Hulu"}
         ht{"Kreol Haiti"}
         hu{"Hungaria"}
         hup{"Hupa"}
@@ -300,6 +305,7 @@ id{
         ln{"Lingala"}
         lo{"Lao"}
         lol{"Mongo"}
+        lou{"Kreol Louisiana"}
         loz{"Lozi"}
         lrc{"Luri Utara"}
         lt{"Lituavi"}
@@ -463,10 +469,10 @@ id{
         sms{"Skolt Sami"}
         sn{"Shona"}
         snk{"Soninke"}
-        so{"Somali"}
+        so{"Somalia"}
         sog{"Sogdien"}
         sq{"Albania"}
-        sr{"Serb"}
+        sr{"Serbia"}
         srn{"Sranan Tongo"}
         srr{"Serer"}
         ss{"Swati"}
@@ -478,7 +484,7 @@ id{
         sux{"Sumeria"}
         sv{"Swedia"}
         sw{"Swahili"}
-        sw_CD{"Kongo Swahili"}
+        sw_CD{"Swahili (Kongo)"}
         swb{"Komoria"}
         syc{"Suriah Klasik"}
         syr{"Suriah"}
@@ -576,11 +582,9 @@ id{
     Scripts{
         Afak{"Afaka"}
         Aghb{"Albania Kaukasia"}
-        Arab{"Arab"}
         Armi{"Aram Imperial"}
         Armn{"Armenia"}
         Avst{"Avesta"}
-        Bali{"Bali"}
         Bamu{"Bamum"}
         Bass{"Bassa Vah"}
         Batk{"Batak"}
@@ -594,7 +598,6 @@ id{
         Cakm{"Chakma"}
         Cans{"Simbol Aborigin Kanada Kesatuan"}
         Cari{"Karia"}
-        Cham{"Cham"}
         Cher{"Cherokee"}
         Cirt{"Cirth"}
         Copt{"Koptik"}
@@ -616,7 +619,7 @@ id{
         Grek{"Yunani"}
         Gujr{"Gujarat"}
         Guru{"Gurmukhi"}
-        Hanb{"Hanb"}
+        Hanb{"Han dengan Bopomofo"}
         Hang{"Hangul"}
         Hani{"Han"}
         Hano{"Hanunoo"}
@@ -630,7 +633,6 @@ id{
         Hung{"Hungaria Kuno"}
         Inds{"Indus"}
         Ital{"Italia Lama"}
-        Jamo{"Jamo"}
         Java{"Jawa"}
         Jpan{"Jepang"}
         Jurc{"Jurchen"}
@@ -652,7 +654,6 @@ id{
         Limb{"Limbu"}
         Lina{"Linear A"}
         Linb{"Linear B"}
-        Lisu{"Lisu"}
         Loma{"Loma"}
         Lyci{"Lycia"}
         Lydi{"Lydia"}
@@ -720,7 +721,6 @@ id{
         Tfng{"Tifinagh"}
         Tglg{"Tagalog"}
         Thaa{"Thaana"}
-        Thai{"Thai"}
         Tibt{"Tibet"}
         Tirh{"Tirhuta"}
         Ugar{"Ugaritik"}
@@ -760,6 +760,7 @@ id{
             islamic{"Kalender Islam"}
             islamic-civil{"Kalender Sipil Islam"}
             islamic-rgsa{"Kalender Islam (Arab Saudi, penglihatan)"}
+            islamic-umalqura{"Kalender Islam (Umm al-Qura)"}
             iso8601{"Kalender ISO-8601"}
             japanese{"Kalender Jepang"}
             persian{"Kalender Persia"}
@@ -803,6 +804,7 @@ id{
         }
         collation{
             big5han{"Urutan Sortir Tionghoa Tradisional - Big5"}
+            compat{"Aturan Pengurutan Sebelumnya, untuk kompatibilitas"}
             dictionary{"Urutan Sortir Kamus"}
             ducet{"Aturan Pengurutan Unicode Default"}
             eor{"Aturan Pengurutan Eropa"}
@@ -913,63 +915,47 @@ id{
         AREVELA{"Armenia Timur"}
         AREVMDA{"Armenia Barat"}
         BAKU1926{"Alfabet Latin Turki Terpadu"}
-        BAUDDHA{"BAUDDHA"}
         BISCAYAN{"BISKAY"}
         BISKE{"Dialek San Giorgio/Bila"}
         BOONT{"Boontling"}
         FONIPA{"Fonetik IPA"}
         FONUPA{"Fonetik UPA"}
-        FONXSAMP{"FONXSAMP"}
         HEPBURN{"Hepburn Latin"}
         HOGNORSK{"NORWEDIA TINGGI"}
-        ITIHASA{"ITIHASA"}
-        JAUER{"JAUER"}
-        JYUTPING{"JYUTPING"}
         KKCOR{"Ortografi Umum"}
-        LAUKIKA{"LAUKIKA"}
         LIPAW{"Dialek Lipovaz Resia"}
-        LUNA1918{"LUNA1918"}
         MONOTON{"Monoton"}
         NDYUKA{"Dialek Ndyuka"}
         NEDIS{"Dialek Natiso"}
         NJIVA{"Dialek Gniva/Njiva"}
         OSOJS{"Dialek Oseacco/Osojane"}
         PAMAKA{"Dialek Pamaka"}
-        PETR1708{"PETR1708"}
         PINYIN{"Pinyin Latin"}
         POLYTON{"Politon"}
         POSIX{"Komputer"}
-        PUTER{"PUTER"}
         REVISED{"Ortografi Revisi"}
         ROZAJ{"Resia"}
-        RUMGR{"RUMGR"}
         SAAHO{"Saho"}
         SCOTLAND{"Inggris Standar Skotlandia"}
         SCOUSE{"Skaus"}
         SOLBA{"Dialek Stolvizza/Solbica"}
-        SURMIRAN{"SURMIRAN"}
-        SURSILV{"SURSILV"}
-        SUTSILV{"SUTSILV"}
         TARASK{"Ortografi Taraskievica"}
         UCCOR{"Ortografi Terpadu"}
         UCRCOR{"Ortografi Revisi Terpadu"}
-        ULSTER{"ULSTER"}
-        VAIDIKA{"VAIDIKA"}
         VALENCIA{"Valencia"}
-        VALLADER{"VALLADER"}
         WADEGILE{"Wade-Giles Latin"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     characterLabelPattern{
         all{"{0} — Semua"}
         category-list{"{0}: {1}"}
         compatibility{"{0} — Kompatibilitas"}
         enclosed{"{0} — Terlampir"}
-        extended{"{0} — Diperluas"}
+        extended{"{0} — diperluas"}
         historic{"{0} — Historis"}
         miscellaneous{"{0} — Lain-lain"}
         other{"{0} — Lainnya"}
-        scripts{"Skrip — {0}"}
+        scripts{"skrip — {0}"}
         strokes{
             other{"{0} Goresan"}
         }
@@ -978,10 +964,5 @@ id{
         language{"Bahasa: {0}"}
         script{"Skrip: {0}"}
         territory{"Wilayah: {0}"}
-    }
-    localeDisplayPattern{
-        keyTypePattern{"{0}: {1}"}
-        pattern{"{0} ({1})"}
-        separator{"{0}, {1}"}
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 ***************************************************************************
@@ -6,7 +6,7 @@
 * and others. All Rights Reserved.
 ***************************************************************************
 *   file name:  uspoof.h
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -94,7 +94,6 @@
  * // ...
  * \endcode
  *
- * <p>
  * UTS 39 defines two strings to be <em>confusable</em> if they map to the same <em>skeleton string</em>. A skeleton can
  * be thought of as a "hash code". {@link uspoof_getSkeleton} computes the skeleton for a particular string, so
  * the following snippet is equivalent to the example above:
@@ -128,7 +127,6 @@
  * free(skel2);
  * \endcode
  *
- * <p>
  * If you need to check if a string is confusable with any string in a dictionary of many strings, rather than calling
  * {@link uspoof_areConfusable} many times in a loop, {@link uspoof_getSkeleton} can be used instead, as shown below:
  *
@@ -172,14 +170,12 @@
  * uspoof_close(sc);
  * \endcode
  *
- * <p>
  * <b>Note:</b> Since the Unicode confusables mapping table is frequently updated, confusable skeletons are <em>not</em>
  * guaranteed to be the same between ICU releases. We therefore recommend that you always compute confusable skeletons
  * at runtime and do not rely on creating a permanent, or difficult to update, database of skeletons.
  *
  * <h2>Spoof Detection</h2>
  *
- * <p>
  * The following snippet shows a minimal example of using <code>USpoofChecker</code> to perform spoof detection on a
  * string:
  *
@@ -204,16 +200,13 @@
  * uset_close(allowed);
  * \endcode
  *
- * <p>
  * As in the case for confusability checking, it is good practice to create one <code>USpoofChecker</code> instance at
  * startup, and call the cheaper {@link uspoof_check} online. We specify the set of
  * allowed characters to be those with type RECOMMENDED or INCLUSION, according to the recommendation in UTS 39.
  *
- * <p>
  * In addition to {@link uspoof_check}, the function {@link uspoof_checkUTF8} is exposed for UTF8-encoded char* strings,
  * and {@link uspoof_checkUnicodeString} is exposed for C++ programmers.
  *
- * <p>
  * If the {@link USPOOF_AUX_INFO} check is enabled, a limited amount of information on why a string failed the checks
  * is available in the returned bitmask.  For complete information, use the {@link uspoof_check2} class of functions
  * with a {@link USpoofCheckResult} parameter:
@@ -274,7 +267,6 @@
  * // Explicit cleanup not necessary.
  * \endcode
  *
- * <p>
  * The return value is a bitmask of the checks that failed. In this case, there was one check that failed:
  * {@link USPOOF_RESTRICTION_LEVEL}, corresponding to the fifth bit (16). The possible checks are:
  *
@@ -307,7 +299,6 @@
  * uspoof_close(sc);
  * \endcode
  *
- * <p>
  * Here is an example in C++ showing how to compute the restriction level of a string:
  *
  * \code{.cpp}
@@ -334,11 +325,9 @@
  * printf("Restriction level: %#010x (status: %s)\n", restrictionLevel, u_errorName(status));
  * \endcode
  *
- * <p>
  * The code '0x50000000' corresponds to the restriction level USPOOF_MINIMALLY_RESTRICTIVE.  Since
  * USPOOF_MINIMALLY_RESTRICTIVE is weaker than USPOOF_MODERATELY_RESTRICTIVE, the string fails the check.
  *
- * <p>
  * <b>Note:</b> The Restriction Level is the most powerful of the checks. The full logic is documented in
  * <a href="http://unicode.org/reports/tr39/#Restriction_Level_Detection">UTS 39</a>, but the basic idea is that strings
  * are restricted to contain characters from only a single script, <em>except</em> that most scripts are allowed to have
@@ -352,15 +341,12 @@
  *
  * <h2>Additional Information</h2>
  *
- * <p>
  * A <code>USpoofChecker</code> instance may be used repeatedly to perform checks on any number of identifiers.
  *
- * <p>
  * <b>Thread Safety:</b> The test functions for checking a single identifier, or for testing whether
  * two identifiers are possible confusable, are thread safe. They may called concurrently, from multiple threads,
  * using the same USpoofChecker instance.
  *
- * <p>
  * More generally, the standard ICU thread safety rules apply: functions that take a const USpoofChecker parameter are
  * thread safe. Those that take a non-const USpoofChecker are not thread safe..
  *
@@ -368,18 +354,17 @@
  */
 
 struct USpoofChecker;
+/**
+ * @stable ICU 4.2
+ */
 typedef struct USpoofChecker USpoofChecker; /**< typedef for C of USpoofChecker */
 
-#ifndef U_HIDE_DRAFT_API
-/**
- * @see uspoof_openCheckResult
- */
 struct USpoofCheckResult;
 /**
  * @see uspoof_openCheckResult
+ * @stable ICU 58
  */
 typedef struct USpoofCheckResult USpoofCheckResult;
-#endif /* U_HIDE_DRAFT_API */
 
 /**
  * Enum for the kinds of checks that USpoofChecker can perform.
@@ -419,7 +404,6 @@ typedef enum USpoofChecks {
      */
     USPOOF_WHOLE_SCRIPT_CONFUSABLE  =   4,
 
-#ifndef U_HIDE_DRAFT_API
     /**
      * Enable this flag in {@link uspoof_setChecks} to turn on all types of confusables.  You may set
      * the checks to some subset of SINGLE_SCRIPT_CONFUSABLE, MIXED_SCRIPT_CONFUSABLE, or WHOLE_SCRIPT_CONFUSABLE to
@@ -427,10 +411,9 @@ typedef enum USpoofChecks {
      *
      * @see uspoof_areConfusable
      * @see uspoof_getSkeleton
-     * @draft ICU 58
+     * @stable ICU 58
      */
     USPOOF_CONFUSABLE               =   USPOOF_SINGLE_SCRIPT_CONFUSABLE | USPOOF_MIXED_SCRIPT_CONFUSABLE | USPOOF_WHOLE_SCRIPT_CONFUSABLE,
-#endif /* U_HIDE_DRAFT_API */
 
 #ifndef U_HIDE_DEPRECATED_API
     /**
@@ -480,13 +463,36 @@ typedef enum USpoofChecks {
       */
     USPOOF_CHAR_LIMIT               =  64,
 
-   /**
+    /**
      * Check that an identifier does not mix numbers from different numbering systems.
      * For more information, see UTS 39 section 5.3.
      *
      * @stable ICU 51
      */
     USPOOF_MIXED_NUMBERS            = 128,
+
+#ifndef U_HIDE_DRAFT_API
+    /**
+     * Check that an identifier does not have a combining character following a character in which that
+     * combining character would be hidden; for example 'i' followed by a U+0307 combining dot.
+     *
+     * More specifically, the following characters are forbidden from preceding a U+0307:
+     * <ul>
+     * <li>Those with the Soft_Dotted Unicode property (which includes 'i' and 'j')</li>
+     * <li>Latin lowercase letter 'l'</li>
+     * <li>Dotless 'i' and 'j' ('ı' and 'ȷ', U+0131 and U+0237)</li>
+     * <li>Any character whose confusable prototype ends with such a character
+     * (Soft_Dotted, 'l', 'ı', or 'ȷ')</li>
+     * </ul>
+     * In addition, combining characters are allowed between the above characters and U+0307 except those
+     * with combining class 0 or combining class "Above" (230, same class as U+0307).
+     *
+     * This list and the number of combing characters considered by this check may grow over time.
+     *
+     * @draft ICU 62
+     */
+    USPOOF_HIDDEN_OVERLAY            = 256,
+#endif  /* U_HIDE_DRAFT_API */
 
    /**
      * Enable all spoof checks.
@@ -1058,7 +1064,6 @@ uspoof_checkUnicodeString(const USpoofChecker *sc,
 #endif
 
 
-#ifndef U_HIDE_DRAFT_API
 /**
  * Check the specified string for possible security issues.
  * The text to be checked will typically be an identifier of some sort.
@@ -1085,9 +1090,9 @@ uspoof_checkUnicodeString(const USpoofChecker *sc,
  * @see uspoof_openCheckResult
  * @see uspoof_check2UTF8
  * @see uspoof_check2UnicodeString
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uspoof_check2(const USpoofChecker *sc,
     const UChar* id, int32_t length,
     USpoofCheckResult* checkResult,
@@ -1122,9 +1127,9 @@ uspoof_check2(const USpoofChecker *sc,
  * @see uspoof_openCheckResult
  * @see uspoof_check2
  * @see uspoof_check2UnicodeString
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uspoof_check2UTF8(const USpoofChecker *sc,
     const char *id, int32_t length,
     USpoofCheckResult* checkResult,
@@ -1154,9 +1159,9 @@ uspoof_check2UTF8(const USpoofChecker *sc,
  * @see uspoof_openCheckResult
  * @see uspoof_check2
  * @see uspoof_check2UTF8
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uspoof_check2UnicodeString(const USpoofChecker *sc,
     const icu::UnicodeString &id,
     USpoofCheckResult* checkResult,
@@ -1179,9 +1184,9 @@ uspoof_check2UnicodeString(const USpoofChecker *sc,
  * @see uspoof_check2
  * @see uspoof_check2UTF8
  * @see uspoof_check2UnicodeString
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT USpoofCheckResult* U_EXPORT2
+U_STABLE USpoofCheckResult* U_EXPORT2
 uspoof_openCheckResult(UErrorCode *status);
 
 /**
@@ -1189,9 +1194,9 @@ uspoof_openCheckResult(UErrorCode *status);
  *   its implementation.
  *
  * @param checkResult  The instance of USpoofCheckResult to close
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT void U_EXPORT2
+U_STABLE void U_EXPORT2
 uspoof_closeCheckResult(USpoofCheckResult *checkResult);
 
 #if U_SHOW_CPLUSPLUS_API
@@ -1200,14 +1205,21 @@ U_NAMESPACE_BEGIN
 
 /**
  * \class LocalUSpoofCheckResultPointer
- * "Smart pointer" class, closes a USpoofCheckResult via {@link uspoof_closeCheckResult}.
+ * "Smart pointer" class, closes a USpoofCheckResult via `uspoof_closeCheckResult()`.
  * For most methods see the LocalPointerBase base class.
  *
  * @see LocalPointerBase
  * @see LocalPointer
- * @draft ICU 58
+ * @stable ICU 58
+ */
+
+/**
+ * \cond
+ * Note: Doxygen is giving a bogus warning on this U_DEFINE_LOCAL_OPEN_POINTER.
+ *       For now, suppress with a Doxygen cond
  */
 U_DEFINE_LOCAL_OPEN_POINTER(LocalUSpoofCheckResultPointer, USpoofCheckResult, uspoof_closeCheckResult);
+/** \endcond */
 
 U_NAMESPACE_END
 
@@ -1225,9 +1237,9 @@ U_NAMESPACE_END
  *                will be zero if the input string passes all of the
  *                enabled checks.
  * @see uspoof_setChecks
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uspoof_getCheckResultChecks(const USpoofCheckResult *checkResult, UErrorCode *status);
 
 /**
@@ -1238,9 +1250,9 @@ uspoof_getCheckResultChecks(const USpoofCheckResult *checkResult, UErrorCode *st
  * @param status       The error code, set if an error occurred.
  * @return             The restriction level contained in the USpoofCheckResult
  * @see uspoof_setRestrictionLevel
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT URestrictionLevel U_EXPORT2
+U_STABLE URestrictionLevel U_EXPORT2
 uspoof_getCheckResultRestrictionLevel(const USpoofCheckResult *checkResult, UErrorCode *status);
 
 /**
@@ -1252,11 +1264,10 @@ uspoof_getCheckResultRestrictionLevel(const USpoofCheckResult *checkResult, UErr
  * @param checkResult  The instance of USpoofCheckResult created by {@link uspoof_openCheckResult}
  * @return             The set of numerics contained in the USpoofCheckResult
  * @param status       The error code, set if an error occurred.
- * @draft ICU 58
+ * @stable ICU 58
  */
-U_DRAFT const USet* U_EXPORT2
+U_STABLE const USet* U_EXPORT2
 uspoof_getCheckResultNumerics(const USpoofCheckResult *checkResult, UErrorCode *status);
-#endif /* U_HIDE_DRAFT_API */
 
 
 /**

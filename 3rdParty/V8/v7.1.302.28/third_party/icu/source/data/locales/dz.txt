@@ -12,11 +12,12 @@ dz{
     }
     ExemplarCharacters{
         "[ཀ ཁ ག ང ཅ ཆ ཇ ཉ ཏ ཐ ད ན པ ཕ བ མ ཙ ཚ ཛ ཝ ཞ ཟ འ ཡ ར ལ ཤ ས ཧ ཨ \u0F72 \u0F74 "
-        "\u0F7A \u0F7C \u0F90 \u0F91 \u0F92 \u0F94 \u0F97 \u0F99 \u0F9F \u0FA0 \u0FA1"
-        " \u0FA3 \u0FA4 \u0FA5 \u0FA6 \u0FA8 \u0FA9 \u0FAA \u0FAB \u0FAD \u0FB1 "
-        "\u0FB2 \u0FB3 \u0FB5 \u0FB6 \u0FB7]"
+        "\u0F7A \u0F7C \u0F90 \u0F91 \u0F92 \u0F94 \u0F97 \u0F99 \u0F9F \u0FA0 "
+        "\u0FA1 \u0FA3 \u0FA4 \u0FA5 \u0FA6 \u0FA8 \u0FA9 \u0FAA \u0FAB \u0FAD "
+        "\u0FB1 \u0FB2 \u0FB3 \u0FB5 \u0FB6 \u0FB7]"
     }
     ExemplarCharactersIndex{"[ཀ ཁ ག ང ཅ ཆ ཇ ཉ ཏ ཐ ད ན པ ཕ བ མ ཙ ཚ ཛ ཝ ཞ ཟ འ ཡ ར ལ ཤ ས ཧ ཨ]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0༠ 1༡ 2༢ 3༣ 4༤ 5༥ 6༦ 7༧ 8༨ 9༩]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] ༼ ༽ § @ * / \\& # † "
         "‡ ༄ ༅ ༆ ༈ ༉ ༊ ࿐ ࿑ ༒ ࿒ ࿓ ࿔ ༶ ྾ ྿ ༌ ། ༎ ༏ ༐ ༑ ༔ ༴]"
@@ -84,6 +85,11 @@ dz{
                 plusSign{"+"}
             }
         }
+        minimalPairs{
+            plural{
+                other{"ཉིནམ་ {0} "}
+            }
+        }
         native{"tibt"}
         tibt{
             symbols{
@@ -100,7 +106,7 @@ dz{
             }
         }
     }
-    Version{"2.1.29.61"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 ru{
-    Version{"2.1.29.20"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Абиджан"}
@@ -160,7 +160,7 @@ ru{
             ec{"Виндхук"}
         }
         "America:Adak"{
-            ec{"Адак, о-в"}
+            ec{"Адак"}
         }
         "America:Anchorage"{
             ec{"Анкоридж"}
@@ -250,7 +250,7 @@ ru{
             ec{"Кайенна"}
         }
         "America:Cayman"{
-            ec{"Каймановы о-ва"}
+            ec{"Острова Кайман"}
         }
         "America:Chicago"{
             ec{"Чикаго"}
@@ -346,7 +346,7 @@ ru{
             ec{"Эрмосильо"}
         }
         "America:Indiana:Knox"{
-            ec{"Нокс"}
+            ec{"Нокс, Индиана"}
         }
         "America:Indiana:Marengo"{
             ec{"Маренго, Индиана"}
@@ -507,6 +507,9 @@ ru{
         "America:Puerto_Rico"{
             ec{"Пуэрто-Рико"}
         }
+        "America:Punta_Arenas"{
+            ec{"Пунта-Аренас"}
+        }
         "America:Rainy_River"{
             ec{"Рейни-Ривер"}
         }
@@ -652,10 +655,13 @@ ru{
             ec{"Актау"}
         }
         "Asia:Aqtobe"{
-            ec{"Актобе (Актюбинск)"}
+            ec{"Актобе"}
         }
         "Asia:Ashgabat"{
             ec{"Ашхабад"}
+        }
+        "Asia:Atyrau"{
+            ec{"Атырау"}
         }
         "Asia:Baghdad"{
             ec{"Багдад"}
@@ -707,6 +713,9 @@ ru{
         }
         "Asia:Dushanbe"{
             ec{"Душанбе"}
+        }
+        "Asia:Famagusta"{
+            ec{"Фамагуста"}
         }
         "Asia:Gaza"{
             ec{"Газа"}
@@ -801,6 +810,9 @@ ru{
         "Asia:Qatar"{
             ec{"Катар"}
         }
+        "Asia:Qostanay"{
+            ec{"Костанай"}
+        }
         "Asia:Qyzylorda"{
             ec{"Кызылорда"}
         }
@@ -880,7 +892,7 @@ ru{
             ec{"Азорские о-ва"}
         }
         "Atlantic:Bermuda"{
-            ec{"Бермуды"}
+            ec{"Бермудские о-ва"}
         }
         "Atlantic:Canary"{
             ec{"Канарские о-ва"}
@@ -941,6 +953,9 @@ ru{
         }
         "Australia:Sydney"{
             ec{"Сидней"}
+        }
+        "Etc:UTC"{
+            ls{"Всемирное координированное время"}
         }
         "Etc:Unknown"{
             ec{"Неизвестный город"}
@@ -1072,6 +1087,9 @@ ru{
         }
         "Europe:Sarajevo"{
             ec{"Сараево"}
+        }
+        "Europe:Saratov"{
+            ec{"Саратов"}
         }
         "Europe:Simferopol"{
             ec{"Симферополь"}
@@ -1322,9 +1340,9 @@ ru{
             ls{"Восточная Америка, стандартное время"}
         }
         "meta:America_Mountain"{
-            ld{"Горное летнее время (США)"}
-            lg{"Горное время (США)"}
-            ls{"Горное стандартное время (США)"}
+            ld{"Летнее горное время (Северная Америка)"}
+            lg{"Горное время (Северная Америка)"}
+            ls{"Стандартное горное время (Северная Америка)"}
         }
         "meta:America_Pacific"{
             ld{"Тихоокеанское летнее время"}
@@ -1866,9 +1884,9 @@ ru{
             ls{"Трук"}
         }
         "meta:Turkmenistan"{
-            ld{"Туркмения, летнее время"}
-            lg{"Туркмения"}
-            ls{"Туркмения, стандартное время"}
+            ld{"Туркменистан, летнее время"}
+            lg{"Туркменистан"}
+            ls{"Туркменистан, стандартное время"}
         }
         "meta:Tuvalu"{
             ls{"Тувалу"}
@@ -1925,7 +1943,7 @@ ru{
         gmtZeroFormat{"GMT"}
         hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0}"}
-        regionFormatDaylight{"{0} (+1)"}
-        regionFormatStandard{"{0} (+0)"}
+        regionFormatDaylight{"{0}, летнее время"}
+        regionFormatStandard{"{0}, стандартное время"}
     }
 }

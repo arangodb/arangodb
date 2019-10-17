@@ -6,6 +6,7 @@
 #define V8_OBJECTS_JS_PROXY_H_
 
 #include "src/objects/js-objects.h"
+#include "torque-generated/builtin-definitions-tq.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -14,26 +15,19 @@ namespace v8 {
 namespace internal {
 
 // The JSProxy describes EcmaScript Harmony proxies
-class JSProxy : public JSReceiver {
+class JSProxy : public TorqueGeneratedJSProxy<JSProxy, JSReceiver> {
  public:
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSProxy> New(Isolate* isolate,
                                                         Handle<Object>,
                                                         Handle<Object>);
 
-  // [handler]: The handler property.
-  DECL_ACCESSORS(handler, Object)
-  // [target]: The target property.
-  DECL_ACCESSORS(target, Object)
-
-  static MaybeHandle<Context> GetFunctionRealm(Handle<JSProxy> proxy);
-
-  DECL_CAST(JSProxy)
+  static MaybeHandle<NativeContext> GetFunctionRealm(Handle<JSProxy> proxy);
 
   V8_INLINE bool IsRevoked() const;
   static void Revoke(Handle<JSProxy> proxy);
 
   // ES6 9.5.1
-  static MaybeHandle<Object> GetPrototype(Handle<JSProxy> receiver);
+  static MaybeHandle<HeapObject> GetPrototype(Handle<JSProxy> receiver);
 
   // ES6 9.5.2
   V8_WARN_UNUSED_RESULT static Maybe<bool> SetPrototype(
@@ -57,7 +51,7 @@ class JSProxy : public JSReceiver {
   // ES6 9.5.6
   V8_WARN_UNUSED_RESULT static Maybe<bool> DefineOwnProperty(
       Isolate* isolate, Handle<JSProxy> object, Handle<Object> key,
-      PropertyDescriptor* desc, ShouldThrow should_throw);
+      PropertyDescriptor* desc, Maybe<ShouldThrow> should_throw);
 
   // ES6 9.5.7
   V8_WARN_UNUSED_RESULT static Maybe<bool> HasProperty(Isolate* isolate,
@@ -67,6 +61,10 @@ class JSProxy : public JSReceiver {
   // This function never returns false.
   // It returns either true or throws.
   V8_WARN_UNUSED_RESULT static Maybe<bool> CheckHasTrap(
+      Isolate* isolate, Handle<Name> name, Handle<JSReceiver> target);
+
+  // ES6 9.5.10
+  V8_WARN_UNUSED_RESULT static Maybe<bool> CheckDeleteTrap(
       Isolate* isolate, Handle<Name> name, Handle<JSReceiver> target);
 
   // ES6 9.5.8
@@ -85,7 +83,7 @@ class JSProxy : public JSReceiver {
   // ES6 9.5.9
   V8_WARN_UNUSED_RESULT static Maybe<bool> SetProperty(
       Handle<JSProxy> proxy, Handle<Name> name, Handle<Object> value,
-      Handle<Object> receiver, LanguageMode language_mode);
+      Handle<Object> receiver, Maybe<ShouldThrow> should_throw);
 
   // ES6 9.5.10 (when passed LanguageMode::kSloppy)
   V8_WARN_UNUSED_RESULT static Maybe<bool> DeletePropertyOrElement(
@@ -105,27 +103,22 @@ class JSProxy : public JSReceiver {
 
   static const int kMaxIterationLimit = 100 * 1024;
 
-  // Layout description.
-  static const int kTargetOffset = JSReceiver::kHeaderSize;
-  static const int kHandlerOffset = kTargetOffset + kPointerSize;
-  static const int kSize = kHandlerOffset + kPointerSize;
-
   // kTargetOffset aliases with the elements of JSObject. The fact that
   // JSProxy::target is a Javascript value which cannot be confused with an
   // elements backing store is exploited by loading from this offset from an
   // unknown JSReceiver.
-  STATIC_ASSERT(JSObject::kElementsOffset == JSProxy::kTargetOffset);
+  STATIC_ASSERT(static_cast<int>(JSObject::kElementsOffset) ==
+                static_cast<int>(JSProxy::kTargetOffset));
 
-  typedef FixedBodyDescriptor<JSReceiver::kPropertiesOrHashOffset, kSize, kSize>
-      BodyDescriptor;
+  using BodyDescriptor =
+      FixedBodyDescriptor<JSReceiver::kPropertiesOrHashOffset, kSize, kSize>;
 
   static Maybe<bool> SetPrivateSymbol(Isolate* isolate, Handle<JSProxy> proxy,
                                       Handle<Symbol> private_name,
                                       PropertyDescriptor* desc,
-                                      ShouldThrow should_throw);
+                                      Maybe<ShouldThrow> should_throw);
 
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSProxy);
+  TQ_OBJECT_CONSTRUCTORS(JSProxy)
 };
 
 // JSProxyRevocableResult is just a JSObject with a specific initial map.
@@ -133,10 +126,10 @@ class JSProxy : public JSReceiver {
 // See https://tc39.github.io/ecma262/#sec-proxy.revocable
 class JSProxyRevocableResult : public JSObject {
  public:
-  // Offsets of object fields.
-  static const int kProxyOffset = JSObject::kHeaderSize;
-  static const int kRevokeOffset = kProxyOffset + kPointerSize;
-  static const int kSize = kRevokeOffset + kPointerSize;
+  // Layout description.
+  DEFINE_FIELD_OFFSET_CONSTANTS(
+      JSObject::kHeaderSize, TORQUE_GENERATED_JSPROXY_REVOCABLE_RESULT_FIELDS)
+
   // Indices of in-object properties.
   static const int kProxyIndex = 0;
   static const int kRevokeIndex = 1;

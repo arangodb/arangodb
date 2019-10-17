@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /******************************************************************************
  *   Copyright (C) 2000-2016, International Business Machines
@@ -26,7 +26,7 @@
 #include "putilimp.h"
 
 #if U_HAVE_POPEN
-#if (U_PF_MINGW <= U_PLATFORM || U_PLATFORM <= U_PF_CYGWIN) && defined(__STRICT_ANSI__)
+#if (U_PF_MINGW <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN) && defined(__STRICT_ANSI__)
 /* popen/pclose aren't defined in strict ANSI on Cygwin and MinGW */
 #undef __STRICT_ANSI__
 #endif
@@ -121,7 +121,9 @@ enum {
     LIBNAME,
     QUIET,
     WITHOUT_ASSEMBLY,
-    PDS_BUILD
+    PDS_BUILD,
+    UWP_BUILD,
+    UWP_ARM_BUILD
 };
 
 /* This sets the modes that are available */
@@ -163,7 +165,9 @@ static UOption options[]={
     /*18*/    UOPTION_DEF( "libname", 'L', UOPT_REQUIRES_ARG),
     /*19*/    UOPTION_DEF( "quiet", 'q', UOPT_NO_ARG),
     /*20*/    UOPTION_DEF( "without-assembly", 'w', UOPT_NO_ARG),
-    /*21*/    UOPTION_DEF( "zos-pds-build", 'z', UOPT_NO_ARG)
+    /*21*/    UOPTION_DEF("zos-pds-build", 'z', UOPT_NO_ARG),
+    /*22*/    UOPTION_DEF("windows-uwp-build", 'u', UOPT_NO_ARG),
+    /*23*/    UOPTION_DEF("windows-uwp-arm-build", 'a', UOPT_NO_ARG)
 };
 
 /* This enum and the following char array should be kept in sync. */
@@ -250,9 +254,11 @@ const char options_help[][320]={
     "Specify a version when packaging in dll or static mode",
     "Add package to all file names if not present",
     "Library name to build (if different than package name)",
-    "Quite mode. (e.g. Do not output a readme file for static libraries)",
+    "Quiet mode. (e.g. Do not output a readme file for static libraries)",
     "Build the data without assembly code",
-    "Build PDS dataset (zOS build only)"
+    "Build PDS dataset (zOS build only)",
+    "Build for Universal Windows Platform (Windows build only)",
+    "Set DLL machine type for UWP to target windows ARM (Windows UWP build only)"
 };
 
 const char  *progname = "PKGDATA";
@@ -498,14 +504,13 @@ main(int argc, char* argv[]) {
     if (o.files != NULL) {
         pkg_deleteList(o.files);
     }
-
     return result;
 }
 
 static int runCommand(const char* command, UBool specialHandling) {
     char *cmd = NULL;
     char cmdBuffer[SMALL_BUFFER_MAX_SIZE];
-    int32_t len = strlen(command);
+    int32_t len = static_cast<int32_t>(strlen(command));
 
     if (len == 0) {
         return 0;
@@ -538,6 +543,7 @@ normal_command_mode:
     int result = system(cmd);
     if (result != 0) {
         fprintf(stderr, "-- return status = %d\n", result);
+        result = 1; // system() result code is platform specific.
     }
 
     if (cmd != cmdBuffer && cmd != command) {
@@ -898,7 +904,8 @@ static void createFileNames(UPKGOptions *o, const char mode, const char *version
         if (IN_DLL_MODE(mode)) {
             sprintf(libFileNames[LIB_FILE], "%s", libName);
         } else {
-            sprintf(libFileNames[LIB_FILE], "%s%s",
+            sprintf(libFileNames[LIB_FILE], "%s%s%s",
+                    (strstr(libName, "icudt") ? "lib" : ""),
                     pkgDataFlags[LIBPREFIX],
                     libName);
         }
@@ -1014,7 +1021,7 @@ static int32_t pkg_createSymLinks(const char *targetDir, UBool specialHandling) 
     char name2[SMALL_BUFFER_MAX_SIZE]; /* file name to symlink */
     const char* FILE_EXTENSION_SEP = uprv_strlen(pkgDataFlags[SO_EXT]) == 0 ? "" : ".";
 
-#if !defined(USING_CYGWIN) && U_PLATFORM != U_PF_MINGW
+#if U_PLATFORM != U_PF_CYGWIN
     /* No symbolic link to make. */
     if (uprv_strlen(libFileNames[LIB_FILE_VERSION]) == 0 || uprv_strlen(libFileNames[LIB_FILE_VERSION_MAJOR]) == 0 ||
         uprv_strcmp(libFileNames[LIB_FILE_VERSION], libFileNames[LIB_FILE_VERSION_MAJOR]) == 0) {
@@ -1219,7 +1226,7 @@ static int32_t pkg_installFileMode(const char *installDir, const char *srcDir, c
     if (f != NULL) {
         for(;;) {
             if (T_FileStream_readLine(f, buffer, SMALL_BUFFER_MAX_SIZE) != NULL) {
-                bufferLength = uprv_strlen(buffer);
+                bufferLength = static_cast<int32_t>(uprv_strlen(buffer));
                 /* Remove new line character. */
                 if (bufferLength > 0) {
                     buffer[bufferLength-1] = 0;
@@ -1343,8 +1350,8 @@ static int32_t pkg_generateLibraryFile(const char *targetDir, const char mode, c
 
     if (IN_STATIC_MODE(mode)) {
         if (cmd == NULL) {
-            length = uprv_strlen(pkgDataFlags[AR]) + uprv_strlen(pkgDataFlags[ARFLAGS]) + uprv_strlen(targetDir) +
-                     uprv_strlen(libFileNames[LIB_FILE_VERSION]) + uprv_strlen(objectFile) + uprv_strlen(pkgDataFlags[RANLIB]) + BUFFER_PADDING_SIZE;
+            length = static_cast<int32_t>(uprv_strlen(pkgDataFlags[AR]) + uprv_strlen(pkgDataFlags[ARFLAGS]) + uprv_strlen(targetDir) +
+                     uprv_strlen(libFileNames[LIB_FILE_VERSION]) + uprv_strlen(objectFile) + uprv_strlen(pkgDataFlags[RANLIB]) + BUFFER_PADDING_SIZE);
             if ((cmd = (char *)uprv_malloc(sizeof(char) * length)) == NULL) {
                 fprintf(stderr, "Unable to allocate memory for command.\n");
                 return -1;
@@ -1369,15 +1376,15 @@ static int32_t pkg_generateLibraryFile(const char *targetDir, const char mode, c
         }
     } else /* if (IN_DLL_MODE(mode)) */ {
         if (cmd == NULL) {
-            length = uprv_strlen(pkgDataFlags[GENLIB]) + uprv_strlen(pkgDataFlags[LDICUDTFLAGS]) +
+            length = static_cast<int32_t>(uprv_strlen(pkgDataFlags[GENLIB]) + uprv_strlen(pkgDataFlags[LDICUDTFLAGS]) +
                      ((uprv_strlen(targetDir) + uprv_strlen(libFileNames[LIB_FILE_VERSION_TMP])) * 2) +
                      uprv_strlen(objectFile) + uprv_strlen(pkgDataFlags[LD_SONAME]) +
                      uprv_strlen(pkgDataFlags[LD_SONAME][0] == 0 ? "" : libFileNames[LIB_FILE_VERSION_MAJOR]) +
-                     uprv_strlen(pkgDataFlags[RPATH_FLAGS]) + uprv_strlen(pkgDataFlags[BIR_FLAGS]) + BUFFER_PADDING_SIZE;
+                     uprv_strlen(pkgDataFlags[RPATH_FLAGS]) + uprv_strlen(pkgDataFlags[BIR_FLAGS]) + BUFFER_PADDING_SIZE);
 #if U_PLATFORM == U_PF_CYGWIN
-            length += uprv_strlen(targetDir) + uprv_strlen(libFileNames[LIB_FILE_CYGWIN_VERSION]);
+            length += static_cast<int32_t>(uprv_strlen(targetDir) + uprv_strlen(libFileNames[LIB_FILE_CYGWIN_VERSION]));
 #elif U_PLATFORM == U_PF_MINGW
-            length += uprv_strlen(targetDir) + uprv_strlen(libFileNames[LIB_FILE_MINGW]);
+            length += static_cast<int32_t>(uprv_strlen(targetDir) + uprv_strlen(libFileNames[LIB_FILE_MINGW]));
 #endif
             if ((cmd = (char *)uprv_malloc(sizeof(char) * length)) == NULL) {
                 fprintf(stderr, "Unable to allocate memory for command.\n");
@@ -1509,8 +1516,8 @@ static int32_t pkg_createWithAssemblyCode(const char *targetDir, const char mode
     uprv_strcpy(tempObjectFile, gencFilePath);
     tempObjectFile[uprv_strlen(tempObjectFile)-1] = 'o';
 
-    length = uprv_strlen(pkgDataFlags[COMPILER]) + uprv_strlen(pkgDataFlags[LIBFLAGS])
-                    + uprv_strlen(tempObjectFile) + uprv_strlen(gencFilePath) + BUFFER_PADDING_SIZE;
+    length = static_cast<int32_t>(uprv_strlen(pkgDataFlags[COMPILER]) + uprv_strlen(pkgDataFlags[LIBFLAGS])
+             + uprv_strlen(tempObjectFile) + uprv_strlen(gencFilePath) + BUFFER_PADDING_SIZE);
 
     cmd = (char *)uprv_malloc(sizeof(char) * length);
     if (cmd == NULL) {
@@ -1751,7 +1758,14 @@ static int32_t pkg_createWithoutAssemblyCode(UPKGOptions *o, const char *targetD
 
 #ifdef WINDOWS_WITH_MSVC
 #define LINK_CMD "link.exe /nologo /release /out:"
-#define LINK_FLAGS "/DLL /NOENTRY /MANIFEST:NO  /base:0x4ad00000 /implib:"
+#define LINK_FLAGS "/DLL /NOENTRY /MANIFEST:NO /implib:"
+#ifdef _WIN64
+#define LINK_EXTRA_UWP_FLAGS "/NXCOMPAT /DYNAMICBASE /APPCONTAINER "
+#else
+#define LINK_EXTRA_UWP_FLAGS "/NXCOMPAT /SAFESEH /DYNAMICBASE /APPCONTAINER /MACHINE:X86"
+#endif
+#define LINK_EXTRA_UWP_FLAGS_ARM "/NXCOMPAT /DYNAMICBASE /APPCONTAINER /MACHINE:ARM"
+#define LINK_EXTRA_NO_UWP_FLAGS "/base:0x4ad00000 "
 #define LIB_CMD "LIB.exe /nologo /out:"
 #define LIB_FILE "icudt.lib"
 #define LIB_EXT UDATA_LIB_SUFFIX
@@ -1831,14 +1845,33 @@ static int32_t pkg_createWindowsDLL(const char mode, const char *gencFilePath, U
           return 0;
         }
 
-        sprintf(cmd, "%s\"%s\" %s\"%s\" \"%s\" %s",
-                LINK_CMD,
-                dllFilePath,
-                LINK_FLAGS,
-                libFilePath,
-                gencFilePath,
-                resFilePath
-                );
+        char *extraFlags = "";
+#ifdef WINDOWS_WITH_MSVC
+        if (options[UWP_BUILD].doesOccur)
+        {
+            if (options[UWP_ARM_BUILD].doesOccur)
+            {
+                extraFlags = LINK_EXTRA_UWP_FLAGS_ARM;
+            }
+            else
+            {
+                extraFlags = LINK_EXTRA_UWP_FLAGS;
+            }
+        }
+        else
+        {
+            extraFlags = LINK_EXTRA_NO_UWP_FLAGS;
+        }
+#endif
+        sprintf(cmd, "%s\"%s\" %s %s\"%s\" \"%s\" %s",
+            LINK_CMD,
+            dllFilePath,
+            extraFlags,
+            LINK_FLAGS,
+            libFilePath,
+            gencFilePath,
+            resFilePath
+        );
     }
 
     result = runCommand(cmd, TRUE);
@@ -1872,7 +1905,7 @@ static UPKGOptions *pkg_checkFlag(UPKGOptions *o) {
         char *tmpGenlibFlagBuffer = NULL;
         int32_t i, offset;
 
-        length = uprv_strlen(flag) + 1;
+        length = static_cast<int32_t>(uprv_strlen(flag) + 1);
         tmpGenlibFlagBuffer = (char *)uprv_malloc(length);
         if (tmpGenlibFlagBuffer == NULL) {
             /* Memory allocation error */
@@ -1882,7 +1915,7 @@ static UPKGOptions *pkg_checkFlag(UPKGOptions *o) {
 
         uprv_strcpy(tmpGenlibFlagBuffer, flag);
 
-        offset = uprv_strlen(rm_cmd);
+        offset = static_cast<int32_t>(uprv_strlen(rm_cmd));
 
         for (i = 0; i < (length - offset); i++) {
             flag[i] = tmpGenlibFlagBuffer[offset + i];
@@ -1895,7 +1928,7 @@ static UPKGOptions *pkg_checkFlag(UPKGOptions *o) {
     }
 
     flag = pkgDataFlags[BIR_FLAGS];
-    length = uprv_strlen(pkgDataFlags[BIR_FLAGS]);
+    length = static_cast<int32_t>(uprv_strlen(pkgDataFlags[BIR_FLAGS]));
 
     for (int32_t i = 0; i < length; i++) {
         if (flag[i] == MAP_FILE_EXT[count]) {
@@ -1955,7 +1988,7 @@ static UPKGOptions *pkg_checkFlag(UPKGOptions *o) {
     int32_t length = 0;
 
     flag = pkgDataFlags[GENLIB];
-    length = uprv_strlen(pkgDataFlags[GENLIB]);
+    length = static_cast<int32_t>(uprv_strlen(pkgDataFlags[GENLIB]));
 
     int32_t position = length - 1;
 
@@ -1973,7 +2006,7 @@ static UPKGOptions *pkg_checkFlag(UPKGOptions *o) {
     int32_t length = 0;
 
     flag = pkgDataFlags[GENLIB];
-    length = uprv_strlen(pkgDataFlags[GENLIB]);
+    length = static_cast<int32_t>(uprv_strlen(pkgDataFlags[GENLIB]));
 
     int32_t position = length - 1;
 
@@ -2084,8 +2117,8 @@ static void loadLists(UPKGOptions *o, UErrorCode *status)
                     fprintf(stderr, "pkgdata: Error: absolute path encountered. Old style paths are not supported. Use relative paths such as 'fur.res' or 'translit%cfur.res'.\n\tBad path: '%s'\n", U_FILE_SEP_CHAR, s);
                     exit(U_ILLEGAL_ARGUMENT_ERROR);
                 }
-                tmpLength = uprv_strlen(o->srcDir) + 
-                            uprv_strlen(s) + 5; /* 5 is to add a little extra space for, among other things, PKGDATA_FILE_SEP_STRING */
+                /* The +5 is to add a little extra space for, among other things, PKGDATA_FILE_SEP_STRING */
+                tmpLength = static_cast<int32_t>(uprv_strlen(o->srcDir) + uprv_strlen(s) + 5);
                 if((tmp = (char *)uprv_malloc(tmpLength)) == NULL) {
                     fprintf(stderr, "pkgdata: Error: Unable to allocate tmp buffer size: %d\n", tmpLength);
                     exit(U_MEMORY_ALLOCATION_ERROR);

@@ -7,10 +7,11 @@ se{
         "[A Á B C Č D Đ E É F G H I J K L M N Ŋ O P Q R S Š T Ŧ U V W X Y Z Ž Ø Æ Å Ä"
         " Ö]"
     }
+    ExemplarCharactersNumbers{"[  , % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -155,7 +156,7 @@ se{
                 infinity{"∞"}
                 list{";"}
                 minusSign{"−"}
-                nan{"¤¤¤"}
+                nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
                 plusSign{"+"}
@@ -165,7 +166,7 @@ se{
         }
         minimumGroupingDigits{"1"}
     }
-    Version{"2.1.27.98"}
+    Version{"2.1.48.4"}
     calendar{
         gregorian{
             AmPmMarkers{
@@ -218,11 +219,6 @@ se{
                 MEd{"MM-dd, E"}
                 MMM{"LLL"}
                 MMMEd{"MMM d, E"}
-                MMMMW{
-                    one{"'week' W 'of' MMM"}
-                    other{"'week' W 'of' MMM"}
-                    two{"'week' W 'of' MMM"}
-                }
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
                 Md{"MM-dd"}
@@ -243,11 +239,6 @@ se{
                 yMd{"y-MM-dd"}
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
-                yw{
-                    one{"'week' w 'of' y"}
-                    other{"'week' w 'of' y"}
-                    two{"'week' w 'of' y"}
-                }
             }
             dayNames{
                 format{

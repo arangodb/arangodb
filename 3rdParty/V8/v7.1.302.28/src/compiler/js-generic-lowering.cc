@@ -6,15 +6,15 @@
 
 #include "src/ast/ast.h"
 #include "src/builtins/builtins-constructor.h"
-#include "src/code-factory.h"
-#include "src/code-stubs.h"
+#include "src/codegen/code-factory.h"
 #include "src/compiler/common-operator.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/machine-operator.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
 #include "src/compiler/operator-properties.h"
-#include "src/feedback-vector.h"
+#include "src/objects/feedback-cell.h"
+#include "src/objects/feedback-vector.h"
 #include "src/objects/scope-info.h"
 
 namespace v8 {
@@ -31,7 +31,8 @@ CallDescriptor::Flags FrameStateFlagForCall(Node* node) {
 
 }  // namespace
 
-JSGenericLowering::JSGenericLowering(JSGraph* jsgraph) : jsgraph_(jsgraph) {}
+JSGenericLowering::JSGenericLowering(JSGraph* jsgraph, Editor* editor)
+    : AdvancedReducer(editor), jsgraph_(jsgraph) {}
 
 JSGenericLowering::~JSGenericLowering() = default;
 
@@ -87,6 +88,9 @@ REPLACE_STUB_CALL(ToName)
 REPLACE_STUB_CALL(ToObject)
 REPLACE_STUB_CALL(ToString)
 REPLACE_STUB_CALL(ForInEnumerate)
+REPLACE_STUB_CALL(AsyncFunctionEnter)
+REPLACE_STUB_CALL(AsyncFunctionReject)
+REPLACE_STUB_CALL(AsyncFunctionResolve)
 REPLACE_STUB_CALL(FulfillPromise)
 REPLACE_STUB_CALL(PerformPromiseThen)
 REPLACE_STUB_CALL(PromiseResolve)
@@ -238,8 +242,6 @@ void JSGenericLowering::LowerJSStoreNamed(Node* node) {
   Node* outer_state = frame_state->InputAt(kFrameStateOuterStateInput);
   node->InsertInput(zone(), 1, jsgraph()->HeapConstant(p.name()));
   if (!p.feedback().IsValid()) {
-    node->InsertInput(
-        zone(), 3, jsgraph()->SmiConstant(static_cast<int>(p.language_mode())));
     ReplaceWithRuntimeCall(node, Runtime::kSetNamedProperty);
     return;
   }
@@ -307,6 +309,7 @@ void JSGenericLowering::LowerJSStoreInArrayLiteral(Node* node) {
       Builtins::CallableFor(isolate(), Builtins::kStoreInArrayLiteralIC);
   CallDescriptor::Flags flags = FrameStateFlagForCall(node);
   FeedbackParameter const& p = FeedbackParameterOf(node->op());
+  RelaxControls(node);
   node->InsertInput(zone(), 3, jsgraph()->SmiConstant(p.feedback().index()));
   node->InsertInput(zone(), 4, jsgraph()->HeapConstant(p.feedback().vector()));
   ReplaceWithStubCall(node, callable, flags);
@@ -401,6 +404,10 @@ void JSGenericLowering::LowerJSCreateArrayIterator(Node* node) {
   UNREACHABLE();  // Eliminated in typed lowering.
 }
 
+void JSGenericLowering::LowerJSCreateAsyncFunctionObject(Node* node) {
+  UNREACHABLE();  // Eliminated in typed lowering.
+}
+
 void JSGenericLowering::LowerJSCreateCollectionIterator(Node* node) {
   UNREACHABLE();  // Eliminated in typed lowering.
 }
@@ -441,7 +448,7 @@ void JSGenericLowering::LowerJSCreateClosure(Node* node) {
   node->RemoveInput(4);  // control
 
   // Use the FastNewClosure builtin only for functions allocated in new space.
-  if (p.pretenure() == NOT_TENURED) {
+  if (p.allocation() == AllocationType::kYoung) {
     Callable callable =
         Builtins::CallableFor(isolate(), Builtins::kFastNewClosure);
     CallDescriptor::Flags flags = FrameStateFlagForCall(node);

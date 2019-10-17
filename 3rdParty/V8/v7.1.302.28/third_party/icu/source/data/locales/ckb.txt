@@ -6,6 +6,7 @@ ckb{
         "ؤ إ ة ث ذ ص ض ط ظ ك ه ى ي]"
     }
     ExemplarCharacters{"[ئ ا ب پ ت ج چ ح خ د ر ز ڕ ژ س ش ع غ ف ڤ ق ک گ ل ڵ م ن ھ ە و ۆ ی ێ]"}
+    ExemplarCharactersNumbers{"[\u200E\u200F \\- , ٫ ٬ . % ٪ ‰ ؉ + 0٠ 1١ 2٢ 3٣ 4٤ 5٥ 6٦ 7٧ 8٨ 9٩]"}
     NumberElements{
         arab{
             patterns{
@@ -19,16 +20,18 @@ ckb{
                 exponential{"اس"}
                 group{"٬"}
                 infinity{"∞"}
+                minusSign{"‏-"}
                 nan{"NaN"}
                 perMille{"؉"}
                 percentSign{"٪"}
+                plusSign{"‏+"}
                 superscriptingExponent{"×"}
             }
         }
         default{"arab"}
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -54,7 +57,7 @@ ckb{
         minimumGroupingDigits{"1"}
         native{"arab"}
     }
-    Version{"2.1.27.84"}
+    Version{"2.1.47.72"}
     calendar{
         generic{
             DateTimePatterns{
@@ -221,8 +224,8 @@ ckb{
                 MMM{"LLL"}
                 MMMEd{"E، dی MMM"}
                 MMMMW{
-                    one{"هەفتەی W ی MMM"}
-                    other{"هەفتەی W ی MMM"}
+                    one{"هەفتەی W ی MMMM"}
+                    other{"هەفتەی W ی MMMM"}
                 }
                 MMMMd{"MMMM d"}
                 MMMd{"dی MMM"}
@@ -245,8 +248,8 @@ ckb{
                 yQQQ{"y QQQ"}
                 yQQQQ{"y QQQQ"}
                 yw{
-                    one{"هەفتەی w ی y"}
-                    other{"هەفتەی w ی y"}
+                    one{"هەفتەی w ی Y"}
+                    other{"هەفتەی w ی Y"}
                 }
             }
             dayNames{

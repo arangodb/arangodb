@@ -80,10 +80,9 @@ timezoneTypes:table(nofallback){
             "Etc:GMT-0"{"Etc/GMT"}
             "Etc:GMT0"{"Etc/GMT"}
             "Etc:Greenwich"{"Etc/GMT"}
-            "Etc:UCT"{"Etc/GMT"}
-            "Etc:UTC"{"Etc/GMT"}
-            "Etc:Universal"{"Etc/GMT"}
-            "Etc:Zulu"{"Etc/GMT"}
+            "Etc:UCT"{"Etc/UTC"}
+            "Etc:Universal"{"Etc/UTC"}
+            "Etc:Zulu"{"Etc/UTC"}
             "Europe:Belfast"{"Europe/London"}
             "Europe:Nicosia"{"Asia/Nicosia"}
             "Europe:Tiraspol"{"Europe/Chisinau"}
@@ -138,11 +137,11 @@ timezoneTypes:table(nofallback){
             ROK{"Asia/Seoul"}
             Singapore{"Asia/Singapore"}
             Turkey{"Europe/Istanbul"}
-            UCT{"Etc/GMT"}
-            UTC{"Etc/GMT"}
-            Universal{"Etc/GMT"}
+            UCT{"Etc/UTC"}
+            UTC{"Etc/UTC"}
+            Universal{"Etc/UTC"}
             W-SU{"Europe/Moscow"}
-            Zulu{"Etc/GMT"}
+            Zulu{"Etc/UTC"}
         }
     }
     typeMap{
@@ -316,6 +315,7 @@ timezoneTypes:table(nofallback){
             "America:Port_of_Spain"{"ttpos"}
             "America:Porto_Velho"{"brpvh"}
             "America:Puerto_Rico"{"prsju"}
+            "America:Punta_Arenas"{"clpuq"}
             "America:Rainy_River"{"caffs"}
             "America:Rankin_Inlet"{"cayek"}
             "America:Recife"{"brrec"}
@@ -416,6 +416,7 @@ timezoneTypes:table(nofallback){
             "Asia:Pontianak"{"idpnk"}
             "Asia:Pyongyang"{"kpfnj"}
             "Asia:Qatar"{"qadoh"}
+            "Asia:Qostanay"{"kzksn"}
             "Asia:Qyzylorda"{"kzkzo"}
             "Asia:Rangoon"{"mmrgn"}
             "Asia:Riyadh"{"saruh"}
@@ -463,7 +464,7 @@ timezoneTypes:table(nofallback){
             "Australia:Melbourne"{"aumel"}
             "Australia:Perth"{"auper"}
             "Australia:Sydney"{"ausyd"}
-            "Etc:GMT"{"utc"}
+            "Etc:GMT"{"gmt"}
             "Etc:GMT+1"{"utcw01"}
             "Etc:GMT+10"{"utcw10"}
             "Etc:GMT+11"{"utcw11"}
@@ -490,6 +491,7 @@ timezoneTypes:table(nofallback){
             "Etc:GMT-7"{"utce07"}
             "Etc:GMT-8"{"utce08"}
             "Etc:GMT-9"{"utce09"}
+            "Etc:UTC"{"utc"}
             "Etc:Unknown"{"unk"}
             "Europe:Amsterdam"{"nlams"}
             "Europe:Andorra"{"adalv"}

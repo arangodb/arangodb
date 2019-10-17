@@ -124,6 +124,10 @@ saq{
         }
         MRO{
             "MRO",
+            "Njilingi eel Moritania (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "Njilingi eel Moritania",
         }
         MUR{
@@ -176,6 +180,10 @@ saq{
         }
         STD{
             "STD",
+            "Njilingi eel Sao Tome na Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "Njilingi eel Sao Tome na Principe",
         }
         SZL{
@@ -223,5 +231,5 @@ saq{
             "Dola eel Zimbabwe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

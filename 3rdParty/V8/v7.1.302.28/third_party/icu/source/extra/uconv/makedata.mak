@@ -8,7 +8,7 @@
 # invoke with
 # nmake /f makedata.mak icup=<path_to_icu_instalation> [Debug|Release]
 #
-#	12/10/1999	weiv	Created
+#   12/10/1999  weiv    Created
 
 #If no config, we default to debug
 !IF "$(CFG)" == ""
@@ -38,6 +38,7 @@ CFG=Debug
 !ERROR Can't find path!
 !ENDIF
 !MESSAGE ICU path is $(ICUP)
+
 RESNAME=uconvmsg
 RESDIR=resources
 RESFILES=resfiles.mk
@@ -56,6 +57,16 @@ PATH = $(ICUP)\bin64;$(PATH)
 !ELSE
 ICUTOOLS=$(ICUP)\bin
 PATH = $(ICUP)\bin;$(PATH)
+!ENDIF
+
+# Make sure the necessary tools exist before continuing. (This is to prevent cryptic errors from NMAKE).
+!IF !EXISTS($(ICUTOOLS)\pkgdata.exe)
+!MESSAGE Unable to find "$(ICUTOOLS)\pkgdata.exe"
+!ERROR The tool 'pkgdata.exe' does not exist! (Have you built all of ICU yet?).
+!ENDIF
+!IF !EXISTS($(ICUTOOLS)\genrb.exe)
+!MESSAGE Unable to find "$(ICUTOOLS)\genrb.exe"
+!ERROR The tool 'genrb.exe' does not exist! (Have you built all of ICU yet?).
 !ENDIF
 
 # Suffixes for data files
@@ -81,13 +92,13 @@ OUTPUT = "$(DLL_OUTPUT)\$(RESNAME).lib"
 !ENDIF
 
 ALL : $(OUTPUT)
-	@echo All targets are up to date (mode $(PKGMODE))
+    @echo All targets are up to date (mode $(PKGMODE))
 
 
 # invoke pkgdata - static
 "$(DLL_OUTPUT)\$(RESNAME).lib" : $(RB_FILES) $(RESFILES)
-	@echo Building $(RESNAME).lib
-	@"$(ICUTOOLS)\pkgdata" -f -v -m static -c -p $(RESNAME) -d "$(DLL_OUTPUT)" -s "$(RESDIR)" <<pkgdatain.txt
+    @echo Building $(RESNAME).lib
+    @"$(ICUTOOLS)\pkgdata" -f -v -m static -c -p $(RESNAME) -d "$(DLL_OUTPUT)" -s "$(RESDIR)" <<pkgdatain.txt
 $(RES_FILES:.res =.res
 )
 <<KEEP
@@ -95,14 +106,12 @@ $(RES_FILES:.res =.res
 # This is to remove all the data files
 CLEAN :
     -@erase "$(RB_FILES)"
-	-@erase "$(CFG)\*uconvmsg*.*"
+    -@erase "$(CFG)\*uconvmsg*.*"
     -@"$(ICUTOOLS)\pkgdata" -f --clean -v -m static -c -p $(RESNAME) -d "$(DLL_OUTPUT)" -s "$(RESDIR)" pkgdatain.txt
 
 # Inference rule for creating resource bundles
 {$(RESDIR)}.txt{$(RESDIR)}.res:
-	@echo Making Resource Bundle files
-	"$(ICUTOOLS)\genrb" -s $(@D) -d $(@D) $(?F)
-
+    @echo Making Resource Bundle files
+    "$(ICUTOOLS)\genrb" -s $(@D) -d $(@D) $(?F)
 
 $(RESSRC) : {"$(ICUTOOLS)"}genrb.exe
-

@@ -12,17 +12,18 @@ th{
     }
     ExemplarCharacters{
         "[ฯ ๆ \u0E4E \u0E4C \u0E47 \u0E48 \u0E49 \u0E4A \u0E4B ก ข ฃ ค ฅ ฆ ง จ ฉ ช ซ "
-        "ฌ ญ ฎ ฏ ฐ ฑ ฒ ณ ด ต ถ ท ธ น บ ป ผ ฝ พ ฟ ภ ม ย ร ฤ ล ฦ ว ศ ษ ส ห ฬ อ ฮ \u0E4D"
-        " ะ \u0E31 า ๅ ำ \u0E34 \u0E35 \u0E36 \u0E37 \u0E38 \u0E39 เ แ โ ใ ไ \u0E3A]"
+        "ฌ ญ ฎ ฏ ฐ ฑ ฒ ณ ด ต ถ ท ธ น บ ป ผ ฝ พ ฟ ภ ม ย ร ฤ ล ฦ ว ศ ษ ส ห ฬ อ ฮ "
+        "\u0E4D ะ \u0E31 า ๅ ำ \u0E34 \u0E35 \u0E36 \u0E37 \u0E38 \u0E39 เ แ โ ใ ไ "
+        "\u0E3A]"
     }
     ExemplarCharactersIndex{
         "[ก ข ฃ ค ฅ ฆ ง จ ฉ ช ซ ฌ ญ ฎ ฏ ฐ ฑ ฒ ณ ด ต ถ ท ธ น บ ป ผ ฝ พ ฟ ภ ม ย ร ฤ ล ฦ"
         " ว ศ ษ ส ห ฬ อ ฮ]"
     }
+    ExemplarCharactersNumbers{"[% , \\- . ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[! \u0022 # ' ( ) * , \\- . / \\: @ \\[ \\] ‐ – — ‘ ’ “ ” … ′ ″]"}
     MoreInformation{"?"}
     NumberElements{
-        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -31,7 +32,6 @@ th{
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -78,100 +78,102 @@ th{
             patternsShort{
                 currencyFormat{
                     1000{
-                        other{"¤0 พ'.'"}
+                        other{"¤0K"}
                     }
                     10000{
-                        other{"¤0 ม'.'"}
+                        other{"¤00K"}
                     }
                     100000{
-                        other{"¤0 ส'.'"}
+                        other{"¤000K"}
                     }
                     1000000{
-                        other{"¤0 ล'.'"}
+                        other{"¤0M"}
                     }
                     10000000{
-                        other{"¤00 ล'.'"}
+                        other{"¤00M"}
                     }
                     100000000{
-                        other{"¤000 ล'.'"}
+                        other{"¤000M"}
                     }
                     1000000000{
-                        other{"¤0 พ'.'ล'.'"}
+                        other{"¤0B"}
                     }
                     10000000000{
-                        other{"¤0 ม'.'ล'.'"}
+                        other{"¤00B"}
                     }
                     100000000000{
-                        other{"¤0 ส'.'ล'.'"}
+                        other{"¤000B"}
                     }
                     1000000000000{
-                        other{"¤0 ล'.'ล'.'"}
+                        other{"¤0T"}
                     }
                     10000000000000{
-                        other{"¤00 ล'.'ล'.'"}
+                        other{"¤00T"}
                     }
                     100000000000000{
-                        other{"¤000 ล'.'ล'.'"}
+                        other{"¤000T"}
                     }
                 }
                 decimalFormat{
                     1000{
-                        other{"0 พ'.'"}
+                        other{"0K"}
                     }
                     10000{
-                        other{"0 ม'.'"}
+                        other{"00K"}
                     }
                     100000{
-                        other{"0 ส'.'"}
+                        other{"000K"}
                     }
                     1000000{
-                        other{"0 ล'.'"}
+                        other{"0M"}
                     }
                     10000000{
-                        other{"00 ล'.'"}
+                        other{"00M"}
                     }
                     100000000{
-                        other{"000 ล'.'"}
+                        other{"000M"}
                     }
                     1000000000{
-                        other{"0 พ'.'ล'.'"}
+                        other{"0B"}
                     }
                     10000000000{
-                        other{"0 ม'.'ล'.'"}
+                        other{"00B"}
                     }
                     100000000000{
-                        other{"0 ส'.'ล'.'"}
+                        other{"000B"}
                     }
                     1000000000000{
-                        other{"0 ล'.'ล'.'"}
+                        other{"0T"}
                     }
                     10000000000000{
-                        other{"00 ล'.'ล'.'"}
+                        other{"00T"}
                     }
                     100000000000000{
-                        other{"000 ล'.'ล'.'"}
+                        other{"000T"}
                     }
                 }
             }
             symbols{
-                decimal{"."}
                 exponential{"E"}
-                group{","}
                 infinity{"∞"}
-                list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{":"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"เลี้ยวขวาที่ทางเลี้ยวที่ {0}"}
+            }
+            plural{
+                other{"{0} วัน"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"thai"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -418,7 +420,7 @@ th{
                             "เกิงอู้",
                             "ซินเว่ย",
                             "เหรินเซิน",
-                            "กุ๋่ยโหย่ว",
+                            "กุ๋ยโหย่ว",
                             "เจ่ียซู",
                             "อี๋ฮ่าย",
                             "ปิ๋ิ่งจื่อ",
@@ -507,20 +509,6 @@ th{
                         "11",
                         "12",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "1",
                         "2",
@@ -538,20 +526,6 @@ th{
                 }
                 stand-alone{
                     abbreviated{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
-                    narrow{
                         "1",
                         "2",
                         "3",
@@ -600,21 +574,6 @@ th{
                         "เมสรา",
                         "นาซี",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13",
-                    }
                     wide{
                         "เทาท์",
                         "บาบา",
@@ -646,21 +605,6 @@ th{
                         "อีเปป",
                         "เมสรา",
                         "นาซี",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13",
                     }
                     wide{
                         "เทาท์",
@@ -816,20 +760,6 @@ th{
                         "11",
                         "12",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "1",
                         "2",
@@ -847,20 +777,6 @@ th{
                 }
                 stand-alone{
                     abbreviated{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
-                    narrow{
                         "1",
                         "2",
                         "3",
@@ -910,21 +826,6 @@ th{
                         "เนแฮซ",
                         "พากูเมน",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13",
-                    }
                     wide{
                         "เมสเคอเรม",
                         "เตเกมท",
@@ -956,21 +857,6 @@ th{
                         "ฮัมเล",
                         "เนแฮซ",
                         "พากูเมน",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13",
                     }
                     wide{
                         "เมสเคอเรม",
@@ -1007,31 +893,26 @@ th{
                 "{1} {0}",
             }
             availableFormats{
-                E{"ccc"}
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d"}
-                Gy{"G y"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 GyMMM{"MMM G y"}
                 GyMMMEEEEd{"EEEEที่ d MMM G y"}
                 GyMMMEd{"E d MMM G y"}
                 GyMMMd{"d MMM G y"}
-                H{"HH"}
-                Hm{"HH:mm"}
-                Hms{"HH:mm:ss"}
-                M{"L"}
                 MEd{"E d/M"}
-                MMM{"LLL"}
                 MMMEEEEd{"EEEEที่ d MMM"}
                 MMMEd{"E d MMM"}
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                d{"d"}
-                h{"h a"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
-                ms{"mm:ss"}
-                y{"G y"}
-                yyyy{"G y"}
                 yyyyM{"M/y G"}
                 yyyyMEd{"E d/M/y GGGGG"}
                 yyyyMMM{"MMM G y"}
@@ -1044,12 +925,17 @@ th{
                 yyyyQQQQ{"QQQQ G y"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
                 H{
                     H{"H–H"}
-                }
-                Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
                 }
                 Hmv{
                     H{"H:mm–H:mm v"}
@@ -1064,9 +950,6 @@ th{
                 MEd{
                     M{"E d/M – E d/M"}
                     d{"E d/M – E d/M"}
-                }
-                MMM{
-                    M{"LLL–LLL"}
                 }
                 MMMEEEEd{
                     M{"EEEEที่ d MMM – EEEEที่ d MMM"}
@@ -1084,31 +967,7 @@ th{
                     M{"d/M – d/M"}
                     d{"d/M – d/M"}
                 }
-                d{
-                    d{"d–d"}
-                }
                 fallback{"{0} - {1}"}
-                h{
-                    a{"h a – h a"}
-                    h{"h–h a"}
-                }
-                hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
-                }
-                hmv{
-                    a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
-                }
-                hv{
-                    a{"h a – h a v"}
-                    h{"h–h a v"}
-                }
-                y{
-                    y{"G y–y"}
-                }
                 yM{
                     M{"M/y – M/y G"}
                     y{"M/y – M/y G"}
@@ -1180,7 +1039,12 @@ th{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E HH:mm น."}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d"}
@@ -1204,7 +1068,7 @@ th{
                 MMMMEEEEd{"EEEEที่ d MMMM"}
                 MMMMEd{"E d MMMM"}
                 MMMMW{
-                    other{"สัปดาห์ที่ W ของ MMM"}
+                    other{"สัปดาห์ที่ W ของเดือนMMMM"}
                 }
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
@@ -1214,7 +1078,7 @@ th{
                 hm{"h:mm a"}
                 hms{"h:mm:ss a"}
                 hmsv{"h:mm:ss a v"}
-                hmv{"h:mm a v"}
+                hmv{"h:mm น. a v"}
                 mmss{"mm:ss"}
                 ms{"mm:ss"}
                 y{"y"}
@@ -1232,7 +1096,7 @@ th{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ G y"}
                 yw{
-                    other{"สัปดาห์ที่ w ของ y"}
+                    other{"สัปดาห์ที่ w ของปี Y"}
                 }
             }
             dayNames{
@@ -1333,7 +1197,7 @@ th{
                         midnight{"เที่ยงคืน"}
                         morning1{"เช้า"}
                         night1{"กลางคืน"}
-                        noon{"n"}
+                        noon{"เที่ยง"}
                     }
                     wide{
                         afternoon1{"ในตอนบ่าย"}
@@ -1387,7 +1251,7 @@ th{
             }
             eras{
                 abbreviated{
-                    "ปีก่อน ค.ศ.",
+                    "ก่อน ค.ศ.",
                     "ค.ศ.",
                 }
                 abbreviated%variant{
@@ -1403,7 +1267,7 @@ th{
                     "ส.ศ.",
                 }
                 wide{
-                    "ปีก่อนคริสต์ศักราช",
+                    "ปีก่อนคริสตกาล",
                     "คริสต์ศักราช",
                 }
                 wide%variant{
@@ -1412,6 +1276,52 @@ th{
                 }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h – h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
@@ -1702,22 +1612,6 @@ th{
                         "เอลอุล",
                         "อาดาร์ II",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13",
-                        "7",
-                    }
                     wide{
                         "ทิชรี",
                         "เฮวาน",
@@ -1751,22 +1645,6 @@ th{
                         "อัฟ",
                         "เอลอุล",
                         "อาดาร์ II",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13",
-                        "7",
                     }
                     wide{
                         "ทิชรี",
@@ -1809,20 +1687,6 @@ th{
                         "มาฆะ",
                         "ผลคุณี",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "จิตรา",
                         "วิสาขา",
@@ -1852,20 +1716,6 @@ th{
                         "ปุษยา",
                         "มาฆะ",
                         "ผลคุณี",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
                     }
                     wide{
                         "จิตรา",
@@ -1902,19 +1752,13 @@ th{
             }
             availableFormats{
                 Ed{"E d"}
-                Gy{"G y"}
                 GyMMM{"MMM G y"}
                 GyMMMEd{"E d MMM G y"}
                 GyMMMd{"d MMM G y"}
-                M{"L"}
                 MEd{"E, d/M"}
-                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                d{"d"}
-                y{"G y"}
-                yyyy{"G y"}
                 yyyyM{"M/y G"}
                 yyyyMEd{"E d/M/y GGGGG"}
                 yyyyMMM{"MMM G y"}
@@ -1948,20 +1792,6 @@ th{
                         "ซุลกิอฺ.",
                         "ซุลหิจ.",
                     }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     wide{
                         "มุฮะร์รอม",
                         "ซอฟาร์",
@@ -1991,20 +1821,6 @@ th{
                         "เชาว.",
                         "ซุลกิอฺ.",
                         "ซุลหิจ.",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
                     }
                     wide{
                         "มุฮะร์รอม",
@@ -2041,26 +1857,20 @@ th{
             }
             availableFormats{
                 Ed{"E d"}
-                Gy{"G y"}
                 GyMMM{"MMM G y"}
                 GyMMMEd{"E d MMM G y"}
                 GyMMMd{"d MMM G y"}
                 H{"HH"}
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
-                M{"L"}
                 MEd{"E, d/M"}
-                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                d{"d"}
                 h{"h a"}
                 hm{"h:mm a"}
                 hms{"h:mm:ss a"}
                 ms{"mm:ss"}
-                y{"G y"}
-                yyyy{"G y"}
                 yyyyM{"M/GGGGG y"}
                 yyyyMEd{"E d/M/GGGGG y"}
                 yyyyMMM{"MMM G y"}
@@ -2308,6 +2118,7 @@ th{
                     "ทะอิโช",
                     "โชวะ",
                     "เฮเซ",
+                    "เรวะ",
                 }
             }
         }
@@ -2332,20 +2143,6 @@ th{
                         "เดย์",
                         "บาฮ์มาน",
                         "เอสฟานด์",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
                     }
                     wide{
                         "ฟาร์วาร์ดิน",
@@ -2376,20 +2173,6 @@ th{
                         "เดย์",
                         "บาฮ์มาน",
                         "เอสฟานด์",
-                    }
-                    narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
                     }
                     wide{
                         "ฟาร์วาร์ดิน",
@@ -2433,13 +2216,10 @@ th{
                 H{"HH"}
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
-                M{"L"}
                 MEd{"E, d/M"}
-                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                d{"d"}
                 h{"h a"}
                 hm{"h:mm a"}
                 hms{"h:mm:ss a"}
@@ -2467,7 +2247,7 @@ th{
         african_scripts{"สคริปต์แอฟริกัน"}
         american_scripts{"สคริปต์อเมริกัน"}
         animal{"สัตว์"}
-        animals_nature{"สัตว์และธรรมชาติ"}
+        animals_nature{"สัตว์หรือธรรมชาติ"}
         arrows{"ลูกศร"}
         body{"ร่างกาย"}
         box_drawing{"การวาดกล่อง"}
@@ -2533,7 +2313,7 @@ th{
         sign_standard_symbols{"เครื่องหมาย/สัญลักษณ์มาตรฐาน"}
         small_form_variant{"รูปแบบขนาดเล็ก"}
         smiley{"หน้ายิ้ม"}
-        smileys_people{"หน้ายิ้มและรูปคน"}
+        smileys_people{"หน้ายิ้มหรือรูปคน"}
         south_asian_scripts{"สคริปต์เอเชียใต้"}
         southeast_asian_scripts{"สคริปต์เอเชียตะวันออกเฉียงใต้"}
         spacing{"การเว้นวรรค"}
@@ -2542,7 +2322,7 @@ th{
         technical_symbols{"สัญลักษณ์ทางเทคนิค"}
         tone_marks{"วรรณยุกต์"}
         travel{"การเดินทาง"}
-        travel_places{"การเดินทางและสถานที่"}
+        travel_places{"การเดินทางหรือสถานที่"}
         upwards_arrows{"ลูกศรขึ้น"}
         variant_forms{"รูปแบบที่เปลี่ยนแปลง"}
         vocalic_jamo{"สระภาษาเกาหลี"}
@@ -2611,10 +2391,31 @@ th{
                 }
             }
         }
+        dayOfYear{
+            dn{"วันของปี"}
+        }
+        dayOfYear-narrow{
+            dn{"วันของปี"}
+        }
+        dayOfYear-short{
+            dn{"วันของปี"}
+        }
         dayperiod{
             dn{"ช่วงวัน"}
         }
+        dayperiod-narrow{
+            dn{"ช่วงวัน"}
+        }
+        dayperiod-short{
+            dn{"ช่วงวัน"}
+        }
         era{
+            dn{"สมัย"}
+        }
+        era-narrow{
+            dn{"สมัย"}
+        }
+        era-short{
             dn{"สมัย"}
         }
         fri{
@@ -2634,7 +2435,7 @@ th{
         }
         fri-narrow{
             relative{
-                "-1"{"ศุกร์ที่ผ่านมา"}
+                "-1"{"ศุกร์ที่แล้ว"}
                 "0"{"ศุกร์นี้"}
                 "1"{"ศุกร์หน้า"}
             }
@@ -2655,7 +2456,7 @@ th{
             }
             relativeTime{
                 future{
-                    other{"อีก {0} ศุกร์"}
+                    other{"ในอีก {0} ศุกร์"}
                 }
                 past{
                     other{"{0} ศุกร์ที่แล้ว"}
@@ -2751,7 +2552,7 @@ th{
         }
         mon-narrow{
             relative{
-                "-1"{"จันทร์ที่ผ่านมา"}
+                "-1"{"จันทร์ที่แล้ว"}
                 "0"{"จันทร์นี้"}
                 "1"{"จันทร์หน้า"}
             }
@@ -2772,7 +2573,7 @@ th{
             }
             relativeTime{
                 future{
-                    other{"อีก {0} จันทร์"}
+                    other{"ในอีก {0} จันทร์"}
                 }
                 past{
                     other{"{0} จันทร์ที่แล้ว"}
@@ -2845,6 +2646,11 @@ th{
         }
         quarter-narrow{
             dn{"ไตรมาส"}
+            relative{
+                "-1"{"ไตรมาสที่แล้ว"}
+                "0"{"ไตรมาสนี้"}
+                "1"{"ไตรมาสหน้า"}
+            }
             relativeTime{
                 future{
                     other{"ใน {0} ไตรมาส"}
@@ -2856,6 +2662,11 @@ th{
         }
         quarter-short{
             dn{"ไตรมาส"}
+            relative{
+                "-1"{"ไตรมาสที่แล้ว"}
+                "0"{"ไตรมาสนี้"}
+                "1"{"ไตรมาสหน้า"}
+            }
             relativeTime{
                 future{
                     other{"ใน {0} ไตรมาส"}
@@ -2882,7 +2693,7 @@ th{
         }
         sat-narrow{
             relative{
-                "-1"{"เสาร์ที่ผ่านมา"}
+                "-1"{"เสาร์ที่แล้ว"}
                 "0"{"เสาร์นี้"}
                 "1"{"เสาร์หน้า"}
             }
@@ -2903,7 +2714,7 @@ th{
             }
             relativeTime{
                 future{
-                    other{"อีก {0} เสาร์"}
+                    other{"ในอีก {0} เสาร์"}
                 }
                 past{
                     other{"{0} เสาร์ที่แล้ว"}
@@ -3008,7 +2819,7 @@ th{
         }
         thu-narrow{
             relative{
-                "-1"{"พฤหัสที่ผ่านมา"}
+                "-1"{"พฤหัสที่แล้ว"}
                 "0"{"พฤหัสนี้"}
                 "1"{"พฤหัสหน้า"}
             }
@@ -3053,7 +2864,7 @@ th{
         }
         tue-narrow{
             relative{
-                "-1"{"อังคารที่ผ่านมา"}
+                "-1"{"อังคารที่แล้ว"}
                 "0"{"อังคารนี้"}
                 "1"{"อังคารหน้า"}
             }
@@ -3074,7 +2885,7 @@ th{
             }
             relativeTime{
                 future{
-                    other{"อีก {0} อังคาร"}
+                    other{"ในอีก {0} อังคาร"}
                 }
                 past{
                     other{"{0} อังคารที่แล้ว"}
@@ -3098,7 +2909,7 @@ th{
         }
         wed-narrow{
             relative{
-                "-1"{"พุธที่ผ่านมา"}
+                "-1"{"พุธที่แล้ว"}
                 "0"{"พุธนี้"}
                 "1"{"พุธหน้า"}
             }
@@ -3119,7 +2930,7 @@ th{
             }
             relativeTime{
                 future{
-                    other{"อีก {0} พุธ"}
+                    other{"ในอีก {0} พุธ"}
                 }
                 past{
                     other{"{0} พุธที่แล้ว"}
@@ -3177,8 +2988,32 @@ th{
                 }
             }
         }
+        weekOfMonth{
+            dn{"สัปดาห์ของเดือน"}
+        }
+        weekOfMonth-narrow{
+            dn{"สัปดาห์ของเดือน"}
+        }
+        weekOfMonth-short{
+            dn{"สัปดาห์ของเดือน"}
+        }
         weekday{
-            dn{"วันในสัปดาห์"}
+            dn{"วันของสัปดาห์"}
+        }
+        weekday-narrow{
+            dn{"วันของสัปดาห์"}
+        }
+        weekday-short{
+            dn{"วันของสัปดาห์"}
+        }
+        weekdayOfMonth{
+            dn{"วันของเดือน"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"วันของเดือน"}
+        }
+        weekdayOfMonth-short{
+            dn{"วันของเดือน"}
         }
         year{
             dn{"ปี"}
@@ -3231,16 +3066,34 @@ th{
         zone{
             dn{"เขตเวลา"}
         }
+        zone-narrow{
+            dn{"เขตเวลา"}
+        }
+        zone-short{
+            dn{"โซน"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} หรือ {1}"}
+            end{"{0} หรือ {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0}และ{1}"}
             end{"{0} และ{1}"}
             middle{"{0} {1}"}
             start{"{0} {1}"}
         }
+        standard-narrow{
+            2{"{0}และ{1}"}
+            end{"{0} และ{1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
         standard-short{
-            2{"{0} และ {1}"}
+            2{"{0}และ{1}"}
             end{"{0} และ{1}"}
             middle{"{0} {1}"}
             start{"{0} {1}"}
@@ -3268,5 +3121,37 @@ th{
         UK{"สหราชอาณาจักร"}
         US{"อเมริกัน"}
         metric{"เมตริก"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

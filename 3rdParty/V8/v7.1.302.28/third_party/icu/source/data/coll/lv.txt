@@ -15,7 +15,7 @@ lv{
                 "&[before 1]T<š<<<Š"
                 "&[before 1]Ʒ<ž<<<Ž"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }

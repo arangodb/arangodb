@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 **********************************************************************
@@ -6,7 +6,7 @@
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  ucnv2022.cpp
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -513,7 +513,7 @@ _ISO2022Open(UConverter *cnv, UConverterLoadArgs *pArgs, UErrorCode *errorCode){
                     ucnv_loadSharedData("ISO8859_7", &stackPieces, &stackArgs, errorCode);
             }
             myConverterData->myConverterArray[JISX208] =
-                ucnv_loadSharedData("Shift-JIS", &stackPieces, &stackArgs, errorCode);
+                ucnv_loadSharedData("EUC-JP", &stackPieces, &stackArgs, errorCode);
             if(jpCharsetMasks[version]&CSM(JISX212)) {
                 myConverterData->myConverterArray[JISX212] =
                     ucnv_loadSharedData("jisx-212", &stackPieces, &stackArgs, errorCode);
@@ -1515,79 +1515,6 @@ jisx201FromU(uint32_t value) {
 }
 
 /*
- * Take a valid Shift-JIS byte pair, check that it is in the range corresponding
- * to JIS X 0208, and convert it to a pair of 21..7E bytes.
- * Return 0 if the byte pair is out of range.
- */
-static inline uint32_t
-_2022FromSJIS(uint32_t value) {
-    uint8_t trail;
-
-    if(value > 0xEFFC) {
-        return 0;  /* beyond JIS X 0208 */
-    }
-
-    trail = (uint8_t)value;
-
-    value &= 0xff00;  /* lead byte */
-    if(value <= 0x9f00) {
-        value -= 0x7000;
-    } else /* 0xe000 <= value <= 0xef00 */ {
-        value -= 0xb000;
-    }
-    value <<= 1;
-
-    if(trail <= 0x9e) {
-        value -= 0x100;
-        if(trail <= 0x7e) {
-            value |= trail - 0x1f;
-        } else {
-            value |= trail - 0x20;
-        }
-    } else /* trail <= 0xfc */ {
-        value |= trail - 0x7e;
-    }
-    return value;
-}
-
-/*
- * Convert a pair of JIS X 0208 21..7E bytes to Shift-JIS.
- * If either byte is outside 21..7E make sure that the result is not valid
- * for Shift-JIS so that the converter catches it.
- * Some invalid byte values already turn into equally invalid Shift-JIS
- * byte values and need not be tested explicitly.
- */
-static inline void
-_2022ToSJIS(uint8_t c1, uint8_t c2, char bytes[2]) {
-    if(c1&1) {
-        ++c1;
-        if(c2 <= 0x5f) {
-            c2 += 0x1f;
-        } else if(c2 <= 0x7e) {
-            c2 += 0x20;
-        } else {
-            c2 = 0;  /* invalid */
-        }
-    } else {
-        if((uint8_t)(c2-0x21) <= ((0x7e)-0x21)) {
-            c2 += 0x7e;
-        } else {
-            c2 = 0;  /* invalid */
-        }
-    }
-    c1 >>= 1;
-    if(c1 <= 0x2f) {
-        c1 += 0x70;
-    } else if(c1 <= 0x3f) {
-        c1 += 0xb0;
-    } else {
-        c1 = 0;  /* invalid */
-    }
-    bytes[0] = (char)c1;
-    bytes[1] = (char)c2;
-}
-
-/*
  * JIS X 0208 has fallbacks from Unicode half-width Katakana to full-width (DBCS)
  * Katakana.
  * Now that we use a Shift-JIS table for JIS X 0208 we need to hardcode these fallbacks
@@ -1857,8 +1784,13 @@ getTrail:
                                 converterData->myConverterArray[cs0],
                                 sourceChar, &value,
                                 useFallback, MBCS_OUTPUT_2);
-                    if(len2 == 2 || (len2 == -2 && len == 0)) {  /* only accept DBCS: abs(len)==2 */
-                        value = _2022FromSJIS(value);
+                    // Only accept DBCS char (abs(len2) == 2).
+                    // With EUC-JP table for JIS X 208, half-width Kana
+                    // represented with DBCS starting with 0x8E has to be
+                    // filtered out so that they can be converted with
+                    // hwkana_fb table.
+                    if((len2 == 2 && ((value & 0xFF00) != 0x8E00)) || (len2 == -2 && len == 0)) {
+                        value &= 0x7F7F;
                         if(value != 0) {
                             targetValue = value;
                             len = len2;
@@ -2250,18 +2182,13 @@ getTrailByte:
                         if (leadIsOk && trailIsOk) {
                             ++mySource;
                             tmpSourceChar = (mySourceChar << 8) | trailByte;
-                            if(cs == JISX208) {
-                                _2022ToSJIS((uint8_t)mySourceChar, trailByte, tempBuf);
-                                mySourceChar = tmpSourceChar;
-                            } else {
-                                /* Copy before we modify tmpSourceChar so toUnicodeCallback() sees the correct bytes. */
-                                mySourceChar = tmpSourceChar;
-                                if (cs == KSC5601) {
-                                    tmpSourceChar += 0x8080;  /* = _2022ToGR94DBCS(tmpSourceChar) */
-                                }
-                                tempBuf[0] = (char)(tmpSourceChar >> 8);
-                                tempBuf[1] = (char)(tmpSourceChar);
+                            /* Copy before we modify tmpSourceChar so toUnicodeCallback() sees the correct bytes. */
+                            mySourceChar = tmpSourceChar;
+                            if (cs == JISX208 || cs == KSC5601) {
+                                tmpSourceChar += 0x8080;  /* = _2022ToGR94DBCS(tmpSourceChar) */
                             }
+                            tempBuf[0] = (char)(tmpSourceChar >> 8);
+                            tempBuf[1] = (char)(tmpSourceChar);
                             targetUniChar = ucnv_MBCSSimpleGetNextUChar(myData->myConverterArray[cs], tempBuf, 2, FALSE);
                         } else if (!(trailIsOk || IS_2022_CONTROL(trailByte))) {
                             /* report a pair of illegal bytes if the second byte is not a DBCS starter */
@@ -2772,7 +2699,7 @@ getTrailByte:
                         /* report a pair of illegal bytes if the second byte is not a DBCS starter */
                         ++mySource;
                         /* add another bit so that the code below writes 2 bytes in case of error */
-                        mySourceChar = 0x10000 | (mySourceChar << 8) | trailByte;
+                        mySourceChar = static_cast<UChar>(0x10000 | (mySourceChar << 8) | trailByte);
                     }
                 } else {
                     args->converter->toUBytes[0] = (uint8_t)mySourceChar;
@@ -3304,7 +3231,7 @@ UConverter_toUnicode_ISO_2022_CN_OFFSETS_LOGIC(UConverterToUnicodeArgs *args,
                     myData->isEmptySegment = FALSE;	/* we are handling it, reset to avoid future spurious errors */
                     *err = U_ILLEGAL_ESCAPE_SEQUENCE;
                     args->converter->toUCallbackReason = UCNV_IRREGULAR;
-                    args->converter->toUBytes[0] = mySourceChar;
+                    args->converter->toUBytes[0] = static_cast<uint8_t>(mySourceChar);
                     args->converter->toULength = 1;
                     args->target = myTarget;
                     args->source = mySource;
@@ -3512,14 +3439,14 @@ _ISO_2022_WriteSub(UConverterFromUnicodeArgs *args, int32_t offsetIndex, UErrorC
     case 'k':
         if(myConverterData->version == 0) {
             if(length == 1) {
-                if((UBool)args->converter->fromUnicodeStatus) {
+                if(args->converter->fromUnicodeStatus) {
                     /* in DBCS mode: switch to SBCS */
                     args->converter->fromUnicodeStatus = 0;
                     *p++ = UCNV_SI;
                 }
                 *p++ = subchar[0];
             } else /* length == 2*/ {
-                if(!(UBool)args->converter->fromUnicodeStatus) {
+                if(!args->converter->fromUnicodeStatus) {
                     /* in SBCS mode: switch to DBCS */
                     args->converter->fromUnicodeStatus = 1;
                     *p++ = UCNV_SO;

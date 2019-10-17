@@ -124,6 +124,10 @@ mfe{
         }
         MRO{
             "MRO",
+            "ouguiya moritanien (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ouguiya moritanien",
         }
         MUR{
@@ -180,6 +184,10 @@ mfe{
         }
         STD{
             "STD",
+            "dobra santomeen (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra santomeen",
         }
         SZL{
@@ -227,5 +235,5 @@ mfe{
             "dolar zimbawe",
         }
     }
-    Version{"2.1.27.40"}
+    Version{"2.1.47.82"}
 }

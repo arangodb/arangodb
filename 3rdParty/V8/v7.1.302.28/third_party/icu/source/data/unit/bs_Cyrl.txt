@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 bs_Cyrl{
     %%Parent{"root"}
-    Version{"2.1.28.76"}
+    Version{"2.1.49.82"}
     units{
         duration{
             day{

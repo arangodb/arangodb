@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sr{
-    AuxExemplarCharacters{"[ё й щ ъ ы ь э ю я]"}
+    AuxExemplarCharacters{"[{а\u0302} {е\u0302} ё й {и\u0302} {о\u0302} {у\u0302} щ ъ ы ь э ю я]"}
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
@@ -12,19 +12,19 @@ sr{
     }
     ExemplarCharacters{"[а б в г д ђ е ж з и ј к л љ м н њ о п р с т ћ у ф х ц ч џ ш]"}
     ExemplarCharactersIndex{"[А Б В Г Д Ђ Е Ж З И Ј К Л Љ М Н Њ О П Р С Т Ћ У Ф Х Ц Ч Џ Ш]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{"[\\- ‐ – , ; \\: ! ? . … ‘ ‚ “ „ ( ) \\[ \\] \\{ \\} * #]"}
     MoreInformation{"?"}
     NumberElements{
         default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"{0}+"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
                 currencyFormat{"#,##0.00 ¤"}
-                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
@@ -223,20 +223,26 @@ sr{
                 exponential{"E"}
                 group{"."}
                 infinity{"∞"}
-                list{";"}
-                minusSign{"-"}
                 nan{"NaN"}
                 perMille{"‰"}
                 percentSign{"%"}
-                plusSign{"+"}
                 superscriptingExponent{"×"}
-                timeSeparator{"."}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"Скрените у {0}. десно."}
+            }
+            plural{
+                few{"{0} сата"}
+                one{"{0} сат"}
+                other{"{0} сати"}
             }
         }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             eras{
@@ -304,15 +310,24 @@ sr{
                 "{1} {0}",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"hh:mm B"}
+                Bhms{"hh:mm:ss B"}
                 E{"ccc"}
+                EBhm{"E hh:mm B"}
+                EBhms{"E hh:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d."}
+                Ehm{"E hh:mm a"}
+                Ehms{"E hh:mm:ss a"}
                 Gy{"y. G"}
                 GyMMM{"MMM y. G"}
                 GyMMMEd{"E, d. MMM y. G"}
                 GyMMMd{"d. MMM y. G"}
                 H{"HH"}
-                Hm{"HH.mm"}
-                Hms{"HH.mm.ss"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
                 M{"L"}
                 MEd{"E, d.M."}
                 MMM{"LLL"}
@@ -324,10 +339,10 @@ sr{
                 MMdd{"MM-dd"}
                 Md{"d.M."}
                 d{"d"}
-                h{"hh a"}
-                hm{"hh.mm a"}
-                hms{"hh.mm.ss a"}
-                ms{"mm.ss"}
+                h{"h a"}
+                hm{"hh:mm a"}
+                hms{"hh:mm:ss a"}
+                ms{"mm:ss"}
                 y{"y. G"}
                 yyyy{"y. G"}
                 yyyyM{"M.y. GGGGG"}
@@ -343,16 +358,56 @@ sr{
                 yyyyQQQQ{"QQQQ y. G"}
             }
             intervalFormats{
-                H{
-                    H{"HH–HH"}
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
                 }
-                Hm{
-                    H{"HH.mm–HH.mm"}
-                    m{"HH.mm–HH.mm"}
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
                 }
                 Hmv{
-                    H{"HH.mm–HH.mm v"}
-                    m{"HH.mm–HH.mm v"}
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
                 }
                 Hv{
                     H{"HH–HH v"}
@@ -383,19 +438,10 @@ sr{
                     d{"d–d"}
                 }
                 fallback{"{0} – {1}"}
-                h{
-                    a{"h a – h a"}
-                    h{"h–h a"}
-                }
-                hm{
-                    a{"h.mm a – h.mm a"}
-                    h{"h.mm–h.mm a"}
-                    m{"h.mm–h.mm a"}
-                }
                 hmv{
-                    a{"h.mm a – h.mm a v"}
-                    h{"h.mm–h.mm a v"}
-                    m{"h.mm–h.mm a v"}
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
@@ -470,7 +516,12 @@ sr{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"hh:mm B"}
+                Bhms{"hh:mm:ss B"}
                 E{"E"}
+                EBhm{"E hh:mm B"}
+                EBhms{"E hh:mm:ss B"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d."}
@@ -491,9 +542,9 @@ sr{
                 MMMEd{"E d. MMM"}
                 MMMMEd{"E, d. MMMM"}
                 MMMMW{
-                    few{"W. 'седмица' 'у' MMM."}
-                    one{"W. 'седмица' 'у' MMM."}
-                    other{"W. 'седмица' 'у' MMM."}
+                    few{"W. 'седмица' 'у' MMMM."}
+                    one{"W. 'седмица' 'у' MMMM."}
+                    other{"W. 'седмица' 'у' MMMM."}
                 }
                 MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
@@ -520,9 +571,9 @@ sr{
                 yQQQ{"QQQ y."}
                 yQQQQ{"QQQQ y."}
                 yw{
-                    few{"w. 'седмица' 'у' y."}
-                    one{"w. 'седмица' 'у' y."}
-                    other{"w. 'седмица' 'у' y."}
+                    few{"w. 'седмица' 'у' Y."}
+                    one{"w. 'седмица' 'у' Y."}
+                    other{"w. 'седмица' 'у' Y."}
                 }
             }
             dayNames{
@@ -616,10 +667,10 @@ sr{
                     narrow{
                         afternoon1{"по подне"}
                         evening1{"увече"}
-                        midnight{"у поноћ"}
+                        midnight{"поноћ"}
                         morning1{"ујутру"}
                         night1{"ноћу"}
-                        noon{"у подне"}
+                        noon{"подне"}
                     }
                     wide{
                         afternoon1{"по подне"}
@@ -642,12 +693,12 @@ sr{
                         pm{"по подне"}
                     }
                     narrow{
-                        afternoon1{"по подне"}
+                        afternoon1{"поподне"}
                         am{"пре подне"}
-                        evening1{"увече"}
+                        evening1{"вече"}
                         midnight{"поноћ"}
-                        morning1{"ујутро"}
-                        night1{"ноћу"}
+                        morning1{"јутро"}
+                        night1{"ноћ"}
                         noon{"подне"}
                         pm{"по подне"}
                     }
@@ -668,6 +719,10 @@ sr{
                     "п. н. е.",
                     "н. е.",
                 }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
                 narrow{
                     "п.н.е.",
                     "н.е.",
@@ -676,18 +731,69 @@ sr{
                     "пре нове ере",
                     "нове ере",
                 }
+                wide%variant{
+                    "BCE",
+                    "CE",
+                }
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 H{
                     H{"HH–HH"}
                 }
                 Hm{
-                    H{"HH.mm–HH.mm"}
-                    m{"HH.mm–HH.mm"}
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
                 }
                 Hmv{
-                    H{"HH.mm–HH.mm v"}
-                    m{"HH.mm–HH.mm v"}
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
                 }
                 Hv{
                     H{"HH–HH v"}
@@ -723,14 +829,14 @@ sr{
                     h{"h–h a"}
                 }
                 hm{
-                    a{"h.mm a – h.mm a"}
-                    h{"h.mm–h.mm a"}
-                    m{"h.mm–h.mm a"}
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
                 }
                 hmv{
-                    a{"h.mm a – h.mm a v"}
-                    h{"h.mm–h.mm a v"}
-                    m{"h.mm–h.mm a v"}
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
@@ -759,7 +865,7 @@ sr{
                 }
                 yMMMM{
                     M{"MMMM – MMMM y."}
-                    y{"MMMM y – MMMM y."}
+                    y{"MMMM y. – MMMM y."}
                 }
                 yMMMd{
                     M{"dd. MMM – dd. MMM y."}
@@ -1231,6 +1337,7 @@ sr{
                     "Таишо",
                     "Шова",
                     "Хаисеи",
+                    "Реива",
                 }
             }
         }
@@ -1382,6 +1489,13 @@ sr{
         }
         day-narrow{
             dn{"д."}
+            relative{
+                "-1"{"јуче"}
+                "-2"{"прекјуче"}
+                "0"{"данас"}
+                "1"{"сутра"}
+                "2"{"прекосутра"}
+            }
             relativeTime{
                 future{
                     few{"за {0} д."}
@@ -1397,6 +1511,13 @@ sr{
         }
         day-short{
             dn{"д."}
+            relative{
+                "-1"{"јуче"}
+                "-2"{"прекјуче"}
+                "0"{"данас"}
+                "1"{"сутра"}
+                "2"{"прекосутра"}
+            }
             relativeTime{
                 future{
                     few{"за {0} д."}
@@ -1410,10 +1531,31 @@ sr{
                 }
             }
         }
+        dayOfYear{
+            dn{"дан у години"}
+        }
+        dayOfYear-narrow{
+            dn{"дан у год."}
+        }
+        dayOfYear-short{
+            dn{"дан у год."}
+        }
         dayperiod{
             dn{"пре подне/по подне"}
         }
+        dayperiod-narrow{
+            dn{"пре подне/по подне"}
+        }
+        dayperiod-short{
+            dn{"пре подне/по подне"}
+        }
         era{
+            dn{"ера"}
+        }
+        era-narrow{
+            dn{"ера"}
+        }
+        era-short{
             dn{"ера"}
         }
         fri{
@@ -1648,6 +1790,11 @@ sr{
         }
         month-narrow{
             dn{"м."}
+            relative{
+                "-1"{"прошлог м."}
+                "0"{"овог м."}
+                "1"{"следећег м."}
+            }
             relativeTime{
                 future{
                     few{"за {0} м."}
@@ -1663,6 +1810,11 @@ sr{
         }
         month-short{
             dn{"мес."}
+            relative{
+                "-1"{"прошлог мес."}
+                "0"{"овог мес."}
+                "1"{"следећег мес."}
+            }
             relativeTime{
                 future{
                     few{"за {0} мес."}
@@ -1862,9 +2014,9 @@ sr{
         }
         sun-narrow{
             relative{
-                "-1"{"прошле нед"}
+                "-1"{"пр. нед."}
                 "0"{"у нед"}
-                "1"{"следеће нед"}
+                "1"{"сл. нед."}
             }
             relativeTime{
                 future{
@@ -1881,9 +2033,9 @@ sr{
         }
         sun-short{
             relative{
-                "-1"{"прошле нед"}
+                "-1"{"пр. нед."}
                 "0"{"у нед"}
-                "1"{"следеће нед"}
+                "1"{"сл. нед."}
             }
             relativeTime{
                 future{
@@ -2092,6 +2244,11 @@ sr{
         }
         week-narrow{
             dn{"н."}
+            relative{
+                "-1"{"прошле н."}
+                "0"{"ове н."}
+                "1"{"следеће н."}
+            }
             relativePeriod{"недеља која почиње {0}."}
             relativeTime{
                 future{
@@ -2108,6 +2265,11 @@ sr{
         }
         week-short{
             dn{"нед."}
+            relative{
+                "-1"{"прошле нед."}
+                "0"{"ове нед."}
+                "1"{"следеће нед."}
+            }
             relativePeriod{"недеља која почиње {0}."}
             relativeTime{
                 future{
@@ -2122,8 +2284,32 @@ sr{
                 }
             }
         }
+        weekOfMonth{
+            dn{"недеља у месецу"}
+        }
+        weekOfMonth-narrow{
+            dn{"нед. у мес."}
+        }
+        weekOfMonth-short{
+            dn{"нед. у мес."}
+        }
         weekday{
             dn{"дан у недељи"}
+        }
+        weekday-narrow{
+            dn{"дан у недељи"}
+        }
+        weekday-short{
+            dn{"дан у недељи"}
+        }
+        weekdayOfMonth{
+            dn{"дан у месецу"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"дан у месецу"}
+        }
+        weekdayOfMonth-short{
+            dn{"дан у месецу"}
         }
         year{
             dn{"година"}
@@ -2147,6 +2333,11 @@ sr{
         }
         year-narrow{
             dn{"г."}
+            relative{
+                "-1"{"прошле г."}
+                "0"{"ове г."}
+                "1"{"следеће г."}
+            }
             relativeTime{
                 future{
                     few{"за {0} г."}
@@ -2162,6 +2353,11 @@ sr{
         }
         year-short{
             dn{"год."}
+            relative{
+                "-1"{"прошле год."}
+                "0"{"ове год."}
+                "1"{"следеће год."}
+            }
             relativeTime{
                 future{
                     few{"за {0} год."}
@@ -2178,9 +2374,27 @@ sr{
         zone{
             dn{"временска зона"}
         }
+        zone-narrow{
+            dn{"временска зона"}
+        }
+        zone-short{
+            dn{"временска зона"}
+        }
     }
     listPattern{
+        or{
+            2{"{0} или {1}"}
+            end{"{0} или {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
+            2{"{0} и {1}"}
+            end{"{0} и {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
             2{"{0} и {1}"}
             end{"{0} и {1}"}
             middle{"{0}, {1}"}
@@ -2215,5 +2429,33 @@ sr{
         UK{"УК"}
         US{"САД"}
         metric{"Метрички"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+        }
     }
 }

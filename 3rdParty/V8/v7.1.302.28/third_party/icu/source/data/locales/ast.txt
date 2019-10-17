@@ -12,6 +12,7 @@ ast{
     }
     ExemplarCharacters{"[a á b c d e é f g h ḥ i í l ḷ m n ñ o ó p q r s t u ú ü v x y z]"}
     ExemplarCharactersIndex{"[A B C D E F G H I L M N Ñ O P Q R S T U V X Y Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
         "[\\- ‐ – — , ; \\: ! ¡ ? ¿ . … ' ‘ ’ \u0022 “ ” « » ( ) \\[ \\] § @ * / "
         "\\\\ \\& # † ‡ ′ ″]"
@@ -28,8 +29,10 @@ ast{
             symbols{
                 decimal{"٫"}
                 group{"٬"}
+                minusSign{"‏-"}
                 perMille{"؉"}
                 percentSign{"٪"}
+                plusSign{"‏+"}
                 timeSeparator{":"}
             }
         }
@@ -42,7 +45,7 @@ ast{
         default{"latn"}
         latn{
             miscPatterns{
-                atLeast{"⩾{0}"}
+                atLeast{"≥{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
@@ -221,10 +224,19 @@ ast{
                 timeSeparator{":"}
             }
         }
+        minimalPairs{
+            ordinal{
+                other{"Tomar la {0}a a la derecha"}
+            }
+            plural{
+                one{"{0} día"}
+                other{"{0} díes"}
+            }
+        }
         minimumGroupingDigits{"1"}
         native{"latn"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -933,7 +945,11 @@ ast{
             }
             availableFormats{
                 E{"ccc"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d MMM 'de' y G"}
@@ -1114,8 +1130,8 @@ ast{
                 MMM{"LLL"}
                 MMMEd{"E, d MMM"}
                 MMMMW{
-                    one{"'selmana' W 'de' MMM"}
-                    other{"'selmana' W 'de' MMM"}
+                    one{"'selmana' W 'de' MMMM"}
+                    other{"'selmana' W 'de' MMMM"}
                 }
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
@@ -1138,8 +1154,8 @@ ast{
                 yQQQ{"QQQ y"}
                 yQQQQ{"QQQQ 'de' y"}
                 yw{
-                    one{"'selmana' w 'de' y"}
-                    other{"'selmana' w 'de' y"}
+                    one{"'selmana' w 'de' Y"}
+                    other{"'selmana' w 'de' Y"}
                 }
             }
             dayNames{
@@ -2288,6 +2304,7 @@ ast{
                     "Taishō",
                     "e. Shōwa",
                     "Heisei",
+                    "Reiwa",
                 }
                 narrow{
                     "Taika",
@@ -2526,6 +2543,7 @@ ast{
                     "T",
                     "S",
                     "H",
+                    "R",
                 }
                 wide{
                     "Taika (645–650)",
@@ -2764,6 +2782,7 @@ ast{
                     "Taishō",
                     "era Shōwa",
                     "Heisei",
+                    "Reiwa",
                 }
             }
             intervalFormats{
@@ -2991,14 +3010,17 @@ ast{
         activities{"actividaes"}
         african_scripts{"escritures africanes"}
         american_scripts{"escritures americanes"}
-        animals_nature{"animales y natura"}
+        animal{"animales"}
+        animals_nature{"animales o natura"}
         arrows{"fleches"}
+        body{"cuerpu"}
         box_drawing{"dibuxu de cuadros"}
         braille{"braille"}
-        bullets_stars{"viñetes/estrelles"}
+        building{"construcciones"}
+        bullets_stars{"viñetes o estrelles"}
         consonantal_jamo{"jamo consonánticu"}
         currency_symbols{"símbolos monetarios"}
-        dash_connector{"guión/coneutor"}
+        dash_connector{"guión o coneutor"}
         digits{"díxitos"}
         dingbats{"viñetes"}
         divination_symbols{"símbolos d’adivinación"}
@@ -3007,6 +3029,8 @@ ast{
         east_asian_scripts{"escritures del oriente d’Asia"}
         emoji{"emoji"}
         european_scripts{"escritures europees"}
+        female{"muyer"}
+        flag{"bandera"}
         flags{"banderes"}
         food_drink{"vianda y bébora"}
         format{"formatu"}
@@ -3019,43 +3043,54 @@ ast{
         hanja{"hanja"}
         hanzi_simplified{"hanzi (simplificáu)"}
         hanzi_traditional{"hanzi (tradicional)"}
+        heart{"corazones"}
         historic_scripts{"escritures históriques"}
         ideographic_desc_characters{"carauteres desc. ideográficos"}
         japanese_kana{"kana xaponés"}
         kanbun{"kanbun"}
         kanji{"Kanji"}
+        keycap{"tecles"}
         leftwards_arrows{"fleches a manzorga"}
         leftwards_rightwards_arrows{"fleches a manzorga y mandrecha"}
         letterlike_symbols{"símbolos asemeyaos a lletres"}
         limited_use{"usu llendáu"}
+        male{"home"}
         math_symbols{"símbolos matemáticos"}
         middle_eastern_scripts{"escritures d’Oriente mediu"}
         miscellaneous{"mecigayu"}
         modern_scripts{"escritures modernes"}
         modifier{"tresformador"}
         musical_symbols{"símbolos musicales"}
+        nature{"natura"}
         nonspacing{"non espaciáu"}
         numbers{"númberos"}
         objects{"oxetos"}
         other{"otros"}
         paired{"empareyaos"}
+        person{"persones"}
         phonetic_alphabet{"alfabetu fonéticu"}
         pictographs{"pictogrames"}
+        place{"llugares"}
+        plant{"plantes"}
         punctuation{"puntuación"}
         rightwards_arrows{"fleches a mandrecha"}
         sign_standard_symbols{"signos/símbolos estándar"}
         small_form_variant{"variantes de formulariu pequeñes"}
-        smileys_people{"fustaxes y xente"}
+        smiley{"fustaxes"}
+        smileys_people{"fustaxes o persones"}
         south_asian_scripts{"escritures del sur d’Asia"}
         southeast_asian_scripts{"escritures del sureste d’Asia"}
         spacing{"espaciáu"}
+        sport{"deportes"}
         symbols{"símbolos"}
         technical_symbols{"símbolos téunicos"}
         tone_marks{"marques de tonu"}
-        travel_places{"viaxes y llugares"}
+        travel{"viaxes"}
+        travel_places{"viaxes o llugares"}
         upwards_arrows{"fleches arriba"}
         variant_forms{"variantes"}
         vocalic_jamo{"jamo vocálicu"}
+        weather{"clima"}
         western_asian_scripts{"escritures del occidente d’Asia"}
         whitespace{"espaciáu"}
     }
@@ -3860,6 +3895,12 @@ ast{
         }
     }
     listPattern{
+        or{
+            2{"{0} o {1}"}
+            end{"{0} o {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         standard{
             2{"{0} y {1}"}
             end{"{0} y {1}"}
@@ -3895,5 +3936,37 @@ ast{
         UK{"R.X."}
         US{"EE.XX."}
         metric{"Métricu"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
+            stricter{
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
+            }
+        }
     }
 }

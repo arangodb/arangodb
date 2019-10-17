@@ -65,8 +65,8 @@ LDFLAGS += $(LDFLAGSICUI18N)
 LIBS = $(LIBICUUC) $(DEFAULT_LIBS)
 
 OBJECTS = ucln_in.o \
-fmtable.o format.o msgfmt.o umsg.o numfmt.o unum.o decimfmt.o decimalformatpattern.o dcfmtsym.o \
-digitlst.o fmtable_cnv.o \
+fmtable.o format.o msgfmt.o umsg.o numfmt.o unum.o decimfmt.o dcfmtsym.o \
+fmtable_cnv.o \
 choicfmt.o datefmt.o smpdtfmt.o reldtfmt.o dtfmtsym.o udat.o dtptngen.o udatpg.o \
 nfrs.o nfrule.o nfsubs.o rbnf.o numsys.o unumsys.o ucsdet.o \
 ucal.o calendar.o gregocal.o timezone.o simpletz.o olsontz.o \
@@ -81,6 +81,7 @@ collationsets.o \
 collationcompare.o collationfastlatin.o collationkeys.o rulebasedcollator.o collationroot.o \
 collationrootelements.o collationdatabuilder.o \
 collationweights.o collationruleparser.o collationbuilder.o collationfastlatinbuilder.o \
+listformatter.o ulistformatter.o \
 strmatch.o usearch.o search.o stsearch.o \
 translit.o utrans.o esctrn.o unesctrn.o funcrepl.o strrepl.o tridpars.o \
 cpdtrans.o rbt.o rbt_data.o rbt_pars.o rbt_rule.o rbt_set.o \
@@ -92,16 +93,26 @@ csdetect.o csmatch.o csr2022.o csrecog.o csrmbcs.o csrsbcs.o csrucode.o csrutf8.
 wintzimpl.o windtfmt.o winnmfmt.o basictz.o dtrule.o rbtz.o tzrule.o tztrans.o vtzone.o zonemeta.o \
 standardplural.o upluralrules.o plurrule.o plurfmt.o selfmt.o dtitvfmt.o dtitvinf.o udateintervalformat.o \
 tmunit.o tmutamt.o tmutfmt.o currpinf.o \
-uspoof.o uspoof_impl.o uspoof_build.o uspoof_conf.o decfmtst.o smpdtfst.o \
+uspoof.o uspoof_impl.o uspoof_build.o uspoof_conf.o smpdtfst.o \
 ztrans.o zrule.o vzone.o fphdlimp.o fpositer.o ufieldpositer.o \
 decNumber.o decContext.o alphaindex.o tznames.o tznames_impl.o tzgnames.o \
 tzfmt.o compactdecimalformat.o gender.o region.o scriptset.o \
 uregion.o reldatefmt.o quantityformatter.o measunit.o \
-sharedbreakiterator.o scientificnumberformatter.o digitgrouping.o \
-digitinterval.o digitformatter.o digitaffix.o valueformatter.o \
-digitaffixesandpadding.o pluralaffix.o precision.o \
-affixpatternparser.o smallintformatter.o decimfmtimpl.o \
-visibledigits.o dayperiodrules.o
+sharedbreakiterator.o scientificnumberformatter.o dayperiodrules.o nounit.o \
+number_affixutils.o number_compact.o number_decimalquantity.o \
+number_decimfmtprops.o number_fluent.o number_formatimpl.o number_grouping.o \
+number_integerwidth.o number_longnames.o number_modifiers.o number_notation.o number_output.o \
+number_padding.o number_patternmodifier.o number_patternstring.o \
+number_rounding.o number_scientific.o number_stringbuilder.o number_utils.o number_asformat.o \
+number_mapper.o number_multiplier.o number_currencysymbols.o number_skeletons.o number_capi.o \
+double-conversion.o double-conversion-bignum-dtoa.o double-conversion-bignum.o \
+double-conversion-cached-powers.o double-conversion-diy-fp.o \
+double-conversion-fast-dtoa.o double-conversion-strtod.o \
+numparse_stringsegment.o numparse_parsednumber.o numparse_impl.o \
+numparse_symbols.o numparse_decimal.o numparse_scientific.o numparse_currency.o \
+numparse_affixes.o numparse_compositions.o numparse_validators.o \
+numrange_fluent.o numrange_impl.o \
+erarules.o formattedvalue.o formattedval_iterimpl.o formattedval_sbimpl.o
 
 ## Header files to install
 HEADERS = $(srcdir)/unicode/*.h

@@ -24,10 +24,10 @@ CLEANFILES = *~ $(DEPS)
 ## Target information
 TARGET = $(BINDIR)/$(TARGET_STUB_NAME)$(EXEEXT)
 
-CPPFLAGS += -I$(top_srcdir)/common -I$(srcdir)/../toolutil
+CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(srcdir)/../toolutil
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-OBJECTS = gennorm2.o n2builder.o
+OBJECTS = gennorm2.o n2builder.o extradata.o norms.o
 
 DEPS = $(OBJECTS:.o=.d)
 

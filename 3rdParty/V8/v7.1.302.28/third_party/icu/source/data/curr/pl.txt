@@ -222,6 +222,10 @@ pl{
             "CLP",
             "peso chilijskie",
         }
+        CNH{
+            "CNH",
+            "juan chiński (rynek zewnętrzny)",
+        }
         CNY{
             "CNY",
             "juan chiński",
@@ -592,6 +596,10 @@ pl{
         }
         MRO{
             "MRO",
+            "ouguiya mauretańska (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ouguiya mauretańska",
         }
         MTL{
@@ -684,11 +692,11 @@ pl{
         }
         PEN{
             "PEN",
-            "nowy sol peruwiański",
+            "sol peruwiański",
         }
         PES{
             "PES",
-            "sol peruwiański",
+            "sol peruwiański (1863–1965)",
         }
         PGK{
             "PGK",
@@ -816,6 +824,10 @@ pl{
         }
         STD{
             "STD",
+            "dobra Wysp Świętego Tomasza i Książęcej (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra Wysp Świętego Tomasza i Książęcej",
         }
         SUR{
@@ -924,6 +936,10 @@ pl{
         }
         VEF{
             "VEF",
+            "boliwar wenezuelski (2008–2018)",
+        }
+        VES{
+            "VES",
             "boliwar wenezuelski",
         }
         VND{
@@ -999,7 +1015,7 @@ pl{
             "testowy kod waluty",
         }
         XXX{
-            "XXX",
+            "¤",
             "nieznana waluta",
         }
         YDD{
@@ -1056,103 +1072,11 @@ pl{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
-        RUB{"₽"}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
+        RON{"lej"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1394,6 +1318,12 @@ pl{
             many{"pesos chilijskich"}
             one{"peso chilijskie"}
             other{"peso chilijskiego"}
+        }
+        CNH{
+            few{"juany chińskie (rynek zewnętrzny)"}
+            many{"juanów chińskich (rynek zewnętrzny)"}
+            one{"juan chiński (rynek zewnętrzny)"}
+            other{"juana chińskiego (rynek zewnętrzny)"}
         }
         CNY{
             few{"juany chińskie"}
@@ -1804,6 +1734,12 @@ pl{
             other{"pataca Makau"}
         }
         MRO{
+            few{"ouguiya mauretańskie (1973–2017)"}
+            many{"ouguiya mauretańskich (1973–2017)"}
+            one{"ouguiya mauretańska (1973–2017)"}
+            other{"ouguiya mauretańskiej (1973–2017)"}
+        }
+        MRU{
             few{"ouguiya mauretańskie"}
             many{"ouguiya mauretańskich"}
             one{"ouguiya mauretańska"}
@@ -1900,10 +1836,16 @@ pl{
             other{"balboa panamskiego"}
         }
         PEN{
-            few{"nowe sole peruwiańskie"}
-            many{"nowych soli peruwiańskich"}
-            one{"nowy sol peruwiański"}
-            other{"nowego sola peruwiańskiego"}
+            few{"sole peruwiańskie"}
+            many{"soli peruwiańskich"}
+            one{"sol peruwiański"}
+            other{"sola peruwiańskiego"}
+        }
+        PES{
+            few{"sole peruwiańskie (1863–1965)"}
+            many{"soli peruwiańskich (1863–1965)"}
+            one{"sol peruwiański (1863–1965)"}
+            other{"sola peruwiańskiego (1863–1965)"}
         }
         PGK{
             few{"kina papuaskie"}
@@ -2068,6 +2010,12 @@ pl{
             other{"funta południowosudańskiego"}
         }
         STD{
+            few{"dobry Wysp Świętego Tomasza i Książęcej (1977–2017)"}
+            many{"dobr Wysp Świętego Tomasza i Książęcej (1977–2017)"}
+            one{"dobra Wysp Świętego Tomasza i Książęcej (1977–2017)"}
+            other{"dobry Wysp Świętego Tomasza i Książęcej (1977–2017)"}
+        }
+        STN{
             few{"dobry Wysp Świętego Tomasza i Książęcej"}
             many{"dobr Wysp Świętego Tomasza i Książęcej"}
             one{"dobra Wysp Świętego Tomasza i Książęcej"}
@@ -2200,6 +2148,12 @@ pl{
             other{"boliwary wenezuelskiego (1871–2008)"}
         }
         VEF{
+            few{"boliwary wenezuelskie (2008–2018)"}
+            many{"boliwarów wenezuelskich (2008–2018)"}
+            one{"boliwar wenezuelski (2008–2018)"}
+            other{"boliwara wenezuelskiego (2008–2018)"}
+        }
+        VES{
             few{"boliwary wenezuelskie"}
             many{"boliwarów wenezuelskich"}
             one{"boliwar wenezuelski"}
@@ -2284,5 +2238,5 @@ pl{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

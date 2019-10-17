@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2016 and later: Unicode, Inc. and others.
+*   © 2016 and later: Unicode, Inc. and others.
 *   License & terms of use: http://www.unicode.org/copyright.html#License
 *
 *******************************************************************************
@@ -12,7 +12,7 @@
 *
 *******************************************************************************
 *   file name:  writer.c
-*   encoding:   US-ASCII
+*   encoding:   UTF-8
 *   tab size:   8 (not used)
 *   indentation:4
 *
@@ -70,7 +70,7 @@ main(int argc, const char *argv[]) {
     uint16_t intValue=2000;
     
     long dataLength;
-    uint32_t size;
+    size_t size;
 #ifdef WIN32
     char *currdir = _getcwd(NULL, 0);
 #else
@@ -107,19 +107,8 @@ main(int argc, const char *argv[]) {
 
 
     if(dataLength!=(long)size) {
-        fprintf(stderr, "Error: data length %ld != calculated size %lu\n", dataLength, size);
+        fprintf(stderr, "Error: data length %ld != calculated size %zu\n", dataLength, size);
         exit(U_INTERNAL_PROGRAM_ERROR);
     }
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-

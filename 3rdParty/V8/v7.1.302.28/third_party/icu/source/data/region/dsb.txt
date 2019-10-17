@@ -108,7 +108,7 @@ dsb{
         EU{"Europska unija"}
         FI{"Finska"}
         FJ{"Fidži"}
-        FK{"Falklandske kupy"}
+        FK{"Falklandske kupy (Malwiny)"}
         FM{"Mikroneziska"}
         FO{"Färöje"}
         FR{"Francojska"}
@@ -300,9 +300,8 @@ dsb{
         CD{"Kongo (Demokratiska republika)"}
         CG{"Kongo (Republika)"}
         CI{"Słonowokósćowy pśibrjog"}
-        FK{"Falklandske kupy (Malwiny)"}
         MK{"Makedońska (PRJ)"}
         TL{"Pódzajtšny Timor"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.47.82"}
 }

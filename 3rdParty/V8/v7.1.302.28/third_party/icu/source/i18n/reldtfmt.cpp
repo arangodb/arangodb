@@ -1,4 +1,4 @@
-// Copyright (C) 2016 and later: Unicode, Inc. and others.
+// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 /*
 *******************************************************************************
@@ -20,7 +20,7 @@
 #include "unicode/udisplaycontext.h"
 #include "unicode/uchar.h"
 #include "unicode/brkiter.h"
-
+#include "unicode/ucasemap.h"
 #include "reldtfmt.h"
 #include "cmemory.h"
 #include "uresimp.h"
@@ -430,7 +430,7 @@ RelativeDateFormat::setContext(UDisplayContext value, UErrorCode& status)
         if ( fCapitalizationBrkIter == NULL && (value==UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE ||
                 (value==UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU && fCapitalizationOfRelativeUnitsForUIListMenu) ||
                 (value==UDISPCTX_CAPITALIZATION_FOR_STANDALONE && fCapitalizationOfRelativeUnitsForStandAlone)) ) {
-            UErrorCode status = U_ZERO_ERROR;
+            status = U_ZERO_ERROR;
             fCapitalizationBrkIter = BreakIterator::createSentenceInstance(fLocale, status);
             if (U_FAILURE(status)) {
                 delete fCapitalizationBrkIter;
@@ -456,8 +456,8 @@ RelativeDateFormat::initCapitalizationContextInfo(const Locale& thelocale)
         const int32_t * intVector = ures_getIntVector(rb.getAlias(),
                                                       &len, &status);
         if (U_SUCCESS(status) && intVector != NULL && len >= 2) {
-            fCapitalizationOfRelativeUnitsForUIListMenu = intVector[0];
-            fCapitalizationOfRelativeUnitsForStandAlone = intVector[1];
+            fCapitalizationOfRelativeUnitsForUIListMenu = static_cast<UBool>(intVector[0]);
+            fCapitalizationOfRelativeUnitsForStandAlone = static_cast<UBool>(intVector[1]);
         }
     }
 #endif

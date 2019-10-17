@@ -3,6 +3,7 @@
 br{
     Keys{
         calendar{"deiziadur"}
+        cf{"furmad moneiz"}
         collation{"doare rummañ"}
         currency{"moneiz"}
         hc{"kelcʼhiad eurioù"}
@@ -65,6 +66,7 @@ br{
         bi{"bislama"}
         bik{"bikol"}
         bin{"bini"}
+        bla{"siksika"}
         bm{"bambara"}
         bn{"bengali"}
         bo{"tibetaneg"}
@@ -83,8 +85,10 @@ br{
         cch{"atsam"}
         ce{"tchetcheneg"}
         ceb{"cebuano"}
+        cgg{"chigaeg"}
         ch{"chamorru"}
         chb{"chibcha"}
+        chk{"chuuk"}
         chm{"marieg"}
         cho{"choktaw"}
         chp{"chipewyan"}
@@ -95,6 +99,7 @@ br{
         cop{"kopteg"}
         cr{"kri"}
         crh{"turkeg Krimea"}
+        crs{"kreoleg Sechelez"}
         cs{"tchekeg"}
         csb{"kachoubeg"}
         cu{"slavoneg iliz"}
@@ -103,18 +108,23 @@ br{
         da{"daneg"}
         dak{"dakota"}
         dar{"dargwa"}
+        dav{"taita"}
         de{"alamaneg"}
         de_AT{"alamaneg Aostria"}
         de_CH{"alamaneg uhel Suis"}
         del{"delaware"}
         dgr{"dogrib"}
         din{"dinka"}
+        dje{"zarma"}
         doi{"dogri"}
         dsb{"izelsorabeg"}
+        dua{"douala"}
         dum{"nederlandeg krenn"}
         dv{"divehi"}
+        dyo{"diola"}
         dyu{"dyula"}
         dz{"dzongkha"}
+        dzg{"dazagaeg"}
         ebu{"embu"}
         ee{"ewe"}
         efi{"efik"}
@@ -139,6 +149,7 @@ br{
         fa{"perseg"}
         fan{"fang"}
         fat{"fanti"}
+        ff{"fula"}
         fi{"finneg"}
         fil{"filipineg"}
         fit{"finneg traoñienn an Torne"}
@@ -175,7 +186,9 @@ br{
         grc{"hencʼhresianeg"}
         gsw{"alamaneg Suis"}
         gu{"gujarati"}
+        guz{"gusiieg"}
         gv{"manaveg"}
+        gwi{"gwich’in"}
         ha{"haousa"}
         hai{"haida"}
         hak{"sinaeg Hakka"}
@@ -201,6 +214,7 @@ br{
         ig{"igbo"}
         ii{"yieg Sichuan"}
         ik{"inupiaq"}
+        ilo{"ilokanoeg"}
         inh{"ingoucheg"}
         io{"ido"}
         is{"islandeg"}
@@ -208,6 +222,9 @@ br{
         iu{"inuktitut"}
         ja{"japaneg"}
         jam{"kreoleg Jamaika"}
+        jbo{"lojban"}
+        jgo{"ngomba"}
+        jmc{"machame"}
         jpr{"yuzev-perseg"}
         jrb{"yuzev-arabeg"}
         jv{"javaneg"}
@@ -215,15 +232,23 @@ br{
         kaa{"karakalpak"}
         kab{"kabileg"}
         kac{"kachin"}
+        kaj{"jju"}
         kam{"kamba"}
         kbd{"kabardeg"}
+        kcg{"tyap"}
+        kde{"makonde"}
         kea{"kabuverdianu"}
+        kfo{"koroeg"}
         kg{"kongo"}
         kha{"khasi"}
         kho{"khotaneg"}
+        khq{"koyra chiini"}
         ki{"kikuyu"}
         kj{"kwanyama"}
         kk{"kazak"}
+        kkj{"kakoeg"}
+        kl{"greunlandeg"}
+        kln{"kalendjineg"}
         km{"khmer"}
         kmb{"kimbundu"}
         kn{"kanareg"}
@@ -233,16 +258,22 @@ br{
         kpe{"kpelle"}
         kr{"kanouri"}
         krc{"karatchay-balkar"}
+        kri{"krio"}
         krl{"karelieg"}
         kru{"kurukh"}
         ks{"kashmiri"}
+        ksb{"shambala"}
+        ksf{"bafiaeg"}
         ksh{"koluneg"}
         ku{"kurdeg"}
+        kum{"koumikeg"}
         kut{"kutenai"}
+        kv{"komieg"}
         kw{"kerneveureg"}
         ky{"kirgiz"}
         la{"latin"}
         lad{"ladino"}
+        lag{"langi"}
         lah{"lahnda"}
         lam{"lamba"}
         lb{"luksembourgeg"}
@@ -251,10 +282,13 @@ br{
         lg{"ganda"}
         li{"limbourgeg"}
         lij{"ligurieg"}
+        lkt{"lakota"}
         ln{"lingala"}
         lo{"laoseg"}
         lol{"mongo"}
+        lou{"kreoleg Louiziana"}
         loz{"lozi"}
+        lrc{"loureg an Norzh"}
         lt{"lituaneg"}
         lu{"luba-katanga"}
         lua{"luba-lulua"}
@@ -265,35 +299,46 @@ br{
         luy{"luyia"}
         lv{"latvieg"}
         lzh{"sinaeg lennegel"}
+        mad{"madoureg"}
         mag{"magahi"}
         mai{"maithili"}
+        mak{"makasar"}
         mas{"masai"}
         mdf{"moksha"}
         mdr{"mandar"}
         men{"mende"}
+        mer{"meru"}
         mfe{"moriseg"}
         mg{"malgacheg"}
         mga{"krenniwerzhoneg"}
+        mgh{"makhuwa-meetto"}
+        mgo{"metaʼ"}
         mh{"marshall"}
         mi{"maori"}
+        mic{"mikmakeg"}
+        min{"minangkabau"}
         mk{"makedoneg"}
         ml{"malayalam"}
         mn{"mongoleg"}
         mnc{"manchou"}
         mni{"manipuri"}
         moh{"mohawk"}
+        mos{"more"}
         mr{"marathi"}
         mrj{"marieg ar Cʼhornôg"}
         ms{"malayseg"}
         mt{"malteg"}
+        mua{"moundangeg"}
         mul{"yezhoù lies"}
         mus{"muskogi"}
         mwl{"mirandeg"}
         my{"birmaneg"}
         myv{"erza"}
+        mzn{"mazanderaneg"}
         na{"naurueg"}
         nan{"sinaeg Min Nan"}
         nap{"napolitaneg"}
+        naq{"nama"}
         nb{"norvegeg bokmål"}
         nd{"ndebele an Norzh"}
         nds{"alamaneg izel"}
@@ -306,13 +351,17 @@ br{
         njo{"aoeg"}
         nl{"nederlandeg"}
         nl_BE{"flandrezeg"}
+        nmg{"ngoumbeg"}
         nn{"norvegeg nynorsk"}
+        nnh{"ngiemboon"}
         no{"norvegeg"}
         nog{"nogay"}
         non{"hennorseg"}
         nov{"novial"}
+        nqo{"nkoeg"}
         nr{"ndebele ar Su"}
         nso{"sotho an Norzh"}
+        nus{"nouereg"}
         nv{"navacʼho"}
         nwc{"newari klasel"}
         ny{"nyanja"}
@@ -321,6 +370,7 @@ br{
         nyo{"nyoro"}
         oc{"okitaneg"}
         oj{"ojibwa"}
+        om{"oromoeg"}
         or{"oriya"}
         os{"oseteg"}
         osa{"osage"}
@@ -332,6 +382,7 @@ br{
         pap{"papiamento"}
         pau{"palau"}
         pcd{"pikardeg"}
+        pcm{"pidjin Nigeria"}
         pdc{"alamaneg Pennsylvania"}
         peo{"henberseg"}
         phn{"fenikianeg"}
@@ -347,6 +398,7 @@ br{
         pt_BR{"portugaleg Brazil"}
         pt_PT{"portugaleg Europa"}
         qu{"kechuaeg"}
+        quc{"kʼicheʼ"}
         qug{"kichuaeg Chimborazo"}
         raj{"rajasthani"}
         rap{"rapanui"}
@@ -358,6 +410,7 @@ br{
         ro_MD{"moldoveg"}
         rof{"rombo"}
         rom{"romanieg"}
+        root{"gwrizienn"}
         ru{"rusianeg"}
         rup{"aroumaneg"}
         rw{"kinyarwanda"}
@@ -366,14 +419,19 @@ br{
         sad{"sandawe"}
         sah{"yakouteg"}
         sam{"arameeg ar Samaritaned"}
+        saq{"samburu"}
         sas{"sasak"}
         sat{"santali"}
+        sba{"ngambayeg"}
+        sbp{"sangu"}
         sc{"sardeg"}
         scn{"sikilieg"}
         sco{"skoteg"}
         sd{"sindhi"}
         sdc{"sasareseg"}
         se{"sámi an Norzh"}
+        seh{"sena"}
+        ses{"koyraboro senni"}
         sg{"sango"}
         sga{"heniwerzhoneg"}
         sh{"serb-kroateg"}
@@ -395,10 +453,13 @@ br{
         sog{"sogdieg"}
         sq{"albaneg"}
         sr{"serbeg"}
+        srn{"sranan tongo"}
         srr{"serer"}
         ss{"swati"}
+        ssy{"sahoeg"}
         st{"sotho ar Su"}
         su{"sundaneg"}
+        suk{"sukuma"}
         sux{"sumereg"}
         sv{"svedeg"}
         sw{"swahili"}
@@ -410,6 +471,8 @@ br{
         ta{"tamileg"}
         tcy{"touloueg"}
         te{"telougou"}
+        tem{"temne"}
+        teo{"tesoeg"}
         ter{"tereno"}
         tet{"tetum"}
         tg{"tadjik"}
@@ -429,12 +492,14 @@ br{
         tpi{"tok pisin"}
         tr{"turkeg"}
         tru{"turoyoeg"}
+        trv{"taroko"}
         ts{"tsonga"}
         tsi{"tsimshian"}
         tt{"tatar"}
         tum{"tumbuka"}
         tvl{"tuvalu"}
         tw{"twi"}
+        twq{"tasawakeg"}
         ty{"tahitianeg"}
         tyv{"touva"}
         tzm{"tamazigteg Kreizatlas"}
@@ -455,6 +520,7 @@ br{
         vo{"volapük"}
         vot{"votyakeg"}
         vro{"voroeg"}
+        vun{"vunjo"}
         wa{"walloneg"}
         wae{"walser"}
         wal{"walamo"}
@@ -465,8 +531,11 @@ br{
         xal{"kalmouk"}
         xh{"xhosa"}
         xmf{"megreleg"}
+        xog{"sogaeg"}
         yao{"yao"}
         yap{"yapeg"}
+        yav{"yangben"}
+        ybb{"yemba"}
         yi{"yiddish"}
         yo{"yorouba"}
         yue{"kantoneg"}
@@ -482,6 +551,7 @@ br{
         zu{"zouloueg"}
         zun{"zuni"}
         zxx{"diyezh"}
+        zza{"zazakeg"}
     }
     Languages%short{
         az{"azeri"}
@@ -489,11 +559,13 @@ br{
         en_US{"saozneg SU"}
     }
     Scripts{
+        Adlm{"adlam"}
         Arab{"arabek"}
         Armi{"arameek impalaerel"}
         Armn{"armenianek"}
         Avst{"avestek"}
         Bali{"balinek"}
+        Bamu{"bamounek"}
         Beng{"bengali"}
         Bopo{"bopomofo"}
         Brai{"Braille"}
@@ -510,6 +582,7 @@ br{
         Grek{"gresianek"}
         Gujr{"gujarati"}
         Guru{"gurmukhi"}
+        Hanb{"han gant bopomofo"}
         Hang{"hangeul"}
         Hani{"han"}
         Hans{"eeunaet"}
@@ -517,7 +590,10 @@ br{
         Hebr{"hebraek"}
         Hira{"hiragana"}
         Hluw{"hieroglifoù Anatolia"}
+        Hrkt{"silabennaouegoù japanek"}
+        Hung{"henhungarek"}
         Ital{"henitalek"}
+        Jamo{"jamo"}
         Java{"javanek"}
         Jpan{"japanek"}
         Kana{"katakana"}
@@ -527,13 +603,19 @@ br{
         Laoo{"laosek"}
         Latg{"latin gouezelek"}
         Latn{"latin"}
+        Lyci{"likiek"}
+        Lydi{"lidiek"}
+        Mani{"manikeek"}
         Maya{"hieroglifoù mayaek"}
         Mlym{"malayalam"}
         Mong{"mongolek"}
         Mymr{"myanmar"}
+        Narb{"henarabek an Norzh"}
         Ogam{"ogam"}
         Orya{"oriya"}
         Runr{"runek"}
+        Samr{"samaritek"}
+        Sarb{"henarabek ar Su"}
         Sinh{"singhalek"}
         Sund{"sundanek"}
         Syrc{"siriek"}
@@ -549,7 +631,9 @@ br{
         Ugar{"ougaritek"}
         Vaii{"vai"}
         Xpeo{"persek kozh"}
+        Xsux{"gennheñvel"}
         Zmth{"notadur jedoniel"}
+        Zsye{"fromlunioù"}
         Zsym{"arouezioù"}
         Zxxx{"anskrivet"}
         Zyyy{"boutin"}
@@ -580,10 +664,14 @@ br{
             persian{"deiziadur persek"}
             roc{"deiziadur Republik Sina"}
         }
+        cf{
+            standard{"furmad moneiz standart"}
+        }
         collation{
             big5han{"urzh rummañ sinaek hengounel - Big5"}
             dictionary{"urzh rummañ ar geriadur"}
             ducet{"urzh rummañ Unicode dre ziouer"}
+            emoji{"urzh rummañ ar fromlunioù"}
             eor{"reolennoù urzhiañ europat"}
             gb2312han{"urzh rummañ sinaek eeunaet - GB2312"}
             phonebook{"urzh rummañ al levr-pellgomz"}
@@ -617,6 +705,7 @@ br{
             brah{"sifroù brahmi"}
             cakm{"sifroù chakma"}
             cham{"sifroù cham"}
+            cyrl{"niveroù kirillek"}
             deva{"sifroù devanagari"}
             ethi{"niveroù etiopiat"}
             fullwide{"sifroù led plaen"}
@@ -672,24 +761,38 @@ br{
         1959ACAD{"belaruseg akademek"}
         1994{"reizhskrivadur resianek skoueriekaet"}
         1996{"reizhskrivadur alamanek 1996"}
+        ABL1943{"doare reizhskrivañ 1943"}
+        AKUAPEM{"akuapem"}
         ALALC97{"romanekadur ALA-LC 1997"}
         ALUKU{"rannyezh aloukou"}
+        AO1990{"emglev 1990 war ar reizhskrivadur portugalek"}
         AREVELA{"armenianeg ar Reter"}
         AREVMDA{"armenianeg ar Cʼhornôg"}
+        ASANTE{"achanti"}
         BAKU1926{"lizherenneg latin turkek unvan"}
+        BALANKA{"rannyezh aniiek Balanka"}
+        BARLA{"rannyezhoù Barlavento kreoleg ar Cʼhab-Glas"}
+        BASICENG{"saozneg diazez"}
         BAUDDHA{"sanskriteg hiron boudaat"}
         BISCAYAN{"rannyezh euskarek Bizkaia"}
         BISKE{"rannyezh San Giorgio/Bila"}
         BOHORIC{"lizherenneg Bohorič"}
         BOONT{"boontling"}
+        COLB1945{"emglev 1945 war reizhskrivadur portugaleg Brazil"}
+        CORNU{"saozneg Kerne-Veur"}
         DAJNKO{"lizherenneg Dajnko"}
+        EKAVSK{"serbeg gant distagadur ekavian"}
         EMODENG{"saozneg rakvodern"}
         FONIPA{"lizherenneg fonetek etrebroadel"}
+        FONNAPA{"FONNAPA"}
         FONUPA{"lizherenneg fonetek ouralek"}
         FONXSAMP{"treuzskrivadur X-SAMPA"}
         HEPBURN{"romanekadur Hepburn"}
         HOGNORSK{"uhelnorvegeg"}
+        HSISTEMO{"esperanteg sistem H"}
+        IJEKAVSK{"serbeg gant distagadur ijekavian"}
         ITIHASA{"sanskriteg itihâsa"}
+        IVANCHOV{"reizhskrivadur Ivanchov"}
         JAUER{"rannyezh romañchek Jauer"}
         JYUTPING{"romanekadur kantonek Jyutping"}
         KKCOR{"kerneveureg kumun"}
@@ -702,9 +805,14 @@ br{
         MONOTON{"gresianeg untonel"}
         NDYUKA{"rannyezh Ndyuka"}
         NEDIS{"rannyezh Natisone"}
+        NEWFOUND{"saozneg an Douar-Nevez"}
         NJIVA{"rannyezh Gniva/Njiva"}
         NULIK{"volapük modern"}
         OSOJS{"rannyezh Oseacco/Osojane"}
+        OXENDICT{"skritur Oxford English Dictionary"}
+        PAHAWH2{"PAHAWH2"}
+        PAHAWH3{"PAHAWH3"}
+        PAHAWH4{"PAHAWH4"}
         PAMAKA{"rannyezh Pamaka"}
         PETR1708{"reizhskrivadur rusianek 1708 Pêr I"}
         PINYIN{"romanekadur pinyin"}
@@ -716,9 +824,12 @@ br{
         ROZAJ{"resianeg"}
         RUMGR{"romañcheg Grischun"}
         SAAHO{"saho"}
-        SCOTLAND{"saozneg standart skos"}
-        SCOUSE{"scouse"}
+        SCOTLAND{"saozneg standart Skos"}
+        SCOUSE{"saozneg Liverpool (scouse)"}
+        SIMPLE{"SIMPLE"}
         SOLBA{"rannyezh Stolvizza/Solbica"}
+        SOTAV{"rannyezhoù Sotavento kreoleg ar Cʼhab-Glas"}
+        SPANGLIS{"SPANGLIS"}
         SURMIRAN{"rannyezh romañchek surmiran"}
         SURSILV{"rannyezh romañchek sursilvan"}
         SUTSILV{"rannyezh romañchek sutsilvan"}
@@ -731,8 +842,9 @@ br{
         VALENCIA{"valensianeg"}
         VALLADER{"rannyezh romañchek Vallader"}
         WADEGILE{"romanekadur Wade-Giles"}
+        XSISTEMO{"esperanteg sistem X"}
     }
-    Version{"2.1.28.76"}
+    Version{"2.1.48.86"}
     codePatterns{
         language{"{0}"}
         script{"{0}"}

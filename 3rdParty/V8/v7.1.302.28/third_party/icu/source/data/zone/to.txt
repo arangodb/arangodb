@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 to{
-    Version{"2.1.27.98"}
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -928,7 +928,7 @@ to{
             ec{"Senē"}
         }
         "Etc:Unknown"{
-            ec{"Halaʻata"}
+            ec{"Feituʻu taʻeʻiloa"}
         }
         "Europe:Amsterdam"{
             ec{"Amsterdam"}
@@ -1380,9 +1380,9 @@ to{
             ls{"houa fakaʻāsolesi taimi totonu"}
         }
         "meta:Bangladesh"{
-            ld{"houa fakapengilātesi taimi liliu"}
-            lg{"houa fakapengilātesi"}
-            ls{"houa fakapengilātesi taimi totonu"}
+            ld{"houa fakapāngilātesi taimi liliu"}
+            lg{"houa fakapāngilātesi"}
+            ls{"houa fakapāngilātesi taimi totonu"}
         }
         "meta:Bhutan"{
             ls{"houa fakapūtani"}

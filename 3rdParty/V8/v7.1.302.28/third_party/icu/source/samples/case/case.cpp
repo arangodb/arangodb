@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2016 and later: Unicode, Inc. and others.
+*   © 2016 and later: Unicode, Inc. and others.
 *   License & terms of use: http://www.unicode.org/copyright.html#License
 *
 *******************************************************************************
@@ -17,6 +17,8 @@
 #include <unicode/ustdio.h>
 #include <unicode/brkiter.h>
 #include <stdlib.h>
+
+using namespace icu;
 
 U_CFUNC int c_main(UFILE *out);
 

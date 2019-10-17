@@ -174,6 +174,10 @@ ro{
             "CLP",
             "peso chilian",
         }
+        CNH{
+            "CNH",
+            "yuan chinezesc (offshore)",
+        }
         CNY{
             "CNY",
             "yuan chinezesc",
@@ -528,6 +532,10 @@ ro{
         }
         MRO{
             "MRO",
+            "ouguiya mauritană (1973–2017)",
+        }
+        MRU{
+            "MRU",
             "ouguiya mauritană",
         }
         MTL{
@@ -616,7 +624,7 @@ ro{
         }
         PEN{
             "PEN",
-            "sol nou peruvian",
+            "sol peruvian",
         }
         PES{
             "PES",
@@ -740,6 +748,10 @@ ro{
         }
         STD{
             "STD",
+            "dobra Sao Tome și Principe (1977–2017)",
+        }
+        STN{
+            "STN",
             "dobra Sao Tome și Principe",
         }
         SUR{
@@ -852,6 +864,10 @@ ro{
         }
         VEF{
             "VEF",
+            "bolivar venezuelean (2008–2018)",
+        }
+        VES{
+            "VES",
             "bolivar venezuelean",
         }
         VND{
@@ -935,7 +951,7 @@ ro{
             "cod monetar de test",
         }
         XXX{
-            "XXX",
+            "¤",
             "monedă necunoscută",
         }
         YDD{
@@ -992,104 +1008,10 @@ ro{
         }
     }
     Currencies%narrow{
-        AOA{"Kz"}
-        ARS{"$"}
-        AUD{"$"}
-        BAM{"KM"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BOB{"Bs"}
-        BRL{"R$"}
-        BSD{"$"}
-        BWP{"P"}
-        BYN{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUC{"$"}
-        CUP{"$"}
-        CZK{"Kč"}
-        DKK{"kr"}
-        DOP{"$"}
-        EGP{"E£"}
-        EUR{"€"}
-        FJD{"$"}
-        FKP{"£"}
-        GBP{"£"}
-        GEL{"₾"}
-        GIP{"£"}
-        GNF{"FG"}
-        GTQ{"Q"}
-        GYD{"$"}
-        HKD{"$"}
-        HNL{"L"}
-        HRK{"kn"}
-        HUF{"Ft"}
-        IDR{"Rp"}
-        ILS{"₪"}
-        INR{"₹"}
-        ISK{"kr"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KMF{"CF"}
-        KPW{"₩"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LBP{"L£"}
-        LKR{"Rs"}
-        LRD{"$"}
-        MGA{"Ar"}
-        MMK{"K"}
-        MNT{"₮"}
-        MUR{"Rs"}
-        MXN{"$"}
-        MYR{"RM"}
-        NAD{"$"}
-        NGN{"₦"}
-        NIO{"C$"}
-        NOK{"kr"}
-        NPR{"Rs"}
-        NZD{"$"}
-        PHP{"₱"}
-        PKR{"Rs"}
-        PLN{"zł"}
-        PYG{"₲"}
-        RON{"lei"}
-        RUB{"₽"}
-        RWF{"RF"}
-        SBD{"$"}
-        SEK{"kr"}
-        SGD{"$"}
-        SHP{"£"}
-        SRD{"$"}
-        SSP{"£"}
-        STD{"Db"}
-        SYP{"£"}
-        THB{"฿"}
-        TOP{"T$"}
-        TRY{"₺"}
-        TTD{"$"}
         TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VEF{"Bs"}
-        VND{"₫"}
-        XCD{"$"}
-        ZAR{"R"}
-        ZMW{"ZK"}
     }
     Currencies%variant{
         GEL{"₾"}
-        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1168,9 +1090,9 @@ ro{
             other{"mărci convertibile din Bosnia și Herțegovina"}
         }
         BBD{
-            few{"dolari Barbados"}
-            one{"dolar Barbados"}
-            other{"dolari Barbados"}
+            few{"dolari din Barbados"}
+            one{"dolar din Barbados"}
+            other{"dolari din Barbados"}
         }
         BDT{
             few{"taka din Bangladesh"}
@@ -1281,6 +1203,11 @@ ro{
             few{"pesos chilieni"}
             one{"peso chilian"}
             other{"pesos chilieni"}
+        }
+        CNH{
+            few{"yuani chinezești (offshore)"}
+            one{"yuan chinezesc (offshore)"}
+            other{"yuani chinezești (offshore)"}
         }
         CNY{
             few{"yuani chinezești"}
@@ -1698,6 +1625,11 @@ ro{
             other{"pataca din Macao"}
         }
         MRO{
+            few{"ouguiya mauritane (1973–2017)"}
+            one{"ouguiya mauritană (1973–2017)"}
+            other{"ouguiya mauritane (1973–2017)"}
+        }
+        MRU{
             few{"ouguiya mauritane"}
             one{"ouguiya mauritană"}
             other{"ouguiya mauritane"}
@@ -1788,14 +1720,14 @@ ro{
             other{"balboa panameze"}
         }
         PEN{
-            few{"soli noi peruvieni"}
-            one{"sol nou peruvian"}
-            other{"soli noi peruvieni"}
+            few{"soli peruvieni"}
+            one{"sol peruvian"}
+            other{"soli peruvieni"}
         }
         PES{
-            few{"soli Peru (1863–1965)"}
+            few{"soli peruvieni (1863–1965)"}
             one{"sol peruvian (1863–1965)"}
-            other{"soli Peru (1863–1965)"}
+            other{"soli peruvieni (1863–1965)"}
         }
         PGK{
             few{"kina din Papua-Noua Guinee"}
@@ -1943,6 +1875,11 @@ ro{
             other{"lire din Sudanul de Sud"}
         }
         STD{
+            few{"dobre Sao Tome și Principe (1977–2017)"}
+            one{"dobra Sao Tome și Principe (1977–2017)"}
+            other{"dobre Sao Tome și Principe (1977–2017)"}
+        }
+        STN{
             few{"dobre Sao Tome și Principe"}
             one{"dobra Sao Tome și Principe"}
             other{"dobre Sao Tome și Principe"}
@@ -2083,6 +2020,11 @@ ro{
             other{"bolivari Venezuela (1871–2008)"}
         }
         VEF{
+            few{"bolivari venezueleni (2008–2018)"}
+            one{"bolivar venezuelean (2008–2018)"}
+            other{"bolivari venezueleni (2008–2018)"}
+        }
+        VES{
             few{"bolivari venezueleni"}
             one{"bolivar venezuelean"}
             other{"bolivari venezueleni"}
@@ -2188,5 +2130,5 @@ ro{
         one{"{0} {1}"}
         other{"{0} de {1}"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.49.82"}
 }

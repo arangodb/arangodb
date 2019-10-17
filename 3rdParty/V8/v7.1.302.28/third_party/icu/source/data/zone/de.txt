@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 de{
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjan"}
@@ -507,6 +507,9 @@ de{
         "America:Puerto_Rico"{
             ec{"Puerto Rico"}
         }
+        "America:Punta_Arenas"{
+            ec{"Punta Arenas"}
+        }
         "America:Rainy_River"{
             ec{"Rainy River"}
         }
@@ -657,6 +660,9 @@ de{
         "Asia:Ashgabat"{
             ec{"Aşgabat"}
         }
+        "Asia:Atyrau"{
+            ec{"Atyrau"}
+        }
         "Asia:Baghdad"{
             ec{"Bagdad"}
         }
@@ -679,7 +685,7 @@ de{
             ec{"Bischkek"}
         }
         "Asia:Brunei"{
-            ec{"Brunei"}
+            ec{"Brunei Darussalam"}
         }
         "Asia:Calcutta"{
             ec{"Kalkutta"}
@@ -707,6 +713,9 @@ de{
         }
         "Asia:Dushanbe"{
             ec{"Duschanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
         }
         "Asia:Gaza"{
             ec{"Gaza"}
@@ -760,7 +769,7 @@ de{
             ec{"Kuwait"}
         }
         "Asia:Macau"{
-            ec{"Macao"}
+            ec{"Macau"}
         }
         "Asia:Magadan"{
             ec{"Magadan"}
@@ -880,7 +889,7 @@ de{
             ec{"Azoren"}
         }
         "Atlantic:Bermuda"{
-            ec{"Bermudas"}
+            ec{"Bermuda"}
         }
         "Atlantic:Canary"{
             ec{"Kanaren"}
@@ -941,6 +950,9 @@ de{
         }
         "Australia:Sydney"{
             ec{"Sydney"}
+        }
+        "Etc:UTC"{
+            ls{"Koordinierte Weltzeit"}
         }
         "Etc:Unknown"{
             ec{"Unbekannt"}
@@ -1072,6 +1084,9 @@ de{
         }
         "Europe:Sarajevo"{
             ec{"Sarajevo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratow"}
         }
         "Europe:Simferopol"{
             ec{"Simferopol"}
@@ -1423,7 +1438,7 @@ de{
             ls{"Brasília-Normalzeit"}
         }
         "meta:Brunei"{
-            ls{"Brunei-Zeit"}
+            ls{"Brunei-Darussalam-Zeit"}
         }
         "meta:Cape_Verde"{
             ld{"Cabo-Verde-Sommerzeit"}
@@ -1795,9 +1810,9 @@ de{
             ls{"Phoenixinseln-Zeit"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"Saint-Pierre-und-Miquelon-Sommerzeit"}
-            lg{"Saint-Pierre-und-Miquelon-Zeit"}
-            ls{"Saint-Pierre-und-Miquelon-Normalzeit"}
+            ld{"St.-Pierre-und-Miquelon-Sommerzeit"}
+            lg{"St.-Pierre-und-Miquelon-Zeit"}
+            ls{"St.-Pierre-und-Miquelon-Normalzeit"}
         }
         "meta:Pitcairn"{
             ls{"Pitcairninseln-Zeit"}
@@ -1841,7 +1856,7 @@ de{
             ls{"Singapur-Zeit"}
         }
         "meta:Solomon"{
-            ls{"Salomoninseln-Zeit"}
+            ls{"Salomonen-Zeit"}
         }
         "meta:South_Georgia"{
             ls{"Südgeorgische Zeit"}

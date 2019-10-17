@@ -2,7 +2,7 @@
 // License & terms of use: http://www.unicode.org/copyright.html#License
 sl{
     Countries{
-        001{"Svet"}
+        001{"svet"}
         002{"Afrika"}
         003{"Severna Amerika"}
         005{"Južna Amerika"}
@@ -31,6 +31,7 @@ sl{
         151{"Vzhodna Evropa"}
         154{"Severna Evropa"}
         155{"Zahodna Evropa"}
+        202{"podsaharska Afrika"}
         419{"Latinska Amerika"}
         AC{"Otok Ascension"}
         AD{"Andora"}
@@ -106,9 +107,10 @@ sl{
         ES{"Španija"}
         ET{"Etiopija"}
         EU{"Evropska unija"}
+        EZ{"evroobmočje"}
         FI{"Finska"}
         FJ{"Fidži"}
-        FK{"Falklandski otoki"}
+        FK{"Falklandski otoki (Malvini)"}
         FM{"Mikronezija"}
         FO{"Ferski otoki"}
         FR{"Francija"}
@@ -123,7 +125,7 @@ sl{
         GL{"Grenlandija"}
         GM{"Gambija"}
         GN{"Gvineja"}
-        GP{"Gvadalupe"}
+        GP{"Guadeloupe"}
         GQ{"Ekvatorialna Gvineja"}
         GR{"Grčija"}
         GS{"Južna Georgia in Južni Sandwichevi otoki"}
@@ -181,11 +183,11 @@ sl{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Marshallovi otoki"}
-        MK{"Makedonija"}
+        MK{"Severna Makedonija"}
         ML{"Mali"}
         MM{"Mjanmar (Burma)"}
         MN{"Mongolija"}
-        MO{"Macao"}
+        MO{"Posebno administrativno območje LR Kitajske Macao"}
         MP{"Severni Marianski otoki"}
         MQ{"Martinik"}
         MR{"Mavretanija"}
@@ -285,6 +287,8 @@ sl{
         VU{"Vanuatu"}
         WF{"Wallis in Futuna"}
         WS{"Samoa"}
+        XA{"psevdonaglasi"}
+        XB{"psevdobidi"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -295,16 +299,15 @@ sl{
     }
     Countries%short{
         GB{"ZK"}
-        UN{"Združeni narodi"}
+        UN{"ZN"}
         US{"ZDA"}
     }
     Countries%variant{
         CD{"Kongo (Demokratična republika Kongo)"}
         CG{"Kongo (Republika)"}
         CI{"Côte d’Ivoire"}
-        FK{"Falklandski otoki (Malvini)"}
-        MK{"Makedonija (FYROM)"}
+        CZ{"Češka republika"}
         TL{"Vzhodni Timor"}
     }
-    Version{"2.1.28.79"}
+    Version{"2.1.48.42"}
 }

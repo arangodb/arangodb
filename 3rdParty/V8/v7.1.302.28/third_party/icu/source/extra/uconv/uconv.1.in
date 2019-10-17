@@ -109,7 +109,7 @@ When calling
 it is possible to specify callbacks that are used to handle invalid
 characters in the input, or characters that cannot be transcoded to
 the destination encoding. Some encodings, for example, offer a default
-substitution character that can be used to represent the occurence of
+substitution character that can be used to represent the occurrence of
 such characters in the input. Other callbacks offer a useful visual
 representation of the invalid data.
 .PP
@@ -188,7 +188,7 @@ Run the given
 .IR transliteration
 on the transcoded Unicode data,
 and use the transliterated data as input for the transcoding to
-the the destination encoding.
+the destination encoding.
 .TP
 .BI "\-\-to\-callback" " callback"
 Use
@@ -278,7 +278,7 @@ is displayed when it is called with
 .PP
 .TP \w'\fBescape-unicode'u+3n
 .B substitute
-Write the the encoding's substitute sequence, or the Unicode
+Write the encoding's substitute sequence, or the Unicode
 replacement character
 .B U+FFFD
 when transcoding to Unicode.
@@ -357,7 +357,7 @@ is the hexadecimal value of the Unicode codepoint.
 That hexadecimal string is of variable length and can use from 4 to
 6 digits.
 This is the format universally used to denote a Unicode codepoint in
-the litterature, delimited by curly braces for easy recognition of those
+the literature, delimited by curly braces for easy recognition of those
 substitutions in the output.
 .SH EXAMPLES
 Convert data from a given
@@ -418,10 +418,10 @@ and map Katakana to Hiragana:
 .B "      \-x '::nfkc; [:Cc:] >; ::katakana-hiragana;'"
 .SH CAVEATS AND BUGS
 .B uconv
-does report errors as occuring at the first invalid byte
+does report errors as occurring at the first invalid byte
 encountered. This may be confusing to users of GNU
 .BR iconv (1),
-which reports errors as occuring at the first byte of an invalid
+which reports errors as occurring at the first byte of an invalid
 sequence. For multi-byte character sets or encodings, this means that
 .BR uconv
 error positions may be at a later offset in the input stream than
@@ -432,7 +432,7 @@ The reporting of error positions when a transliterator is used may be
 inaccurate or unavailable, in which case
 .BR uconv
 will report the offset in the output stream at which the error
-occured.
+occurred.
 .SH AUTHORS
 Jonas Utterstroem
 .br

@@ -9,14 +9,14 @@ de{
                 "&OE<<ö<<<Ö"
                 "&UE<<ü<<<Ü"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
         search{
             Sequence{
                 "[import und-u-co-search]"
                 "[import de-u-co-phonebk]"
             }
-            Version{"30.0.2"}
+            Version{"35.1"}
         }
     }
 }
