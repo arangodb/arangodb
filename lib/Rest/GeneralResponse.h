@@ -136,7 +136,7 @@ class GeneralResponse {
     _headers.emplace(key, value);
   }
 
-  virtual bool isResponseEmpty() const {return false;}
+  virtual bool isResponseEmpty() const = 0;
 
  public:
   virtual uint64_t messageId() const { return 1; }
