@@ -7303,10 +7303,12 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL_AQL,
       "Unhandled node type in splice-subqueries optimizer rule. Please report "
-      "this error. Try turning off the splice-subqueries rule to get your query working.");
+      "this error. Try turning off the splice-subqueries rule to get your "
+      "query working.");
 }
 
-void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::SmallVector<SubqueryNode*>& result) {
+void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
+                                       containers::SmallVector<SubqueryNode*>& result) {
   using ResultVector = decltype(result);
   using BoolVec = std::vector<bool, short_alloc<bool, 64, sizeof(size_t)>>;
   using BoolAlloc = BoolVec::allocator_type;
@@ -7329,18 +7331,18 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::Sm
   class Finder final : public WalkerWorker<ExecutionNode> {
    public:
     explicit Finder(ResultVector& result)
-        : _result{result}, _doesNotSkipArena{}, _doesNotSkip{BoolVec{_doesNotSkipArena}} {
+        : _result{result}, _isSuitableArena{}, _isSuitable{BoolVec{_isSuitableArena}} {
       // push the top-level query
-      _doesNotSkip.emplace(true);
+      _isSuitable.emplace(true);
     }
 
     bool before(ExecutionNode* node) final {
       if (nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(node)) {
-        _doesNotSkip.top() = false;
+        _isSuitable.top() = false;
       }
 
       // We could set
-      //   _doesNotSkip.top() = true;
+      //   _isSuitable.top() = true;
       // here when we encounter nodes that never pass skipping through, like
       // SORT, enabling a few more possibilities where to enable this rule.
 
@@ -7349,18 +7351,18 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::Sm
     }
 
     bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final {
-      _doesNotSkip.emplace(true);
+      _isSuitable.emplace(true);
 
       constexpr bool enterSubqueries = true;
       return enterSubqueries;
     }
 
     void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
-      TRI_ASSERT(!_doesNotSkip.empty());
+      TRI_ASSERT(!_isSuitable.empty());
 
-      const bool subqueryDoesNotSkipInside = _doesNotSkip.top();
-      _doesNotSkip.pop();
-      const bool containingSubqueryDoesNotSkip = _doesNotSkip.top();
+      const bool subqueryDoesNotSkipInside = _isSuitable.top();
+      _isSuitable.pop();
+      const bool containingSubqueryDoesNotSkip = _isSuitable.top();
 
       if (subqueryDoesNotSkipInside && containingSubqueryDoesNotSkip) {
         _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
@@ -7369,10 +7371,10 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::Sm
 
    private:
     ResultVector& _result;
-    BoolArena _doesNotSkipArena;
-    // _doesNotSkip.top() says whether there is a node that skips in the current
+    BoolArena _isSuitableArena;
+    // _isSuitable.top() says whether there is a node that skips in the current
     // (sub)query level.
-    BoolStack _doesNotSkip;
+    BoolStack _isSuitable;
   };
 
   Finder finder(result);
@@ -7404,15 +7406,16 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
     // Note that we rely on `subqueryNodes` being in pre-order. Otherwise, we
     // would set the wrong nodes.
-    forAllDeps(sq->getSubquery(), [](auto node) { node->setIsInSplicedSubquery(true); });
+    forAllDeps(sq->getSubquery(),
+               [](auto node) { node->setIsInSplicedSubquery(true); });
     // start and end inherit this propery from the subquery node
     start->setIsInSplicedSubquery(sq->isInSplicedSubquery());
 
     // insert a SubqueryStartNode before the SubqueryNode
     plan->insertBefore(sq, start);
 
-    // All parents of the Singleton of the subquery become parents of the SubqueryStartNode
-    // The singleton will be deleted after.
+    // All parents of the Singleton of the subquery become parents of the
+    // SubqueryStartNode The singleton will be deleted after.
     ExecutionNode* singleton = sq->getSubquery()->getSingleton();
     std::vector<ExecutionNode*> deps = singleton->getParents();
     for (auto* x : deps) {
@@ -7432,7 +7435,8 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
       subqueryRoot = subqueryReturn->getFirstDependency();
     }
 
-    auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(), inVariable, sq->outVariable());
+    auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(),
+                                                 inVariable, sq->outVariable());
     end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
     // insert a SubqueryEndNode after the SubqueryNode sq
     plan->insertAfter(sq, end);
