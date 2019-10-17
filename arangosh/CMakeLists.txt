@@ -78,7 +78,7 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc)
 endif ()
 
-if(MSVC)
+if(MSVC AND FAIL_ON_WARNINGS)
   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
@@ -377,11 +377,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc)
 endif ()
 
-if(MSVC)
+if(MSVC AND FAIL_ON_WARNINGS)
   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN)
+if (DARWIN AND FAIL_ON_WARNINGS)
   target_compile_options(arangorestore PRIVATE -Werror)
 endif()
 

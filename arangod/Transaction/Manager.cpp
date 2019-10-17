@@ -32,8 +32,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -71,6 +69,8 @@ std::string currentUser() {
 
 namespace arangodb {
 namespace transaction {
+
+size_t constexpr Manager::maxTransactionSize;
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
