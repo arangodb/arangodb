@@ -3154,7 +3154,7 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
     }
 
     if (slc.get("error").getBoolean()) {
-      LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
+      LOG_TOPIC("f4b8f", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
       auto errorNum = slc.get("errorNum").getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
@@ -3558,7 +3558,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     uint64_t lockId = 0;
     try {
       lockId = slc.get(lockPath).getNumber<uint64_t>();
-      LOG_TOPIC("14457", DEBUG, Logger::BACKUP)
+      LOG_TOPIC("144f5", DEBUG, Logger::BACKUP)
           << "acquired lock from " << req.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
