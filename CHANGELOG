@@ -3,6 +3,23 @@ v3.5.2 (XXXX-XX-XX)
 
 * Fixed issue #10270: Query: Expecting type Array or Object (while executing).
 
+* Fix a problem with AQL constrained sort in the cluster, which might abort
+  queries. The AQL sort-limit optimization rule may now also speed up fullCount
+  with sorted indexes and a limit in the cluster.
+
+* Prevent spurious log message "Scheduler queue is filled more than 50% in last
+  x s" from occurring when this is not the case. Due to a data race, the
+  message could previously also occur if the queue was empty.
+
+* The General Graph document API is now consistent with the document API in its
+  error messages. When attempting to create / modify edges pointing to non
+  existing vertex collections HTTP 400 is returned instead of 404.
+
+* Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
+  Using subqueries inside PRUNE conditions causes undefined behavior,
+  so such queries will now be aborted early on with a parse error 
+  instead of running into undefined behavior.
+
 * Fixed available flag for hotbackup.
 
 * Fixed list with id for partially available hotbackups.

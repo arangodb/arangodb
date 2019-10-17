@@ -2363,6 +2363,13 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
+bool ExecutionPlan::fullCount() const noexcept {
+  LimitNode* lastLimitNode = _lastLimitNode == nullptr
+                             ? nullptr
+                             : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
+  return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include <iostream>
