@@ -1327,9 +1327,12 @@ function ahuacatlQuerySimpleTestSuite () {
     },
 
     testForWithoutArray : function () {
-      assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = null FOR x IN a RETURN 1"); 
+      let values = [ null, false, true, -1, 0, 1.5, 9999, {} ];
+      values.forEach(function(value) {
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = @value FOR x IN a RETURN 1", { value }); 
       
-      assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = NOOPT(null) FOR x IN a RETURN 1"); 
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = NOOPT(@value) FOR x IN a RETURN 1", { value }); 
+      });
     },
 
   };
