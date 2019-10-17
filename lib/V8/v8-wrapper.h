@@ -80,7 +80,7 @@ class V8Wrapper {
 
   virtual ~V8Wrapper() {
     if (!_handle.IsEmpty()) {
-      TRI_ASSERT(_handle.IsNearDeath());
+      /// TODO TRI_ASSERT(_handle.IsNearDeath());
 
       _handle.ClearWeak();
       v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
@@ -170,7 +170,7 @@ class V8Wrapper {
 
     TRI_ASSERT(persistent == &obj->_handle);
     TRI_ASSERT(!obj->_refs);
-    TRI_ASSERT(persistent->IsNearDeath());
+    // TODO TRI_ASSERT(persistent->IsNearDeath());
     delete obj;
   }
 

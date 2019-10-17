@@ -338,7 +338,7 @@ class V8Completer : public Completer {
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
 
         try {
-          v8::Handle<v8::Value> cpls = func->Call(current, 0, args);
+          v8::Handle<v8::Value> cpls = func->Call(context, current, 0, args).FromMaybe(v8::Handle<v8::Value>());
 
           if (cpls->IsArray()) {
             properties = v8::Handle<v8::Array>::Cast(cpls);
@@ -348,7 +348,7 @@ class V8Completer : public Completer {
         }
       }
     } else {
-      properties = current->GetPropertyNames();
+      properties = current->GetPropertyNames(context).FromMaybe(v8::Handle<v8::Array>());
     }
 
     // locate

@@ -187,7 +187,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
 
-    v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance();
+    v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     if (!ArangoError.IsEmpty()) {
       errorObject->SetPrototype(TRI_IGETC, ArangoError).FromMaybe(false);  // Ignore error
@@ -793,7 +793,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> v8Headers =
           options->Get(TRI_V8_ASCII_STRING(isolate, "headers")).As<v8::Object>();
       if (v8Headers->IsObject()) {
-        v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+        v8::Handle<v8::Array> props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
 
         for (uint32_t i = 0; i < props->Length(); i++) {
           v8::Handle<v8::Value> key = props->Get(i);
@@ -1149,7 +1149,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     context->Enter();
 
     // copy sandbox into context
-    v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
+    v8::Handle<v8::Array> keys = sandbox->GetPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key =
@@ -1236,7 +1236,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy result back into the sandbox
   if (useSandbox) {
-    v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames();
+    v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key =
@@ -4884,7 +4884,7 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_GetProperty(context, isolate, err, "captureStackTrace"));
 
     v8::Handle<v8::Value> arguments[] = {self};
-    captureStackTrace->Call(current, 1, arguments);
+    captureStackTrace->Call(TRI_IGETC, current, 1, arguments);
   }
 
   TRI_V8_RETURN(self);
@@ -5182,7 +5182,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 
     if (print->IsFunction()) {
       v8::Handle<v8::Value> arguments[] = {result};
-      print->Call(print, 1, arguments);
+      print->Call(TRI_IGETC, print, 1, arguments);
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {
@@ -5386,7 +5386,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
             ->ToObject(TRI_IGETC)
             .FromMaybe(v8::Local<v8::Object>());
     if (!cacheObject.IsEmpty()) {
-      v8::Handle<v8::Array> props = cacheObject->GetPropertyNames();
+      v8::Handle<v8::Array> props = cacheObject->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
       for (uint32_t i = 0; i < props->Length(); i++) {
         v8::Handle<v8::Value> key = props->Get(i);
         cacheObject->Delete(TRI_IGETC, key).FromMaybe(false);  // Ignore errors.
@@ -5454,7 +5454,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoError"));
 
   // ArangoError is a "sub-class" of Error
-  v8::Handle<v8::Function> ArangoErrorFunc = ft->GetFunction();
+  v8::Handle<v8::Function> ArangoErrorFunc = ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>());
   v8::Handle<v8::Value> ErrorObject =
       context->Global()->Get(TRI_V8_ASCII_STRING(isolate, "Error"));
   v8::Handle<v8::Value> ErrorPrototype =

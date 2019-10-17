@@ -419,7 +419,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
           // this prevents "error C2466: cannot allocate an array of constant
           // size 0" in MSVC
           v8::Handle<v8::Value> args[] = {v8::Null(context.isolate)};
-          v8::Handle<v8::Value> converted = toJson->Call(o, 0, args);
+          v8::Handle<v8::Value> converted = toJson->Call(context.context, o, 0, args).FromMaybe(v8::Local<v8::Value>());
 
           if (!converted.IsEmpty()) {
             // return whatever toJSON returned
@@ -432,7 +432,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       }
     }
 
-    v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
+    v8::Handle<v8::Array> names = o->GetOwnPropertyNames(context.context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
 
     AddValue<VPackValue, inObject>(context, attributeName,

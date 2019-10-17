@@ -172,7 +172,7 @@ void Version::initialize() {
 #else
   Values["cplusplus"] = "unknown";
 #endif
-
+  /* TODO
 #if defined(__SANITIZE_ADDRESS__) || \
     (defined(__has_feature) && __has_feature(address_sanitizer))
   Values["asan"] = "true";
@@ -184,14 +184,14 @@ void Version::initialize() {
 #endif
 #endif
 #endif
-  
+
 #if defined(__SANITIZE_THREAD__) || \
 (defined(__has_feature) && __has_feature(thread_sanitizer))
   Values["tsan"] = "true";
 #else
   Values["tsan"] = "false";
 #endif
-
+  */
 #if defined(__SSE4_2__) && !defined(NO_SSE42)
   Values["sse42"] = "true";
 #else
@@ -426,10 +426,12 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
+    /* TODO
 #if defined(__SANITIZE_ADDRESS__) || \
     (defined(__has_feature) && __has_feature(address_sanitizer))
           << " with ASAN"
 #endif
+    */
           << ", using "
 #ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "

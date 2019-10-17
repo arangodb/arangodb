@@ -260,5 +260,5 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   v8g->EnvTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
-                               ft->GetFunction());
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }

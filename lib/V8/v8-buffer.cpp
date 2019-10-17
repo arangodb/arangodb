@@ -236,7 +236,7 @@ static void FromConstructorTemplate(v8::Isolate* isolate, v8::Local<v8::Function
   }
 
   v8::MaybeLocal<v8::Object> ret =
-      t->GetFunction()->NewInstance(TRI_IGETC, (int)argc, argv);
+    t->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())->NewInstance(TRI_IGETC, (int)argc, argv);
 
   TRI_V8_RETURN(ret.FromMaybe(v8::Local<v8::Object>()));
 }
@@ -423,7 +423,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
     v8::Handle<v8::Object> object = val.As<v8::Object>();
     v8::Local<v8::Function> callback =
         object->Get(TRI_V8_ASCII_STRING(isolate, "toString")).As<v8::Function>();
-    str = TRI_GET_STRING(callback->Call(object, 1, &arg));
+    str = TRI_GET_STRING(callback->Call(TRI_IGETC, object, 1, &arg).FromMaybe(v8::Local<v8::Value>()));
   } else {
     str = TRI_GET_STRING(val);
   }
@@ -523,18 +523,18 @@ static TRI_V8_encoding_t ParseEncoding(v8::Isolate* isolate, v8::Handle<v8::Valu
 }
 
 namespace {
-
+  /*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief object info
 ////////////////////////////////////////////////////////////////////////////////
 
-class RetainedBufferInfo : public v8::RetainedObjectInfo {
+class RetainedBufferInfo /* TODO : public v8::RetainedObjectInfo * / {
  public:
   explicit RetainedBufferInfo(V8Buffer* buffer);
 
  public:
   virtual void Dispose() override;
-  virtual bool IsEquivalent(RetainedObjectInfo* other) override;
+  /// TODO: gone.virtual bool IsEquivalent(RetainedObjectInfo* other) override;
   virtual intptr_t GetHash() override;
   virtual char const* GetLabel() override;
   virtual intptr_t GetSizeInBytes() override;
@@ -612,6 +612,7 @@ char const* RetainedBufferInfo::GetLabel() { return _label; }
 intptr_t RetainedBufferInfo::GetSizeInBytes() {
   return V8Buffer::length(_buffer->_isolate, _buffer);
 }
+  */
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -678,7 +679,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, size_t length) {
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, (uint32_t)length);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> b =
-      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   if (b.IsEmpty()) {
     return NULL;
@@ -697,7 +698,8 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char const* data, size_t length) {
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj =
-      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())
+    ->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, const_cast<char*>(data), length, NULL, NULL);
@@ -716,7 +718,8 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj =
-      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())
+    ->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, data, length, callback, hint);
@@ -1692,10 +1695,10 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   // create the exports
   v8::Handle<v8::Object> exports = v8::Object::New(isolate);
 
-  TRI_V8_AddMethod(isolate, exports, TRI_V8_ASCII_STRING(isolate, "SlowBuffer"), ft);
+  /// TODO TRI_V8_AddMethod(isolate, exports, TRI_V8_ASCII_STRING(isolate, "SlowBuffer"), ft);
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"), exports);
 
   v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
-  heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);
+  /// TODO  heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);
 }

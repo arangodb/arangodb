@@ -208,7 +208,7 @@ void V8PlatformFeature::start() {
   v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int)forceARMv6.size());
 #endif
 
-  _platform.reset(v8::platform::CreateDefaultPlatform());
+  _platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(_platform.get());
   v8::V8::Initialize();
 
