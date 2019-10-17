@@ -668,7 +668,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
         return;
@@ -746,7 +746,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
         return;
@@ -813,7 +813,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(s) != seen.end()) {
         // already saw the same value
         return;
