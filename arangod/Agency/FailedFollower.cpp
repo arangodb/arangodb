@@ -153,7 +153,7 @@ bool FailedFollower::start(bool& aborts) {
   // been removed by RemoveFollower already, in which case we simply stop:
   bool found = false;
   if (planned.isArray()) {
-    for (auto const& s : VPackArrayIterator(planned)) {
+    for (VPackSlice s : VPackArrayIterator(planned)) {
       if (s.isString() && _from == s.copyString()) {
         found = true;
         break;

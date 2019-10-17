@@ -1930,7 +1930,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     // remove indexes
     VPackSlice indexes = value.slice().get("indexes");
     if (indexes.isArray()) {
-      for (auto const& it : VPackArrayIterator(indexes)) {
+      for (VPackSlice it : VPackArrayIterator(indexes)) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
@@ -2071,7 +2071,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a view that is still active
 
       TRI_ASSERT(!it.get("id").isNone());

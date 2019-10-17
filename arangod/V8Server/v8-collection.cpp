@@ -834,7 +834,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   {
     VPackObjectBuilder meta(builder.get());
 
-    for (auto const& it : VPackObjectIterator(opResult.slice().resolveExternals())) {
+    for (auto it : VPackObjectIterator(opResult.slice().resolveExternals())) {
       std::string key = it.key.copyString();
 
       if (key == StaticStrings::AttachmentString) {

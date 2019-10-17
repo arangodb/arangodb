@@ -317,7 +317,7 @@ void RestAdminLogHandler::setLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      for (auto const& it : VPackObjectIterator(slice)) {
+      for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isString()) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);

@@ -146,7 +146,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
 
         bool found = false;
 
-        for (auto const& vr : VPackArrayIterator(r)) {
+        for (VPackSlice vr : VPackArrayIterator(r)) {
           if (arangodb::basics::VelocyPackHelper::equal(v, vr, false)) {
             found = true;
             break;
@@ -348,7 +348,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
     std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$", std::regex::ECMAScript);
 
     // "fields" is a list of fields
-    for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+    for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
       if (!it.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
@@ -410,7 +410,7 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
   builder.openArray();
 
   // "fields" is a list of fields when we have got here
-  for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
     std::vector<basics::AttributeName> temp;
     TRI_ParseAttributeString(it.stringRef(), temp, allowExpansion);
 

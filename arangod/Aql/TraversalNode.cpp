@@ -205,7 +205,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
   auto list = base.get("conditionVariables");
 
   if (list.isArray()) {
-    for (auto const& v : VPackArrayIterator(list)) {
+    for (VPackSlice v : VPackArrayIterator(list)) {
       _conditionVariables.emplace(_plan->getAst()->variables()->createVariable(v));
     }
   }
