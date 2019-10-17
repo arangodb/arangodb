@@ -49,7 +49,7 @@ static const std::string GetAllDocs =
  * SECTION: ExecutionBlock tests
  */
 
-class UpdateExecutorTest : public testing::Test {
+class ReplaceExecutorTest : public testing::Test {
  protected:
   mocks::MockAqlServer server{};
   TRI_vocbase_t& vocbase{server.getSystemDatabase()};
@@ -74,34 +74,34 @@ class UpdateExecutorTest : public testing::Test {
   }
 };
 
-TEST_F(UpdateExecutorTest, basic) {
-  std::string query = R"aql(UPDATE "testee" WITH {value: 2} INTO UnitTestCollection)aql";
+TEST_F(ReplaceExecutorTest, basic) {
+  std::string query = R"aql(REPLACE "testee" WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto expected = VPackParser::fromJson(R"([2])");
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
 
-TEST_F(UpdateExecutorTest, option_ignoreErrors_default) {
-  std::string query = R"aql(UPDATE "unkown" WITH {value: 2} INTO UnitTestCollection)aql";
+TEST_F(ReplaceExecutorTest, option_ignoreErrors_default) {
+  std::string query = R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   AssertNotChanged();
 }
 
-TEST_F(UpdateExecutorTest, option_ignoreErrors_true) {
-  std::string query = R"aql(UPDATE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: true})aql";
+TEST_F(ReplaceExecutorTest, option_ignoreErrors_true) {
+  std::string query = R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: true})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   AssertNotChanged();
 }
 
-TEST_F(UpdateExecutorTest, option_ignoreErrors_false) {
-  std::string query = R"aql(UPDATE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: false})aql";
+TEST_F(ReplaceExecutorTest, option_ignoreErrors_false) {
+  std::string query = R"aql(REPLACE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: false})aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   AssertNotChanged();
 }
 
-TEST_F(UpdateExecutorTest, option_keepNull_default) {
-  std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection)aql";
+TEST_F(ReplaceExecutorTest, option_keepNull_default) {
+  std::string query = R"aql(REPLACE "testee" WITH {value: null} INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
@@ -109,8 +109,8 @@ TEST_F(UpdateExecutorTest, option_keepNull_default) {
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-TEST_F(UpdateExecutorTest, option_keepNull_true) {
-  std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: true})aql";
+TEST_F(ReplaceExecutorTest, option_keepNull_true) {
+  std::string query = R"aql(REPLACE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: true})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
@@ -119,8 +119,8 @@ TEST_F(UpdateExecutorTest, option_keepNull_true) {
 }
 
 // This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(UpdateExecutorTest, DISABLED_option_keepNull_false) {
-  std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: false})aql";
+TEST_F(ReplaceExecutorTest, DISABLED_option_keepNull_false) {
+  std::string query = R"aql(REPLACE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: false})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
@@ -128,8 +128,8 @@ TEST_F(UpdateExecutorTest, DISABLED_option_keepNull_false) {
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-TEST_F(UpdateExecutorTest, option_mergeObjects_default) {
-  std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection)aql";
+TEST_F(ReplaceExecutorTest, option_mergeObjects_default) {
+  std::string query = R"aql(REPLACE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
@@ -138,8 +138,8 @@ TEST_F(UpdateExecutorTest, option_mergeObjects_default) {
 }
 
 // This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(UpdateExecutorTest, DISABLED_option_mergeObjects_true) {
-  std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection OPTIONS {mergeObjects: true})aql";
+TEST_F(ReplaceExecutorTest, DISABLED_option_mergeObjects_true) {
+  std::string query = R"aql(REPLACE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection OPTIONS {mergeObjects: true})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
@@ -147,8 +147,8 @@ TEST_F(UpdateExecutorTest, DISABLED_option_mergeObjects_true) {
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-TEST_F(UpdateExecutorTest, option_mergeObjects_false) {
-  std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} }  INTO UnitTestCollection OPTIONS {mergeObjects: false})aql";
+TEST_F(ReplaceExecutorTest, option_mergeObjects_false) {
+  std::string query = R"aql(REPLACE "testee" WITH {nestedObject: {foo: "bar"} }  INTO UnitTestCollection OPTIONS {mergeObjects: false})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
@@ -156,16 +156,16 @@ TEST_F(UpdateExecutorTest, option_mergeObjects_false) {
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-TEST_F(UpdateExecutorTest, option_ignoreRevs_default) {
-  std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection)aql";
+TEST_F(ReplaceExecutorTest, option_ignoreRevs_default) {
+  std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto expected = VPackParser::fromJson(R"([2])");
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
 
-TEST_F(UpdateExecutorTest, option_ignoreRevs_true) {
-  std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: true} )aql";
+TEST_F(ReplaceExecutorTest, option_ignoreRevs_true) {
+  std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: true} )aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto expected = VPackParser::fromJson(R"([2])");
@@ -173,21 +173,17 @@ TEST_F(UpdateExecutorTest, option_ignoreRevs_true) {
 }
 
 // This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(UpdateExecutorTest, DISABLED_option_ignoreRevs_false) {
-  std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
+TEST_F(ReplaceExecutorTest, DISABLED_option_ignoreRevs_false) {
+  std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_CONFLICT);
   AssertNotChanged();
 }
 
 /*
- * ignoreRevs
- */
-
-/*
  * SECTION: Integration tests
  */
 
-class UpdateExecutorIntegrationTest : public testing::TestWithParam<size_t> {
+class ReplaceExecutorIntegrationTest : public testing::TestWithParam<size_t> {
  protected:
   mocks::MockAqlServer server{};
   TRI_vocbase_t& vocbase{server.getSystemDatabase()};
@@ -215,8 +211,8 @@ class UpdateExecutorIntegrationTest : public testing::TestWithParam<size_t> {
   }
 };
 
-TEST_P(UpdateExecutorIntegrationTest, update_all) {
-  std::string query = R"aql(FOR doc IN UnitTestCollection UPDATE doc WITH {value: 'foo'} IN UnitTestCollection)aql";
+TEST_P(ReplaceExecutorIntegrationTest, replace_all) {
+  std::string query = R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {value: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -228,10 +224,10 @@ TEST_P(UpdateExecutorIntegrationTest, update_all) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_all_by_key) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_all_by_key) {
   std::string query =
       R"aql(FOR doc IN 1..)aql" + basics::StringUtils::itoa(GetParam()) +
-      R"aql( UPDATE TO_STRING(doc) WITH {value: 'foo'} IN UnitTestCollection)aql";
+      R"aql( REPLACE TO_STRING(doc) WITH {value: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -243,10 +239,10 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_by_key) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_all_by_id) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_all_by_id) {
   std::string query =
       R"aql(FOR doc IN 1..)aql" + basics::StringUtils::itoa(GetParam()) +
-      R"aql( UPDATE CONCAT("UnitTestCollection/", TO_STRING(doc)) WITH {value: 'foo'} IN UnitTestCollection)aql";
+      R"aql( REPLACE CONCAT("UnitTestCollection/", TO_STRING(doc)) WITH {value: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
@@ -258,11 +254,11 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_by_id) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_only_even) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_only_even) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
       FILTER doc.sortValue % 2 == 0
-      UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+      REPLACE doc WITH {value: 'foo'} IN UnitTestCollection
   )aql";
   VPackBuilder expected;
   {
@@ -279,11 +275,11 @@ TEST_P(UpdateExecutorIntegrationTest, update_only_even) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_all_but_skip) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_all_but_skip) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
     SORT doc.sortValue
-    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    REPLACE doc WITH {value: 'foo'} IN UnitTestCollection
     LIMIT 526, null
     RETURN 1
   )aql";
@@ -304,10 +300,10 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_but_skip) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_all_return_old) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_all_return_old) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
-    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    REPLACE doc WITH {value: 'foo'} IN UnitTestCollection
     RETURN OLD.value
   )aql";
   VPackBuilder expectedUpdateResponse;
@@ -325,10 +321,10 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_return_old) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_all_return_new) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_all_return_new) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
-    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    REPLACE doc WITH {value: 'foo'} IN UnitTestCollection
     RETURN NEW.value
   )aql";
 
@@ -344,10 +340,10 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_return_new) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_all_return_old_and_new) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_all_return_old_and_new) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
-    UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
+    REPLACE doc WITH {value: 'foo'} IN UnitTestCollection
     RETURN {old: OLD.value, new: NEW.value}
   )aql";
 
@@ -370,24 +366,24 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_return_old_and_new) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_does_not_remove_old_attributes) {
-  std::string query = R"aql(FOR doc IN UnitTestCollection UPDATE doc WITH {foo: 'foo'} IN UnitTestCollection)aql";
+TEST_P(ReplaceExecutorIntegrationTest, DISABLED_replace_remove_old_attributes) {
+  std::string query = R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {foo: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
     for (size_t i = 1; i <= GetParam(); ++i) {
-      expected.add(VPackValue(i));
+      expected.add(VPackValue("null"));
     }
   }
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_in_subquery_muli_access) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery_muli_access) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
     SORT doc.sortValue
-    LET updated = (UPDATE doc WITH {value: 'foo'} IN UnitTestCollection)
+    LET updated = (REPLACE doc WITH {value: 'foo'} IN UnitTestCollection)
     RETURN updated
   )aql";
   VPackBuilder expected;
@@ -401,13 +397,13 @@ TEST_P(UpdateExecutorIntegrationTest, update_in_subquery_muli_access) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_in_subquery) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery) {
   std::string query = R"aql(
     FOR x IN ["foo", "bar"]
     FILTER x != "foo" /* The storage engine mock does NOT support multiple edits */
     LET updated = (
       FOR doc IN UnitTestCollection
-      UPDATE doc WITH {value: x} IN UnitTestCollection
+      REPLACE doc WITH {value: x} IN UnitTestCollection
     )
     RETURN updated
   )aql";
@@ -424,13 +420,13 @@ TEST_P(UpdateExecutorIntegrationTest, update_in_subquery) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_in_subquery_with_outer_skip) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery_with_outer_skip) {
   std::string query = R"aql(
     FOR x IN 1..2
       LET updated = (
         FILTER x < 2
         FOR doc IN UnitTestCollection
-        UPDATE doc WITH {value: 'foo'} IN UnitTestCollection)
+        REPLACE doc WITH {value: 'foo'} IN UnitTestCollection)
     LIMIT 1, null
     RETURN updated
   )aql";
@@ -450,13 +446,13 @@ TEST_P(UpdateExecutorIntegrationTest, update_in_subquery_with_outer_skip) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(UpdateExecutorIntegrationTest, update_in_subquery_with_inner_skip) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery_with_inner_skip) {
   std::string query = R"aql(
     FOR x IN 1..2
     LET updated = (
       FILTER x < 2
       FOR doc IN UnitTestCollection
-        UPDATE doc WITH {value: CONCAT('foo', TO_STRING(x))} IN UnitTestCollection
+        REPLACE doc WITH {value: CONCAT('foo', TO_STRING(x))} IN UnitTestCollection
         LIMIT 526, null
       RETURN 1
     )
@@ -486,7 +482,7 @@ TEST_P(UpdateExecutorIntegrationTest, update_in_subquery_with_inner_skip) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-INSTANTIATE_TEST_CASE_P(UpdateExecutorIntegration, UpdateExecutorIntegrationTest,
+INSTANTIATE_TEST_CASE_P(ReplaceExecutorIntegration, ReplaceExecutorIntegrationTest,
                         ::testing::Values(1, 999, 1000, 1001, 2001));
 
 }  // namespace aql
