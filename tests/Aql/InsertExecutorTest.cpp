@@ -49,16 +49,16 @@ class InsertExecutorTest : public ::testing::Test {
   mocks::MockAqlServer server;
   TRI_vocbase_t& vocbase;
 
-  std::string const collectionName = "testCollection";
+  std::string const collectionName = "UnitTestCollection";
 
  public:
   InsertExecutorTest() : vocbase(server.getSystemDatabase()) {}
 
   void SetUp() override {
-    auto createJson =
-        velocypack::Parser::fromJson(R"({ "name": "testCollection", "type": 2 })");
-    auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(collection.get(), nullptr);
+    SCOPED_TRACE("SetUp");
+    auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
+    auto collection = vocbase.createCollection(info->slice());
+    ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
   }
 };
 
@@ -82,12 +82,11 @@ INSTANTIATE_TEST_CASE_P(
 
 TEST_P(InsertExecutorTestCount, insert_without_return) {
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
-                      " INSERT { value: i } INTO testCollection";
-  auto const expected = VPackParser::fromJson("[]");
+                      " INSERT { value: i } INTO " + collectionName;
 
-  AssertQueryHasResult(vocbase, query, expected->slice());
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  std::string checkQuery = "FOR i IN testCollection RETURN i.value";
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
   VPackBuilder builder;
   builder.openArray();
   for (size_t i = 1; i <= GetParam(); i++) {
@@ -101,12 +100,13 @@ TEST_P(InsertExecutorTestCount, insert_with_return) {
   auto const bindParameters = VPackParser::fromJson("{ }");
 
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
-                      " INSERT { value: i } INTO testCollection RETURN NEW";
+                      " INSERT { value: i } INTO " + collectionName +
+                      " RETURN NEW";
   auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
   TRI_ASSERT(result.data->slice().isArray());
   TRI_ASSERT(result.data->slice().length() == GetParam());
 
-  std::string checkQuery = "FOR i IN testCollection RETURN i";
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
 }
 
@@ -117,10 +117,9 @@ TEST_P(InsertExecutorTestCounts, insert_multiple_without_return) {
   std::vector<size_t> param = GetParam();
   for (auto i : param) {
     std::string query = std::string("FOR i IN 1..") + std::to_string(i) +
-                        " INSERT { value: i } INTO testCollection";
-    auto const expected = VPackParser::fromJson("[]");
+                        " INSERT { value: i } INTO " + collectionName;
 
-    AssertQueryHasResult(vocbase, query, expected->slice());
+    AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
     for (size_t j = 1; j <= i; j++) {
       builder.add(VPackValue(j));
@@ -128,7 +127,7 @@ TEST_P(InsertExecutorTestCounts, insert_multiple_without_return) {
   }
 
   builder.close();
-  std::string checkQuery = "FOR i IN testCollection RETURN i.value";
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
   AssertQueryHasResult(vocbase, checkQuery, builder.slice());
 }
 
@@ -142,15 +141,24 @@ TEST_P(InsertExecutorTestCounts, insert_multiple_with_return) {
 
   for (auto i : param) {
     std::string query = std::string("FOR i IN 1..") + std::to_string(i) +
-                        " INSERT { value: i } INTO testCollection RETURN NEW";
+                        " INSERT { value: i } INTO " + collectionName +
+                        " RETURN NEW ";
     auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
     ASSERT_TRUE(result.ok());
     builder.add(VPackArrayIterator(result.data->slice()));
   }
 
   builder.close();
-  std::string checkQuery = "FOR i IN testCollection RETURN i";
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, builder.slice());
+}
+
+// OLD is a keyword, but only sometimes. In particular in insert queries it isnt.
+TEST_F(InsertExecutorTest, insert_return_old) {
+  std::string query = std::string("FOR i IN 1..1 INSERT { value: i } INTO ") +
+                      collectionName + " RETURN OLD";
+
+  AssertQueryFailsWith(vocbase, query, VPackSlice::emptyArraySlice());
 }
 
 }  // namespace aql
