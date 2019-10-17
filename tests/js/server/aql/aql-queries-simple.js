@@ -1324,7 +1324,16 @@ function ahuacatlQuerySimpleTestSuite () {
         var actual = getQueryResults(query[0]);
         assertEqual(query[1], actual);
       });
-    }
+    },
+
+    testForWithoutArray : function () {
+      let values = [ null, false, true, -1, 0, 1.5, 9999, {} ];
+      values.forEach(function(value) {
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = @value FOR x IN a RETURN 1", { value }); 
+      
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = NOOPT(@value) FOR x IN a RETURN 1", { value }); 
+      });
+    },
 
   };
 }

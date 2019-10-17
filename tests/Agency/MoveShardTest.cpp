@@ -152,7 +152,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -193,7 +193,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_servers_are_planned_followers) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -235,7 +235,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -279,7 +279,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_is_not_in_plan) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -320,7 +320,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -375,7 +375,7 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -414,7 +414,7 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_server_is_locked) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -453,7 +453,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_target_server_was_cleaned_out) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -501,7 +501,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_target_server_is_failed) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -547,7 +547,7 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -592,7 +592,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_shard_distributes_its_shards_li
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -636,7 +636,7 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -742,7 +742,7 @@ TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -804,7 +804,7 @@ TEST_F(MoveShardTest, when_moving_a_shard_that_is_a_distributeshardslike_leader_
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -944,7 +944,7 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_it_should_be_aborted_to_prevent_a_de
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -957,7 +957,7 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_it_should_be_aborted_to_prevent_a_de
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
@@ -1003,7 +1003,7 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_leader_case_it_should_be_aborted_to_
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1016,7 +1016,7 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_leader_case_it_should_be_aborted_to_
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
@@ -1062,7 +1062,7 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_while_moving_finish_the_job)
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1075,7 +1075,7 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_while_moving_finish_the_job)
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob("BOGUS", SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1116,7 +1116,7 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_before_the_job_could_be_star
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder && !(path == "/arango/Plan/Collections/" + DATABASE &&
@@ -1130,7 +1130,7 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_before_the_job_could_be_star
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob("ANUNKNOWNCOLLECTION", SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1171,7 +1171,7 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_planned_shard_situation_has_
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1184,7 +1184,7 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_planned_shard_situation_has_
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1226,7 +1226,7 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1239,7 +1239,7 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1312,7 +1312,7 @@ TEST_F(MoveShardTest, the_job_should_not_finish_itself_when_only_parts_of_distri
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1325,7 +1325,7 @@ TEST_F(MoveShardTest, the_job_should_not_finish_itself_when_only_parts_of_distri
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1438,7 +1438,7 @@ TEST_F(MoveShardTest, the_job_should_finish_when_all_distributeshardslike_shards
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder && it.key.copyString() != COLLECTION &&
@@ -1452,7 +1452,7 @@ TEST_F(MoveShardTest, the_job_should_finish_when_all_distributeshardslike_shards
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1640,7 +1640,7 @@ TEST_F(MoveShardTest, a_moveshard_job_that_just_made_it_to_todo_can_simply_be_ab
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1691,7 +1691,7 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1780,7 +1780,7 @@ TEST_F(MoveShardTest, after_the_new_leader_has_synchronized_the_new_leader_shoul
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1793,7 +1793,7 @@ TEST_F(MoveShardTest, after_the_new_leader_has_synchronized_the_new_leader_shoul
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1900,7 +1900,7 @@ TEST_F(MoveShardTest, when_the_old_leader_is_not_yet_ready_for_resign_nothing_sh
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1913,7 +1913,7 @@ TEST_F(MoveShardTest, when_the_old_leader_is_not_yet_ready_for_resign_nothing_sh
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -1967,7 +1967,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1980,7 +1980,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -2145,7 +2145,7 @@ TEST_F(MoveShardTest, if_we_are_ready_to_resign_the_old_server_then_finally_move
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2158,7 +2158,7 @@ TEST_F(MoveShardTest, if_we_are_ready_to_resign_the_old_server_then_finally_move
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -2261,7 +2261,7 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2274,7 +2274,7 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
@@ -2440,7 +2440,7 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2533,7 +2533,7 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2596,7 +2596,7 @@ TEST_F(MoveShardTest, if_aborting_failed_due_to_a_precondition_report_it_properl
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2659,7 +2659,7 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2722,7 +2722,7 @@ TEST_F(MoveShardTest, if_the_job_fails_while_trying_to_switch_over_leadership_it
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2735,7 +2735,7 @@ TEST_F(MoveShardTest, if_the_job_fails_while_trying_to_switch_over_leadership_it
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
@@ -2781,7 +2781,7 @@ TEST_F(MoveShardTest, if_the_job_timeouts_while_the_new_leader_is_trying_to_take
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2794,7 +2794,7 @@ TEST_F(MoveShardTest, if_the_job_timeouts_while_the_new_leader_is_trying_to_take
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
@@ -2839,7 +2839,7 @@ TEST_F(MoveShardTest, when_promoting_the_new_leader_the_old_one_should_become_a_
         builder.reset(new VPackBuilder());
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -2852,7 +2852,7 @@ TEST_F(MoveShardTest, when_promoting_the_new_leader_the_old_one_should_become_a_
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
                 pendingJob.add(it.key.copyString(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue(timepointToString(
