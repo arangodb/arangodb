@@ -29,6 +29,7 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -71,13 +72,15 @@ class InsertExecutorTestCounts
 INSTANTIATE_TEST_CASE_P(InsertExecutorTestInstance, InsertExecutorTestCount,
                         testing::Values(1, 100, 999, 1000, 1001));
 
-INSTANTIATE_TEST_CASE_P(InsertExecutorTestInstance, InsertExecutorTestCounts,
-                        testing::Values(std::vector<size_t>{1}, std::vector<size_t>{100},
-                                        std::vector<size_t>{999}, std::vector<size_t>{1000},
-                                        std::vector<size_t>{1001},
-                                        std::vector<size_t>{1, 100, 1000, 1000, 900}));
+INSTANTIATE_TEST_CASE_P(
+    InsertExecutorTestInstance, InsertExecutorTestCounts,
+    testing::Values(std::vector<size_t>{1}, std::vector<size_t>{100},
+                    std::vector<size_t>{999}, std::vector<size_t>{1000},
+                    std::vector<size_t>{1001}, std::vector<size_t>{1, 100, 1000, 1000, 900},
+                    std::vector<size_t>{10, 10, 10, 10, 10, 100, 100, 10, 100,
+                                        1000, 1000, 900, 10, 100}));
 
-TEST_P(InsertExecutorTestCount, insert) {
+TEST_P(InsertExecutorTestCount, insert_without_return) {
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
                       " INSERT { value: i } INTO testCollection";
   auto const expected = VPackParser::fromJson("[]");
@@ -91,6 +94,62 @@ TEST_P(InsertExecutorTestCount, insert) {
     builder.add(VPackValue(i));
   }
   builder.close();
+  AssertQueryHasResult(vocbase, checkQuery, builder.slice());
+}
+
+TEST_P(InsertExecutorTestCount, insert_with_return) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+
+  std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
+                      " INSERT { value: i } INTO testCollection RETURN NEW";
+  auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
+  TRI_ASSERT(result.data->slice().isArray());
+  TRI_ASSERT(result.data->slice().length() == GetParam());
+
+  std::string checkQuery = "FOR i IN testCollection RETURN i";
+  AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
+}
+
+TEST_P(InsertExecutorTestCounts, insert_multiple_without_return) {
+  VPackBuilder builder;
+  builder.openArray();
+
+  std::vector<size_t> param = GetParam();
+  for (auto i : param) {
+    std::string query = std::string("FOR i IN 1..") + std::to_string(i) +
+                        " INSERT { value: i } INTO testCollection";
+    auto const expected = VPackParser::fromJson("[]");
+
+    AssertQueryHasResult(vocbase, query, expected->slice());
+
+    for (size_t j = 1; j <= i; j++) {
+      builder.add(VPackValue(j));
+    }
+  }
+
+  builder.close();
+  std::string checkQuery = "FOR i IN testCollection RETURN i.value";
+  AssertQueryHasResult(vocbase, checkQuery, builder.slice());
+}
+
+TEST_P(InsertExecutorTestCounts, insert_multiple_with_return) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+
+  VPackBuilder builder;
+  builder.openArray();
+
+  std::vector<size_t> param = GetParam();
+
+  for (auto i : param) {
+    std::string query = std::string("FOR i IN 1..") + std::to_string(i) +
+                        " INSERT { value: i } INTO testCollection RETURN NEW";
+    auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
+    ASSERT_TRUE(result.ok());
+    builder.add(VPackArrayIterator(result.data->slice()));
+  }
+
+  builder.close();
+  std::string checkQuery = "FOR i IN testCollection RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, builder.slice());
 }
 
