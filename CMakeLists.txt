@@ -25,8 +25,16 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
-if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your system")
+if (APPLE)
+  if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
+    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+      message(FATAL_ERROR "environment variable MACOSX_DEPLOYMENT_TARGET is missing")
+    else ()
+      set(CMAKE_OSX_DEPLOYMENT_TARGET "$ENV{MACOSX_DEPLOYMENT_TARGET}" CACHE STRING "deployment target for MacOSX; adjust to your system")
+    endif ()
+  else ()
+    set($ENV{MACOSX_DEPLOYMENT_TARGET} ${CMAKE_OSX_DEPLOYMENT_TARGET})
+  endif ()
 endif ()
 
 # where to find CMAKE modules
@@ -404,7 +412,13 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
-  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=0x600 -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
+
+  add_definitions(-D_USE_MATH_DEFINES)
+  add_definitions(-DNOMINMAX)
+  add_definitions(-D_WIN32_WINNT=0x600)
+  add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
+  add_definitions(-DPSAPI_VERSION=1)
+
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -552,11 +566,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
-  if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6)
-    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
-  else()
-    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++14")
-  endif()
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
 endif ()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
@@ -587,9 +597,9 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-# need c++14
+# need c++17
 # XXX this should really be set on a per target level using cmake compile_features capabilties
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # need threads
 find_package(Threads REQUIRED)
@@ -599,6 +609,8 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
+  add_definitions("-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1") # try to remove this when
+                                                                 # boost is upgraded to 1.70 or later
 
   # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
   # https://connect.microsoft.com/VisualStudio/feedback/details/1892487

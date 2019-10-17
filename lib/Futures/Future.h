@@ -200,9 +200,11 @@ class Future {
   }
   Future& operator=(Future const&) = delete;
   Future& operator=(Future<T>&& o) noexcept {
-    detach();
-    std::swap(_state, o._state);
-    TRI_ASSERT(o._state == nullptr);
+    if (this != &o) {
+      detach();
+      std::swap(_state, o._state);
+      TRI_ASSERT(o._state == nullptr);
+    }
     return *this;
   }
 
@@ -293,15 +295,11 @@ class Future {
   /// specified time point. Future must be valid
   template <class Clock, class Duration>
   FutureStatus wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
-    if (isReady()) {
-      return FutureStatus::Ready;
-    }
-    std::this_thread::yield();
     while (!isReady()) {
+      std::this_thread::yield();
       if (Clock::now() > timeout_time) {
         return FutureStatus::Timeout;
       }
-      std::this_thread::yield();
     }
     return FutureStatus::Ready;
   }
@@ -534,10 +532,13 @@ class Future {
     return state.getTry();
   }
 
-  void detach() {
-    if (_state) {
-      _state->detachFuture();
-      _state = nullptr;
+  void detach() noexcept {
+    detail::SharedState<T>* state = nullptr;
+    std::swap(state, _state);
+    TRI_ASSERT(_state == nullptr);
+    if (state) {
+      // may delete the shared state, so must be last action
+      state->detachFuture();
     }
   }
 
