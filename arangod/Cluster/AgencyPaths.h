@@ -1428,6 +1428,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "ToDo"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, ToDo, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<ToDo const> toDo() const {
@@ -1452,6 +1463,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "Pending"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, Pending, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<Pending const> pending() const {
@@ -1489,6 +1511,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "Failed"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, Failed, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<Failed const> failed() const {
@@ -1617,6 +1650,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "Finished"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, Finished, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<Finished const> finished() const {

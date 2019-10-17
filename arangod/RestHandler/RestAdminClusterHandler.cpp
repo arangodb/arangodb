@@ -72,9 +72,11 @@ void buildHealthResult(VPackBuffer<uint8_t> &out, std::vector<futures::Try<agent
       VPackObjectBuilder ob(&builder, serverId);
 
       // add all fields to the object
-      for (auto entry : VPackObjectIterator(member.value)) {
+      /*for (auto entry : VPackObjectIterator(member.value)) {
         builder.add(entry.key.stringRef(), entry.value);
-      }
+      }*/
+
+      builder.add(VPackObjectIterator(member.value));
 
       if (serverId.substr(0, 4) == "PRMR") {
         builder.add("Role", VPackValue("DBServer"));
@@ -135,7 +137,7 @@ std::string const RestAdminClusterHandler::CollectionShardDistribution = "collec
 std::string const RestAdminClusterHandler::CleanoutServer = "cleanoutServer";
 std::string const RestAdminClusterHandler::ResignLeadership = "resignLeadership";
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
-std::string const RestAdminClusterHandler::QueryJobStatus = "queryJobStatus";
+std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
 
 
 RestStatus RestAdminClusterHandler::execute() {
@@ -227,15 +229,54 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
   std::vector<std::string> paths = {
-    targetPath->pending()->str() + "/" + jobId,
-    targetPath->failed()->str() + "/" + jobId,
-    targetPath->finished()->str() + "/" + jobId,
-    targetPath->toDo()->str() + "/" + jobId,
+    targetPath->pending()->job(jobId)->str(),
+    targetPath->failed()->job(jobId)->str(),
+    targetPath->finished()->job(jobId)->str(),
+    targetPath->toDo()->job(jobId)->str(),
   };
 
+  auto self(shared_from_this());
   return waitForFuture(AsyncAgencyComm().sendTransaction(20s, AgencyReadTransaction{std::move(paths)})
-    .thenValue([](AsyncAgencyCommResult &&result) {
+    .thenValue([self, this, targetPath, jobId](AsyncAgencyCommResult &&result) {
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        auto paths = std::vector{
+          targetPath->pending()->job(jobId)->vec(),
+          targetPath->failed()->job(jobId)->vec(),
+          targetPath->finished()->job(jobId)->vec(),
+          targetPath->toDo()->job(jobId)->vec(),
+        };
 
+
+        for (auto const& path : paths) {
+          VPackSlice job = result.slice().at(0).get(path);
+
+          if (job.isObject()) {
+            VPackBuffer<uint8_t> payload;
+            {
+              VPackBuilder builder(payload);
+              VPackObjectBuilder ob(&builder);
+
+              // append all the job keys
+              builder.add(VPackObjectIterator(job));
+              builder.add("error", VPackValue(false));
+              builder.add("job", VPackValue(jobId));
+              builder.add("status", VPackValue(path[2]));
+            }
+
+            resetResponse(rest::ResponseCode::OK);
+            response()->setPayload(std::move(payload), true);
+            return;
+          }
+        }
+
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      } else {
+        generateError(result.asResult());
+      }
+    }).thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
     }));
 }
 
