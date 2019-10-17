@@ -7261,7 +7261,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool nodeInitiatesSkipping(ExecutionNode const* const node) {
+static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
@@ -7289,11 +7289,10 @@ static bool nodeInitiatesSkipping(ExecutionNode const* const node) {
     case ExecutionNode::REMOTESINGLE:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
-    case ExecutionNode::LIMIT: {
-      auto const limitNode = ExecutionNode::castTo<LimitNode const*>(node);
-      // Limit initiates skip if either an offset is specified or fullcount is enabled.
-      return limitNode->fullCount() || limitNode->offset() > 0;
-    }
+    case ExecutionNode::LIMIT:
+      // limit blocks cannot work, both due to skipping and due to the limit
+      // and passthrough, which forbids passing shadow rows.
+      return true;
     case ExecutionNode::COLLECT: {
       auto const collectNode = ExecutionNode::castTo<CollectNode const*>(node);
       // Collect nodes skip iff using the COUNT method.
@@ -7336,7 +7335,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::Sm
     }
 
     bool before(ExecutionNode* node) final {
-      if (nodeInitiatesSkipping(node)) {
+      if (nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(node)) {
         _doesNotSkip.top() = false;
       }
 

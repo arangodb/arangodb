@@ -2421,34 +2421,23 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
     indent--;
   }
 
-  void adaptIndentOnSubqueryStartOrEnd(ExecutionNode const* node) {
-    switch (node->getType()) {
-      case ExecutionNode::SUBQUERY_START:
-        ++indent;
-        break;
-      case ExecutionNode::SUBQUERY_END:
-        --indent;
-        break;
-      default:;
-    }
-  }
-
   bool before(ExecutionNode* en) final {
-    if (en->getType() == ExecutionNode::SUBQUERY_START) {
-      ++indent;
-    }
     return false;
   }
 
   void after(ExecutionNode* en) final {
     if (en->getType() == ExecutionNode::SUBQUERY_END) {
-      ++indent;
+      --indent;
     }
 
-    for (int i = 0; i < indent; i++) {
+    for (int i = 0; i < 2*indent; i++) {
       std::cout << ' ';
     }
     std::cout << '[' << en->id() << ']' << en->getTypeString() << std::endl;
+
+    if (en->getType() == ExecutionNode::SUBQUERY_START) {
+      ++indent;
+    }
   }
 };
 
