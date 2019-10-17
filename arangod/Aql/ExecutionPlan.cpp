@@ -2412,25 +2412,48 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   ~Shower() = default;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     indent++;
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
     indent--;
   }
 
-  void after(ExecutionNode* en) override final {
+  void adaptIndentOnSubqueryStartOrEnd(ExecutionNode const* node) {
+    switch (node->getType()) {
+      case ExecutionNode::SUBQUERY_START:
+        ++indent;
+        break;
+      case ExecutionNode::SUBQUERY_END:
+        --indent;
+        break;
+      default:;
+    }
+  }
+
+  bool before(ExecutionNode* en) final {
+    if (en->getType() == ExecutionNode::SUBQUERY_START) {
+      ++indent;
+    }
+    return false;
+  }
+
+  void after(ExecutionNode* en) final {
+    if (en->getType() == ExecutionNode::SUBQUERY_END) {
+      ++indent;
+    }
+
     for (int i = 0; i < indent; i++) {
       std::cout << ' ';
     }
-    std::cout << en->getTypeString() << std::endl;
+    std::cout << '[' << en->id() << ']' << en->getTypeString() << std::endl;
   }
 };
 
 /// @brief show an overview over the plan
-void ExecutionPlan::show() {
+void ExecutionPlan::show() const {
   Shower shower;
   _root->walk(shower);
 }

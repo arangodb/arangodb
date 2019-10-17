@@ -146,7 +146,7 @@ class ExecutionPlan {
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void show();
+  void show() const;
 #endif
 
   /// @brief note this node for being excluded from producing scatter/gather

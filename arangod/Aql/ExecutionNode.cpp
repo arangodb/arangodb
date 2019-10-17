@@ -643,6 +643,50 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
   return false;
 }
 
+/// @brief functionality to walk an execution plan recursively.
+/// This variant of walk() works recursively on subqueries before working
+/// recursively on dependencies.
+bool ExecutionNode::walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // Only do every node exactly once
+  // note: this check is not required normally because execution
+  // plans do not contain cycles
+  if (worker.done(this)) {
+    return false;
+  }
+#endif
+
+  if (worker.before(this)) {
+    return true;
+  }
+
+  // Now handle a subquery:
+  if (getType() == SUBQUERY) {
+    auto p = ExecutionNode::castTo<SubqueryNode*>(this);
+    auto subquery = p->getSubquery();
+
+    if (worker.enterSubquery(this, subquery)) {
+      bool shouldAbort = subquery->walkSubqueriesFirst(worker);
+      worker.leaveSubquery(this, subquery);
+
+      if (shouldAbort) {
+        return true;
+      }
+    }
+  }
+
+  // Now the children in their natural order:
+  for (auto const& it : _dependencies) {
+    if (it->walkSubqueriesFirst(worker)) {
+      return true;
+    }
+  }
+
+  worker.after(this);
+
+  return false;
+}
+
 /// @brief get the surrounding loop
 ExecutionNode const* ExecutionNode::getLoop() const {
   auto node = this;

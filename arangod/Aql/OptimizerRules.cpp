@@ -7261,7 +7261,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
+static bool nodeInitiatesSkipping(ExecutionNode const* const node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
@@ -7290,12 +7290,12 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
     case ExecutionNode::LIMIT: {
-      LimitNode const* limitNode = ExecutionNode::castTo<LimitNode const*>(node);
+      auto const limitNode = ExecutionNode::castTo<LimitNode const*>(node);
       // Limit initiates skip if either an offset is specified or fullcount is enabled.
       return limitNode->fullCount() || limitNode->offset() > 0;
     }
     case ExecutionNode::COLLECT: {
-      CollectNode const* collectNode = ExecutionNode::castTo<CollectNode const*>(node);
+      auto const collectNode = ExecutionNode::castTo<CollectNode const*>(node);
       // Collect nodes skip iff using the COUNT method.
       return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
     }
@@ -7314,47 +7314,70 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan, containers::Sm
   using BoolArena = BoolAlloc::arena_type;
   using BoolStack = std::stack<bool, BoolVec>;
 
+  // This finder adds subqueries that are suitable for splicing. That means that
+  // neither the containing subquery skips - at least not in an ancestor of the
+  // subquery - nor the subquery skips inside.
+  //
+  // It will be used in a fashion where the recursive walk on subqueries is done
+  // *before* the recursive walk on dependencies.
+  // It maintains a stack of bools for every subquery level. The topmost bool
+  // holds whether we've encountered a skipping block so far.
+  // When leaving a subquery, we decide whether it is suitable for splicing by
+  // inspecting the two topmost bools in the stack - the one belonging to the
+  // insides of the subquery, which we're going to pop right now, and the one
+  // belonging to the containing subquery.
+
   class Finder final : public WalkerWorker<ExecutionNode> {
    public:
-    Finder(ResultVector& result)
-        : _result{result},
-        _isSuitableArena{},
-        _isSuitable{BoolVec{_isSuitableArena}} {
-      _isSuitable.emplace(true);
+    explicit Finder(ResultVector& result)
+        : _result{result}, _doesNotSkipArena{}, _doesNotSkip{BoolVec{_doesNotSkipArena}} {
+      // push the top-level query
+      _doesNotSkip.emplace(true);
     }
 
     bool before(ExecutionNode* node) final {
-      if (nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(node)) {
-        _isSuitable.top() = false;
+      if (nodeInitiatesSkipping(node)) {
+        _doesNotSkip.top() = false;
       }
+
+      // We could set
+      //   _doesNotSkip.top() = true;
+      // here when we encounter nodes that never pass skipping through, like
+      // SORT, enabling a few more possibilities where to enable this rule.
+
       constexpr bool abort = false;
       return abort;
     }
 
-    bool enterSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
-      if (_isSuitable.top()) {
-        _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
-      }
-      _isSuitable.emplace(true);
+    bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final {
+      _doesNotSkip.emplace(true);
 
       constexpr bool enterSubqueries = true;
       return enterSubqueries;
     }
 
-    void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
-      TRI_ASSERT(!_isSuitable.empty());
-      _isSuitable.pop();
+    void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
+      TRI_ASSERT(!_doesNotSkip.empty());
+
+      const bool subqueryDoesNotSkipInside = _doesNotSkip.top();
+      _doesNotSkip.pop();
+      const bool containingSubqueryDoesNotSkip = _doesNotSkip.top();
+
+      if (subqueryDoesNotSkipInside && containingSubqueryDoesNotSkip) {
+        _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
+      }
     }
+
    private:
     ResultVector& _result;
-    BoolArena _isSuitableArena;
-    // _isSuitable.top() says whether subquery nodes *in* the current (sub)query
-    // are suitable for optimization.
-    BoolStack _isSuitable;
+    BoolArena _doesNotSkipArena;
+    // _doesNotSkip.top() says whether there is a node that skips in the current
+    // (sub)query level.
+    BoolStack _doesNotSkip;
   };
 
   Finder finder(result);
-  plan.root()->walk(finder);
+  plan.root()->walkSubqueriesFirst(finder);
 }
 
 // Splices in subqueries by replacing subquery nodes by
