@@ -388,7 +388,6 @@ void SupervisorFeature::daemonize() {
 #endif
 
       try {
-        auto& server = ApplicationServer::server();
         DaemonFeature& daemon = server.getFeature<DaemonFeature>();
 
         // disable daemon mode
