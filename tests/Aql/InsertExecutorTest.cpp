@@ -158,7 +158,7 @@ TEST_F(InsertExecutorTest, insert_return_old) {
   std::string query = std::string("FOR i IN 1..1 INSERT { value: i } INTO ") +
                       collectionName + " RETURN OLD";
 
-  AssertQueryFailsWith(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryFailsWith(vocbase, query, 1203);
 }
 
 }  // namespace aql
