@@ -1,6 +1,8 @@
 devel
 -----
 
+* Use `-std=c++17` for ArangoDB compilation.
+
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
 * Fixed search not working in document view while in code mode

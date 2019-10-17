@@ -53,7 +53,7 @@ cluster/**
 cluster-init*/**
 p/
 
-core
+/core
 !3rdParty/iresearch/core
 !core.h
 TAGS
