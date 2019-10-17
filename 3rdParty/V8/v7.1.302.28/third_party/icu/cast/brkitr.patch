@@ -1,0 +1,60 @@
+diff --git a/source/data/brkitr/ja.txt b/source/data/brkitr/ja.txt
+index dba2fdcf..71f090da 100644
+--- a/source/data/brkitr/ja.txt
++++ b/source/data/brkitr/ja.txt
+@@ -1,4 +1,4 @@
+-// © 2016 and later: Unicode, Inc. and others.
++﻿// © 2016 and later: Unicode, Inc. and others.
+ // License & terms of use: http://www.unicode.org/copyright.html#License
+ ja{
+     Version{"2.1.44.56"}
+@@ -7,5 +7,6 @@ ja{
+         line_loose:process(dependency){"line_loose_cj.brk"}
+         line_normal:process(dependency){"line_normal_cj.brk"}
+         line_strict:process(dependency){"line.brk"}
++	word:process(dependency){"word_ja.brk"}
+     }
+ }
+diff --git a/source/data/brkitr/root.txt b/source/data/brkitr/root.txt
+index cb87c7ff..ef60ab6f 100644
+--- a/source/data/brkitr/root.txt
++++ b/source/data/brkitr/root.txt
+@@ -13,9 +13,6 @@ root{
+         word:process(dependency){"word.brk"}
+     }
+     dictionaries{
+-        Hani:process(dependency){"cjdict.dict"}
+-        Hira:process(dependency){"cjdict.dict"}
+-        Kana:process(dependency){"cjdict.dict"}
+         Khmr:process(dependency){"khmerdict.dict"}
+         Laoo:process(dependency){"laodict.dict"}
+         Mymr:process(dependency){"burmesedict.dict"}
+diff --git a/source/data/brkitr/rules/word.txt b/source/data/brkitr/rules/word.txt
+index 0980ea0b..90042c73 100644
+--- a/source/data/brkitr/rules/word.txt
++++ b/source/data/brkitr/rules/word.txt
+@@ -66,11 +66,9 @@ $Control        = [\p{Grapheme_Cluster_Break = Control}];
+ $HangulSyllable = [\uac00-\ud7a3];
+ $ComplexContext = [:LineBreak = Complex_Context:];
+ $KanaKanji      = [$Han $Hiragana $Katakana];
+-$dictionaryCJK  = [$KanaKanji $HangulSyllable];
+-$dictionary     = [$ComplexContext $dictionaryCJK];
++$dictionary     = [$ComplexContext];
+ 
+-# leave CJK scripts out of ALetterPlus
+-$ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
++$ALetterPlus  = [$ALetter [$ComplexContext-$Extend-$Control]];
+ 
+ 
+ #
+@@ -182,10 +180,6 @@ $ExtendNumLetEx  $KatakanaEx     {400};    #  (13b)
+ #
+ ^$Regional_IndicatorEx $Regional_IndicatorEx;
+ 
+-# special handling for CJK characters: chain for later dictionary segmentation
+-$HangulSyllable $HangulSyllable {200};
+-$KanaKanji $KanaKanji {400}; # different rule status if both kana and kanji found
+-
+ # Rule 999
+ #     Match a single code point if no other rule applies.
+ .;

@@ -1,0 +1,17 @@
+diff --git a/source/tools/icupkg/icupkg.cpp b/source/tools/icupkg/icupkg.cpp
+index ea7be4a9..51a66397 100644
+--- a/source/tools/icupkg/icupkg.cpp
++++ b/source/tools/icupkg/icupkg.cpp
+@@ -501,10 +501,8 @@ main(int argc, char *argv[]) {
+     }
+ 
+     /* check dependencies between items */
+-    if(!pkg->checkDependencies()) {
+-        /* some dependencies are not fulfilled */
+-        return U_MISSING_RESOURCE_ERROR;
+-    }
++    // Still check the checkDependencies to output warning but not produce error
++    pkg->checkDependencies();
+ 
+     /* write the output .dat package if there are any modifications */
+     if(isModified) {
