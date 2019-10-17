@@ -325,6 +325,12 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
+  // distribute view queries in cluster
+  // TODO why was it moved up? the smart-join rule excludes form scatter - probably moved up for testing
+  registerRule("scatter-arangosearch-view-in-cluster", arangodb::iresearch::scatterViewInClusterRule,
+               OptimizerRule::scatterIResearchViewInClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+
 #ifdef USE_ENTERPRISE
   registerRule("smart-joins", smartJoinsRule, OptimizerRule::smartJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
@@ -333,11 +339,6 @@ void OptimizerRulesFeature::addRules() {
 
   // distribute operations in cluster
   registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
-
-  // distribute view queries in cluster
-  registerRule("scatter-arangosearch-view-in-cluster", arangodb::iresearch::scatterViewInClusterRule,
-               OptimizerRule::scatterIResearchViewInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
