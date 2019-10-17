@@ -58,3 +58,13 @@ void arangodb::tests::aql::AssertQueryHasResult(TRI_vocbase_t& database,
   auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);
   AssertQueryResultToSlice(queryResult, expected);
 }
+
+void arangodb::tests::aql::AssertQueryFailsWith(TRI_vocbase_t& database,
+                                                std::string const& query, int errorNumber) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+  SCOPED_TRACE("Query: " + query);
+  auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);
+  EXPECT_FALSE(queryResult.ok()) << "Should yield error number " << errorNumber;
+  EXPECT_EQ(queryResult.errorNumber(), errorNumber)
+      << "Returned message: " << queryResult.errorMessage();
+}
