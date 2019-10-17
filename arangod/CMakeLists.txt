@@ -908,6 +908,10 @@ target_link_libraries(arangoserver
   ${MSVC_LIBS}
 )
 
+if (MSVC)
+  target_link_libraries(arangoserver Bcrypt.lib)
+endif()
+
 if (USE_ENTERPRISE)
   add_library(arango_rclone STATIC
     ${LIB_RCLONE_SOURCES}
