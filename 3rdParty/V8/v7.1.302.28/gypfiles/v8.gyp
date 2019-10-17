@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 {
   'variables': {
-#    'V8_ROOT': '../',
+    'V8_ROOT': '../',
     'v8_code': 1,
     'v8_random_seed%': 314159265,
     'v8_vector_stores%': 0,
@@ -142,7 +142,7 @@
           'action': [
             '<@(_inputs)',
             '-o', '<(torque_output_root)/torque-generated',
-            '-v8-root', '<(V8_ROOT)'
+            '-v8-root', '<(V8_SRC_ROOT)'
           ],
         },
       ],

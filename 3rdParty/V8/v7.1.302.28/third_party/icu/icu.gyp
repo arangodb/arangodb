@@ -7,6 +7,7 @@
     'icu.gypi',
   ],
   'variables': {
+    'V8_ROOT': '../../',
     'use_system_icu%': 0,
     'icu_use_data_file_flag%': 0,
     'want_separate_host_toolset%': 1,

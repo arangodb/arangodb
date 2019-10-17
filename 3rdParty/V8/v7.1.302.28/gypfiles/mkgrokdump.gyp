@@ -4,7 +4,7 @@
 
 {
   'variables': {
-#    'V8_ROOT': '../',
+    'V8_ROOT': '../',
     'v8_code': 1,
   },
   'includes': ['toolchain.gypi', 'features.gypi'],
