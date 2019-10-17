@@ -3449,6 +3449,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(std::string const& back
   for (auto const& dbServer : dbservers) {
     requests.emplace_back("server:" + dbServer, RequestType::POST, url, body);
     requests.back().headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+    // do a async request
     requests.back().headerFields->operator[](StaticStrings::Async) = "store";
   }
 
@@ -3511,9 +3512,8 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
                   + req.destination);
     }
 
-    // continue on 204
+    // continue on 204 No Content
     if (res.result->getHttpReturnCode() == 204) {
-      LOG_DEVEL << "no lock yet on " << res.serverID;
       continue;
     }
 
@@ -3578,6 +3578,19 @@ void hotbackupCancelAsyncLocks(
   // abort all the jobs
   // if a job can not be aborted, assume it has started and add the server to
   // the unlock list
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    return;
+  }
+
+  // cancel all remaining jobs here
+  std::vector<ClusterCommRequest> requests;
+  for (auto const& lock : dbserverLockIds) {
+    requests.emplace_back("server:" + lock.first, RequestType::PUT, "/_api/job/" + lock.second + "/cancel", nullptr);
+  }
+
+  // Perform the requests, best effort
+  cc->performRequests(requests, 5.0, Logger::BACKUP, false, false);
 }
 
 arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const payload,
@@ -3698,6 +3711,17 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     if (!result.ok() && force) {
+
+      // About this code:
+      // it first creates async requests to lock all dbservers.
+      //    the corresponding lock ids are stored int the map lockJobIds.
+      // Then we continously abort all trx while checking all the above jobs
+      //    for completion.
+      // If a job was completed the its id is removed from lockJobIds
+      //  and the server is added to the lockedServers list.
+      // Once lockJobIds is empty or an error occured we exit the loop
+      //  and continue on the normal path (as if all servers would have been locked or error-exit)
+
       // dbserver -> jobId
       std::unordered_map<std::string, std::string> lockJobIds;
 
