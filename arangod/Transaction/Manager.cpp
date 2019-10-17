@@ -72,8 +72,6 @@ std::string currentUser() {
 namespace arangodb {
 namespace transaction {
 
-const size_t Manager::maxTransactionSize;  // 128 MiB
-
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
@@ -484,7 +482,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   size_t const bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
@@ -602,7 +600,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
     return transaction::Status::ABORTED;
   }
 }
-  
+
 
 Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status) {
   double startTime = 0.0;
@@ -775,7 +773,7 @@ bool Manager::garbageCollect(bool abortAll) {
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
       ManagedTrx& mtrx = it->second;
-      
+
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         if (abortAll || mtrx.expired()) {
@@ -813,7 +811,7 @@ bool Manager::garbageCollect(bool abortAll) {
     // we can also get the TRI_ERROR_LOCKED error in case we cannot
     // immediately acquire the lock on the transaction. this _can_ happen
     // infrequently, but is not an error
-    if (res.fail() && 
+    if (res.fail() &&
         !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
         !res.is(TRI_ERROR_LOCKED)) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
