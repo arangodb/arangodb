@@ -39,8 +39,8 @@ using namespace arangodb::aql;
 
 namespace {
 bool CompareVariables(Variable const* mine, Variable const* yours) {
-  if (mine == nullptr) {
-    return yours == nullptr;
+  if (mine == nullptr || yours == nullptr) {
+    return mine == nullptr && yours == nullptr;
   }
   return mine->isEqualTo(*yours);
 }
@@ -48,6 +48,7 @@ bool CompareVariables(Variable const* mine, Variable const* yours) {
 
 SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
+      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
