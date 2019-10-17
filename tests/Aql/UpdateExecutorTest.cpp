@@ -45,12 +45,152 @@ namespace aql {
 static const std::string GetAllDocs =
     R"aql(FOR doc IN UnitTestCollection SORT doc.sortValue RETURN doc.value)aql";
 
-class UpdateExecutorIntegrationTest : public testing::TestWithParam<size_t> {
+/*
+ * SECTION: ExecutionBlock tests
+ */
+
+class UpdateExecutorTest : public testing::Test {
  protected:
   mocks::MockAqlServer server{};
   TRI_vocbase_t& vocbase{server.getSystemDatabase()};
 
-  UpdateExecutorIntegrationTest() {}
+  void SetUp() override {
+    SCOPED_TRACE("Setup");
+    auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
+    auto collection = vocbase.createCollection(info->slice());
+    ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
+    // Insert Documents
+    std::string insertQuery =
+        R"aql(INSERT {_key: "testee", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+    SCOPED_TRACE(insertQuery);
+    AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
+    auto expected = VPackParser::fromJson(R"([1])");
+    AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+  }
+
+  void AssertNotChanged() {
+    auto expected = VPackParser::fromJson(R"([1])");
+    AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+  }
+};
+
+TEST_F(UpdateExecutorTest, basic) {
+  std::string query = R"aql(UPDATE "testee" WITH {value: 2} INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
+TEST_F(UpdateExecutorTest, option_ignoreErrors_default) {
+  std::string query = R"aql(UPDATE "unkown" WITH {value: 2} INTO UnitTestCollection)aql";
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  AssertNotChanged();
+}
+
+TEST_F(UpdateExecutorTest, option_ignoreErrors_true) {
+  std::string query = R"aql(UPDATE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: true})aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertNotChanged();
+}
+
+TEST_F(UpdateExecutorTest, option_ignoreErrors_false) {
+  std::string query = R"aql(UPDATE "unkown" WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreErrors: false})aql";
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  AssertNotChanged();
+}
+
+TEST_F(UpdateExecutorTest, option_keepNull_default) {
+  std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  std::string testQuery =
+      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
+  auto expected = VPackParser::fromJson(R"([true])");
+  AssertQueryHasResult(vocbase, testQuery, expected->slice());
+}
+
+TEST_F(UpdateExecutorTest, option_keepNull_true) {
+  std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: true})aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  std::string testQuery =
+      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
+  auto expected = VPackParser::fromJson(R"([true])");
+  AssertQueryHasResult(vocbase, testQuery, expected->slice());
+}
+
+// This does not work, need to investigate if Error in AQL or in StorageMock
+TEST_F(UpdateExecutorTest, DISABLED_option_keepNull_false) {
+  std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: false})aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  std::string testQuery =
+      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
+  auto expected = VPackParser::fromJson(R"([false])");
+  AssertQueryHasResult(vocbase, testQuery, expected->slice());
+}
+
+TEST_F(UpdateExecutorTest, option_mergeObjects_default) {
+  std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  std::string testQuery =
+      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
+  auto expected = VPackParser::fromJson(R"([ {"foo": "bar"} ])");
+  AssertQueryHasResult(vocbase, testQuery, expected->slice());
+}
+
+// This does not work, need to investigate if Error in AQL or in StorageMock
+TEST_F(UpdateExecutorTest, DISABLED_option_mergeObjects_true) {
+  std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection OPTIONS {mergeObjects: true})aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  std::string testQuery =
+      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
+  auto expected = VPackParser::fromJson(R"([{"foo": "bar", "value": 1}])");
+  AssertQueryHasResult(vocbase, testQuery, expected->slice());
+}
+
+TEST_F(UpdateExecutorTest, option_mergeObjects_false) {
+  std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} }  INTO UnitTestCollection OPTIONS {mergeObjects: false})aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  std::string testQuery =
+      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
+  auto expected = VPackParser::fromJson(R"([{"foo": "bar"}])");
+  AssertQueryHasResult(vocbase, testQuery, expected->slice());
+}
+
+TEST_F(UpdateExecutorTest, option_ignoreRevs_default) {
+  std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
+TEST_F(UpdateExecutorTest, option_ignoreRevs_true) {
+  std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: true} )aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
+// This does not work, need to investigate if Error in AQL or in StorageMock
+TEST_F(UpdateExecutorTest, DISABLED_option_ignoreRevs_false) {
+  std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_CONFLICT);
+  AssertNotChanged();
+}
+
+/*
+ * ignoreRevs
+ */
+
+/*
+ * SECTION: Integration tests
+ */
+
+class UpdateExecutorIntegrationTest : public testing::TestWithParam<size_t> {
+ protected:
+  mocks::MockAqlServer server{};
+  TRI_vocbase_t& vocbase{server.getSystemDatabase()};
 
   void SetUp() override {
     SCOPED_TRACE("Setup");
