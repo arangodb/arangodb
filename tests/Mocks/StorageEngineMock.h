@@ -51,9 +51,22 @@ class OptimizerRulesFeature;
 
 class PhysicalCollectionMock : public arangodb::PhysicalCollection {
  public:
+  struct DocElement {
+    DocElement(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data, uint64_t docId);
+
+    arangodb::velocypack::Slice data() const;
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> rawData() const;
+    arangodb::LocalDocumentId docId() const;
+    uint8_t const* vptr() const;
+    void swapBuffer(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>& newData);
+
+   private:
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _data;
+    uint64_t const _docId;
+  };
+
   static std::function<void()> before;
   std::string physicalPath;
-  std::deque<std::pair<arangodb::velocypack::Builder, bool>> documents;  // std::pair<jSON, valid>, deque -> pointers remain valid
 
   PhysicalCollectionMock(arangodb::LogicalCollection& collection,
                          arangodb::velocypack::Slice const& info);
@@ -130,6 +143,12 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                   arangodb::ManagedDocumentResult& result,
                                   arangodb::OperationOptions& options, bool lock,
                                   arangodb::ManagedDocumentResult& previous, bool isUpdate);
+
+  uint64_t _lastDocumentId;
+  // keep old documents memory, unclear if needed.
+  std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _graveyard;
+  // map _key => data. Keyslice references memory in the value
+  std::unordered_map<arangodb::velocypack::StringRef, DocElement> _documents;
 };
 
 class TransactionCollectionMock : public arangodb::TransactionCollection {
