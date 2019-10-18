@@ -16,8 +16,6 @@ branches:
 language: cpp
 cache: ccache
 compiler: g++
-sudo: false
-dist: trusty
 
 addons:
   apt:
