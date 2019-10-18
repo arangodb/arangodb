@@ -6,7 +6,6 @@
 
 language: cpp
 #cache: ccache
-sudo: required
 
 #see https://apt.llvm.org/
 matrix:
