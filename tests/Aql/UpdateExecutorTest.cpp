@@ -118,8 +118,7 @@ TEST_F(UpdateExecutorTest, option_keepNull_true) {
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-// This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(UpdateExecutorTest, DISABLED_option_keepNull_false) {
+TEST_F(UpdateExecutorTest, option_keepNull_false) {
   std::string query = R"aql(UPDATE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: false})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
@@ -133,12 +132,11 @@ TEST_F(UpdateExecutorTest, option_mergeObjects_default) {
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
       R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
-  auto expected = VPackParser::fromJson(R"([ {"foo": "bar"} ])");
+  auto expected = VPackParser::fromJson(R"([{"foo": "bar", "value": 1}])");
   AssertQueryHasResult(vocbase, testQuery, expected->slice());
 }
 
-// This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(UpdateExecutorTest, DISABLED_option_mergeObjects_true) {
+TEST_F(UpdateExecutorTest, option_mergeObjects_true) {
   std::string query = R"aql(UPDATE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection OPTIONS {mergeObjects: true})aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   std::string testQuery =
@@ -172,16 +170,11 @@ TEST_F(UpdateExecutorTest, option_ignoreRevs_true) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
 
-// This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(UpdateExecutorTest, DISABLED_option_ignoreRevs_false) {
+TEST_F(UpdateExecutorTest, option_ignoreRevs_false) {
   std::string query = R"aql(UPDATE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_CONFLICT);
   AssertNotChanged();
 }
-
-/*
- * ignoreRevs
- */
 
 /*
  * SECTION: Integration tests
