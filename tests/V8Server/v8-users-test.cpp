@@ -60,7 +60,7 @@
 // I have not dug into which header included by ClusterInfo.h will finally
 // include mwsockdef.h. Nor did I check whether all of the following headers
 // will include V8's "src/base/win32-headers.h".
-#include "src/api.h"
+#include "src/api/api.h"
 #include "src/objects-inl.h"
 #include "src/objects/scope-info.h"
 

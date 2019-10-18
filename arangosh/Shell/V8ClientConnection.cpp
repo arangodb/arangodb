@@ -314,7 +314,7 @@ static void ObjectToMap(v8::Isolate* isolate,
   v8::Local<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
-    v8::Local<v8::Array> const props = v8Headers->GetPropertyNames();
+    v8::Local<v8::Array> const props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
 
     for (uint32_t i = 0; i < props->Length(); i++) {
       v8::Local<v8::Value> key = props->Get(i);
@@ -362,7 +362,7 @@ static v8::Local<v8::Value> WrapV8ClientConnection(v8::Isolate* isolate,
                                                    V8ClientConnection* v8connection) {
   v8::EscapableHandleScope scope(isolate);
   auto localConnectionTempl = v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
-  v8::Local<v8::Object> result = localConnectionTempl->NewInstance();
+  v8::Local<v8::Object> result = localConnectionTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   auto myConnection = v8::External::New(isolate, v8connection);
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRAP_TYPE_CONNECTION));
@@ -1899,7 +1899,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoConnection"),
-                               connection_proto->NewInstance());
+                               connection_proto->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
 
   ConnectionTempl.Reset(isolate, connection_inst);
 

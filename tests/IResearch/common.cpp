@@ -309,7 +309,7 @@ void v8Init() {
   struct init_t {
     std::shared_ptr<v8::Platform> platform;
     init_t() {
-      platform = std::shared_ptr<v8::Platform>(v8::platform::CreateDefaultPlatform(),
+      platform = std::shared_ptr<v8::Platform>(v8::platform::NewDefaultPlatform(),
                                                [](v8::Platform* p) -> void {
                                                  v8::V8::Dispose();
                                                  v8::V8::ShutdownPlatform();

@@ -116,7 +116,7 @@ RestStatus RestAdminExecuteHandler::execute() {
         });
 
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
-        rv = action->Call(current, 0, args);
+        rv = action->Call(TRI_IGETC, current, 0, args).FromMaybe(v8::Local<v8::Value>());
       }
 
       if (tryCatch.HasCaught()) {

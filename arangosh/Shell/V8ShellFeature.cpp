@@ -201,7 +201,7 @@ void V8ShellFeature::unprepare() {
     // clear globals to free memory
     auto isolate = _isolate;
     auto globals = _isolate->GetCurrentContext()->Global();
-    v8::Handle<v8::Array> names = globals->GetOwnPropertyNames();
+    v8::Handle<v8::Array> names = globals->GetOwnPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
     for (uint32_t i = 0; i < n; ++i) {
       TRI_DeleteProperty(context, isolate, globals, names->Get(i));
@@ -999,19 +999,20 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void V8ShellFeature::initGlobals() {
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
   auto context = _isolate->GetCurrentContext();
+  auto isolate = _isolate;
 
   // string functions
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
-      v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "COMPARE_STRING"),
-      v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGODB_CLIENT_VERSION"),
-      v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 
   // is quite
   TRI_AddGlobalVariableVocbase(_isolate,
@@ -1105,15 +1106,15 @@ void V8ShellFeature::initGlobals() {
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
-      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
