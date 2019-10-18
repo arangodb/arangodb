@@ -579,7 +579,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
     b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
-      for (auto const& pair : VPackObjectIterator(additional)) {
+      for (auto pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);
       }
     }

@@ -988,9 +988,9 @@ foreach(TARGET
 )
   target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-  if(MSVC)
+  if(MSVC AND FAIL_ON_WARNINGS)
     target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  elseif(DARWIN)
+  elseif(DARWIN AND FAIL_ON_WARNINGS)
     target_compile_options(${TARGET} PRIVATE -Werror)
 endif()
 endforeach()

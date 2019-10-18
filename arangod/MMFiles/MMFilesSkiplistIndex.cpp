@@ -350,7 +350,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         tmp->clear();
         unique_set.clear();
         value->toVelocyPackValue(*(tmp.get()));
-        for (auto const& it : VPackArrayIterator(tmp->slice())) {
+        for (VPackSlice it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
         TRI_IF_FAILURE("Index::permutationIN") {
