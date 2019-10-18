@@ -8,6 +8,8 @@ import os
 import sys
 import subprocess
 
+from __future__ import absolute_import
+
 PY3 = bytes != str
 
 # Below IsCygwin() function copied from pylib/gyp/common.py
