@@ -50,6 +50,8 @@ class InsertExecutorTest : public ::testing::Test {
   TRI_vocbase_t& vocbase;
 
   std::string const collectionName = "UnitTestCollection";
+  std::string const checkQuery =
+      "FOR i IN " + collectionName + " SORT i.value RETURN i.value";
 
  public:
   InsertExecutorTest() : vocbase(server.getSystemDatabase()) {}
@@ -75,7 +77,6 @@ TEST_P(InsertExecutorTestCount, insert_without_return) {
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
   VPackBuilder builder;
   builder.openArray();
   for (size_t i = 1; i <= GetParam(); i++) {
@@ -90,12 +91,11 @@ TEST_P(InsertExecutorTestCount, insert_with_key_with_return) {
 
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
                       " INSERT { _key: TO_STRING(i), value: i } INTO " +
-                      collectionName + " RETURN NEW";
+                      collectionName + " RETURN NEW.value";
   auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
   TRI_ASSERT(result.data->slice().isArray());
   TRI_ASSERT(result.data->slice().length() == GetParam());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
 }
 
@@ -105,7 +105,6 @@ TEST_P(InsertExecutorTestCount, insert_with_key_without_return) {
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
   VPackBuilder builder;
   builder.openArray();
   for (size_t i = 1; i <= GetParam(); i++) {
@@ -120,12 +119,11 @@ TEST_P(InsertExecutorTestCount, insert_with_return) {
 
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
                       " INSERT { value: i } INTO " + collectionName +
-                      " RETURN NEW";
+                      " RETURN NEW.value";
   auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
   TRI_ASSERT(result.data->slice().isArray());
   TRI_ASSERT(result.data->slice().length() == GetParam());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
 }
 
@@ -153,8 +151,6 @@ TEST_P(InsertExecutorTestCounts, insert_multiple_without_return) {
     builder.add(VPackValue(i));
   }
   builder.close();
-  std::string checkQuery =
-      "FOR i IN " + collectionName + " SORT i.value RETURN i.value";
   AssertQueryHasResult(vocbase, checkQuery, builder.slice());
 }
 
@@ -182,8 +178,6 @@ TEST_P(InsertExecutorTestCounts, insert_multiple_with_return) {
     builder.add(VPackValue(i));
   }
   builder.close();
-  std::string checkQuery =
-      "FOR i IN " + collectionName + " SORT i.value RETURN i.value";
   AssertQueryHasResult(vocbase, checkQuery, builder.slice());
 }
 
