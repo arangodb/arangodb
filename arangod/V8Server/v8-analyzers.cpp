@@ -64,7 +64,7 @@ v8::Handle<v8::Object> WrapAnalyzer( // wrap analyzer
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL(IResearchAnalyzerTempl, v8::ObjectTemplate);
-  auto result = IResearchAnalyzerTempl->NewInstance();
+  auto result = IResearchAnalyzerTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -683,7 +683,7 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
 
     v8g.IResearchAnalyzersTempl.Reset(isolate, objTemplate);
 
-    auto instance = objTemplate->NewInstance();
+    auto instance = objTemplate->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     // register the global object accessable via JavaScipt
     if (!instance.IsEmpty()) {
@@ -709,7 +709,7 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
       isolate, // isolate
       TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
-      fnTemplate->GetFunction() // impl
+      fnTemplate->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()) // impl
     );
   }
 }

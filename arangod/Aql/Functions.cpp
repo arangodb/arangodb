@@ -2236,7 +2236,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         if (it.isString()) {
           arangodb::velocypack::ValueLength length;
           char const* str = it.getStringUnchecked(length);
-          matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+          matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
         } else {
           ::registerInvalidArgumentWarning(expressionContext, AFN);
           return AqlValue(AqlValueHintNull());

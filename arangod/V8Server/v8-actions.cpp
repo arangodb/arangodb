@@ -849,7 +849,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
     if (v8Headers->IsObject()) {
-      v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+      v8::Handle<v8::Array> props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
 
       for (uint32_t i = 0; i < props->Length(); i++) {
         v8::Handle<v8::Value> key = props->Get(v8::Integer::New(isolate, i));
@@ -930,7 +930,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   std::string errorMessage;
 
   try {
-    callback->Call(callback, 2, args);
+    callback->Call(TRI_IGETC, callback, 2, args).FromMaybe(v8::Local<v8::Value>());;
     errorCode = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     errorCode = ex.code();
@@ -1700,7 +1700,7 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
 
     v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
     v8::Handle<v8::Value> callArgs[] = {v8::Null(isolate)};
-    v8::Handle<v8::Value> rv = action->Call(current, 0, callArgs);
+    v8::Handle<v8::Value> rv = action->Call(TRI_IGETC, current, 0, callArgs).FromMaybe(v8::Local<v8::Value>());
     TRI_V8_RETURN(rv);
   }
 

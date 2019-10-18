@@ -719,7 +719,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
         v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
         v8::Handle<v8::Value> args;
-        v8::Handle<v8::Value> converted = toJson->Call(o, 0, &args);
+        v8::Handle<v8::Value> converted = toJson->Call(TRI_IGETC, o, 0, &args).FromMaybe(v8::Local<v8::Value>());
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
@@ -758,7 +758,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
     seenObjects.emplace_back(o);
 
-    v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
+    v8::Handle<v8::Array> names = o->GetOwnPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
 
     // allocate the result object buffer in one go

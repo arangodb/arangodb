@@ -4884,7 +4884,7 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_GetProperty(context, isolate, err, "captureStackTrace"));
 
     v8::Handle<v8::Value> arguments[] = {self};
-    captureStackTrace->Call(TRI_IGETC, current, 1, arguments);
+    captureStackTrace->Call(TRI_IGETC, current, 1, arguments).FromMaybe(v8::Local<v8::Value>());
   }
 
   TRI_V8_RETURN(self);
@@ -5182,7 +5182,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 
     if (print->IsFunction()) {
       v8::Handle<v8::Value> arguments[] = {result};
-      print->Call(TRI_IGETC, print, 1, arguments);
+      print->Call(TRI_IGETC, print, 1, arguments).FromMaybe(v8::Local<v8::Value>());
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {

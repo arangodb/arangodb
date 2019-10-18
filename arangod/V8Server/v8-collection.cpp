@@ -142,13 +142,14 @@ static std::string ExtractIdString(v8::Isolate* isolate, v8::Handle<v8::Value> c
   if (val->IsString()) {
     return TRI_ObjectToString(isolate, val);
   }
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   if (val->IsObject()) {
     TRI_GET_GLOBALS();
     v8::Handle<v8::Object> obj =
         val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
-    if (obj->HasRealNamedProperty(_IdKey)) {
+    if (TRI_HasRealNamedProperty(context, isolate, obj, _IdKey)) {
       v8::Handle<v8::Value> idVal = obj->Get(_IdKey);
       if (idVal->IsString()) {
         return TRI_ObjectToString(isolate, idVal);
@@ -221,7 +222,7 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate, VPackBuilder& builder,
                                v8::Local<v8::Value> const obj) {
   TRI_ASSERT(obj->IsObject() && !obj->IsArray());
   auto o = v8::Local<v8::Object>::Cast(obj);
-  v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
+  v8::Handle<v8::Array> names = o->GetOwnPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
   uint32_t const n = names->Length();
   for (uint32_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> key = names->Get(i);
@@ -1340,6 +1341,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
                              v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   // check the arguments
   uint32_t const argLength = args.Length();
@@ -1428,9 +1430,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
       // In this case we have to extract the _rev entry from newVal:
       TRI_GET_GLOBALS();
       v8::Handle<v8::Object> obj =
-          newVal->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+          newVal->ToObject(context).FromMaybe(v8::Local<v8::Object>());
       TRI_GET_GLOBAL_STRING(_RevKey);
-      if (!obj->HasRealNamedProperty(_RevKey)) {
+      if (!TRI_HasRealNamedProperty(context, isolate, obj, _RevKey)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
       }
       v8::Handle<v8::Value> revVal = obj->Get(_RevKey);
@@ -2618,5 +2620,5 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   v8g->VocbaseColTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoCollection"),
-                               ft->GetFunction());
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }

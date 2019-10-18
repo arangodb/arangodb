@@ -46,7 +46,7 @@ inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) 
   v8::Local<v8::Function> stringify =
       json->Get(TRI_V8_ASCII_STRING(isolate, "stringify")).As<v8::Function>();
   v8::Local<v8::Value> args[1] = {value};
-  v8::Local<v8::Value> jsString = stringify->Call(json, 1, args);
+  v8::Local<v8::Value> jsString = stringify->Call(TRI_IGETC, json, 1, args).FromMaybe(v8::Local<v8::Value>());
   v8::String::Utf8Value const rv(isolate, jsString);
   return std::string(*rv, rv.length());
 }

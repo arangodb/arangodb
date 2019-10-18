@@ -842,7 +842,7 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   // actually call the V8 function
   v8::TryCatch tryCatch(isolate);
   v8::Handle<v8::Value> result =
-      v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args);
+    v8::Handle<v8::Function>::Cast(function)->Call(TRI_IGETC, current, static_cast<int>(callArgs), args).FromMaybe(v8::Local<v8::Value>());
 
   try {
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);

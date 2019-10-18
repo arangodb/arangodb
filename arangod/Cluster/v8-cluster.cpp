@@ -101,7 +101,7 @@ static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& arg
   errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::True(isolate));
 
   TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Value> proto = ArangoErrorTempl->NewInstance();
+  v8::Handle<v8::Value> proto = ArangoErrorTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
   if (!proto.IsEmpty()) {
     errorObject->SetPrototype(TRI_IGETC, proto).FromMaybe(false);
   }
@@ -1351,7 +1351,7 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
 
   if (args.Length() > 5 && args[5]->IsObject()) {
     v8::Handle<v8::Object> obj = args[5].As<v8::Object>();
-    v8::Handle<v8::Array> props = obj->GetOwnPropertyNames();
+    v8::Handle<v8::Array> props = obj->GetOwnPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
     uint32_t i;
     for (i = 0; i < props->Length(); ++i) {
       v8::Handle<v8::Value> prop = props->Get(i);
@@ -1953,7 +1953,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoAgencyCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction().FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();

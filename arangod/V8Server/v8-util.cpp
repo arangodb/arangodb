@@ -105,6 +105,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
                            bool includeRev) {
   // reset the collection identifier and the revision
   TRI_ASSERT(collectionName.empty());
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   std::unique_ptr<char[]> key;
 
@@ -129,13 +130,13 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
         val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
-    if (obj->HasRealNamedProperty(_IdKey)) {
+    if (TRI_HasRealNamedProperty(context, isolate, obj, _IdKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
 
       if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
       }
-    } else if (obj->HasRealNamedProperty(_KeyKey)) {
+    } else if (TRI_HasRealNamedProperty(context, isolate, obj, _KeyKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
 
       if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
@@ -156,7 +157,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     }
 
     TRI_GET_GLOBAL_STRING(_RevKey);
-    if (!obj->HasRealNamedProperty(_RevKey)) {
+    if (!TRI_HasRealNamedProperty(context, isolate, obj, _RevKey)) {
       return true;
     }
     v8::Handle<v8::Value> revObj = obj->Get(_RevKey);

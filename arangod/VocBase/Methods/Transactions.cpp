@@ -332,7 +332,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   try {
     v8::Handle<v8::Value> arguments = params;
 
-    result = action->Call(current, 1, &arguments);
+    result = action->Call(TRI_IGETC, current, 1, &arguments).FromMaybe(v8::Local<v8::Value>());
 
     if (tryCatch.HasCaught()) {
       trx->abort();

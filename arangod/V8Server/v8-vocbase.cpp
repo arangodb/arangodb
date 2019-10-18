@@ -112,7 +112,7 @@ static v8::Handle<v8::Object> WrapClass(v8::Isolate* isolate,
 
   auto localClassTemplate = v8::Local<v8::ObjectTemplate>::New(isolate, classTempl);
   // create the new handle to return, and set its template type
-  v8::Handle<v8::Object> result = localClassTemplate->NewInstance();
+  v8::Handle<v8::Object> result = localClassTemplate->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     // error
@@ -1196,7 +1196,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
     // special treatment for all properties starting with _
     v8::Local<v8::String> const l = TRI_V8_PAIR_STRING(isolate, key, (int)keyLength);
 
-    if (holder->HasRealNamedProperty(l)) {
+    if (TRI_HasRealNamedProperty(context, isolate, holder, l)) {
       // some internal function inside db
       TRI_V8_RETURN(v8::Handle<v8::Value>());
     }
@@ -1224,7 +1224,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
         globals->Get(_DbCacheKey)->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   }
 
-  if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
+  if (!cacheObject.IsEmpty() && TRI_HasRealNamedProperty(context, isolate, cacheObject, cacheName)) {
     v8::Handle<v8::Object> value =
         cacheObject->GetRealNamedProperty(TRI_IGETC, cacheName)
             .FromMaybe(v8::Local<v8::Value>())
@@ -1935,7 +1935,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8g->VocbaseTempl.Reset(isolate, ArangoNS);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoDatabase"),
-                               ft->GetFunction());
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
   TRI_InitV8Statistics(isolate, context);
