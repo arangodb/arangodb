@@ -1794,7 +1794,7 @@ AstNode* Ast::replaceVariables(AstNode* node,
           node->setData((*it).second);
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
     }
 
     return node;
@@ -2925,7 +2925,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
       // and optimize ourselves...
       return optimizeBinaryOperatorRelational(node);
     }
-    // intentionally falls through if
+    // intentionally falls through
   }
 
   bool const rhsIsConst = rhs->isConstant();

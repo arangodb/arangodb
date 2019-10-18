@@ -2112,7 +2112,7 @@ static void JS_StatusVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
   }
-  // intentionally falls through if
+  // intentionally falls through
 
   auto status = collection->status();
 
@@ -2196,7 +2196,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)(collection->type())));
     }
   }
-  // intentionally falls through if
+  // intentionally falls through
 
   auto type = collection->type();
 

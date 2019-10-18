@@ -737,7 +737,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
         }
       }
 
-      // intentionally falls through if
+      // intentionally falls through
     }
 
     int hashval = o->GetIdentityHash();

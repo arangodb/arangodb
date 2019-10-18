@@ -263,7 +263,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
           return AqlValue(s.at(position).begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC: {
@@ -289,7 +289,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
           total += it->size();
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -303,7 +303,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
         // only look up the value if it is within array bounds
         return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
   }
@@ -339,7 +339,7 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
           return AqlValue(s.at(position).begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC: {
@@ -364,7 +364,7 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
           total += it->size();
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -377,7 +377,7 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
         // only look up the value if it is within array bounds
         return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
   }
@@ -410,7 +410,7 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -454,7 +454,7 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -492,7 +492,7 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -530,7 +530,7 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -574,7 +574,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -619,7 +619,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -692,7 +692,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(s.begin());
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -762,7 +762,7 @@ double AqlValue::toDouble(bool& failed) const {
           return at(0, mustDestroy, false).toDouble(failed);
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -815,7 +815,7 @@ int64_t AqlValue::toInt64() const {
           return at(0, mustDestroy, false).toInt64();
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
       break;
     }
     case DOCVEC:

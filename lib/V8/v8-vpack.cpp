@@ -428,7 +428,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
           }
         }
 
-        // intentionally falls through if
+        // intentionally falls through
       }
     }
 

@@ -1569,7 +1569,7 @@ static void MapGetIndexedBuffer(uint32_t idx,
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
       self = TRI_GetObject(context, parent);
-      // intentionally falls through if
+      // intentionally falls through
     }
   }
 
@@ -1603,7 +1603,7 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
       self = TRI_GetObject(context, parent);
-      // intentionally falls through if
+      // intentionally falls through
     }
   }
 

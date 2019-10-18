@@ -210,7 +210,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
             std::string(" There is no array in '") + attributeName + "'";
         return false;
       }
-      // intentionally falls through if
+      // intentionally falls through
     }
     return true;
   };

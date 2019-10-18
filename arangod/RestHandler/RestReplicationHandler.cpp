@@ -957,7 +957,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
                       std::string("unable to drop collection '") + name +
                           "': " + res.errorMessage());
       }
-      // intentionally falls through if
+      // intentionally falls through
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     std::string("unable to create collection '") + name +

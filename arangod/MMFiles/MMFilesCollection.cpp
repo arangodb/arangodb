@@ -2540,7 +2540,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector,
           LOG_TOPIC("29637", TRACE, arangodb::Logger::ENGINES)
               << "waiting for read-lock on collection '"
               << _logicalCollection.name() << "'";
-          // intentionally falls through if
+          // intentionally falls through
         } else if (++iterations >= 5) {
           // periodically check for deadlocks
           TRI_ASSERT(wasBlocked);
@@ -2837,7 +2837,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
     if (marker->hasLocalDocumentId()) {
       return marker->getLocalDocumentId();
     }
-    // intentionally falls through if
+    // intentionally falls through
   }
 
   // new operation, no recovery -> generate a new LocalDocumentId

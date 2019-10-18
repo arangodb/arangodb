@@ -125,7 +125,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
           return nullptr;
         }
         o = TRI_ToObject(context, parent);
-        // intentionally falls through if
+        // intentionally falls through
       }
     }
 
@@ -180,7 +180,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
           return 0;
         }
         o = TRI_ToObject(context, parent);
-        // intentionally falls through if
+        // intentionally falls through
       }
     }
 

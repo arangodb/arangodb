@@ -554,7 +554,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
           // new one
           _logfile = nullptr;
 
-          // intentionally falls through if
+          // intentionally falls through
         }
 
         TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {

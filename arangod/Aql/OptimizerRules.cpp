@@ -4407,7 +4407,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
               stopSearching = true;
               break;
             }
-            // intentionally falls through if
+            // intentionally falls through
           }
 #if 0
           // TODO: this is already prepared to push subqueries on the DB servers.
@@ -4420,7 +4420,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
               stopSearching = true;
               break;
             }
-            // intentionally falls through if
+            // intentionally falls through
           }
 #endif
           // no special handling for filters here
@@ -5253,7 +5253,7 @@ struct OrSimplifier {
           return true;
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
@@ -5264,7 +5264,7 @@ struct OrSimplifier {
           return true;
         }
       }
-      // intentionally falls through if
+      // intentionally falls through
     }
 
     return false;
@@ -5369,7 +5369,7 @@ struct OrSimplifier {
         return ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
       }
 
-      // intentionally falls through if
+      // intentionally falls through
     }
 
     return const_cast<AstNode*>(node);
