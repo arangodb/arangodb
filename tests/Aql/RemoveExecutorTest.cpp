@@ -135,6 +135,33 @@ TEST_F(RemoveExecutorTest, remove_with_key) {
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 }
 
+TEST_F(RemoveExecutorTest, remove_with_id) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+  std::string allQuery = std::string("FOR d IN " + collectionName +
+                                     " FILTER d.value <= 100 RETURN d");
+
+  auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
+  ASSERT_TRUE(allDocs.ok());
+
+  std::string query = R"aql(FOR d IN )aql" + collectionName + R"aql( REMOVE CONCAT(")aql" +
+                      collectionName + R"aql(/", TO_STRING(d._key)) IN )aql" +
+                      collectionName + R"aql( RETURN OLD)aql";
+
+  AssertQueryHasResult(vocbase, query, allDocs.data->slice());
+}
+
+TEST_F(RemoveExecutorTest, remove_all_without_return_subquery) {
+  auto const expected = VPackParser::fromJson("[[ ]]");
+  std::string query =
+      std::string("FOR i in 1..1 LET x = (FOR d IN " + collectionName +
+                  " REMOVE d IN " + collectionName + ") RETURN x");
+
+  AssertQueryHasResult(vocbase, query, expected->slice());
+
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
+  AssertQueryHasResult(vocbase, checkQuery, VPackSlice::emptyArraySlice());
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
