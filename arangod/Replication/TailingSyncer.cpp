@@ -1728,7 +1728,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
             ": invalid response type for initial data. expecting array");
   }
 
-  for (auto const& it : VPackArrayIterator(slice)) {
+  for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isString()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +

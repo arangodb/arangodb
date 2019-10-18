@@ -1089,7 +1089,7 @@ write_ret_t Agent::inquire(query_t const& query) {
   while (true) {
     // Check ongoing ones:
     bool found = false;
-    for (auto const& s : VPackArrayIterator(query->slice())) {
+    for (VPackSlice s : VPackArrayIterator(query->slice())) {
       std::string ss = s.copyString();
       if (isTrxOngoing(ss)) {
         found = true;
@@ -1771,7 +1771,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   VPackSlice pslice = slice.get("pool");
 
   LOG_TOPIC("65dd8", TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
-  for (auto const& pair : VPackObjectIterator(pslice)) {
+  for (auto pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           20004, "Gossip message pool must contain string parameters");

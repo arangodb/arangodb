@@ -368,7 +368,7 @@ void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
 void MMFilesIndexFactory::prepareIndexes(
     LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
     std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
       continue;
     }

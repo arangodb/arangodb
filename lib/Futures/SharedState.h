@@ -56,12 +56,12 @@ class SharedState {
     Done = 1 << 3,
   };
 
-  /// Allow us to savely pass a core pointer to the Scheduler
+  /// Allow us to safely pass a core pointer to the Scheduler
   struct SharedStateScope {
     explicit SharedStateScope(SharedState* state) noexcept : _state(state) {}
     SharedStateScope(SharedStateScope const&) = delete;
     SharedStateScope& operator=(SharedStateScope const&) = delete;
-    SharedStateScope(SharedStateScope&& o) : _state(o._state) {
+    SharedStateScope(SharedStateScope&& o) noexcept : _state(o._state) {
       o._state = nullptr;
     }
 
@@ -275,14 +275,6 @@ class SharedState {
     // SharedStateScope makes this exception safe
     SharedStateScope scope(this); // will call detachOne()
     _callback(std::move(_result));
-    
-    // TRI_ASSERT(SchedulerFeature::SCHEDULER);
-    /*_attached.fetch_add(1);
-    SharedStateScope scope(this);
-    SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
-      SharedState* state = ref._state;
-      state->_callback(std::move(state->_result));
-    });*/
   }
 
  private:

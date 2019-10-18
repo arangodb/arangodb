@@ -1243,7 +1243,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
-    for (auto const& it : VPackArrayIterator(databases)) {
+    for (VPackSlice it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
 
       LOG_TOPIC("95f68", TRACE, Logger::FIXME) << "processing database: " << it.toJson();

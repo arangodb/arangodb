@@ -74,7 +74,7 @@ void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
-    std::lock_guard<std::mutex> guard(buck.mutex);
+    std::lock_guard<std::mutex> lock(buck.mutex);
     for (Context& c : buck.list) {
       c.fuerte->cancel();
     }
@@ -107,7 +107,7 @@ void ConnectionPool::pruneConnections() {
   
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
-    std::lock_guard<std::mutex> guard(buck.mutex);
+    std::lock_guard<std::mutex> lock(buck.mutex);
 
     auto now = std::chrono::steady_clock::now();
 
@@ -184,7 +184,7 @@ size_t ConnectionPool::numOpenConnections() const {
   READ_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
-    std::lock_guard<std::mutex> guard(buck.mutex);
+    std::lock_guard<std::mutex> lock(buck.mutex);
     conns += buck.list.size();
   }
   return conns;
