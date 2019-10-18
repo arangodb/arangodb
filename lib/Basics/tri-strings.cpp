@@ -768,7 +768,7 @@ char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
       TRI_Free(buffer);
       buffer = utf8_nfc;
     }
-    // intentionally falls through
+    // intentionally falls through if
   }
 
   return buffer;

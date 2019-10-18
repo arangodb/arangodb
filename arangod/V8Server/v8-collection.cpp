@@ -1005,7 +1005,7 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-  } 
+  }
   if (!builder.slice().isObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }
@@ -2112,7 +2112,7 @@ static void JS_StatusVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
   }
-  // intentionally falls through
+  // intentionally falls through if
 
   auto status = collection->status();
 
@@ -2196,7 +2196,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)(collection->type())));
     }
   }
-  // intentionally falls through
+  // intentionally falls through if
 
   auto type = collection->type();
 

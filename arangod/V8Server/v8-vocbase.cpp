@@ -892,7 +892,7 @@ static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& a
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
     }
 
-    // intentionally falls through
+    // intentionally falls through if
   }
 
   // return current settings

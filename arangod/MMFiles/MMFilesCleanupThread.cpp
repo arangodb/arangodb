@@ -165,7 +165,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         if (!unloadChecked && !isInShutdown) {
           return false;
         }
-        // intentionally falls through
+        // intentionally falls through if
       } else {
         // retry in next iteration
         unloadChecked = false;

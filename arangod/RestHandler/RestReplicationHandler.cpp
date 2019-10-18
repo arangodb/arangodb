@@ -957,7 +957,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
                       std::string("unable to drop collection '") + name +
                           "': " + res.errorMessage());
       }
-      // intentionally falls through
+      // intentionally falls through if
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     std::string("unable to create collection '") + name +
@@ -1902,8 +1902,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     if (view) {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " +
                       TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
