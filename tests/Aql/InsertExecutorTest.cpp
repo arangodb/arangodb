@@ -85,6 +85,36 @@ TEST_P(InsertExecutorTestCount, insert_without_return) {
   AssertQueryHasResult(vocbase, checkQuery, builder.slice());
 }
 
+TEST_P(InsertExecutorTestCount, insert_with_key_with_return) {
+  auto const bindParameters = VPackParser::fromJson("{ }");
+
+  std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
+                      " INSERT { _key: TO_STRING(i), value: i } INTO " +
+                      collectionName + " RETURN NEW";
+  auto result = arangodb::tests::executeQuery(vocbase, query, bindParameters);
+  TRI_ASSERT(result.data->slice().isArray());
+  TRI_ASSERT(result.data->slice().length() == GetParam());
+
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
+  AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
+}
+
+TEST_P(InsertExecutorTestCount, insert_with_key_without_return) {
+  std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
+                      " INSERT { _key: TO_STRING(i), value: i } INTO " + collectionName;
+
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
+  VPackBuilder builder;
+  builder.openArray();
+  for (size_t i = 1; i <= GetParam(); i++) {
+    builder.add(VPackValue(i));
+  }
+  builder.close();
+  AssertQueryHasResult(vocbase, checkQuery, builder.slice());
+}
+
 TEST_P(InsertExecutorTestCount, insert_with_return) {
   auto const bindParameters = VPackParser::fromJson("{ }");
 
@@ -242,6 +272,26 @@ TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite) {
   // The second query should fail with a uniqueness violation on _key
   AssertQueryHasResult(vocbase, query, builder.slice());
   AssertQueryFailsWith(vocbase, query, 1203);
+}
+
+TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite_ignore_errors) {
+  std::string query =
+      std::string(
+          "FOR i IN 1..100 INSERT { _key: TO_STRING(i), value: i } INTO ") +
+      collectionName +
+      " OPTIONS { ignoreErrors: true } SORT NEW.value RETURN NEW.value";
+
+  VPackBuilder builder;
+  builder.openArray();
+  for (size_t i = 1; i <= 100; i++) {
+    builder.add(VPackValue(i));
+  }
+  builder.close();
+
+  // This is intentional: We write the entries once, then overwrite them again
+  // The second query should fail with a uniqueness violation on _key
+  AssertQueryHasResult(vocbase, query, builder.slice());
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 }
 
 }  // namespace aql
