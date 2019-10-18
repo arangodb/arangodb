@@ -16,8 +16,6 @@ branches:
 language: cpp
 cache: ccache
 compiler: g++
-sudo: false
-dist: trusty
 
 addons:
   apt:
@@ -41,7 +39,12 @@ install:
 - export CFLAGS="-B$HOME/bin/gold $CFLAGS"
 - export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
 
-before_script: "bash -c Installation/travisCI/before_script.sh"
+before_script:
+  - python3 --version
+  - python3 -m pip || wget -qO- https://bootstrap.pypa.io/get-pip.py | sudo -H python3
+  - python3 -m pip install --user flake8
+  - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+  - "bash -c Installation/travisCI/before_script.sh"
 script: "bash -c Installation/travisCI/build.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
 after_script: "bash -c Installation/travisCI/after_script.sh"
