@@ -184,7 +184,7 @@ DocumentProducingFunction aql::buildCallback(DocumentProducingFunctionContext& c
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     };
   }
-    
+
   if (!context.getProjections().empty()) {
     // return a projection
     if (!context.getCoveringIndexAttributePositions().empty()) {

@@ -222,7 +222,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     while (limit > 0) {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-
+      // std::cerr << RocksDBKey::indexedVPack(_iterator->key()).toString();
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
                          : RocksDBKey::indexDocumentId(_iterator->key()));
 

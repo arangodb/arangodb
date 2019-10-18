@@ -52,6 +52,12 @@ class MaterializerExecutorInfos : public ExecutorInfos {
                      RegisterId inNmColPtr, RegisterId inNmDocId,
                      RegisterId outDocRegId, transaction::Methods* trx);
 
+  MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                     std::unordered_set<RegisterId> registersToClear,
+                     std::unordered_set<RegisterId> registersToKeep,
+                     std::string const* inNmColName, RegisterId inNmDocId,
+                     RegisterId outDocRegId, transaction::Methods* trx);
+
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
@@ -65,6 +71,10 @@ class MaterializerExecutorInfos : public ExecutorInfos {
     return _inNonMaterializedColRegId;
   }
 
+  inline std::string const* inputNonMaterializedColName() const {
+    return _inNonMaterializedColName;
+  }
+
   inline RegisterId inputNonMaterializedDocRegId() const {
     return _inNonMaterializedDocRegId;
   }
@@ -76,6 +86,8 @@ class MaterializerExecutorInfos : public ExecutorInfos {
  private:
   /// @brief register to store raw collection pointer
   RegisterId const _inNonMaterializedColRegId;
+  /// @brief collection name
+  std::string const* _inNonMaterializedColName;
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document

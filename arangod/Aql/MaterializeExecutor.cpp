@@ -27,6 +27,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -83,6 +84,22 @@ arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
       _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
 }
 
+arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToKeep,
+    std::string const* inNmColName, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
+  : ExecutorInfos(
+      make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId})),
+      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
+      nrInputRegisters, nrOutputRegisters,
+      std::move(registersToClear), std::move(registersToKeep)), _inNonMaterializedColRegId(0),
+      _inNonMaterializedColName(inNmColName), _inNonMaterializedDocRegId(inNmDocId),
+      _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
+}
+
 std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRows(OutputAqlItemRow & output) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutionState state;
@@ -91,6 +108,7 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
   auto& callback = _readDocumentContext._callback;
   auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
   auto colRegId = _readDocumentContext._infos->inputNonMaterializedColRegId();
+  auto colName = _readDocumentContext._infos->inputNonMaterializedColName();
   auto* trx = _readDocumentContext._infos->trx();
   do {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -102,9 +120,14 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
       TRI_ASSERT(state == ExecutionState::DONE);
       return {state, NoStats{}};
     }
-    auto collection =
-      reinterpret_cast<arangodb::LogicalCollection const*>(
-        input.getValue(colRegId).slice().getUInt());
+    arangodb::LogicalCollection const* collection = nullptr;
+    if (colName != nullptr) {
+      collection = trx->documentCollection(*colName);
+    } else {
+      collection =
+        reinterpret_cast<arangodb::LogicalCollection const*>(
+          input.getValue(colRegId).slice().getUInt());
+    }
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;

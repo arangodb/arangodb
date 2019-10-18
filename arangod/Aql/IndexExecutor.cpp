@@ -41,9 +41,12 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
+
+#include <velocypack/Iterator.h>
 
 #include <memory>
 #include <utility>
@@ -70,8 +73,58 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
   }
 }
 
+template <bool checkUniqueness>
+DocumentProducingFunction getCallback(DocumentProducingFunctionContext& context,
+                                      transaction::Methods::IndexHandle const& index,
+                                      IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
+  return [&context, &index, &outNonMaterializedIndRegs](LocalDocumentId const& token, VPackSlice slice) {
+    if (checkUniqueness) {
+      if (!context.checkUniqueness(token)) {
+        // Document already found, skip it
+        return;
+      }
+    }
+    if (context.hasFilter()) {
+      if (!context.checkFilter(slice)) {
+        context.incrFiltered();
+        return;
+      }
+    }
+
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
+
+    // move a document id
+    AqlValue v(AqlValueHintUInt(token.id()));
+    AqlValueGuard guard{v, true};
+    TRI_ASSERT(!output.isFull());
+    output.moveValueInto(registerId, input, guard);
+
+    TRI_ASSERT(slice.isArray());
+    auto indexId = index.getIndex()->id();
+    auto const indRegs = outNonMaterializedIndRegs.find(indexId);
+    TRI_ASSERT(indRegs != outNonMaterializedIndRegs.end());
+    size_t i = 0;
+    for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
+      auto const& indReg = indRegs->second.find(i++);
+      if (indReg == indRegs->second.end()) {
+        continue;
+      }
+      AqlValue v(s);
+      AqlValueGuard guard{v, true};
+      TRI_ASSERT(!output.isFull());
+      output.moveValueInto(indReg->second, input, guard);
+    }
+
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+    context.incrScanned();
+  };
+}
+
 static inline DocumentProducingFunctionContext createContext(InputAqlItemRow const& inputRow,
-                                                             IndexExecutorInfos& infos) {
+                                                             IndexExecutorInfos const& infos) {
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.getQuery(), infos.getFilter(),
@@ -82,7 +135,10 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
+    RegisterId nrInputRegisters,
+    RegisterId outputRegister,
+    RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
@@ -95,9 +151,10 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-    IndexIteratorOptions options)
+    IndexIteratorOptions options,
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
     : ExecutorInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}),
+                    writableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _indexes(std::move(indexes)),
@@ -114,11 +171,12 @@ IndexExecutorInfos::IndexExecutorInfos(
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
       _outputRegisterId(outputRegister),
+      _outNonMaterializedIndRegs(outNonMaterializedIndRegs),
       _hasMultipleExpansions(false),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression) {
-  if (_condition != nullptr) {
+  if (_condition != nullptr) { // TODO: for not materialized!!!
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
       auto andCond = _condition->getMemberUnchecked(i);
@@ -269,7 +327,9 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
       _index(index),
       _cursor(std::make_unique<OperationCursor>(infos.getTrxPtr()->indexScanForCondition(
           index, condition, infos.getOutVariable(), infos.getOptions()))),
-      _type(!infos.getProduceResult()
+      _type(infos.isLateMaterialized()
+                ? Type::LateMaterialized
+                : !infos.getProduceResult()
                 ? Type::NoResult
                 : _cursor->hasCovering() &&
                           !infos.getCoveringIndexAttributePositions().empty()
@@ -279,12 +339,20 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
       _produce(nullptr) {
   auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
   auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
-  if (_type == Type::NoResult) {
+  switch (_type) {
+  case Type::NoResult:
     _noProduce = getNullCallback_(context);
     _produce = nullptr;
-  } else {
+    break;
+  case Type::LateMaterialized:
+    _produce = checkUniqueness ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs()) :
+                                 ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
+    _noProduce = nullptr;
+    break;
+  default:
     _produce = buildCallback_(context);
     _noProduce = nullptr;
+    break;
   }
 }
 
@@ -325,6 +393,9 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
     case Type::Document:
       TRI_ASSERT(_produce != nullptr);
       return _cursor->nextDocument(_produce, output.numRowsLeft());
+    case Type::LateMaterialized:
+      TRI_ASSERT(_produce != nullptr);
+      return _cursor->nextCovering(_produce, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached

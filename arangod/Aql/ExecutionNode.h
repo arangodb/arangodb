@@ -929,7 +929,10 @@ class MaterializeNode  : public ExecutionNode {
 
  public:
   MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
-                   aql::Variable const& inDocId, aql::Variable const& outVariable);
+                  aql::Variable const& inDocId, aql::Variable const& outVariable);
+
+  MaterializeNode(ExecutionPlan* plan, size_t id, std::string const& inColName,
+                  aql::Variable const& inDocId, aql::Variable const& outVariable);
 
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -963,8 +966,17 @@ class MaterializeNode  : public ExecutionNode {
   }
 
  private:
+  bool isNodeColInitedCorrectly() const noexcept {
+    return !(_inNonMaterializedColPtr == nullptr && _inNonMaterializedColName.empty()) &&
+        (_inNonMaterializedColPtr == nullptr || _inNonMaterializedColName.empty());
+  }
+
+ private:
   /// @brief input variable  non-materialized collection ids
   aql::Variable const* _inNonMaterializedColPtr;
+
+  /// @brief non-materialized collection name
+  std::string _inNonMaterializedColName;
 
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;

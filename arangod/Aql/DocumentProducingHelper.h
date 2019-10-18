@@ -114,7 +114,7 @@ struct DocumentProducingFunctionContext {
   
   bool hasFilter() const noexcept;
 
- private:
+ protected:
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
   Query* const _query;

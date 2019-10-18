@@ -22,6 +22,7 @@
 
 #include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
@@ -401,7 +402,12 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::DisabledByDefault));
 
   // apply late materialization for view queries
-  registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,
+  registerRule("late-document-materialization-arangosearch", arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+  // apply late materialization for index queries
+  registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
