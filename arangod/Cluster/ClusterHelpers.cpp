@@ -33,12 +33,12 @@ bool ClusterHelpers::compareServerLists(VPackSlice plan, VPackSlice current) {
     return false;
   }
   std::vector<std::string> planv, currv;
-  for (auto const& srv : VPackArrayIterator(plan)) {
+  for (VPackSlice srv : VPackArrayIterator(plan)) {
     if (srv.isString()) {
       planv.push_back(srv.copyString());
     }
   }
-  for (auto const& srv : VPackArrayIterator(current)) {
+  for (VPackSlice srv : VPackArrayIterator(current)) {
     if (srv.isString()) {
       currv.push_back(srv.copyString());
     }
