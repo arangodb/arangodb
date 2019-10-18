@@ -96,7 +96,8 @@ TEST_P(InsertExecutorTestCount, insert_with_key_with_return) {
   TRI_ASSERT(result.data->slice().isArray());
   TRI_ASSERT(result.data->slice().length() == GetParam());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
+  std::string checkQuery =
+      "FOR i IN " + collectionName + " SORT i.value RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
 }
 
@@ -106,7 +107,8 @@ TEST_P(InsertExecutorTestCount, insert_with_key_without_return) {
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
+  std::string checkQuery =
+      "FOR i IN " + collectionName + " SORT i.value RETURN i.value";
   VPackBuilder builder;
   builder.openArray();
   for (size_t i = 1; i <= GetParam(); i++) {
