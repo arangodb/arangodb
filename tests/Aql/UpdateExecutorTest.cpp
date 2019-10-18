@@ -300,6 +300,7 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_but_skip) {
 TEST_P(UpdateExecutorIntegrationTest, update_all_return_old) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
+    SORT doc.sortValue
     UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
     RETURN OLD.value
   )aql";
@@ -321,6 +322,7 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_return_old) {
 TEST_P(UpdateExecutorIntegrationTest, update_all_return_new) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
+    SORT doc.sortValue
     UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
     RETURN NEW.value
   )aql";
@@ -340,6 +342,7 @@ TEST_P(UpdateExecutorIntegrationTest, update_all_return_new) {
 TEST_P(UpdateExecutorIntegrationTest, update_all_return_old_and_new) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
+    SORT doc.sortValue
     UPDATE doc WITH {value: 'foo'} IN UnitTestCollection
     RETURN {old: OLD.value, new: NEW.value}
   )aql";
