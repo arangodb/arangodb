@@ -252,16 +252,16 @@ class OutputAqlItemRow {
     return *_block;
   }
   template <class ItemRowType>
-  inline void doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing);
+  void doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing);
 
   template <class ItemRowType>
-  inline void memorizeRow(ItemRowType const& sourceRow);
+  void memorizeRow(ItemRowType const& sourceRow);
 
   template <class ItemRowType>
-  inline bool testIfWeMustClone(ItemRowType const& sourceRow) const;
+  bool testIfWeMustClone(ItemRowType const& sourceRow) const;
 
   template <class ItemRowType>
-  inline void adjustShadowRowDepth(ItemRowType const& sourceRow);
+  void adjustShadowRowDepth(ItemRowType const& sourceRow);
 };
 }  // namespace aql
 

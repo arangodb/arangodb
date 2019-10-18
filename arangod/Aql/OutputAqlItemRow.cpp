@@ -264,36 +264,36 @@ void OutputAqlItemRow::decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow)
 }
 
 template <>
-inline void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
+void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
   _lastSourceRow = sourceRow;
   _lastBaseIndex = _baseIndex;
 }
 
 template <>
-inline void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
+void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
 }
 
 template <>
-inline bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
+bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
   return _baseIndex == 0 || _lastSourceRow != sourceRow;
 }
 
 template <>
-inline bool OutputAqlItemRow::testIfWeMustClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
+bool OutputAqlItemRow::testIfWeMustClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
   return true;
 }
 
 template <>
-inline void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
+void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
 }
 
 template <>
-inline void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
+void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
   block().setShadowRowDepth(_baseIndex, sourceRow.getShadowDepthValue());
 }
 
 template <class ItemRowType>
-inline void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing) {
+void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(!_doNotCopyInputRow);
@@ -336,3 +336,23 @@ inline void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignor
   _inputRowCopied = true;
   memorizeRow(sourceRow);
 }
+
+template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,
+                                                         bool ignoreMissing);
+template void OutputAqlItemRow::copyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow,
+                                                          bool ignoreMissing);
+
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow>(RegisterId registerId,
+                                             InputAqlItemRow const& sourceRow,
+                                             AqlValueGuard& guard);
+template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow>(RegisterId registerId,
+                                              ShadowAqlItemRow const& sourceRow,
+                                              AqlValueGuard& guard);
+template void OutputAqlItemRow::doCopyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow, bool ignoreMissing);
+template void OutputAqlItemRow::doCopyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow, bool ignoreMissing);
+template void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow);
+template void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow);
+template bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const;
+template bool OutputAqlItemRow::testIfWeMustClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const;
+template void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow const& sourceRow);
+template void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow);
