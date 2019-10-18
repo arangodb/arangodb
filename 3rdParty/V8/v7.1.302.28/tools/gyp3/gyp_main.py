@@ -4,11 +4,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import absolute_import
 import os
 import sys
 import subprocess
 
-from __future__ import absolute_import
 
 PY3 = bytes != str
 
