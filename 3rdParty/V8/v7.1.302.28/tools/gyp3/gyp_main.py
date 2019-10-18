@@ -5,10 +5,10 @@
 # found in the LICENSE file.
 
 from __future__ import absolute_import
+
 import os
 import sys
 import subprocess
-
 
 PY3 = bytes != str
 
