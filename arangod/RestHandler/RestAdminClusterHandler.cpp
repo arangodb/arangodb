@@ -30,7 +30,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/TimeString.h"
 #include "Cluster/AgencyPaths.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
@@ -58,60 +60,58 @@ struct agentConfigHealthResult {
   futures::Try<network::Response> response;
 };
 
-void buildHealthResult(VPackBuffer<uint8_t> &out, std::vector<futures::Try<agentConfigHealthResult>> const& config, VPackSlice store) {
+void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConfigHealthResult>> const& config, VPackSlice store) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
-  VPackBuilder builder(out);
-  VPackObjectBuilder ob(&builder);
+  builder.add("ClusterId", store.get(rootPath->cluster()->vec()));
 
-  VPackObjectIterator memberIter(store.get(rootPath->supervision()->health()->vec()));
-  for (auto member : memberIter) {
-    std::string serverId = member.key.copyString();
+  {
+    VPackObjectBuilder ob(&builder, "Health");
 
-    {
-      VPackObjectBuilder ob(&builder, serverId);
+    VPackObjectIterator memberIter(store.get(rootPath->supervision()->health()->vec()));
+    for (auto member : memberIter) {
+      std::string serverId = member.key.copyString();
 
-      // add all fields to the object
-      /*for (auto entry : VPackObjectIterator(member.value)) {
-        builder.add(entry.key.stringRef(), entry.value);
-      }*/
+      {
+        VPackObjectBuilder ob(&builder, serverId);
 
-      builder.add(VPackObjectIterator(member.value));
-
-      if (serverId.substr(0, 4) == "PRMR") {
-        builder.add("Role", VPackValue("DBServer"));
-      } else if (serverId.substr(0, 4) == "CRDN") {
-        builder.add("Role", VPackValue("Coodrinator"));
-        builder.add("CanBeDeleted", VPackValue(member.value.get("Status").isEqualString("FAILED")));
+        builder.add(VPackObjectIterator(member.value));
+        if (serverId.substr(0, 4) == "PRMR") {
+          builder.add("Role", VPackValue("DBServer"));
+          builder.add("CanBeDeleted", VPackValue(false)); // TODO can be deleted need to be computed
+        } else if (serverId.substr(0, 4) == "CRDN") {
+          builder.add("Role", VPackValue("Coordinator"));
+          builder.add("CanBeDeleted", VPackValue(member.value.get("Status").isEqualString("FAILED")));
+        }
       }
     }
-  }
 
-  for (auto& memberTry : config) {
-    if (!memberTry.hasValue()) {
-      continue; // should never happen
-    }
+    for (auto& memberTry : config) {
+      if (!memberTry.hasValue()) {
+        continue; // should never happen
+      }
 
-    auto& member = memberTry.get();
+      auto& member = memberTry.get();
 
-    {
-      VPackObjectBuilder ob(&builder, member.name);
+      {
+        VPackObjectBuilder ob(&builder, member.name);
 
-      builder.add("Role", VPackValue("Agent"));
-      builder.add("Endpoint", VPackValue(member.endpoint));
-      builder.add("CanBeDeleted", VPackValue(false));
+        builder.add("Role", VPackValue("Agent"));
+        builder.add("Endpoint", VPackValue(member.endpoint));
+        builder.add("CanBeDeleted", VPackValue(false));
 
-      // TODO missing LastAckedTime
-      if (member.response.hasValue()) {
-        auto& response = member.response.get();
-        if (response.ok() && response.response->statusCode() == fuerte::StatusOK) {
-          VPackSlice config = response.slice();
-          builder.add("Engine", config.get("engine"));
-          builder.add("Version", config.get("version"));
-          builder.add("Leader", config.get("leaderId"));
+        // TODO missing LastAckedTime
+        if (member.response.hasValue()) {
+          auto& response = member.response.get();
+          if (response.ok() && response.response->statusCode() == fuerte::StatusOK) {
+            VPackSlice config = response.slice();
+            builder.add("Engine", config.get("engine"));
+            builder.add("Version", config.get("version"));
+            builder.add("Leader", config.get("leaderId"));
+          }
+        } else {
+          builder.add("Status", VPackValue("UNKNOWN"));
         }
-      } else {
-        builder.add("Status", VPackValue("UNKNOWN"));
       }
     }
   }
@@ -187,7 +187,7 @@ RestStatus RestAdminClusterHandler::execute() {
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                "expecting URL /_api/replication/<command>");
+                "expecting URL /_api/cluster/<command>");
   return RestStatus::DONE;
 }
 
@@ -316,7 +316,49 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job
   return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string const& job, std::string const& server) {
+RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string const& job, std::string const& serverId) {
+
+  std::string jobId = std::to_string(server().getFeature<ClusterFeature>().clusterInfo().uniqid());
+  auto jobToDoPath = arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("type", VPackValue(job));
+    builder.add("server", VPackValue(serverId));
+    builder.add("jobId", VPackValue(jobId));
+    builder.add("creator", VPackValue(ServerState::instance()->getId()));
+    builder.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
+  }
+
+  auto self(shared_from_this());
+
+  return waitForFuture(AsyncAgencyComm().setValue(20s, jobToDoPath, builder.slice())
+    .thenValue([self, this, jobId = std::move(jobId)](AsyncAgencyCommResult &&result) {
+      if (result.ok() && result.statusCode() == 200) {
+        VPackBuffer<uint8_t> payload;
+        {
+          VPackBuilder builder(payload);
+          VPackObjectBuilder ob(&builder);
+          builder.add("error", VPackValue(false));
+          //builder.add("code", VPackValue(ResponseCode::ACCEPTED));
+          builder.add("job", VPackValue(jobId));
+        }
+
+        resetResponse(rest::ResponseCode::ACCEPTED);
+        response()->setPayload(std::move(payload), true);
+      } else {
+        generateError(result.asResult());
+      }
+    }).thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+
+
+
+
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
   return RestStatus::DONE;
 }
@@ -405,7 +447,11 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
   VPackBuffer<uint8_t> resultBody;
   {
     VPackBuilder result(resultBody);
+    VPackObjectBuilder body(&result);
+    result.add(VPackValue("results"));
     reporter->getDistributionForDatabase(_vocbase.name(), result);
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
   response()->setPayload(std::move(resultBody), true);
@@ -423,7 +469,11 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
   VPackBuffer<uint8_t> resultBody;
   {
     VPackBuilder result(resultBody);
+    VPackObjectBuilder body(&result);
+    result.add(VPackValue("results"));
     reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, result);
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
   response()->setPayload(std::move(resultBody), true);
@@ -477,7 +527,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
           VPackObjectBuilder ob(&bodyBuilder);
           bodyBuilder.add("error", VPackValue(false));
           bodyBuilder.add("result", result.value());
-        }
+        }// use generateOk instead
 
         resetResponse(rest::ResponseCode::OK);
         response()->setPayload(std::move(body), true);
@@ -629,6 +679,8 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
           builder.add("numberOfDBServers", result.slice().at(0).get(targetPath->numberOfDBServers()->vec()));
           builder.add("numberOfCoordinators", result.slice().at(0).get(targetPath->numberOfCoordinators()->vec()));
           builder.add("cleanedServers", result.slice().at(0).get(targetPath->cleanedServers()->vec()));
+          builder.add("error", VPackValue(false));
+          builder.add("code", VPackValue(200));
         }
 
         resetResponse(rest::ResponseCode::OK);
@@ -798,7 +850,13 @@ RestStatus RestAdminClusterHandler::handleHealth() {
       if (storeResult.ok() && storeResult.statusCode() == fuerte::StatusOK) {
 
         VPackBuffer<uint8_t> responseBody;
-        ::buildHealthResult (responseBody, configResult, storeResult.slice().at(0));
+        {
+          VPackBuilder builder(responseBody);
+          VPackObjectBuilder ob(&builder);
+          ::buildHealthResult (builder, configResult, storeResult.slice().at(0));
+          builder.add("error", VPackValue(false));
+          builder.add("code", VPackValue(200));
+        }
         resetResponse(rest::ResponseCode::OK);
         response()->setPayload(std::move(responseBody), true);
       } else {

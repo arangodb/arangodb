@@ -79,6 +79,7 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRedirectHandler.h"
 #include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
@@ -569,6 +570,20 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
+
+  // ...........................................................................
+  // redirects
+  // ...........................................................................
+
+#define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
+                                    RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
+                                    (void*) to);}while(0)
+
+  ADD_REDIRECT("/_admin/clusterNodeVersion", "/_admin/cluster/nodeVersion");
+  ADD_REDIRECT("/_admin/clusterNodeEngine", "/_admin/cluster/nodeEngine");
+  ADD_REDIRECT("/_admin/clusterNodeStats", "/_admin/cluster/nodeStatistics");
+  ADD_REDIRECT("/_admin/clusterStatistics", "/_admin/cluster/statistics");
+
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
