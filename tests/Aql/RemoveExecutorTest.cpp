@@ -68,11 +68,24 @@ class RemoveExecutorTest : public ::testing::Test {
   }
 };
 
-class RemoveExecutorTestPatterns
-    : public RemoveExecutorTest,
-      public ::testing::WithParamInterface<std::vector<size_t>> {};
+class RemoveExecutorTestPatterns : public RemoveExecutorTest,
+                                   public ::testing::WithParamInterface<size_t> {
+  void SetUp() override {
+    SCOPED_TRACE("SetUp");
+    auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
+    auto collection = vocbase.createCollection(info->slice());
+    ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
 
-TEST_F(RemoveExecutorTest, remove_all_without_return) {
+    std::string createQuery = "FOR i IN 1.." + std::to_string(GetParam()) +
+                              " INSERT { _key: TO_STRING(i), "
+                              "value: i, sortvalue: i "
+                              "} IN " +
+                              collectionName;
+    AssertQueryHasResult(vocbase, createQuery, VPackSlice::emptyArraySlice());
+  }
+};
+
+TEST_P(RemoveExecutorTestPatterns, remove_all_without_return) {
   std::string query =
       std::string("FOR d IN " + collectionName + " REMOVE d IN " + collectionName);
 
@@ -82,7 +95,7 @@ TEST_F(RemoveExecutorTest, remove_all_without_return) {
   AssertQueryHasResult(vocbase, checkQuery, VPackSlice::emptyArraySlice());
 }
 
-TEST_F(RemoveExecutorTest, remove_all_with_return) {
+TEST_P(RemoveExecutorTestPatterns, remove_all_with_return) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   std::string allQuery = std::string("FOR d IN " + collectionName + " RETURN d");
 
@@ -95,7 +108,7 @@ TEST_F(RemoveExecutorTest, remove_all_with_return) {
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 }
 
-TEST_F(RemoveExecutorTest, remove_every_third_without_return) {
+TEST_P(RemoveExecutorTestPatterns, remove_every_third_without_return) {
   std::string query = std::string("FOR d IN " + collectionName +
                                   " FILTER d.value % 3 == 0 REMOVE d IN " + collectionName);
 
@@ -107,7 +120,7 @@ TEST_F(RemoveExecutorTest, remove_every_third_without_return) {
   // TODO: check that everything else is still ther?
 }
 
-TEST_F(RemoveExecutorTest, remove_every_third_with_return) {
+TEST_P(RemoveExecutorTestPatterns, remove_every_third_with_return) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   std::string allQuery = std::string("FOR d IN " + collectionName +
                                      " FILTER d.value % 3 == 0 RETURN d");
@@ -121,7 +134,7 @@ TEST_F(RemoveExecutorTest, remove_every_third_with_return) {
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 }
 
-TEST_F(RemoveExecutorTest, remove_with_key) {
+TEST_P(RemoveExecutorTestPatterns, remove_with_key) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   std::string allQuery = std::string("FOR d IN " + collectionName +
                                      " FILTER d.value <= 100 RETURN d");
@@ -135,22 +148,21 @@ TEST_F(RemoveExecutorTest, remove_with_key) {
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 }
 
-TEST_F(RemoveExecutorTest, remove_with_id) {
+TEST_P(RemoveExecutorTestPatterns, remove_with_id) {
   auto const bindParameters = VPackParser::fromJson("{ }");
-  std::string allQuery = std::string("FOR d IN " + collectionName +
-                                     " FILTER d.value <= 100 RETURN d");
+  std::string allQuery = std::string("FOR d IN " + collectionName + " RETURN d");
 
   auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
   ASSERT_TRUE(allDocs.ok());
 
-  std::string query = R"aql(FOR d IN )aql" + collectionName + R"aql( REMOVE CONCAT(")aql" +
-                      collectionName + R"aql(/", TO_STRING(d._key)) IN )aql" +
-                      collectionName + R"aql( RETURN OLD)aql";
+  std::string query = R"aql(FOR d IN )aql" + collectionName +
+                      R"aql( REMOVE { _key: d._key } IN )aql" + collectionName +
+                      R"aql( RETURN OLD)aql";
 
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
 }
 
-TEST_F(RemoveExecutorTest, remove_all_without_return_subquery) {
+TEST_P(RemoveExecutorTestPatterns, remove_all_without_return_subquery) {
   auto const expected = VPackParser::fromJson("[[ ]]");
   std::string query =
       std::string("FOR i in 1..1 LET x = (FOR d IN " + collectionName +
@@ -161,6 +173,9 @@ TEST_F(RemoveExecutorTest, remove_all_without_return_subquery) {
   std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
   AssertQueryHasResult(vocbase, checkQuery, VPackSlice::emptyArraySlice());
 }
+
+INSTANTIATE_TEST_CASE_P(RemoveExecutorTestInstance, RemoveExecutorTestPatterns,
+                        testing::Values(100, 1000, 999, 1001, 2001, 3000));
 
 }  // namespace aql
 }  // namespace tests
