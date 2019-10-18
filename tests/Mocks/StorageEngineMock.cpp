@@ -901,7 +901,9 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
         if (newSlice.isObject()) {
           expectedRev = TRI_ExtractRevisionId(newSlice);
         }
-        int res = checkRevision(trx, expectedRev, previous.revisionId());
+        TRI_ASSERT(doc.slice().isObject());
+        TRI_voc_rid_t oldRev = TRI_ExtractRevisionId(doc.slice());
+        int res = checkRevision(trx, expectedRev, oldRev);
         if (res != TRI_ERROR_NO_ERROR) {
           return arangodb::Result(res);
         }
