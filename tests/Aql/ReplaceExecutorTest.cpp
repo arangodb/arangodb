@@ -100,62 +100,6 @@ TEST_F(ReplaceExecutorTest, option_ignoreErrors_false) {
   AssertNotChanged();
 }
 
-TEST_F(ReplaceExecutorTest, option_keepNull_default) {
-  std::string query = R"aql(REPLACE "testee" WITH {value: null} INTO UnitTestCollection)aql";
-  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
-  std::string testQuery =
-      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
-  auto expected = VPackParser::fromJson(R"([true])");
-  AssertQueryHasResult(vocbase, testQuery, expected->slice());
-}
-
-TEST_F(ReplaceExecutorTest, option_keepNull_true) {
-  std::string query = R"aql(REPLACE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: true})aql";
-  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
-  std::string testQuery =
-      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
-  auto expected = VPackParser::fromJson(R"([true])");
-  AssertQueryHasResult(vocbase, testQuery, expected->slice());
-}
-
-// This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(ReplaceExecutorTest, DISABLED_option_keepNull_false) {
-  std::string query = R"aql(REPLACE "testee" WITH {value: null} INTO UnitTestCollection OPTIONS {keepNull: false})aql";
-  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
-  std::string testQuery =
-      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN HAS(x, "value"))aql";
-  auto expected = VPackParser::fromJson(R"([false])");
-  AssertQueryHasResult(vocbase, testQuery, expected->slice());
-}
-
-TEST_F(ReplaceExecutorTest, option_mergeObjects_default) {
-  std::string query = R"aql(REPLACE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection)aql";
-  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
-  std::string testQuery =
-      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
-  auto expected = VPackParser::fromJson(R"([ {"foo": "bar"} ])");
-  AssertQueryHasResult(vocbase, testQuery, expected->slice());
-}
-
-// This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(ReplaceExecutorTest, DISABLED_option_mergeObjects_true) {
-  std::string query = R"aql(REPLACE "testee" WITH {nestedObject: {foo: "bar"} } INTO UnitTestCollection OPTIONS {mergeObjects: true})aql";
-  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
-  std::string testQuery =
-      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
-  auto expected = VPackParser::fromJson(R"([{"foo": "bar", "value": 1}])");
-  AssertQueryHasResult(vocbase, testQuery, expected->slice());
-}
-
-TEST_F(ReplaceExecutorTest, option_mergeObjects_false) {
-  std::string query = R"aql(REPLACE "testee" WITH {nestedObject: {foo: "bar"} }  INTO UnitTestCollection OPTIONS {mergeObjects: false})aql";
-  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
-  std::string testQuery =
-      R"aql(FOR x IN UnitTestCollection FILTER x._key == "testee" RETURN x.nestedObject)aql";
-  auto expected = VPackParser::fromJson(R"([{"foo": "bar"}])");
-  AssertQueryHasResult(vocbase, testQuery, expected->slice());
-}
-
 TEST_F(ReplaceExecutorTest, option_ignoreRevs_default) {
   std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection)aql";
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
@@ -172,8 +116,7 @@ TEST_F(ReplaceExecutorTest, option_ignoreRevs_true) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
 
-// This does not work, need to investigate if Error in AQL or in StorageMock
-TEST_F(ReplaceExecutorTest, DISABLED_option_ignoreRevs_false) {
+TEST_F(ReplaceExecutorTest, option_ignoreRevs_false) {
   std::string query = R"aql(REPLACE {_key: "testee", _rev: "12345"} WITH {value: 2} INTO UnitTestCollection OPTIONS {ignoreRevs: false} )aql";
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_CONFLICT);
   AssertNotChanged();
@@ -258,7 +201,7 @@ TEST_P(ReplaceExecutorIntegrationTest, replace_only_even) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
       FILTER doc.sortValue % 2 == 0
-      REPLACE doc WITH {value: 'foo'} IN UnitTestCollection
+      REPLACE doc WITH {value: 'foo', sortValue: doc.sortValue} IN UnitTestCollection
   )aql";
   VPackBuilder expected;
   {
@@ -366,13 +309,13 @@ TEST_P(ReplaceExecutorIntegrationTest, replace_all_return_old_and_new) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(ReplaceExecutorIntegrationTest, DISABLED_replace_remove_old_attributes) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_remove_old_attributes) {
   std::string query = R"aql(FOR doc IN UnitTestCollection REPLACE doc WITH {foo: 'foo'} IN UnitTestCollection)aql";
   VPackBuilder expected;
   {
     VPackArrayBuilder a{&expected};
     for (size_t i = 1; i <= GetParam(); ++i) {
-      expected.add(VPackValue("null"));
+      expected.add(VPackSlice::nullSlice());
     }
   }
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
