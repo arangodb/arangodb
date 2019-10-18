@@ -75,7 +75,8 @@ TEST_P(InsertExecutorTestCount, insert_without_return) {
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
+  std::string checkQuery =
+      "FOR i IN " + collectionName + " SORT i.value RETURN i.value";
   VPackBuilder builder;
   builder.openArray();
   for (size_t i = 1; i <= GetParam(); i++) {
@@ -95,7 +96,8 @@ TEST_P(InsertExecutorTestCount, insert_with_return) {
   TRI_ASSERT(result.data->slice().isArray());
   TRI_ASSERT(result.data->slice().length() == GetParam());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i";
+  std::string checkQuery =
+      "FOR i IN " + collectionName + " SORT i.value RETURN i";
   AssertQueryHasResult(vocbase, checkQuery, result.data->slice());
 }
 
@@ -241,7 +243,7 @@ TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite) {
   // This is intentional: We write the entries once, then overwrite them again
   // The second query should fail with a uniqueness violation on _key
   AssertQueryHasResult(vocbase, query, builder.slice());
-  AssertQueryFailsWith(vocbase, query, 1203);
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
 }
 
 }  // namespace aql
