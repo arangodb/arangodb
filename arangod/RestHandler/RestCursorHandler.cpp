@@ -141,7 +141,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
 }
 
-bool RestCursorHandler::cancel() {
+void RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
@@ -421,7 +421,7 @@ void RestCursorHandler::unregisterQuery() {
 /// @brief cancel the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::cancelQuery() {
+void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
@@ -433,16 +433,9 @@ bool RestCursorHandler::cancelQuery() {
     // registered in the query
     std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
     ss->invalidate();
-
-    return true;
-  }
-
-  if (!_hasStarted) {
+  } else if (!_hasStarted) {
     _queryKilled = true;
-    return true;
   }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

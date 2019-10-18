@@ -125,9 +125,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
-  virtual bool cancel() {
+  virtual void cancel() {
     _canceled.store(true);
-    return false;
   }
 
   virtual void handleError(basics::Exception const&) = 0;
@@ -210,7 +209,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   
   HandlerState _state;
   
- public:
+ protected:
   
   std::atomic<bool> _canceled;
 };

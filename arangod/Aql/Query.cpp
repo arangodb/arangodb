@@ -1394,9 +1394,9 @@ void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) 
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
       ss->waitForAsyncWakeup();
-      ss->invalidate();
       state = cleanupPlanAndEngine(errorCode, statsBuilder);
     }
+    ss->invalidate();
   } catch (...) {
     // this is called from the destructor... we must not leak exceptions from
     // here

@@ -68,7 +68,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _lastError(TRI_ERROR_NO_ERROR),
       _lastTicket(0),
       _requestInFlight(false),
-      _hasTriggeredShutdown(false) {
+      _hasTriggeredShutdown(false),
+      _didReceiveShutdownRequest(false) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
@@ -230,6 +231,9 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP
+  if (_requestInFlight.load(std::memory_order_acquire)) {
+    return {ExecutionState::WAITING, 0};
+  }
 
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
@@ -290,17 +294,41 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
-  if (!_isResponsibleForInitializeCursor) {
+  
+  // this should make the whole thing idempotent
+  if (!_isResponsibleForInitializeCursor || _didReceiveShutdownRequest) {
     // do nothing...
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   if (!_hasTriggeredShutdown) {
-    std::lock_guard<std::mutex> guard(_communicationMutex);
-    std::ignore = generateRequestTicket();
-    _hasTriggeredShutdown = true;
+    { // skip request in progress
+      std::lock_guard<std::mutex> guard(_communicationMutex);
+      std::ignore = generateRequestTicket();
+      _hasTriggeredShutdown = true;
+    }
+    
+    // For every call we simply forward via HTTP
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject(/*unindexed*/ true);
+    builder.add("code", VPackValue(errorCode));
+    builder.close();
+
+    traceShutdownRequest(builder.slice(), errorCode);
+
+    auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown/",
+                                std::move(buffer));
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
+    
+  std::lock_guard<std::mutex> guard(_communicationMutex);
   if (_lastError.fail()) {
+    _didReceiveShutdownRequest = true;
+    
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
     _lastError.reset();
@@ -322,6 +350,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
+    _didReceiveShutdownRequest = true;
 
     auto response = std::move(_lastResponse);
 
@@ -357,27 +386,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
-
+  
   // Already sent a shutdown request, but haven't got an answer yet.
-  if (_didSendShutdownRequest) {
-    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-  }
-  _didSendShutdownRequest = true;
-
-  // For every call we simply forward via HTTP
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject(/*unindexed*/ true);
-  builder.add("code", VPackValue(errorCode));
-  builder.close();
-
-  traceShutdownRequest(builder.slice(), errorCode);
-
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown/",
-                              std::move(buffer));
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
@@ -437,6 +447,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       std::string("/_db/") +
       arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->vocbase().name()) +
       urlPart + _queryId;
+  
+  LOG_DEVEL << this->_exeNode->id() << " sending request  " << fuerte::to_string(type) << " " << url;
 
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(nf, _server, spec);
@@ -460,18 +472,21 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   auto sqs = _query.sharedState();
   conn->sendRequest(std::move(req), [=](fuerte::Error err,
-                                        std::unique_ptr<fuerte::Request>,
+                                        std::unique_ptr<fuerte::Request> req,
                                         std::unique_ptr<fuerte::Response> res) {
     (void)conn;
     sqs->executeAndWakeup([&] {
       std::lock_guard<std::mutex> guard(_communicationMutex);
       if (_lastTicket == ticket) {
+        LOG_DEVEL << this->_exeNode->id() << " received request " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
         _requestInFlight = false;
         if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
           _lastError = handleErrorResponse(spec, err, res.get());
         } else {
           _lastResponse = std::move(res);
         }
+      } else {
+        LOG_DEVEL << this->_exeNode->id() << " skipping request " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
       }
     });
   });

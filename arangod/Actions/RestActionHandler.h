@@ -39,7 +39,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestActionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
   RestStatus execute() override;
-  bool cancel() override;
+  void cancel() override;
 
  private:
   // executes an action
