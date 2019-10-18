@@ -265,7 +265,7 @@ TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite) {
   // This is intentional: We write the entries once, then overwrite them again
   // The second query should fail with a uniqueness violation on _key
   AssertQueryHasResult(vocbase, query, builder.slice());
-  AssertQueryFailsWith(vocbase, query, 1203);
+  AssertQueryFailsWith(vocbase, query, 1210);
 }
 
 TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite_ignore_errors) {

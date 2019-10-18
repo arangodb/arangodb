@@ -136,8 +136,9 @@ TEST_P(RemoveExecutorTestPatterns, remove_every_third_with_return) {
 
 TEST_P(RemoveExecutorTestPatterns, remove_with_key) {
   auto const bindParameters = VPackParser::fromJson("{ }");
-  std::string allQuery = std::string("FOR d IN " + collectionName +
-                                     " FILTER d.value <= 100 RETURN d");
+  std::string allQuery =
+      std::string("FOR d IN " + collectionName +
+                  " FILTER d.value <= 100 SORT d.sortvalue RETURN d");
 
   auto allDocs = executeQuery(vocbase, allQuery, bindParameters);
   ASSERT_TRUE(allDocs.ok());
