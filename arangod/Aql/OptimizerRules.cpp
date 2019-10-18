@@ -6880,7 +6880,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
 
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
-    case ExecutionNode::MATERIALIZE:
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
@@ -6913,6 +6912,9 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
+    // TODO: As soon as materialize does no longer have to filter out
+    //  non-existent documents, move MATERIALIZE to the allowed nodes!
+    case ExecutionNode::MATERIALIZE:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
