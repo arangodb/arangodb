@@ -6880,6 +6880,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
 
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
+    case ExecutionNode::MATERIALIZE:
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
@@ -6909,13 +6910,19 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::SUBQUERY_START:
+    case ExecutionNode::SUBQUERY_END:
       return false;
-    default:;
+    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+      break;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+  THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_INTERNAL_AQL,
-      "Unhandled node type in sort-limit optimizer rule. Please report this "
-      "error. Try turning off the sort-limit rule to get your query working.");
+      "Unhandled node type '%s' in sort-limit optimizer rule. Please report "
+      "this error. Try turning off the sort-limit rule to get your query "
+      "working.",
+      node->getTypeString().c_str());
 }
 
 void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -7287,6 +7294,10 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::SUBQUERY_START:
+    case ExecutionNode::SUBQUERY_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
     case ExecutionNode::LIMIT:
@@ -7298,13 +7309,15 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
       // Collect nodes skip iff using the COUNT method.
       return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
     }
-    default:;
+    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+      break;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+  THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_INTERNAL_AQL,
-      "Unhandled node type in splice-subqueries optimizer rule. Please report "
-      "this error. Try turning off the splice-subqueries rule to get your "
-      "query working.");
+      "Unhandled node type '%s' in splice-subqueries optimizer rule. Please "
+      "report this error. Try turning off the splice-subqueries rule to get "
+      "your query working.",
+      node->getTypeString().c_str());
 }
 
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
