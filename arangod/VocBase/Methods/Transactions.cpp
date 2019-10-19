@@ -179,7 +179,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   std::vector<std::string> exclusiveCollections;
 
   if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
-    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(isolate, 
+    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(isolate,
         collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
 
@@ -203,7 +203,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
           collections.emplace_back(TRI_ObjectToString(isolate, collection));
         }
       } else if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsString()) {
-        collections.emplace_back(TRI_ObjectToString(isolate, 
+        collections.emplace_back(TRI_ObjectToString(isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
       } else {
         collectionError +=
@@ -278,7 +278,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
     // Invoke Function constructor to create function with the given body and the
     // arguments
-    std::string body = TRI_ObjectToString(isolate, 
+    std::string body = TRI_ObjectToString(isolate,
                                           TRI_GetProperty(context, isolate, object, "action"));
     body = "return (" + body + ")(params);";
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
@@ -322,9 +322,9 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
                                                     exclusiveCollections, trxOptions);
   trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  
+
   rv = trx->begin();
-  
+
   if (rv.fail()) {
     return rv;
   }
@@ -357,7 +357,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   } catch (...) {
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
-  
+
   rv = trx->finish(rv);
 
   // if we do not remove unused V8Cursors, V8Context might not reset global
