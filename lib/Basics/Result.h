@@ -30,12 +30,12 @@
 namespace arangodb {
 class Result final {
  public:
-  Result();
-
   Result(bool /*avoidCastingErrors*/) = delete;
 
+  Result() noexcept;
+
   // cppcheck-suppress noExplicitConstructor
-  /* implicit */ Result(int errorNumber);
+  /* implicit */ Result(int errorNumber) noexcept;
 
   Result(int errorNumber, std::string const& errorMessage);
 
