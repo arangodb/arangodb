@@ -187,7 +187,7 @@ RestStatus RestAdminClusterHandler::execute() {
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                "expecting URL /_api/cluster/<command>");
+                "expecting URL /_admin/cluster/<command>");
   return RestStatus::DONE;
 }
 
@@ -341,7 +341,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
           VPackBuilder builder(payload);
           VPackObjectBuilder ob(&builder);
           builder.add("error", VPackValue(false));
-          //builder.add("code", VPackValue(ResponseCode::ACCEPTED));
+          builder.add("code", VPackValue(ResponseCode::ACCEPTED));
           builder.add("job", VPackValue(jobId));
         }
 
@@ -355,9 +355,6 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
     }).thenError<std::exception>([this, self](std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
     }));
-
-
-
 
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
   return RestStatus::DONE;

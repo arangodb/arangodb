@@ -30,7 +30,6 @@ using namespace arangodb::rest;
 RestStatus RestRedirectHandler::execute() {
 
   std::string const& url = request()->fullUrl();
-
   std::string prefix = request()->prefix();
   if (prefix.empty()) {
     prefix = request()->requestPath();
