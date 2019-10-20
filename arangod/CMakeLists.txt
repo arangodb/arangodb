@@ -961,6 +961,11 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
+  
+if (USE_MAINTAINER_MODE)
+  add_dependencies(arangod errorfiles)
+  add_dependencies(arangod exitcodefiles)
+endif ()
 
 foreach(TARGET
   arango_agency
