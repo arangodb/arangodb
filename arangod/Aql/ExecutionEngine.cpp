@@ -506,12 +506,14 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 
 void ExecutionEngine::kill() {
   // kill coordinator parts
-  auto queryRegistry = QueryRegistryFeature::registry();
-  if (queryRegistry != nullptr) {
-    for (auto const& id : _coordinatorQueryIds) {
- //     queryRegistry->kill(&(_query.vocbase()), id);
-    }
-  }
+  // TODO: this doesn't seem to be necessary and sometimes even show adverse effects
+  // so leaving this deactivated for now
+  // auto queryRegistry = QueryRegistryFeature::registry();
+  // if (queryRegistry != nullptr) {
+  //   for (auto const& id : _coordinatorQueryIds) {
+  //     queryRegistry->kill(&(_query.vocbase()), id);
+  //   }
+  // }
 
   // kill DB server parts
   // RemoteNodeId -> DBServerId -> [snippetId]
