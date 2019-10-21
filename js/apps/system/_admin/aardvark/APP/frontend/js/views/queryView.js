@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, btoa */
-/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
+/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {
   'use strict';
@@ -680,8 +680,8 @@
 
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
-              // $.noty.clearQueue();
-              // $.noty.closeAll();
+              Noty.clearQueue();
+              Noty.closeAll();
               self.handleResult(counter);
 
               // SCROLL TO RESULT BOX

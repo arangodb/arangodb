@@ -39,8 +39,8 @@
     },
 
     removeAllNotifications: function () {
- //     $.noty.clearQueue();
-   //   $.noty.closeAll();
+      Noty.clearQueue();
+      Noty.closeAll();
       this.collection.reset();
       $('#notification_menu').hide();
     },
