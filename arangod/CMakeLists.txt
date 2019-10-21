@@ -987,7 +987,7 @@ foreach(TARGET
 
   if (MSVC AND USE_FAIL_ON_WARNINGS)
     target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  elseif (DARWIN AND USE_FAIL_ON_WARNINGS)
+  elseif (USE_FAIL_ON_WARNINGS)
     target_compile_options(${TARGET} PRIVATE -Werror)
   endif ()
 endforeach()

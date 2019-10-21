@@ -82,7 +82,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobench PRIVATE -Werror)
 endif()
 
@@ -141,7 +141,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobackup PRIVATE -Werror)
 endif()
 
@@ -200,7 +200,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodump PRIVATE -Werror)
 endif()
 
@@ -256,7 +256,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoexport PRIVATE -Werror)
 endif()
 
@@ -324,7 +324,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoimport PRIVATE -Werror)
 endif()
 
@@ -381,7 +381,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangorestore PRIVATE -Werror)
 endif()
 
@@ -446,7 +446,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangosh PRIVATE -Werror)
 endif()
 
@@ -502,7 +502,7 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arangovpack PRIVATE -Werror)
 endif()
 
