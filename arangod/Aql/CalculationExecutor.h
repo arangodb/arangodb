@@ -118,12 +118,11 @@ class CalculationExecutor {
   template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
   void exitContext();
 
-  bool shouldExitContextBetweenBlocks() const;
-
- public:
-  CalculationExecutorInfos& _infos;
+  [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
 
  private:
+  CalculationExecutorInfos& _infos;
+
   Fetcher& _fetcher;
 
   InputAqlItemRow _currentRow;

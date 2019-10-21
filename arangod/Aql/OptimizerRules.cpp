@@ -7271,6 +7271,11 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
 }
 
 static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
+  // TODO Enable modification nodes again, as soon as the corresponding branch
+  //  is merged.
+  if (node->isModificationNode()) {
+    return true;
+  }
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
@@ -7281,12 +7286,7 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::FILTER:
     case ExecutionNode::SORT:
-    case ExecutionNode::INSERT:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::UPDATE:
     case ExecutionNode::NORESULTS:
-    case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
@@ -7311,6 +7311,16 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
       // Collect nodes skip iff using the COUNT method.
       return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
     }
+    // TODO Enable modification nodes again, as soon as the corresponding branch
+    //  is merged.
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::UPSERT:
+      // These should already have been handled
+      TRI_ASSERT(false);
+      return true;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }

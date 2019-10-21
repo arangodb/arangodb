@@ -91,7 +91,7 @@ std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const no
 }
 
 template <CalculationType calculationType>
-inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
+std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
 CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -105,7 +105,10 @@ CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
 
   if (!row) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_fetcher.isAtShadowRow() || (!_fetcher.hasRowsLeftInBlock() &&
+                                            !_infos.getQuery().hasEnteredContext()));
+#endif
     return {state, NoStats{}};
   }
 
