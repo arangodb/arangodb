@@ -1201,14 +1201,9 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
       // remove filter node and merge with following node
       toUnlink.emplace(n);
       modified = true;
-    } else if (root->isFalse()) {
-      // filter is always false
-      // now insert a NoResults node below it
-      auto noResults = new NoResultsNode(plan.get(), plan->nextId());
-      plan->registerNode(noResults);
-      plan->replaceNode(n, noResults);
-      modified = true;
     }
+    // before 3.6, if the filter is always false (i.e. root->isFalse()), at this
+    // point a NoResultsNode was inserted.
   }
 
   if (!toUnlink.empty()) {
