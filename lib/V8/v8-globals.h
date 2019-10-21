@@ -758,9 +758,12 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
 
 /// @brief adds a method to the prototype of an object
 template <typename TARGET>
-bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
-                           v8::FunctionCallback callback, bool isHidden = false) {
-  /*  // hidden method
+bool TRI_V8_AddProtoMethod(v8::Isolate* isolate,
+                           TARGET tpl,
+                           v8::Handle<v8::String> name,
+                           v8::FunctionCallback callback,
+                           bool isHidden = false) {
+  // hidden method
   if (isHidden) {
     tpl->PrototypeTemplate()->Set(name, v8::FunctionTemplate::New(isolate, callback),
                                   v8::DontEnum);
@@ -769,53 +772,55 @@ bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::Stri
   // normal method
   else {
     tpl->PrototypeTemplate()->Set(name, v8::FunctionTemplate::New(isolate, callback));
-  }*/
+  }
   return true;
 }
 
 /// @brief adds a method to an object
-template <typename TARGET>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
+inline bool TRI_V8_AddMethod(v8::Isolate* isolate,
+                             v8::Function tpl,
+                             v8::Handle<v8::String> name,
                              v8::Handle<v8::FunctionTemplate> callback,
                              bool isHidden = false) {
-  /*  // hidden method
+  // hidden method
   if (isHidden) {
-    return tpl.FromMaybe(v8::Local<TARGET>())
-        ->DefineOwnProperty(TRI_IGETC, name, callback->GetFunction(TRI_IGETC), v8::DontEnum)
+    return tpl
+      .DefineOwnProperty(TRI_IGETC,
+                         name,
+                         callback->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
+                         v8::DontEnum)
         .FromMaybe(false);
   }
   // normal method
   else {
-    return tpl->Set(name, callback->GetFunction(TRI_IGETC));
-  }*/
+    return tpl.Set(name, callback->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
+  }
   return false;
 }
 
-template <typename TARGET>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
-                             v8::FunctionCallback callback, bool isHidden = false) {
-  /*
+inline bool TRI_V8_AddMethod(v8::Isolate* isolate,
+                             v8::Handle<v8::FunctionTemplate> tpl,
+                             v8::Handle<v8::String> name,
+                             v8::FunctionCallback callback,
+                             bool isHidden = false) {
+
   // hidden method
   if (isHidden) {
-    return tpl.FromMaybe(v8::Local<TARGET>())
-        ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, callback)->GetFunction(TRI_IGETC),
-                            v8::DontEnum)
-        .FromMaybe(false);  // Ignore ret
+    /*
+    tpl->InstanceTemplate()
+      ->SetHandler(v8::NamedPropertyHandlerConfiguration(callback));
+    
+                   .FromMaybe(false);  // Ignore ret       
+    */
+    tpl->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
+    return true;
   }
   // normal method
   else {
-    return tpl.FromMaybe(v8::Local<TARGET>())->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction(TRI_IGETC));
+    tpl->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
+    return true;
   }
-  */
   return false;
-}
-
-template <>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, v8::Handle<v8::FunctionTemplate> tpl,
-                             v8::Handle<v8::String> name,
-                             v8::FunctionCallback callback, bool isHidden) {
-  return TRI_V8_AddMethod(isolate, tpl->GetFunction(TRI_IGETC), name, callback, isHidden);
 }
 
 /// @brief adds a method to an object
