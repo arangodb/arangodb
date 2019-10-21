@@ -943,12 +943,11 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       // why are indexes added separately, when they are added by
       //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
+      collection->getIndexesVPack(result, Index::makeFlags(Index::Serialize::Internals), [](arangodb::Index const* idx) {
         // we have to exclude the primary, edge index and links for dump /
         // restore
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-                !idx->isHidden());
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(
@@ -965,8 +964,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {
     if (view) {
       result.openObject();
-      view->properties(result, LogicalDataSource::makeFlags(
-                                   LogicalDataSource::Serialize::Detailed));
+      view->properties(result, LogicalDataSource::makeFlags());
       // details, !forPersistence because on  restore any datasource ids will
       // differ, so need an end-user representation
       result.close();

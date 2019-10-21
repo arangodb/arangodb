@@ -1254,13 +1254,12 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
 }
 
 arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence if possible
-  EmplaceResult& result, // emplacement result on success (out-param)
-  irs::string_ref const& name, // analyzer name
-  irs::string_ref const& type, // analyzer type
-  VPackSlice const properties, // analyzer properties
-  irs::flags const& features, // analyzer features
-  bool isEmplace
-) {
+    EmplaceResult& result, // emplacement result on success (out-param)
+    irs::string_ref const& name, // analyzer name
+    irs::string_ref const& type, // analyzer type
+    VPackSlice const properties, // analyzer properties
+    irs::flags const& features, // analyzer features
+    bool isEmplace) {
   try {
     auto split = splitAnalyzerName(name);
 
@@ -1289,19 +1288,15 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
       }
     }
 
+    // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
-    auto res = // validate and emplace an analyzer
-      emplaceAnalyzer(itr, _analyzers, name, type, properties, features);
+    auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features);
 
     if (!res.ok()) {
       return res;
     }
 
     auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-    auto allowCreation = // should analyzer creation be allowed (always for cluster)
-      isEmplace // if it's a user creation request
-      || arangodb::ServerState::instance()->isClusterRole() // always for cluster
-      || (engine && engine->inRecovery()); // always during recovery since analyzer collection might not be available yet
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1312,14 +1307,6 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 
     // new pool creation
     if (itr.second) {
-      if (!allowCreation) {
-        return arangodb::Result( // result
-          TRI_ERROR_BAD_PARAMETER, // code
-          "forbidden implicit creation of an arangosearch analyzer instance for name '" + std::string(name) +
-          "' type '" + std::string(type) +
-          "' properties '" + properties.toString() + "'");
-      }
-
       if (!pool) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
@@ -1337,7 +1324,7 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 
       if (res.ok()) {
         result = std::make_pair(pool, itr.second);
-	// cppcheck-suppress unreadVariable
+        // cppcheck-suppress unreadVariable
         erase = false; // successful pool creation, cleanup not required
       }
 
@@ -1506,33 +1493,6 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
   return nullptr;
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
-  irs::string_ref const& name, // analyzer name
-  irs::string_ref const& type, // analyzer type
-  VPackSlice const properties, // analyzer properties
-  irs::flags const& features // analyzer features
-) {
-  EmplaceResult result;
-  auto res = ensure( // find and validate analyzer
-    result, // result
-    name, // analyzer name
-    type, // analyzer type
-    properties, // analyzer properties
-    features, // analyzer features
-    false
-  );
-
-  if (!res.ok()) {
-    LOG_TOPIC("ed6a3", WARN, arangodb::iresearch::TOPIC)
-      << "failure to get arangosearch analyzer name '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
-    return nullptr;
-  }
-
-  return result.first;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a container of statically defined/initialized analyzers
 ////////////////////////////////////////////////////////////////////////////////
@@ -1568,7 +1528,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
       // register the text analyzers
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        std::vector<irs::string_ref> const locales = {
+        irs::string_ref const locales[] = {
           "de", "en", "es", "fi", "fr", "it",
           "nl", "no", "pt", "ru", "sv", "zh"
         };

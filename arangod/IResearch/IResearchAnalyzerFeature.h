@@ -158,9 +158,31 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
       EmplaceResult& result,
       irs::string_ref const& name,
       irs::string_ref const& type,
-      VPackSlice properties,
+      VPackSlice const properties,
       irs::flags const& features = irs::flags::empty_instance()) {
     return ensure(result, name, type, properties, features, true);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find analyzer
+  /// @param result the result of the successful emplacement (out-param)
+  ///               first - the emplaced pool
+  ///               second - if an insertion of an new analyzer occured
+  /// @param name analyzer name (already normalized)
+  /// @param type the underlying IResearch analyzer type
+  /// @param properties the configuration for the underlying IResearch type
+  /// @param features the expected features the analyzer should produce
+  /// @return analyzer matching the specified parameters or nullptr
+  /// @note will construct and cache the analyzer if missing only on db-server
+  ///       persistence in the cases of inRecovery or !storage engine will fail
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result get(
+     EmplaceResult& result,
+     irs::string_ref const& name,
+     irs::string_ref const& type,
+     VPackSlice const properties,
+     irs::flags const& features) {
+    return ensure(result, name, type, properties, features, false);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -183,23 +205,6 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
     bool onlyCached = false // check only locally cached analyzers
   ) const noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find analyzer
-  /// @param name analyzer name (already normalized)
-  /// @param type the underlying IResearch analyzer type
-  /// @param properties the configuration for the underlying IResearch type
-  /// @param features the expected features the analyzer should produce
-  /// @return analyzer matching the specified parameters or nullptr
-  /// @note will construct and cache the analyzer if missing only on db-server
-  ///       persistence in the cases of inRecovery or !storage engine will fail
-  //////////////////////////////////////////////////////////////////////////////
-  AnalyzerPool::ptr get( // find analyzer
-    irs::string_ref const& name, // analyzer name
-    irs::string_ref const& type, // analyzer type
-    VPackSlice const properties, // analyzer properties
-    irs::flags const& features // analyzer features
-  );
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;
