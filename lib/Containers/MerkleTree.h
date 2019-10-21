@@ -51,8 +51,8 @@ class MerkleTree {
   static constexpr std::size_t BranchingFactor = static_cast<std::size_t>(1) << BranchingBits;
 
   struct Node {
-    /*std::atomic<*/ std::size_t /*>*/ hash;
-    /*std::atomic<*/ std::size_t /*>*/ count;
+    std::size_t hash;
+    std::size_t count;
 
     // Node(std::size_t h, std::size_t c) : hash(h), count(c) {}
   };
@@ -165,7 +165,7 @@ class MerkleTree {
   }
 
   ~MerkleTree() {
-    std::unique_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::unique_lock<std::shared_mutex> guard(_bufferLock);
 
     std::size_t const last = nodeCountUpToDepth(meta().maxDepth);
     for (std::size_t i = 0; i < last; ++i) {
@@ -179,7 +179,7 @@ class MerkleTree {
    * @brief Returns the number of hashed keys contained in the tree
    */
   std::size_t count() const {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::shared_lock<std::shared_mutex> guard(_bufferLock);
     std::unique_lock<std::mutex> lock(this->lock(0));
     return node(0).count;
   }
@@ -188,7 +188,7 @@ class MerkleTree {
    * @brief Returns the current range of the tree
    */
   std::pair<std::size_t, std::size_t> range() const {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::shared_lock<std::shared_mutex> guard(_bufferLock);
     return {meta().rangeMin, meta().rangeMax};
   }
 
@@ -196,7 +196,7 @@ class MerkleTree {
    * @brief Returns the maximum depth of the tree
    */
   std::size_t maxDepth() const {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::shared_lock<std::shared_mutex> guard(_bufferLock);
     return meta().maxDepth;
   }
 
@@ -210,7 +210,7 @@ class MerkleTree {
    * @param value The hashed value associated with the key
    */
   void insert(std::size_t key, std::size_t value) {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::shared_lock<std::shared_mutex> guard(_bufferLock);
     if (key < meta().rangeMin) {
       throw std::out_of_range("Key out of current range.");
     }
@@ -233,12 +233,58 @@ class MerkleTree {
    * @param value The hashed value associated with the key
    */
   void remove(std::size_t key, std::size_t value) {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::shared_lock<std::shared_mutex> guard(_bufferLock);
     if (key < meta().rangeMin || key >= meta().rangeMax) {
       throw std::out_of_range("Key out of current range.");
     }
 
     modify(key, value, /* isInsert */ false);
+  }
+
+  /**
+   * @brief Find the ranges of keys over which two trees differ.
+   *
+   * @param other The other tree to compare
+   * @return  Vector of (inclusive) ranges of keys over which trees differ
+   */
+  std::vector<std::pair<std::size_t, std::size_t>> diff(
+      MerkleTree<BranchingBits, LockStripes> const& other) const {
+    std::shared_lock<std::shared_mutex> guard1(_bufferLock);
+    std::shared_lock<std::shared_mutex> guard2(other._bufferLock);
+
+    if (this->meta().maxDepth != other.meta().maxDepth) {
+      throw std::invalid_argument("Expecting two trees with same maxDepth.");
+    }
+
+    if (this->meta().rangeMin != other.meta().rangeMin) {
+      throw std::invalid_argument("Expecting two trees with same rangeMin.");
+    }
+
+    while (this->meta().rangeMax != other.meta().rangeMax) {
+      if (this->meta().rangeMax < other.meta().rangeMax) {
+        // grow this to match other range
+        guard1.unlock();
+        this->grow(other.meta().rangeMax - 1);
+        guard1.lock();
+      } else {
+        // grow other to match this range
+        guard2.unlock();
+        other.grow(this->meta().rangeMax - 1);
+        guard2.lock();
+      }
+      // loop to repeat check to make sure someone else didn't grow while we
+      // switched between shared/exclusive locks
+    }
+
+    // check special case
+    {
+      if (equalAtIndex(other, 0)) {
+        // trees should be the same, no need to check deeper
+        return {};
+      }
+    }
+
+    return diffInternal(other);
   }
 
  protected:
@@ -297,7 +343,7 @@ class MerkleTree {
   }
 
   void grow(std::size_t key) {
-    std::unique_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::unique_lock<std::shared_mutex> guard(_bufferLock);
     // no need to lock nodes as we have an exclusive lock on the buffer
 
     std::size_t rangeMin = meta().rangeMin;
@@ -324,12 +370,88 @@ class MerkleTree {
     meta().rangeMax = rangeMin + ((rangeMax - rangeMin) * factor);
   }
 
- private:
-  std::unique_ptr<uint8_t[]> _buffer;
-  // TODO use std::shared_mutex after migration to cpp17
-  mutable std::shared_timed_mutex _bufferLock;
-  std::hash<std::size_t> _hasher;
-  mutable std::mutex _nodeLocks[LockStripes];
+  bool equalAtIndex(MerkleTree<BranchingBits, LockStripes> const& other,
+                    std::size_t index) const {
+    // not fully thread-safe, lock buffer from outside
+    std::unique_lock<std::mutex> lock1(this->lock(index));
+    std::unique_lock<std::mutex> lock2(other.lock(index));
+    return this->node(index) == other.node(index);
+  }
+
+  std::vector<std::pair<std::size_t, std::size_t>> diffInternal(
+      MerkleTree<BranchingBits, LockStripes> const& other) const {
+    std::vector<std::pair<std::size_t, std::size_t>> ranges;
+    bool openRange = false;
+    std::size_t left = 0;
+    std::size_t depth = 1;
+    std::size_t chunkAt[meta().maxDepth + 1] = {0};
+
+    auto range = [this](std::size_t index,
+                        std::size_t depth) -> std::pair<std::size_t, std::size_t> {
+      std::size_t rangeMin = meta().rangeMin;
+      std::size_t rangeMax = meta().rangeMax;
+      std::size_t chunkSizeAtDepth =
+          (rangeMax - rangeMin) / (1 << (BranchingBits * depth));
+      return std::make_pair(rangeMin + (chunkSizeAtDepth * index),
+                            rangeMin + (chunkSizeAtDepth * (index + 1)) - 1);
+    };
+    auto doneWithSiblingSet = [&chunkAt, &depth, BranchingFactor]() -> bool {
+      return chunkAt[depth] >= BranchingFactor * (chunkAt[depth - 1] + 1);
+    };
+    auto alreadyHandledChildren = [&chunkAt, &depth, BranchingFactor]() -> bool {
+      return chunkAt[depth + 1] >= BranchingFactor * (chunkAt[depth] + 1);
+    };
+    auto advance = [&depth, &chunkAt, &doneWithSiblingSet] -> void {
+      ++chunkAt[depth];
+      if (doneWithSiblingSet()) {
+        // finished all the chunks at this depth for our parent
+        --depth;
+      }
+    };
+    auto stepDown = [&chunkAt, &depth, BranchingFactor]() -> void {
+      if (chunkAt[depth + 1] < chunkAt[depth] * BranchingFactor) {
+        chunkAt[depth + 1] = chunkAt[depth] * BranchingFactor;
+      }
+      ++depth;
+    };
+
+    while (depth > 0) {
+      if (!alreadyHandledChildren()) {
+        if (openRange) {
+          if (equalAtIndex(other, this->index(chunkAt[depth], depth))) {
+            // we can close the range, everything here matches
+            std::size_t right = range(chunkAt[depth], depth).second;
+            ranges.emplace_back(left, right);
+            openRange = false;
+          } else if (depth < meta().maxDepth) {
+            // still have potential differences, drop down to next level
+            stepDown();
+          }
+        }  // else we are at max depth, and extend the range
+      } else {
+        if (!equalAtIndex(other, this->index(chunkAt[depth], depth))) {
+          // new range to investigate
+          if (depth < meta().maxDepth) {
+            stepDown();
+          } else {
+            left = range(chunkAt[depth], depth).first;
+            openRange = true;
+          }
+        }
+        // else continue to skip over whatever keys we can
+      }
+    }
+    advance();
+  }
+
+  return ranges;
+}
+
+private : std::unique_ptr<uint8_t[]>
+              _buffer;
+mutable std::shared_mutex _bufferLock;
+std::hash<std::size_t> _hasher;
+mutable std::mutex _nodeLocks[LockStripes];
 };
 
 }  // namespace containers
